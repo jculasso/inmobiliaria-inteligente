@@ -4,7 +4,10 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 
-describe('GET /health (e2e)', () => {
+// AppModule inicializa Prisma (conecta a la DB); se saltea sin credenciales (CI sin secret).
+const suite = process.env.DATABASE_URL ? describe : describe.skip;
+
+suite('GET /health (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {

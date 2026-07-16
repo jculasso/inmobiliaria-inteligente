@@ -3,8 +3,12 @@ packages:
   - "packages/*"
 
 allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
   '@swc/core': true
   esbuild: true
+  prisma: true
   sharp: true
 
 # Build scripts nativos aprobados explícitamente (pnpm 10+ los bloquea por defecto).
@@ -12,3 +16,6 @@ onlyBuiltDependencies:
   - "@swc/core"
   - esbuild
   - sharp
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma

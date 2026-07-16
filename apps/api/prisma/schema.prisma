@@ -1,0 +1,66 @@
+// Esquema Prisma — Núcleo de plataforma (Paso 2).
+// Modelo de datos: docs/MODELO_DATOS_TABLERO.md (Parte A).
+// Aislamiento multi-tenant garantizado por RLS (ver migración SQL de policies).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooler (6543) — runtime
+  directUrl = env("DIRECT_URL")   // directa (5432) — migraciones
+}
+
+/// Inmobiliaria (tenant). El aislamiento se aplica sobre `id`.
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  nombre    String
+  slug      String   @unique
+  plan      String   @default("basico") // basico | profesional | enterprise
+  estado    String   @default("activo") // activo | suspendido
+  config    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  usuarios     Usuario[]
+  usuarioRoles UsuarioRol[]
+
+  @@map("tenant")
+}
+
+/// Usuario. `id` coincide con el user id de Supabase Auth.
+model Usuario {
+  id        String   @id @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  nombre    String
+  email     String
+  estado    String   @default("activo") // activo | inactivo
+  liderId   String?  @map("lider_id") @db.Uuid // Team Leader del que depende
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lider  Usuario?     @relation("Equipo", fields: [liderId], references: [id], onDelete: SetNull)
+  equipo Usuario[]    @relation("Equipo")
+  roles  UsuarioRol[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([liderId])
+  @@map("usuario")
+}
+
+/// Asignación de roles (un usuario puede tener uno o más roles en su tenant).
+model UsuarioRol {
+  usuarioId String @map("usuario_id") @db.Uuid
+  rol       String // vendedor | team_leader | direccion | admin_tenant | admin_plataforma
+  tenantId  String @map("tenant_id") @db.Uuid
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, rol])
+  @@index([tenantId])
+  @@map("usuario_rol")
+}
