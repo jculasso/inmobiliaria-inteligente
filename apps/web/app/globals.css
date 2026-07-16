@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+@import '@vacker/ui/styles/tokens.css';
+
+/* Los componentes de @vacker/ui viven fuera de apps/web; Tailwind (que por
+   defecto ignora node_modules) debe escanear su código fuente para generar
+   las utilidades que usan. */
+@source '../../../packages/ui/src';
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}

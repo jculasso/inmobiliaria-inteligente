@@ -1,0 +1,26 @@
+{
+  "name": "@vacker/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.config.mjs",
+    "./prettier": "./prettier.config.mjs",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  },
+  "files": [
+    "eslint.config.mjs",
+    "prettier.config.mjs",
+    "tsconfig.base.json"
+  ],
+  "dependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "globals": "^15.14.0",
+    "typescript-eslint": "^8.20.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2"
+  }
+}

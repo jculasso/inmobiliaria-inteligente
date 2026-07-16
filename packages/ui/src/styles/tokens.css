@@ -1,0 +1,26 @@
+/* ============================================================================
+ * @vacker/ui — Tokens de marca Vacker (CLAUDE.md §6).
+ *
+ * Este archivo se importa DESPUÉS de `@import "tailwindcss";` en la app.
+ * Tailwind v4 lee el bloque @theme y genera utilidades a partir de estos
+ * tokens (p. ej. `bg-brand-red`, `text-ink`, `rounded-brand`, `font-sans`).
+ * ========================================================================== */
+
+@theme {
+  /* Colores de marca */
+  --color-brand-red: #c1121f; /* primario */
+  --color-brand-red-dark: #8f0d18; /* primario oscuro */
+  --color-ink: #1d1d1f; /* texto */
+  --color-muted: #6b6b6b; /* texto secundario */
+  --color-line: #e6e6e6; /* bordes */
+  --color-surface: #f4f5f7; /* fondo */
+  --color-success: #1e9e5a; /* éxito / activo */
+  --color-warning: #b7791f; /* en desarrollo / advertencia */
+
+  /* Radio de esquinas de marca */
+  --radius-brand: 16px;
+
+  /* Tipografía: Montserrat (fallback system-ui) */
+  --font-sans:
+    'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

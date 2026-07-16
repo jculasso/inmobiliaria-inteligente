@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+  sharp: true
+
+# Build scripts nativos aprobados explícitamente (pnpm 10+ los bloquea por defecto).
+onlyBuiltDependencies:
+  - "@swc/core"
+  - esbuild
+  - sharp
