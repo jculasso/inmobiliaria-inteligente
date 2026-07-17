@@ -26,6 +26,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Genera el Prisma Client (tipos de las tablas). Sin esto, typecheck falla
+      # porque el namespace Prisma no expone los tipos generados. No conecta a la DB.
+      - name: Generate Prisma Client
+        run: pnpm --filter @vacker/api exec prisma generate
+
       - name: Lint
         run: pnpm lint
 
