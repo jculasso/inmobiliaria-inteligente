@@ -1,23 +1,22 @@
 import { listOperaciones, listVendedores } from '../../../lib/tablero-api';
 import { requireServerPrincipal } from '../../../lib/server-principal';
 import { puedeBorrarOperaciones } from '../../../lib/rbac';
-import { FiltroPeriodo } from '../../../components/tablero/filtro-periodo';
+import { FiltroAnio } from '../../../components/tablero/filtro-anio';
 import { OperacionesTable } from '../../../components/tablero/operaciones-table';
 
 export default async function AlquileresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string }>;
+  searchParams: Promise<{ anio?: string }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
 
   const params = await searchParams;
-  const anio = params.anio ? Number(params.anio) : new Date().getFullYear();
-  const mes = params.mes ? Number(params.mes) : undefined;
+  const anio = params.anio ? Number(params.anio) : undefined;
 
   const [operaciones, vendedores] = await Promise.all([
-    listOperaciones(ctx.accessToken, { anio, mes, tipo: 'alquiler' }),
+    listOperaciones(ctx.accessToken, { anio, tipo: 'alquiler' }),
     listVendedores(ctx.accessToken).catch(() => []),
   ]);
 
@@ -25,7 +24,7 @@ export default async function AlquileresPage({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-ink">Alquileres</h2>
-        <FiltroPeriodo anio={anio} mes={mes} />
+        <FiltroAnio anio={anio} />
       </div>
       <OperacionesTable
         tipo="alquiler"

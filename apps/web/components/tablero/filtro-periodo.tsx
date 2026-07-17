@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@vacker/ui';
 
 const MESES = [
   'Enero',
@@ -17,21 +18,20 @@ const MESES = [
   'Diciembre',
 ];
 
-export function FiltroPeriodo({ anio, mes }: { anio: number; mes?: number }) {
+/** El mes siempre está seleccionado (como el prototipo): "año completo" se
+ * elige con el tab "Acumulado Anual" del Resumen, no con "todos los meses". */
+export function FiltroPeriodo({ anio, mes }: { anio: number; mes: number }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const hoy = new Date().getFullYear();
-  const anios = [hoy + 1, hoy, hoy - 1, hoy - 2];
+  const hoy = new Date();
+  const anios = [hoy.getFullYear() + 1, hoy.getFullYear(), hoy.getFullYear() - 1, hoy.getFullYear() - 2];
 
-  function actualizar(next: { anio?: number; mes?: number | null }) {
+  function actualizar(next: { anio?: number; mes?: number }) {
     const params = new URLSearchParams(searchParams);
     if (next.anio !== undefined) params.set('anio', String(next.anio));
-    if (next.mes !== undefined) {
-      if (next.mes === null) params.delete('mes');
-      else params.set('mes', String(next.mes));
-    }
+    if (next.mes !== undefined) params.set('mes', String(next.mes));
     router.push(`${pathname}?${params.toString()}`);
   }
 
@@ -51,17 +51,24 @@ export function FiltroPeriodo({ anio, mes }: { anio: number; mes?: number }) {
       </select>
       <select
         aria-label="Mes"
-        value={mes ?? ''}
-        onChange={(e) => actualizar({ mes: e.target.value ? Number(e.target.value) : null })}
+        value={mes}
+        onChange={(e) => actualizar({ mes: Number(e.target.value) })}
         className="h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink"
       >
-        <option value="">Todos los meses</option>
         {MESES.map((nombre, i) => (
           <option key={nombre} value={i + 1}>
             {nombre}
           </option>
         ))}
       </select>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => actualizar({ anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 })}
+      >
+        Hoy
+      </Button>
     </div>
   );
 }

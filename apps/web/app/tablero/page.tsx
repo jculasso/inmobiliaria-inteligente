@@ -1,14 +1,10 @@
-import {
-  getEvolucionAnual,
-  getKpisResumen,
-  getObjetivosSeguimiento,
-  getRanking,
-} from '../../lib/tablero-api';
+import { getEvolucionAnual, getKpisResumen, getObjetivosSeguimiento } from '../../lib/tablero-api';
 import { requireServerPrincipal } from '../../lib/server-principal';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { FiltroPeriodo } from '../../components/tablero/filtro-periodo';
 import { KpiCard } from '../../components/tablero/kpi-card';
 import { EvolucionVentasChart } from '../../components/tablero/evolucion-ventas-chart';
+import { ResumenAcumulado } from '../../components/tablero/resumen-acumulado';
 import { RankingTable } from '../../components/tablero/ranking-table';
 import { ObjetivosTable } from '../../components/tablero/objetivos-table';
 import type { AgregadoKpi } from '@vacker/types';
@@ -39,15 +35,16 @@ export default async function TableroDashboardPage({
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
 
+  const hoy = new Date();
   const params = await searchParams;
-  const anio = params.anio ? Number(params.anio) : new Date().getFullYear();
-  const mes = params.mes ? Number(params.mes) : undefined;
-  const filtro = { anio, mes };
+  const anio = params.anio ? Number(params.anio) : hoy.getFullYear();
+  // El mes siempre está seleccionado (como el prototipo): "año completo" se
+  // elige con el tab "Acumulado Anual" del Resumen, no con "todos los meses".
+  const mes = params.mes ? Number(params.mes) : hoy.getMonth() + 1;
 
-  const [resumen, ranking, objetivos, evolucion] = await Promise.all([
-    getKpisResumen(ctx.accessToken, filtro),
-    getRanking(ctx.accessToken, filtro),
-    getObjetivosSeguimiento(ctx.accessToken, filtro),
+  const [resumen, objetivos, evolucion] = await Promise.all([
+    getKpisResumen(ctx.accessToken, { anio, mes }),
+    getObjetivosSeguimiento(ctx.accessToken, { anio, mes }),
     getEvolucionAnual(ctx.accessToken, anio),
   ]);
 
@@ -60,13 +57,13 @@ export default async function TableroDashboardPage({
 
       {resumen.mesActual && (
         <section className="flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Mes</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Mes seleccionado</p>
           {kpiCards(resumen.mesActual)}
         </section>
       )}
 
       <section className="flex flex-col gap-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">Año {anio}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">Acumulado año {anio}</p>
         {kpiCards(resumen.anual)}
       </section>
 
@@ -86,10 +83,16 @@ export default async function TableroDashboardPage({
         />
       </div>
 
+      <ObjetivosTable items={objetivos} />
+
+      <section className="flex flex-col gap-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">📊 Resumen acumulado</p>
+        <ResumenAcumulado anio={anio} mesSeleccionado={mes} />
+      </section>
+
       <EvolucionVentasChart anio={anio} datos={evolucion} />
 
-      <RankingTable items={ranking} />
-      <ObjetivosTable items={objetivos} />
+      <RankingTable anio={anio} mesSeleccionado={mes} />
     </div>
   );
 }
