@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import type { AuthPrincipal } from '@vacker/types';
 import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../../lib/api';
@@ -36,9 +37,12 @@ export default async function TableroLayout({ children }: { children: ReactNode 
     <main className="mx-auto max-w-6xl px-6 py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red">
-            Inmobiliaria Inteligente
-          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand-red hover:underline"
+          >
+            ⌂ Inmobiliaria Inteligente
+          </Link>
           <h1 className="mt-1 text-2xl font-extrabold text-ink">Tablero Comercial</h1>
         </div>
         <div className="flex flex-col items-end gap-2">
