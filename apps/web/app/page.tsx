@@ -1,6 +1,8 @@
 import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../lib/api';
+import { getKpisResumen } from '../lib/tablero-api';
 import { createClient } from '../lib/supabase/server';
+import { alcanceDeModulo } from '../lib/rbac';
 import { HomeView } from '../components/home-view';
 import { LogoutButton } from '../components/logout-button';
 
@@ -10,14 +12,27 @@ export default async function Home() {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // El middleware ya garantiza que haya sesión para llegar acá; esto es defensivo.
+  // Sin sesión: Home en modo invitado (login embebido + cards apagadas).
   if (!session) {
-    return null;
+    return <HomeView sesion={null} />;
   }
 
   try {
     const principal = await getMe(session.access_token);
-    return <HomeView email={principal.email} roles={principal.roles} />;
+
+    let volumenAnual: number | undefined;
+    if (alcanceDeModulo(principal.roles) !== null) {
+      try {
+        const resumen = await getKpisResumen(session.access_token, { anio: new Date().getFullYear() });
+        volumenAnual = resumen.anual.volumen;
+      } catch {
+        // Preview opcional para la card del Tablero: si falla, se omite sin romper la Home.
+      }
+    }
+
+    return (
+      <HomeView sesion={{ email: principal.email, roles: principal.roles, volumenAnual }} />
+    );
   } catch (err) {
     const message =
       err instanceof MeError

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { alcanceDeModulo, etiquetaDeAlcance } from './rbac';
+import {
+  alcanceDeModulo,
+  etiquetaDeAlcance,
+  puedeBorrarOperaciones,
+  puedeGestionarVendedores,
+  puedeVerVendedores,
+} from './rbac';
 
 describe('alcanceDeModulo', () => {
   it('vendedor ve su alcance propio', () => {
@@ -30,5 +36,42 @@ describe('alcanceDeModulo', () => {
 describe('etiquetaDeAlcance', () => {
   it('traduce el alcance a texto', () => {
     expect(etiquetaDeAlcance('total')).toBe('Total');
+  });
+});
+
+describe('puedeVerVendedores', () => {
+  it('un vendedor puro no puede', () => {
+    expect(puedeVerVendedores(['vendedor'])).toBe(false);
+  });
+
+  it('team_leader, direccion y admin_tenant sí pueden', () => {
+    expect(puedeVerVendedores(['team_leader'])).toBe(true);
+    expect(puedeVerVendedores(['direccion'])).toBe(true);
+    expect(puedeVerVendedores(['admin_tenant'])).toBe(true);
+  });
+
+  it('admin_plataforma solo no puede', () => {
+    expect(puedeVerVendedores(['admin_plataforma'])).toBe(false);
+  });
+});
+
+describe('puedeGestionarVendedores', () => {
+  it('solo direccion y admin_tenant pueden dar de alta/editar/borrar vendedores', () => {
+    expect(puedeGestionarVendedores(['direccion'])).toBe(true);
+    expect(puedeGestionarVendedores(['admin_tenant'])).toBe(true);
+    expect(puedeGestionarVendedores(['team_leader'])).toBe(false);
+    expect(puedeGestionarVendedores(['vendedor'])).toBe(false);
+  });
+});
+
+describe('puedeBorrarOperaciones', () => {
+  it('un vendedor puro no puede borrar operaciones', () => {
+    expect(puedeBorrarOperaciones(['vendedor'])).toBe(false);
+  });
+
+  it('team_leader, direccion y admin_tenant sí pueden', () => {
+    expect(puedeBorrarOperaciones(['team_leader'])).toBe(true);
+    expect(puedeBorrarOperaciones(['direccion'])).toBe(true);
+    expect(puedeBorrarOperaciones(['admin_tenant'])).toBe(true);
   });
 });
