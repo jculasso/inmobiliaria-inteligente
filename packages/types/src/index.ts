@@ -22,3 +22,6 @@ export const RolSchema = z.enum([
 ]);
 
 export type Rol = z.infer<typeof RolSchema>;
+
+// Contratos del módulo Tablero Comercial (Paso 3).
+export * from './tablero';

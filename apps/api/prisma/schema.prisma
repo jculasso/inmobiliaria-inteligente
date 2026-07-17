@@ -25,6 +25,9 @@ model Tenant {
 
   usuarios     Usuario[]
   usuarioRoles UsuarioRol[]
+  operaciones  Operacion[]
+  puntas       OperacionPunta[]
+  objetivos    Objetivo[]
 
   @@map("tenant")
 }
@@ -40,10 +43,12 @@ model Usuario {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lider  Usuario?     @relation("Equipo", fields: [liderId], references: [id], onDelete: SetNull)
-  equipo Usuario[]    @relation("Equipo")
-  roles  UsuarioRol[]
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lider     Usuario?         @relation("Equipo", fields: [liderId], references: [id], onDelete: SetNull)
+  equipo    Usuario[]        @relation("Equipo")
+  roles     UsuarioRol[]
+  puntas    OperacionPunta[]
+  objetivos Objetivo[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -63,4 +68,79 @@ model UsuarioRol {
   @@id([usuarioId, rol])
   @@index([tenantId])
   @@map("usuario_rol")
+}
+
+// ============================================================================
+// Módulo Tablero Comercial (Paso 3). Modelo: docs/MODELO_DATOS_TABLERO.md (Parte B).
+// Enfoque NORMALIZADO: las "puntas" del prototipo (punta_vend/punta_comp) se
+// modelan como filas en `operacion_punta`. Ver apps/api/src/modules/tablero/README.md.
+// Todas las tablas llevan tenant_id y están protegidas por RLS (migración SQL).
+// ============================================================================
+
+/// Operación comercial: cubre ventas y alquileres (diferenciadas por `tipo`).
+model Operacion {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  codigo       String // Código legible: OP-1001 (venta) | ALQ-1001 (alquiler)
+  tipo         String // venta | alquiler
+  direccion    String
+  precio       Decimal? @db.Decimal(14, 2) // null en alquileres (usan valor_mensual)
+  valorMensual Decimal? @map("valor_mensual") @db.Decimal(14, 2) // solo alquiler
+  moneda       String   @default("USD")
+  cantPuntas   Int      @map("cant_puntas") // 0 (alquiler) | 1 | 2
+  comTotal     Decimal  @default(0) @map("com_total") @db.Decimal(14, 2)
+  estado       String // venta: escriturada | senada ; alquiler: firmado
+  fechaReserva DateTime? @map("fecha_reserva") @db.Date
+  fechaFirma   DateTime? @map("fecha_firma") @db.Date
+  mes          Int? // derivado de fecha_firma ?? fecha_reserva (reporting)
+  anio         Int? // íd.
+  obs          String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  puntas OperacionPunta[]
+
+  @@unique([tenantId, codigo])
+  @@index([tenantId])
+  @@index([tenantId, anio])
+  @@index([tenantId, tipo, estado])
+  @@map("operacion")
+}
+
+/// Punta de una operación (1 o 2 por venta). Atribuye la operación a un agente.
+model OperacionPunta {
+  id          String  @id @default(uuid()) @db.Uuid
+  operacionId String  @map("operacion_id") @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  lado        String // vendedora (propietario/locador) | compradora (comprador/inquilino)
+  usuarioId   String  @map("usuario_id") @db.Uuid
+  comision    Decimal @default(0) @db.Decimal(14, 2)
+
+  operacion Operacion @relation(fields: [operacionId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([operacionId])
+  @@index([usuarioId])
+  @@map("operacion_punta")
+}
+
+/// Objetivo anual por vendedor (comisión bruta, volumen, puntas).
+model Objetivo {
+  id          String  @id @default(uuid()) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  usuarioId   String  @map("usuario_id") @db.Uuid
+  anio        Int
+  objComision Decimal @default(0) @map("obj_comision") @db.Decimal(14, 2)
+  objVolumen  Decimal @default(0) @map("obj_volumen") @db.Decimal(14, 2)
+  objPuntas   Int     @default(0) @map("obj_puntas")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, usuarioId, anio])
+  @@index([tenantId])
+  @@map("objetivo")
 }
