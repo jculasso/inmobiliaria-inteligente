@@ -37,13 +37,13 @@ export class KpisService {
       const scope = await resolverScope(ctx, tx);
       const scopeSet = toScopeSet(scope);
 
-      const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada');
+      const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
       const puntasAnio = aplanarPuntas(escrituradas);
       const puntasMes =
         filtro.mes != null ? puntasDeMes(escrituradas, filtro.mes) : [];
 
       // Pendiente de cobro = comisión de puntas de operaciones señadas del año.
-      const senadas = await this.ventas(tx, filtro.anio, 'senada');
+      const senadas = await this.ventas(tx, filtro.anio, 'senada', scope.usuarioIds);
       const puntasSenadas = aplanarPuntas(senadas).filter(
         (p) => scopeSet === null || scopeSet.has(p.usuarioId),
       );
@@ -72,7 +72,7 @@ export class KpisService {
   async ranking(filtro: KpiFiltro, ctx: TenantContext): Promise<RankingItem[]> {
     return this.db.withTenant(async (tx) => {
       const scope = await resolverScope(ctx, tx);
-      const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada');
+      const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
       const puntas =
         filtro.mes != null
           ? puntasDeMes(escrituradas, filtro.mes)
@@ -87,7 +87,7 @@ export class KpisService {
       const scope = await resolverScope(ctx, tx);
       const scopeSet = toScopeSet(scope);
 
-      const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada');
+      const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
       const puntas = aplanarPuntas(escrituradas);
 
       const objRows = await tx.objetivo.findMany({
@@ -106,15 +106,22 @@ export class KpisService {
     });
   }
 
+  /**
+   * Trae ventas por estado/año. Cuando el alcance está acotado, pre-filtra en
+   * SQL las operaciones con al menos una punta del conjunto (menos filas); el
+   * filtro por-punta fino lo sigue haciendo `agregar`/`ranking` con el scopeSet.
+   */
   private ventas(
     tx: Prisma.TransactionClient,
     anio: number,
     estado: 'escriturada' | 'senada',
+    usuarioIds: string[] | null,
   ): Promise<VentaRow[]> {
-    return tx.operacion.findMany({
-      where: { tipo: 'venta', estado, anio },
-      include: ventaConPuntas,
-    });
+    const where: Prisma.OperacionWhereInput = { tipo: 'venta', estado, anio };
+    if (usuarioIds !== null) {
+      where.puntas = { some: { usuarioId: { in: usuarioIds } } };
+    }
+    return tx.operacion.findMany({ where, include: ventaConPuntas });
   }
 
   private async alquileres(tx: Prisma.TransactionClient, anio: number) {

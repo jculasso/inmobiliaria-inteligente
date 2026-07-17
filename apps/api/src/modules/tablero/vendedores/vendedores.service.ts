@@ -41,6 +41,7 @@ export class VendedoresService {
       if (dto.liderId) await this.assertUsuarioExiste(tx, dto.liderId);
 
       const id = randomUUID();
+      const roles = [...new Set(dto.roles)];
       await tx.usuario.create({
         data: {
           id,
@@ -49,7 +50,7 @@ export class VendedoresService {
           email: dto.email,
           estado: dto.estado,
           liderId: dto.liderId ?? null,
-          roles: { create: dto.roles.map((rol) => ({ rol, tenantId: ctx.tenantId })) },
+          roles: { create: roles.map((rol) => ({ rol, tenantId: ctx.tenantId })) },
         },
       });
       const row = await tx.usuario.findUniqueOrThrow({ where: { id }, include: vendedorInclude });
@@ -81,7 +82,7 @@ export class VendedoresService {
       if (dto.roles !== undefined) {
         await tx.usuarioRol.deleteMany({ where: { usuarioId: id } });
         await tx.usuarioRol.createMany({
-          data: dto.roles.map((rol) => ({ usuarioId: id, rol, tenantId: ctx.tenantId })),
+          data: [...new Set(dto.roles)].map((rol) => ({ usuarioId: id, rol, tenantId: ctx.tenantId })),
         });
       }
 

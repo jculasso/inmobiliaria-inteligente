@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { Response } from 'express';
 
 const STATUS_CODE: Record<number, string> = {
@@ -48,6 +49,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message = b.message;
         }
         if (b.details !== undefined) details = b.details;
+      }
+    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      // Errores conocidos de Prisma mapeados a HTTP (evita 500 por, p. ej.,
+      // violación de índice único bajo carrera).
+      if (exception.code === 'P2002') {
+        status = HttpStatus.CONFLICT;
+        message = 'Ya existe un registro con esos datos únicos.';
+        details = exception.meta?.target;
+      } else if (exception.code === 'P2025') {
+        status = HttpStatus.NOT_FOUND;
+        message = 'Registro no encontrado.';
+      } else {
+        status = HttpStatus.BAD_REQUEST;
+        message = 'La operación no se pudo completar por una restricción de datos.';
       }
     } else {
       // Error no controlado: no filtramos el mensaje al cliente, pero lo logueamos.

@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type {
-  CreateOperacion,
-  OperacionFiltro,
-  PuntaInput,
-  UpdateOperacion,
+import {
+  EstadoAlquilerSchema,
+  EstadoVentaSchema,
+  type CreateOperacion,
+  type OperacionFiltro,
+  type PuntaInput,
+  type UpdateOperacion,
 } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
@@ -103,6 +105,7 @@ export class OperacionesService {
       const actual = await tx.operacion.findUnique({ where: { id }, include: operacionInclude });
       if (!actual) throw new NotFoundException('Operación no encontrada.');
       assertEnScope(actual, await resolverScope(ctx, tx));
+      this.assertUpdateCoherente(actual.tipo, dto);
 
       const fechaFirma = dto.fechaFirma !== undefined ? dto.fechaFirma : fromDate(actual.fechaFirma);
       const fechaReserva =
@@ -151,6 +154,25 @@ export class OperacionesService {
       await tx.operacion.delete({ where: { id } });
       return { id };
     });
+  }
+
+  /** Valida que la edición sea coherente con el tipo (venta vs alquiler). */
+  private assertUpdateCoherente(tipo: string, dto: UpdateOperacion): void {
+    if (tipo === 'alquiler') {
+      if (dto.puntas !== undefined) {
+        throw new BadRequestException('Los alquileres no llevan puntas.');
+      }
+      if (dto.estado !== undefined && !EstadoAlquilerSchema.safeParse(dto.estado).success) {
+        throw new BadRequestException(`Estado inválido para un alquiler: ${dto.estado}.`);
+      }
+    } else {
+      if (dto.puntas !== undefined && dto.puntas.length === 0) {
+        throw new BadRequestException('Una venta debe tener al menos una punta.');
+      }
+      if (dto.estado !== undefined && !EstadoVentaSchema.safeParse(dto.estado).success) {
+        throw new BadRequestException(`Estado inválido para una venta: ${dto.estado}.`);
+      }
+    }
   }
 
   private async assertCodigoLibre(

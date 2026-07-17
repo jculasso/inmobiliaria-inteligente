@@ -69,7 +69,7 @@ function emailDe(nombre: string): string {
   const slug = nombre
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '') // marcas combinantes (acentos)
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^\.|\.$/g, '');
   return `${slug}@vacker.com`;
