@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  getAgregadosPorTrimestre,
   getKpisResumen,
   getRanking,
   getResumenPeriodo,
@@ -156,5 +157,27 @@ describe('getResumenPeriodo', () => {
 
     // Trimestre 1 = meses 1,2,3 -> volumen 10+20+30 = 60
     expect(resultado.agregado.volumen).toBe(60);
+  });
+});
+
+describe('getAgregadosPorTrimestre', () => {
+  it('pide los 12 meses una sola vez y devuelve el volumen sumado por trimestre', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string | URL) => {
+      const mes = Number(new URL(url).searchParams.get('mes'));
+      return {
+        ok: true,
+        json: async () => ({ ...RESUMEN, mesActual: { ...RESUMEN.anual, volumen: mes * 10 } }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const trimestres = await getAgregadosPorTrimestre('token', 2026);
+
+    expect(fetchMock).toHaveBeenCalledTimes(12);
+    expect(trimestres).toHaveLength(4);
+    // Q1 = meses 1,2,3 -> 10+20+30 = 60
+    expect(trimestres[0]!.volumen).toBe(60);
+    // Q4 = meses 10,11,12 -> 100+110+120 = 330
+    expect(trimestres[3]!.volumen).toBe(330);
   });
 });

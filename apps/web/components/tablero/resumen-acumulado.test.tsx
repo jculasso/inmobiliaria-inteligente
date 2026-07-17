@@ -32,9 +32,19 @@ const getResumenPeriodo = vi.fn().mockResolvedValue({
     },
   ],
 });
+const getAgregadosPorTrimestre = vi.fn().mockResolvedValue([
+  { volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 5, ticketPromedio: 100 },
+  { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 10, ticketPromedio: 200 },
+  { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, ticketPromedio: 0 },
+  { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, ticketPromedio: 0 },
+]);
 vi.mock('../../lib/tablero-api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/tablero-api')>();
-  return { ...actual, getResumenPeriodo: (...args: unknown[]) => getResumenPeriodo(...args) };
+  return {
+    ...actual,
+    getResumenPeriodo: (...args: unknown[]) => getResumenPeriodo(...args),
+    getAgregadosPorTrimestre: (...args: unknown[]) => getAgregadosPorTrimestre(...args),
+  };
 });
 
 describe('ResumenAcumulado', () => {
@@ -56,6 +66,7 @@ describe('ResumenAcumulado', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Acumulado Trimestral/ }));
     expect(await screen.findByRole('button', { name: /Q1 · Ene–Mar/ })).toBeInTheDocument();
+    expect(await screen.findByText('Volumen USD')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /Q1 · Ene–Mar/ }));
     expect(getResumenPeriodo).toHaveBeenLastCalledWith('token', {

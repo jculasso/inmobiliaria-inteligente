@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import type { AgregadoKpi, RankingItem } from '@vacker/types';
 import { Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
+import { getAgregadosPorTrimestre, getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { KpiCard } from './kpi-card';
+import { TrimestreChart } from './trimestre-chart';
 import { VendedorTotalesTable } from './vendedor-totales-table';
 
 const TABS: { key: PeriodoResumen; label: string; icono: string }[] = [
@@ -41,6 +42,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado }: { anio: number; mesS
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
   const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [porTrimestre, setPorTrimestre] = useState<AgregadoKpi[] | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -59,6 +61,19 @@ export function ResumenAcumulado({ anio, mesSeleccionado }: { anio: number; mesS
       cancelado = true;
     };
   }, [anio, tab, mesSeleccionado, trimestre]);
+
+  useEffect(() => {
+    if (tab !== 'trimestral') return;
+    let cancelado = false;
+    getAccessToken()
+      .then((accessToken) => getAgregadosPorTrimestre(accessToken, anio))
+      .then((res) => {
+        if (!cancelado) setPorTrimestre(res);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [anio, tab]);
 
   return (
     <Card className="p-0">
@@ -91,6 +106,12 @@ export function ResumenAcumulado({ anio, mesSeleccionado }: { anio: number; mesS
               {t.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {tab === 'trimestral' && porTrimestre && (
+        <div className="border-b border-line p-4">
+          <TrimestreChart datos={porTrimestre} seleccionado={trimestre} onSelect={setTrimestre} />
         </div>
       )}
 

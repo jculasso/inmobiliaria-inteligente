@@ -172,6 +172,23 @@ export interface ResumenPeriodoResult {
   ranking: RankingItem[];
 }
 
+/**
+ * Volumen y comisión de cada trimestre del año (para el gráfico de barras +
+ * línea de "Acumulado Trimestral"). Pide los 12 meses en paralelo una sola
+ * vez y los agrupa en los 4 trimestres, en vez de 4 llamadas trimestrales
+ * separadas (que repetirían meses).
+ */
+export async function getAgregadosPorTrimestre(
+  accessToken: string,
+  anio: number,
+): Promise<AgregadoKpi[]> {
+  const resumenes = await Promise.all(
+    Array.from({ length: 12 }, (_, i) => getKpisResumen(accessToken, { anio, mes: i + 1 })),
+  );
+  const porMes = resumenes.map((r) => r.mesActual ?? AGREGADO_VACIO);
+  return [1, 2, 3, 4].map((q) => sumarAgregados(mesesDelTrimestre(q).map((m) => porMes[m - 1]!)));
+}
+
 export async function getResumenPeriodo(
   accessToken: string,
   opts: { anio: number; periodo: PeriodoResumen; mes?: number; trimestre?: number },
