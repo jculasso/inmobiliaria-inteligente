@@ -4,7 +4,6 @@ import {
   OperacionDtoSchema,
   RankingItemSchema,
   ResumenKpisSchema,
-  SeguimientoObjetivoSchema,
   VendedorDtoSchema,
   type AgregadoKpi,
   type CreateOperacion,
@@ -104,36 +103,9 @@ export async function getRanking(accessToken: string, filtro: KpiFiltro) {
   });
 }
 
-export async function getObjetivosSeguimiento(accessToken: string, filtro: KpiFiltro) {
-  return apiFetch('/tablero/kpis/objetivos', z.array(SeguimientoObjetivoSchema), {
-    accessToken,
-    searchParams: { anio: filtro.anio, mes: filtro.mes },
-  });
-}
-
-export interface EvolucionMensualItem {
-  mes: number;
-  volumen: number;
-}
-
-/**
- * Volumen operado por cada mes del año (para el gráfico de evolución de
- * ventas). No hay un endpoint dedicado: se arma pidiendo `/kpis/resumen` con
- * cada mes en paralelo y tomando `mesActual.volumen` de cada respuesta.
- */
-export async function getEvolucionAnual(
-  accessToken: string,
-  anio: number,
-): Promise<EvolucionMensualItem[]> {
-  const resumenes = await Promise.all(
-    Array.from({ length: 12 }, (_, i) => getKpisResumen(accessToken, { anio, mes: i + 1 })),
-  );
-  return resumenes.map((r, i) => ({ mes: i + 1, volumen: r.mesActual?.volumen ?? 0 }));
-}
-
 // --- Resumen por período (Anual / Trimestral / Mensual), como el prototipo ---
 // La API no tiene un endpoint de "trimestre": se arma pidiendo los 3 meses del
-// trimestre en paralelo y sumando (mismo criterio que getEvolucionAnual).
+// trimestre en paralelo y sumando.
 
 const AGREGADO_VACIO: AgregadoKpi = {
   volumen: 0,

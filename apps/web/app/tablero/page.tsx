@@ -1,12 +1,10 @@
-import { getEvolucionAnual, getKpisResumen, getObjetivosSeguimiento } from '../../lib/tablero-api';
+import { getKpisResumen } from '../../lib/tablero-api';
 import { requireServerPrincipal } from '../../lib/server-principal';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { FiltroPeriodo } from '../../components/tablero/filtro-periodo';
 import { KpiCard } from '../../components/tablero/kpi-card';
-import { EvolucionVentasChart } from '../../components/tablero/evolucion-ventas-chart';
 import { ResumenAcumulado } from '../../components/tablero/resumen-acumulado';
 import { RankingTable } from '../../components/tablero/ranking-table';
-import { ObjetivosTable } from '../../components/tablero/objetivos-table';
 import type { AgregadoKpi } from '@vacker/types';
 
 function kpiCards(agg: AgregadoKpi) {
@@ -42,11 +40,7 @@ export default async function TableroDashboardPage({
   // elige con el tab "Acumulado Anual" del Resumen, no con "todos los meses".
   const mes = params.mes ? Number(params.mes) : hoy.getMonth() + 1;
 
-  const [resumen, objetivos, evolucion] = await Promise.all([
-    getKpisResumen(ctx.accessToken, { anio, mes }),
-    getObjetivosSeguimiento(ctx.accessToken, { anio, mes }),
-    getEvolucionAnual(ctx.accessToken, anio),
-  ]);
+  const resumen = await getKpisResumen(ctx.accessToken, { anio, mes });
 
   return (
     <div className="flex flex-col gap-6">
@@ -83,14 +77,10 @@ export default async function TableroDashboardPage({
         />
       </div>
 
-      <ObjetivosTable items={objetivos} />
-
       <section className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">📊 Resumen acumulado</p>
         <ResumenAcumulado anio={anio} mesSeleccionado={mes} />
       </section>
-
-      <EvolucionVentasChart anio={anio} datos={evolucion} />
 
       <RankingTable anio={anio} mesSeleccionado={mes} />
     </div>
