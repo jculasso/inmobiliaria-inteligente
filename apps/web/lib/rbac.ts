@@ -30,3 +30,22 @@ export function alcanceDeModulo(roles: Rol[]): AlcanceModulo | null {
 export function etiquetaDeAlcance(alcance: AlcanceModulo): string {
   return ETIQUETA[alcance];
 }
+
+// Gates de UI para el Tablero: reflejan literalmente los @Roles() de
+// apps/api/src/modules/tablero/{operaciones,vendedores}.controller.ts, para no
+// ofrecer en el front acciones que la API va a rechazar con 403.
+
+/** GET /tablero/vendedores: un `vendedor` puro no tiene acceso, ni de lectura. */
+export function puedeVerVendedores(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
+}
+
+/** POST/PATCH/DELETE /tablero/vendedores y PUT .../objetivo. */
+export function puedeGestionarVendedores(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'direccion' || r === 'admin_tenant');
+}
+
+/** DELETE /tablero/operaciones/:id. */
+export function puedeBorrarOperaciones(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
+}

@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseEnv } from './lib/supabase/env';
 
-const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PATHS = ['/'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -30,14 +30,11 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // "/" es pública: el login vive embebido ahí (ver app/page.tsx). El resto
+  // de las rutas (p. ej. /tablero/*) exige sesión y redirige a la Home.
   const isPublicPath = PUBLIC_PATHS.includes(request.nextUrl.pathname);
 
   if (!user && !isPublicPath) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  if (user && isPublicPath) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 

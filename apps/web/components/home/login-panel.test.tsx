@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import LoginPage from './page';
+import { LoginPanel } from './login-panel';
 
 const push = vi.fn();
 const refresh = vi.fn();
@@ -18,17 +18,17 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('LoginPage', () => {
+describe('LoginPanel', () => {
   it('muestra el formulario de login', () => {
-    render(<LoginPage />);
+    render(<LoginPanel />);
     expect(screen.getByRole('heading', { name: /Iniciar sesión/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Clave/)).toBeInTheDocument();
   });
 
-  it('redirige a Home cuando el login es exitoso', async () => {
+  it('refresca la Home cuando el login es exitoso', async () => {
     signInWithPassword.mockResolvedValue({ error: null });
-    render(<LoginPage />);
+    render(<LoginPanel />);
 
     await userEvent.type(screen.getByLabelText(/Email/), 'demo@vacker.com');
     await userEvent.type(screen.getByLabelText(/Clave/), 'secreta123');
@@ -38,18 +38,18 @@ describe('LoginPage', () => {
       email: 'demo@vacker.com',
       password: 'secreta123',
     });
-    expect(push).toHaveBeenCalledWith('/');
+    expect(refresh).toHaveBeenCalled();
   });
 
   it('muestra un error cuando las credenciales son inválidas', async () => {
     signInWithPassword.mockResolvedValue({ error: { message: 'Invalid credentials' } });
-    render(<LoginPage />);
+    render(<LoginPanel />);
 
     await userEvent.type(screen.getByLabelText(/Email/), 'demo@vacker.com');
     await userEvent.type(screen.getByLabelText(/Clave/), 'mal');
     await userEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/incorrectos/i);
-    expect(push).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

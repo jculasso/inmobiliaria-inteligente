@@ -1,0 +1,38 @@
+import { listOperaciones, listVendedores } from '../../../lib/tablero-api';
+import { requireServerPrincipal } from '../../../lib/server-principal';
+import { puedeBorrarOperaciones } from '../../../lib/rbac';
+import { FiltroPeriodo } from '../../../components/tablero/filtro-periodo';
+import { OperacionesTable } from '../../../components/tablero/operaciones-table';
+
+export default async function AlquileresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ anio?: string; mes?: string }>;
+}) {
+  const ctx = await requireServerPrincipal();
+  if (!ctx) return null;
+
+  const params = await searchParams;
+  const anio = params.anio ? Number(params.anio) : new Date().getFullYear();
+  const mes = params.mes ? Number(params.mes) : undefined;
+
+  const [operaciones, vendedores] = await Promise.all([
+    listOperaciones(ctx.accessToken, { anio, mes, tipo: 'alquiler' }),
+    listVendedores(ctx.accessToken).catch(() => []),
+  ]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-ink">Alquileres</h2>
+        <FiltroPeriodo anio={anio} mes={mes} />
+      </div>
+      <OperacionesTable
+        tipo="alquiler"
+        operaciones={operaciones}
+        vendedores={vendedores}
+        puedeBorrar={puedeBorrarOperaciones(ctx.principal.roles)}
+      />
+    </div>
+  );
+}

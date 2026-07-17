@@ -27,6 +27,7 @@ export const EstadoOperacionSchema = z.enum([
   'reservada',
   'boleto',
   'firmado',
+  'reservado',
   'pendiente',
 ]);
 export type EstadoOperacion = z.infer<typeof EstadoOperacionSchema>;
@@ -142,60 +143,125 @@ export const ObjetivoInputSchema = z.object({
 export type ObjetivoInput = z.infer<typeof ObjetivoInputSchema>;
 
 // --- Tipos de respuesta de KPIs ---
+// Antes eran `interface` TS puras; se pasan a Zod (shape idéntico) para poder
+// validar en runtime las respuestas de la API desde el front (Paso 5).
 
 /** Agregado de negocio para un alcance (tenant, equipo o vendedor). */
-export interface AgregadoKpi {
-  volumen: number;
-  operaciones: number;
-  puntas: number;
-  puntasCompradoras: number;
-  puntasVendedoras: number;
-  comision: number;
-  ticketPromedio: number;
-}
+export const AgregadoKpiSchema = z.object({
+  volumen: z.number(),
+  operaciones: z.number(),
+  puntas: z.number(),
+  puntasCompradoras: z.number(),
+  puntasVendedoras: z.number(),
+  comision: z.number(),
+  ticketPromedio: z.number(),
+});
+export type AgregadoKpi = z.infer<typeof AgregadoKpiSchema>;
 
-export interface RankingItem {
-  usuarioId: string;
-  nombre: string;
-  volumen: number;
-  operaciones: number;
-  puntas: number;
-  puntasCompradoras: number;
-  puntasVendedoras: number;
-  ticketPromedio: number;
-  comision: number;
+export const RankingItemSchema = z.object({
+  usuarioId: z.string(),
+  nombre: z.string(),
+  volumen: z.number(),
+  operaciones: z.number(),
+  puntas: z.number(),
+  puntasCompradoras: z.number(),
+  puntasVendedoras: z.number(),
+  ticketPromedio: z.number(),
+  comision: z.number(),
   /** Participación sobre el volumen total del alcance (0..1). */
-  peso: number;
-}
+  peso: z.number(),
+});
+export type RankingItem = z.infer<typeof RankingItemSchema>;
 
-export interface AlquileresResumen {
-  firmados: number;
-  comision: number;
-  valorMensualPromedio: number;
-}
+export const AlquileresResumenSchema = z.object({
+  firmados: z.number(),
+  comision: z.number(),
+  valorMensualPromedio: z.number(),
+});
+export type AlquileresResumen = z.infer<typeof AlquileresResumenSchema>;
 
-export interface ResumenKpis {
-  anio: number;
-  mes?: number;
-  anual: AgregadoKpi;
-  mesActual?: AgregadoKpi;
+export const ResumenKpisSchema = z.object({
+  anio: z.number(),
+  mes: z.number().optional(),
+  anual: AgregadoKpiSchema,
+  mesActual: AgregadoKpiSchema.optional(),
   /** Comisión de operaciones señadas del año (pendiente de cobro). */
-  pendienteCobro: number;
-  operacionesSenadas: number;
-  alquileres: AlquileresResumen;
-}
+  pendienteCobro: z.number(),
+  operacionesSenadas: z.number(),
+  alquileres: AlquileresResumenSchema,
+});
+export type ResumenKpis = z.infer<typeof ResumenKpisSchema>;
 
-export interface SeguimientoObjetivo {
-  usuarioId: string;
-  nombre: string;
-  anio: number;
-  objComision: number;
-  objVolumen: number;
-  objPuntas: number;
-  realComision: number;
-  realVolumen: number;
-  realPuntas: number;
-  avanceComision: number; // real/obj (0..n), 0 si obj=0
-  avanceVolumen: number;
-  avancePuntas: number;
-}
+export const SeguimientoObjetivoSchema = z.object({
+  usuarioId: z.string(),
+  nombre: z.string(),
+  anio: z.number(),
+  objComision: z.number(),
+  objVolumen: z.number(),
+  objPuntas: z.number(),
+  realComision: z.number(),
+  realVolumen: z.number(),
+  realPuntas: z.number(),
+  avanceComision: z.number(), // real/obj (0..n), 0 si obj=0
+  avanceVolumen: z.number(),
+  avancePuntas: z.number(),
+});
+export type SeguimientoObjetivo = z.infer<typeof SeguimientoObjetivoSchema>;
+
+// --- DTOs de respuesta de operaciones y vendedores (Paso 5) ---
+// Reflejan literalmente `toDto` en operaciones.service.ts / vendedores.service.ts.
+
+export const PuntaDtoSchema = z.object({
+  id: z.string().uuid(),
+  lado: LadoPuntaSchema,
+  usuarioId: z.string().uuid(),
+  nombre: z.string(),
+  comision: z.number(),
+});
+export type PuntaDto = z.infer<typeof PuntaDtoSchema>;
+
+export const OperacionDtoSchema = z.object({
+  id: z.string().uuid(),
+  codigo: z.string(),
+  tipo: TipoOperacionSchema,
+  direccion: z.string(),
+  precio: z.number().nullable(),
+  valorMensual: z.number().nullable(),
+  moneda: z.string(),
+  cantPuntas: z.number(),
+  comTotal: z.number(),
+  estado: EstadoOperacionSchema,
+  fechaReserva: z.string().nullable(),
+  fechaFirma: z.string().nullable(),
+  anio: z.number().nullable(),
+  mes: z.number().nullable(),
+  obs: z.string().nullable(),
+  puntas: z.array(PuntaDtoSchema),
+});
+export type OperacionDto = z.infer<typeof OperacionDtoSchema>;
+
+export const ObjetivoDtoSchema = z.object({
+  anio: z.number(),
+  objComision: z.number(),
+  objVolumen: z.number(),
+  objPuntas: z.number(),
+});
+export type ObjetivoDto = z.infer<typeof ObjetivoDtoSchema>;
+
+/** Respuesta de `PUT /tablero/vendedores/:id/objetivo` (incluye el usuarioId). */
+export const ObjetivoSetDtoSchema = ObjetivoDtoSchema.extend({
+  usuarioId: z.string().uuid(),
+});
+export type ObjetivoSetDto = z.infer<typeof ObjetivoSetDtoSchema>;
+
+export const VendedorDtoSchema = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  email: z.string().email(),
+  estado: z.enum(['activo', 'inactivo']),
+  liderId: z.string().uuid().nullable(),
+  lider: z.object({ id: z.string().uuid(), nombre: z.string() }).nullable(),
+  roles: z.array(RolAsignableSchema),
+  objetivos: z.array(ObjetivoDtoSchema),
+});
+export type VendedorDto = z.infer<typeof VendedorDtoSchema>;
