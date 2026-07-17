@@ -1,52 +1,44 @@
-import { Badge, Button, Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
-import type { BadgeVariant } from '@vacker/ui';
+import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
+import { getMe, MeError } from '../lib/api';
+import { createClient } from '../lib/supabase/server';
+import { HomeView } from '../components/home-view';
+import { LogoutButton } from '../components/logout-button';
 
-const modulos: { nombre: string; descripcion: string; estado: BadgeVariant }[] = [
-  {
-    nombre: 'Tablero Comercial',
-    descripcion: 'KPIs, ranking de vendedores y seguimiento de objetivos.',
-    estado: 'activo',
-  },
-  {
-    nombre: 'Tasador',
-    descripcion: 'Valuación asistida de propiedades.',
-    estado: 'dev',
-  },
-  {
-    nombre: 'To Do List',
-    descripcion: 'Agenda por vendedor sincronizada con Google Calendar.',
-    estado: 'soon',
-  },
-];
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-export default function Home() {
-  return (
-    <main className="mx-auto max-w-4xl px-6 py-16">
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red">
-        Inmobiliaria Inteligente
-      </p>
-      <h1 className="mt-2 text-4xl font-extrabold text-ink">Vacker · Plataforma 2.0</h1>
-      <p className="mt-3 max-w-2xl text-muted">
-        Fundaciones del monorepo listas. Este shell se reemplaza por la Home autenticada en el
-        Paso 4.
-      </p>
+  // El middleware ya garantiza que haya sesión para llegar acá; esto es defensivo.
+  if (!session) {
+    return null;
+  }
 
-      <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {modulos.map((m) => (
-          <Card key={m.nombre}>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle>{m.nombre}</CardTitle>
-                <Badge variant={m.estado} />
-              </div>
-              <CardDescription>{m.descripcion}</CardDescription>
-            </CardHeader>
-            <Button variant={m.estado === 'activo' ? 'primary' : 'secondary'} disabled={m.estado !== 'activo'}>
-              {m.estado === 'activo' ? 'Entrar' : 'No disponible'}
-            </Button>
-          </Card>
-        ))}
-      </section>
-    </main>
-  );
+  try {
+    const principal = await getMe(session.access_token);
+    return <HomeView email={principal.email} roles={principal.roles} />;
+  } catch (err) {
+    const message =
+      err instanceof MeError
+        ? err.message
+        : 'No se pudo cargar tu perfil. Intentá de nuevo en unos minutos.';
+
+    return (
+      <main className="mx-auto flex min-h-screen max-w-lg items-center px-6">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Tu cuenta no está habilitada todavía</CardTitle>
+            <CardDescription>
+              Iniciaste sesión con Supabase, pero tu usuario aún no está vinculado a un tenant de
+              la plataforma. Pedile a un administrador que te dé de alta. ({message})
+            </CardDescription>
+          </CardHeader>
+          <div>
+            <LogoutButton />
+          </div>
+        </Card>
+      </main>
+    );
+  }
 }

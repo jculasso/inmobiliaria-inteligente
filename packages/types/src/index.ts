@@ -6,22 +6,13 @@
 // Convención: cada schema Zod exporta también su tipo inferido, p. ej.
 //   export const FooSchema = z.object({ ... });
 //   export type Foo = z.infer<typeof FooSchema>;
-import { z } from 'zod';
 
-/**
- * Roles del sistema (RBAC sensible al tenant). Ver CLAUDE.md §2.3.
- * Se define acá temprano porque es un contrato compartido estable;
- * su uso real (guards, claims) llega en el Paso 2.
- */
-export const RolSchema = z.enum([
-  'vendedor',
-  'team_leader',
-  'direccion',
-  'admin_tenant',
-  'admin_plataforma',
-]);
-
-export type Rol = z.infer<typeof RolSchema>;
+// Roles del sistema (RBAC sensible al tenant). En archivo propio para que
+// tablero.ts y auth.ts puedan importarlo sin depender circularmente de este index.
+export * from './rol';
 
 // Contratos del módulo Tablero Comercial (Paso 3).
 export * from './tablero';
+
+// Contrato de auth compartido (respuesta de GET /me, Paso 4).
+export * from './auth';
