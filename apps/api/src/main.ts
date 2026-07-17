@@ -22,7 +22,9 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = Number(process.env.API_PORT ?? 3001);
+  // Render (y hosts similares) asignan el puerto dinámicamente vía PORT;
+  // en local usamos API_PORT (o 3001 por default).
+  const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
   await app.listen(port);
   console.log(`[api] escuchando en http://localhost:${port}  ·  docs en /docs`);
 }
