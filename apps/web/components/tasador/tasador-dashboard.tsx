@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import type { RankingCaptacionItem, ResumenTasadorKpi } from '@vacker/types';
+import type { RankingCaptacionItem, ResumenTasadorKpi, TasacionFiltro } from '@vacker/types';
 import { Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { getKpisResumenTasador, getRankingCaptaciones } from '../../lib/tasador-api';
 import { fmtNum } from '../../lib/format';
 import { KpiCard } from '../tablero/kpi-card';
+import { TasacionDrillModal } from './tasacion-drill-modal';
 
 type Periodo = 'anual' | 'trimestral' | 'mensual';
 
@@ -28,12 +28,16 @@ function fmtPct(v: number): string {
   return `${(v * 100).toFixed(0)}%`;
 }
 
-/** Query params de drill-down hacia `/tasador/tasaciones`: la lista no tiene
- * filtro de trimestre, así que en ese tab el drill-down cae en el año completo. */
-function paramsBase(anio: number, tab: Periodo, mes: number): string {
-  const p = new URLSearchParams({ anio: String(anio) });
-  if (tab === 'mensual') p.set('mes', String(mes));
-  return p.toString();
+interface Drill {
+  titulo: string;
+  subtitulo: string;
+  filtro: TasacionFiltro;
+}
+
+/** Filtro base de drill-down: el listado de tasaciones no tiene filtro de
+ * trimestre, así que en ese tab el drill-down cae en el año completo. */
+function filtroBase(anio: number, tab: Periodo, mes: number): TasacionFiltro {
+  return { anio, ...(tab === 'mensual' ? { mes } : {}) };
 }
 
 export function TasadorDashboard({ anioInicial }: { anioInicial: number }) {
@@ -45,6 +49,7 @@ export function TasadorDashboard({ anioInicial }: { anioInicial: number }) {
   const [resumen, setResumen] = useState<ResumenTasadorKpi | null>(null);
   const [ranking, setRanking] = useState<RankingCaptacionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [drill, setDrill] = useState<Drill | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -67,7 +72,8 @@ export function TasadorDashboard({ anioInicial }: { anioInicial: number }) {
     };
   }, [anio, tab, mes, trimestre]);
 
-  const drill = paramsBase(anio, tab, mes);
+  const periodoLabel = tab === 'mensual' ? `mes ${mes}/${anio}` : `año ${anio}`;
+  const filtroPeriodo = filtroBase(anio, tab, mes);
 
   return (
     <div className="flex flex-col gap-6">
@@ -131,12 +137,27 @@ export function TasadorDashboard({ anioInicial }: { anioInicial: number }) {
           ) : (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
-                <KpiCard label="Total tasaciones" value={fmtNum(resumen.total)} icon="🏠" tone="brand" />
+                <KpiCard
+                  label="Total tasaciones"
+                  value={fmtNum(resumen.total)}
+                  icon="🏠"
+                  tone="brand"
+                  onClick={() =>
+                    setDrill({ titulo: 'Total tasaciones', subtitulo: periodoLabel, filtro: filtroPeriodo })
+                  }
+                />
                 <KpiCard
                   label="Tasa de captación"
                   value={fmtPct(resumen.tasaCaptacion)}
                   icon="🎯"
                   tone="success"
+                  onClick={() =>
+                    setDrill({
+                      titulo: 'Captadas',
+                      subtitulo: periodoLabel,
+                      filtro: { ...filtroPeriodo, estado: 'Captada' },
+                    })
+                  }
                 />
               </div>
 
@@ -144,13 +165,20 @@ export function TasadorDashboard({ anioInicial }: { anioInicial: number }) {
                 <p className="mb-2 text-sm font-bold text-ink">Distribución por estado</p>
                 <div className="flex flex-wrap gap-2">
                   {resumen.distribucionEstado.map((d) => (
-                    <Link
+                    <button
                       key={d.estado}
-                      href={`/tasador/tasaciones?${drill}&estado=${encodeURIComponent(d.estado)}`}
+                      type="button"
+                      onClick={() =>
+                        setDrill({
+                          titulo: d.estado,
+                          subtitulo: periodoLabel,
+                          filtro: { ...filtroPeriodo, estado: d.estado },
+                        })
+                      }
                       className="rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:border-brand-red hover:text-brand-red"
                     >
                       {d.estado} <span className="text-muted">· {fmtNum(d.cantidad)}</span>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -182,12 +210,19 @@ export function TasadorDashboard({ anioInicial }: { anioInicial: number }) {
                         ranking.map((r) => (
                           <tr key={r.usuarioId} className="border-b border-line last:border-0">
                             <td className="px-4 py-2">
-                              <Link
-                                href={`/tasador/tasaciones?${drill}&agenteId=${r.usuarioId}`}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDrill({
+                                    titulo: r.nombre,
+                                    subtitulo: periodoLabel,
+                                    filtro: { ...filtroPeriodo, agenteId: r.usuarioId },
+                                  })
+                                }
                                 className="font-medium text-ink hover:text-brand-red hover:underline"
                               >
                                 {r.nombre}
-                              </Link>
+                              </button>
                             </td>
                             <td className="px-4 py-2">{fmtNum(r.captadas)}</td>
                             <td className="px-4 py-2 text-muted">{fmtNum(r.total)}</td>
@@ -204,6 +239,15 @@ export function TasadorDashboard({ anioInicial }: { anioInicial: number }) {
           )}
         </div>
       </Card>
+
+      {drill && (
+        <TasacionDrillModal
+          titulo={drill.titulo}
+          subtitulo={drill.subtitulo}
+          filtro={drill.filtro}
+          onClose={() => setDrill(null)}
+        />
+      )}
     </div>
   );
 }
