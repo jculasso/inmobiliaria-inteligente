@@ -16,3 +16,6 @@ export * from './tablero';
 
 // Contrato de auth compartido (respuesta de GET /me, Paso 4).
 export * from './auth';
+
+// Panel de administración de plataforma (tenants + usuarios + accesos).
+export * from './admin';

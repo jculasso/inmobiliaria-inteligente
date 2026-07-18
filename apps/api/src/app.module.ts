@@ -9,6 +9,7 @@ import { MeModule } from './me/me.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { TableroModule } from './modules/tablero/tablero.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { TableroModule } from './modules/tablero/tablero.module';
     TenantsModule,
     UsuariosModule,
     TableroModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

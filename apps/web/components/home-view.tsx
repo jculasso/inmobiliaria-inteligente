@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Rol } from '@vacker/types';
 import type { BadgeVariant } from '@vacker/ui';
 import { alcanceDeModulo, etiquetaDeAlcance } from '../lib/rbac';
@@ -67,6 +68,14 @@ export function HomeView({ sesion }: HomeViewProps) {
 
         {sesion && (
           <div className="flex items-center gap-3">
+            {sesion.roles.includes('admin_plataforma') && (
+              <Link
+                href="/admin"
+                className="text-sm font-semibold text-brand-red hover:underline"
+              >
+                Administración →
+              </Link>
+            )}
             <div className="flex items-center gap-2 text-sm text-muted">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-red text-xs font-bold text-white">
                 {sesion.email.slice(0, 2).toUpperCase()}
