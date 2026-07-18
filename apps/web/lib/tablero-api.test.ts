@@ -3,10 +3,8 @@ import {
   getAgregadosPorTrimestre,
   getKpisMensual,
   getKpisResumen,
-  getRanking,
   getResumenPeriodo,
   listOperaciones,
-  mergearRanking,
   mesesDelTrimestre,
   sumarAgregados,
 } from './tablero-api';
@@ -48,16 +46,6 @@ describe('tablero-api', () => {
     expect(result.anual.volumen).toBe(100);
   });
 
-  it('getRanking pide /tablero/kpis/ranking', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
-    vi.stubGlobal('fetch', fetchMock);
-
-    await getRanking('token', { anio: 2026, mes: 3 });
-
-    const [url] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/ranking?anio=2026&mes=3');
-  });
-
 });
 
 describe('mesesDelTrimestre', () => {
@@ -90,74 +78,49 @@ describe('sumarAgregados', () => {
   });
 });
 
-describe('mergearRanking', () => {
-  it('suma por vendedor y recalcula ticket y peso', () => {
-    const resultado = mergearRanking([
-      [
-        { usuarioId: 'a', nombre: 'Ana', volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, ticketPromedio: 100, comision: 5, peso: 1 },
-        { usuarioId: 'b', nombre: 'Beto', volumen: 50, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, ticketPromedio: 50, comision: 2, peso: 1 },
-      ],
-      [
-        { usuarioId: 'a', nombre: 'Ana', volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, ticketPromedio: 100, comision: 5, peso: 1 },
-      ],
-    ]);
-
-    expect(resultado).toHaveLength(2);
-    const ana = resultado.find((r) => r.usuarioId === 'a')!;
-    expect(ana.volumen).toBe(200);
-    expect(ana.puntas).toBe(2);
-    expect(ana.ticketPromedio).toBe(100);
-    expect(ana.peso).toBeCloseTo(200 / 250);
-    // Ordenado por volumen desc.
-    expect(resultado[0]!.usuarioId).toBe('a');
-  });
-});
-
 describe('getResumenPeriodo', () => {
-  it('anual: pide resumen y ranking del año completo (sin mes)', async () => {
-    const fetchMock = vi.fn().mockImplementation(async (url: string | URL) => {
-      const isRanking = String(url).includes('/ranking');
-      return { ok: true, json: async () => (isRanking ? [] : RESUMEN) };
+  it('anual: pide /tablero/kpis/rango con mesInicio=1 y mesFin=12 en una sola llamada', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ agregado: RESUMEN.anual, ranking: [] }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const resultado = await getResumenPeriodo('token', { anio: 2026, periodo: 'anual' });
 
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(resultado.agregado.volumen).toBe(100);
-    for (const [url] of fetchMock.mock.calls) {
-      expect(String(url)).not.toContain('mes=');
-    }
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=1&mesFin=12');
   });
 
-  it('mensual: usa mesActual y filtra por el mes', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation(async (url: string | URL) => {
-        const isRanking = String(url).includes('/ranking');
-        return {
-          ok: true,
-          json: async () => (isRanking ? [] : { ...RESUMEN, mesActual: { ...RESUMEN.anual, volumen: 7 } }),
-        };
-      }),
-    );
+  it('mensual: pide /tablero/kpis/rango con mesInicio=mesFin=mes', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ agregado: { ...RESUMEN.anual, volumen: 7 }, ranking: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const resultado = await getResumenPeriodo('token', { anio: 2026, periodo: 'mensual', mes: 3 });
+
     expect(resultado.agregado.volumen).toBe(7);
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=3&mesFin=3');
   });
 
-  it('trimestral: pide los 3 meses y suma los agregados', async () => {
-    const fetchMock = vi.fn().mockImplementation(async (url: string | URL) => {
-      const isRanking = String(url).includes('/ranking');
-      if (isRanking) return { ok: true, json: async () => [] };
-      const mes = Number(new URL(url).searchParams.get('mes'));
-      return { ok: true, json: async () => ({ ...RESUMEN, mesActual: { ...RESUMEN.anual, volumen: mes * 10 } }) };
+  it('trimestral: pide /tablero/kpis/rango con el rango de los 3 meses del trimestre', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ agregado: { ...RESUMEN.anual, volumen: 60 }, ranking: [] }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const resultado = await getResumenPeriodo('token', { anio: 2026, periodo: 'trimestral', trimestre: 1 });
 
-    // Trimestre 1 = meses 1,2,3 -> volumen 10+20+30 = 60
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(resultado.agregado.volumen).toBe(60);
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=1&mesFin=3');
   });
 });
 

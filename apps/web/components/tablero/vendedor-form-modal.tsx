@@ -43,12 +43,16 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
       let id = vendedor?.id;
 
       if (vendedor) {
+        // El selector "Rol" solo alterna vendedor/team_leader — se preservan
+        // 'direccion'/'admin_tenant' si el usuario ya los tenía, para no
+        // pisarle un rol elevado por una edición que no lo tocaba (ej. asignar líder).
+        const rolesElevados = vendedor.roles.filter((r) => r === 'direccion' || r === 'admin_tenant');
         await updateVendedor(accessToken, vendedor.id, {
           nombre,
           email,
           estado,
           liderId: liderId || null,
-          roles: [rol],
+          roles: [...new Set([rol, ...rolesElevados])],
         });
       } else {
         const creado = await createVendedor(accessToken, {

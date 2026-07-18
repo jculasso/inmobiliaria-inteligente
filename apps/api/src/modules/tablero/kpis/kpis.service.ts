@@ -96,6 +96,28 @@ export class KpisService {
     });
   }
 
+  /**
+   * Agregado + ranking de un rango de meses [mesInicio..mesFin] en una sola
+   * consulta — el front pedía esto con 2 llamadas (resumen+ranking) para
+   * anual/mensual, y 6 (3 meses × 2) para trimestral. Reemplaza ambos casos:
+   * anual = [1,12], mensual = [m,m], trimestral = los 3 meses del trimestre.
+   */
+  async resumenRango(
+    anio: number,
+    mesInicio: number,
+    mesFin: number,
+    ctx: TenantContext,
+  ): Promise<{ agregado: AgregadoKpi; ranking: RankingItem[] }> {
+    return this.db.withTenant(async (tx) => {
+      const scope = await resolverScope(ctx, tx);
+      const scopeSet = toScopeSet(scope);
+      const escrituradas = await this.ventas(tx, anio, 'escriturada', scope.usuarioIds);
+      const enRango = escrituradas.filter((v) => v.mes != null && v.mes >= mesInicio && v.mes <= mesFin);
+      const puntas = aplanarPuntas(enRango);
+      return { agregado: agregar(puntas, scopeSet), ranking: ranking(puntas, scopeSet) };
+    });
+  }
+
   /** Seguimiento real vs objetivo del año, por vendedor. */
   async objetivos(filtro: KpiFiltro, ctx: TenantContext): Promise<SeguimientoObjetivo[]> {
     return this.db.withTenant(async (tx) => {
