@@ -8,7 +8,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "dotenv -e ../../.env -- nest start --watch",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "start": "dotenv -e ../../.env -- node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
