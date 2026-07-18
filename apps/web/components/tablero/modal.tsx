@@ -4,6 +4,9 @@ import type { ReactNode } from 'react';
 
 const ANCHOS = {
   md: 'max-w-lg',
+  // Formularios con varios campos en paralelo (ej. venta con puntas): permite
+  // acomodarlos de a 2 por fila y reducir el scroll vertical.
+  lg: 'max-w-2xl',
   // Modales de detalle (tablas anchas de 6-8 columnas): necesitan más aire
   // horizontal que un formulario para no forzar scroll en cada fila.
   xl: 'max-w-5xl',
