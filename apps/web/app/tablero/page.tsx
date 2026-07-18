@@ -1,29 +1,9 @@
 import { getKpisResumen } from '../../lib/tablero-api';
 import { requireServerPrincipal } from '../../lib/server-principal';
-import { fmtNum, fmtUSD } from '../../lib/format';
 import { FiltroPeriodo } from '../../components/tablero/filtro-periodo';
-import { KpiCard } from '../../components/tablero/kpi-card';
+import { DashboardKpis } from '../../components/tablero/dashboard-kpis';
 import { ResumenAcumulado } from '../../components/tablero/resumen-acumulado';
 import { RankingTable } from '../../components/tablero/ranking-table';
-import type { AgregadoKpi } from '@vacker/types';
-
-function kpiCards(agg: AgregadoKpi) {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      <KpiCard label="Volumen" value={fmtUSD(agg.volumen)} icon="💰" tone="brand" />
-      <KpiCard
-        label="Operaciones"
-        value={fmtNum(agg.operaciones)}
-        sub={`${fmtNum(agg.puntas)} puntas`}
-        icon="🏠"
-      />
-      <KpiCard label="Ticket prom." value={fmtUSD(agg.ticketPromedio)} icon="🎯" />
-      <KpiCard label="Puntas compradoras" value={fmtNum(agg.puntasCompradoras)} icon="🤝" />
-      <KpiCard label="Puntas vendedoras" value={fmtNum(agg.puntasVendedoras)} icon="🧑‍💼" />
-      <KpiCard label="Comisión" value={fmtUSD(agg.comision)} icon="💵" tone="success" />
-    </div>
-  );
-}
 
 export default async function TableroDashboardPage({
   searchParams,
@@ -43,39 +23,13 @@ export default async function TableroDashboardPage({
   const resumen = await getKpisResumen(ctx.accessToken, { anio, mes });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-ink">Dashboard</h2>
         <FiltroPeriodo anio={anio} mes={mes} />
       </div>
 
-      {resumen.mesActual && (
-        <section className="flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Mes seleccionado</p>
-          {kpiCards(resumen.mesActual)}
-        </section>
-      )}
-
-      <section className="flex flex-col gap-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">Acumulado año {anio}</p>
-        {kpiCards(resumen.anual)}
-      </section>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <KpiCard
-          label="Pendiente de cobro"
-          value={fmtUSD(resumen.pendienteCobro)}
-          sub={`${fmtNum(resumen.operacionesSenadas)} operaciones señadas`}
-          icon="⏳"
-          tone="warning"
-        />
-        <KpiCard
-          label={`Alquileres firmados · ${anio}`}
-          value={fmtNum(resumen.alquileres.firmados)}
-          sub={`${fmtUSD(resumen.alquileres.comision)} comisión · ${fmtUSD(resumen.alquileres.valorMensualPromedio)} prom./mes`}
-          icon="🔑"
-        />
-      </div>
+      <DashboardKpis resumen={resumen} anio={anio} mes={mes} />
 
       <section className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">📊 Resumen acumulado</p>

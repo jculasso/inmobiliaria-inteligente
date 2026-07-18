@@ -5,6 +5,7 @@ import type { AgregadoKpi, RankingItem } from '@vacker/types';
 import { Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { getAgregadosPorTrimestre, getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
+import { getOrFetch } from '../../lib/kpi-cache';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { KpiCard } from './kpi-card';
 import { TrimestreChart } from './trimestre-chart';
@@ -49,7 +50,9 @@ export function ResumenAcumulado({ anio, mesSeleccionado }: { anio: number; mesS
     setLoading(true);
     getAccessToken()
       .then((accessToken) =>
-        getResumenPeriodo(accessToken, { anio, periodo: tab, mes: mesSeleccionado, trimestre }),
+        getOrFetch(`resumen:${anio}:${tab}:${mesSeleccionado}:${trimestre}`, () =>
+          getResumenPeriodo(accessToken, { anio, periodo: tab, mes: mesSeleccionado, trimestre }),
+        ),
       )
       .then((res) => {
         if (!cancelado) setDatos(res);
@@ -126,7 +129,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado }: { anio: number; mesS
                 👥 Totales por vendedor <span className="text-xs font-normal text-muted">({datos.ranking.length} vendedores)</span>
               </p>
               <div className="rounded-brand border border-line">
-                <VendedorTotalesTable items={datos.ranking} />
+                <VendedorTotalesTable items={datos.ranking} anio={anio} />
               </div>
             </div>
           </div>

@@ -15,11 +15,13 @@ export interface KpiCardProps {
   sub?: string;
   icon?: string;
   tone?: KpiTone;
+  /** Si viene, la tarjeta se vuelve clickeable (drill-down al detalle). */
+  onClick?: () => void;
 }
 
-export function KpiCard({ label, value, sub, icon, tone = 'default' }: KpiCardProps) {
-  return (
-    <Card className={`p-4 ${TONE_BG[tone]}`}>
+export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: KpiCardProps) {
+  const content = (
+    <>
       <div className="flex items-center gap-1.5">
         {icon && (
           <span aria-hidden className="text-base leading-none">
@@ -30,6 +32,22 @@ export function KpiCard({ label, value, sub, icon, tone = 'default' }: KpiCardPr
       </div>
       <p className="mt-1.5 text-2xl font-extrabold text-ink">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
-    </Card>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <Card className={`p-0 ${TONE_BG[tone]}`}>
+        <button
+          type="button"
+          onClick={onClick}
+          className="w-full rounded-brand p-4 text-left transition-colors hover:bg-black/[0.03]"
+        >
+          {content}
+        </button>
+      </Card>
+    );
+  }
+
+  return <Card className={`p-4 ${TONE_BG[tone]}`}>{content}</Card>;
 }

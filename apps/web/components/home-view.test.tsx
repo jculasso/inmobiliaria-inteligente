@@ -19,15 +19,16 @@ describe('HomeView · modo invitado (sin sesión)', () => {
 });
 
 describe('HomeView · modo logueado', () => {
-  it('muestra el email, los tres módulos y el Tablero como Activo', () => {
+  it('muestra el email y el Tablero y el Tasador como Activo', () => {
     render(<HomeView sesion={{ email: 'demo@vacker.com', roles: ['vendedor'] }} />);
     expect(screen.getByRole('heading', { name: /Vacker · Plataforma 2\.0/ })).toBeInTheDocument();
     expect(screen.getByText('demo@vacker.com')).toBeInTheDocument();
-    expect(screen.getByText('Activo')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/tablero');
+    expect(screen.getAllByText('Activo')).toHaveLength(2);
+    const entrar = screen.getAllByRole('link', { name: 'Entrar' });
+    expect(entrar.map((a) => a.getAttribute('href'))).toEqual(['/tablero', '/tasador']);
   });
 
-  it('deshabilita el Tablero cuando el usuario no tiene alcance de tenant (admin_plataforma)', () => {
+  it('deshabilita el Tablero y el Tasador cuando el usuario no tiene alcance de tenant (admin_plataforma)', () => {
     render(<HomeView sesion={{ email: 'soporte@vacker.com', roles: ['admin_plataforma'] }} />);
     expect(screen.queryByRole('link', { name: 'Entrar' })).not.toBeInTheDocument();
   });

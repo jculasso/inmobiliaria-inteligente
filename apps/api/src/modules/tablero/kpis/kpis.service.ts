@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type {
+  AgregadoKpi,
   KpiFiltro,
   LadoPunta,
   RankingItem,
@@ -65,6 +66,20 @@ export class KpisService {
         operacionesSenadas: opsSenadas.size,
         alquileres,
       };
+    });
+  }
+
+  /**
+   * Agregados de los 12 meses del año en una sola consulta — reemplaza el
+   * patrón anterior del front (`getAgregadosPorTrimestre`) de pedir
+   * `resumen()` 12 veces (una por mes) solo para armar el gráfico trimestral.
+   */
+  async mensual(anio: number, ctx: TenantContext): Promise<AgregadoKpi[]> {
+    return this.db.withTenant(async (tx) => {
+      const scope = await resolverScope(ctx, tx);
+      const escrituradas = await this.ventas(tx, anio, 'escriturada', scope.usuarioIds);
+      const scopeSet = toScopeSet(scope);
+      return Array.from({ length: 12 }, (_, i) => agregar(puntasDeMes(escrituradas, i + 1), scopeSet));
     });
   }
 

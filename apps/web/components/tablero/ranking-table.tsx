@@ -5,6 +5,7 @@ import type { RankingItem } from '@vacker/types';
 import { Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
+import { getOrFetch } from '../../lib/kpi-cache';
 import { VendedorTotalesTable } from './vendedor-totales-table';
 
 type RankScope = 'anio' | 'trim' | 'mes';
@@ -36,14 +37,12 @@ export function RankingTable({ anio, mesSeleccionado }: { anio: number; mesSelec
   useEffect(() => {
     let cancelado = false;
     setLoading(true);
+    const periodo = SCOPE_A_PERIODO[scope];
     getAccessToken()
       .then((accessToken) =>
-        getResumenPeriodo(accessToken, {
-          anio,
-          periodo: SCOPE_A_PERIODO[scope],
-          mes: mesSeleccionado,
-          trimestre,
-        }),
+        getOrFetch(`resumen:${anio}:${periodo}:${mesSeleccionado}:${trimestre}`, () =>
+          getResumenPeriodo(accessToken, { anio, periodo, mes: mesSeleccionado, trimestre }),
+        ),
       )
       .then((res) => {
         if (!cancelado) setItems(res.ranking);
@@ -104,7 +103,7 @@ export function RankingTable({ anio, mesSeleccionado }: { anio: number; mesSelec
           {loading ? (
             <p className="px-5 py-6 text-sm text-muted">Cargando…</p>
           ) : (
-            <VendedorTotalesTable items={items} />
+            <VendedorTotalesTable items={items} anio={anio} />
           )}
         </div>
       )}

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getAgregadosPorTrimestre,
+  getKpisMensual,
   getKpisResumen,
   getRanking,
   getResumenPeriodo,
@@ -160,20 +161,30 @@ describe('getResumenPeriodo', () => {
   });
 });
 
+describe('getKpisMensual', () => {
+  it('pide /tablero/kpis/mensual con el año', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getKpisMensual('token', 2026);
+
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/mensual?anio=2026');
+  });
+});
+
 describe('getAgregadosPorTrimestre', () => {
-  it('pide los 12 meses una sola vez y devuelve el volumen sumado por trimestre', async () => {
-    const fetchMock = vi.fn().mockImplementation(async (url: string | URL) => {
-      const mes = Number(new URL(url).searchParams.get('mes'));
-      return {
-        ok: true,
-        json: async () => ({ ...RESUMEN, mesActual: { ...RESUMEN.anual, volumen: mes * 10 } }),
-      };
+  it('pide los 12 meses en una sola llamada y devuelve el volumen sumado por trimestre', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () =>
+        Array.from({ length: 12 }, (_, i) => ({ ...RESUMEN.anual, volumen: (i + 1) * 10 })),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const trimestres = await getAgregadosPorTrimestre('token', 2026);
 
-    expect(fetchMock).toHaveBeenCalledTimes(12);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(trimestres).toHaveLength(4);
     // Q1 = meses 1,2,3 -> 10+20+30 = 60
     expect(trimestres[0]!.volumen).toBe(60);
