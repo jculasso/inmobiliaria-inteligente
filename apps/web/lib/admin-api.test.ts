@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  activarAccesoUsuario,
   createTenant,
   createUsuarioAdmin,
   listTenants,
@@ -22,6 +23,7 @@ const USUARIO = {
   email: 'nueva@vacker.test',
   estado: 'activo',
   roles: ['vendedor'],
+  tieneAcceso: true,
 };
 
 afterEach(() => {
@@ -92,6 +94,18 @@ describe('admin-api', () => {
     const [url] = fetchMock.mock.calls[0]!;
     expect(String(url)).toBe(
       `http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/reset-password`,
+    );
+  });
+
+  it('activarAccesoUsuario pega a /activar-acceso', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => USUARIO });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await activarAccesoUsuario('token', TENANT.id, USUARIO.id, { password: 'nuevaClave123' });
+
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe(
+      `http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/activar-acceso`,
     );
   });
 });

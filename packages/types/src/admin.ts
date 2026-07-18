@@ -41,6 +41,8 @@ export const UsuarioAdminDtoSchema = z.object({
   email: z.string().email(),
   estado: z.enum(['activo', 'inactivo']),
   roles: z.array(RolSchema),
+  /** false para vendedores creados desde el Tablero sin cuenta de Auth todavía. */
+  tieneAcceso: z.boolean(),
 });
 export type UsuarioAdminDto = z.infer<typeof UsuarioAdminDtoSchema>;
 

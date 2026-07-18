@@ -45,6 +45,11 @@ model Usuario {
   email     String
   estado    String   @default("activo") // activo | inactivo
   liderId   String?  @map("lider_id") @db.Uuid // Team Leader del que depende
+  // Id del usuario en Supabase Auth — null para vendedores creados desde el
+  // Tablero (registros de datos sin acceso todavía, ver VendedoresService).
+  // Se "activa" el acceso creándole una cuenta real y seteando este campo,
+  // sin tocar `id` (que sigue siendo la PK usada en todas las FKs de negocio).
+  authUserId String? @unique @map("auth_user_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
