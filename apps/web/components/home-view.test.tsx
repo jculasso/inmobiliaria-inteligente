@@ -32,6 +32,16 @@ describe('HomeView · modo logueado', () => {
     expect(screen.queryByRole('link', { name: 'Entrar' })).not.toBeInTheDocument();
   });
 
+  it('muestra el link a Administración solo si el usuario tiene el rol admin_plataforma', () => {
+    render(<HomeView sesion={{ email: 'soporte@vacker.com', roles: ['admin_plataforma'] }} />);
+    expect(screen.getByRole('link', { name: 'Administración →' })).toHaveAttribute('href', '/admin');
+  });
+
+  it('no muestra el link a Administración para un usuario sin ese rol', () => {
+    render(<HomeView sesion={{ email: 'demo@vacker.com', roles: ['vendedor'] }} />);
+    expect(screen.queryByRole('link', { name: 'Administración →' })).not.toBeInTheDocument();
+  });
+
   it('muestra la preview de volumen cuando viene en la sesión', () => {
     render(<HomeView sesion={{ email: 'ceo@vacker.com', roles: ['direccion'], volumenAnual: 8452500 }} />);
     expect(screen.getByText('$8.452.500')).toBeInTheDocument();
