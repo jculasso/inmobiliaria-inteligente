@@ -9,7 +9,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL") // pooler (6543) — runtime
-  directUrl = env("DIRECT_URL")   // directa (5432) — migraciones
+  directUrl = env("DIRECT_URL") // directa (5432) — migraciones
 }
 
 /// Inmobiliaria (tenant). El aislamiento se aplica sobre `id`.
@@ -23,11 +23,16 @@ model Tenant {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  usuarios     Usuario[]
-  usuarioRoles UsuarioRol[]
-  operaciones  Operacion[]
-  puntas       OperacionPunta[]
-  objetivos    Objetivo[]
+  usuarios                 Usuario[]
+  usuarioRoles             UsuarioRol[]
+  operaciones              Operacion[]
+  puntas                   OperacionPunta[]
+  objetivos                Objetivo[]
+  tasaciones               Tasacion[]
+  tasacionComparables      TasacionComparable[]
+  tasacionFotos            TasacionFoto[]
+  tasacionEstadoHistorials TasacionEstadoHistorial[]
+  informeGenerados         InformeGenerado[]
 
   @@map("tenant")
 }
@@ -43,12 +48,14 @@ model Usuario {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lider     Usuario?         @relation("Equipo", fields: [liderId], references: [id], onDelete: SetNull)
-  equipo    Usuario[]        @relation("Equipo")
-  roles     UsuarioRol[]
-  puntas    OperacionPunta[]
-  objetivos Objetivo[]
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lider             Usuario?                  @relation("Equipo", fields: [liderId], references: [id], onDelete: SetNull)
+  equipo            Usuario[]                 @relation("Equipo")
+  roles             UsuarioRol[]
+  puntas            OperacionPunta[]
+  objetivos         Objetivo[]
+  tasaciones        Tasacion[]
+  historialTasacion TasacionEstadoHistorial[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -79,24 +86,24 @@ model UsuarioRol {
 
 /// Operación comercial: cubre ventas y alquileres (diferenciadas por `tipo`).
 model Operacion {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
   codigo       String // Código legible: OP-1001 (venta) | ALQ-1001 (alquiler)
   tipo         String // venta | alquiler
   direccion    String
-  precio       Decimal? @db.Decimal(14, 2) // null en alquileres (usan valor_mensual)
-  valorMensual Decimal? @map("valor_mensual") @db.Decimal(14, 2) // solo alquiler
-  moneda       String   @default("USD")
-  cantPuntas   Int      @map("cant_puntas") // 0 (alquiler) | 1 | 2
-  comTotal     Decimal  @default(0) @map("com_total") @db.Decimal(14, 2)
+  precio       Decimal?  @db.Decimal(14, 2) // null en alquileres (usan valor_mensual)
+  valorMensual Decimal?  @map("valor_mensual") @db.Decimal(14, 2) // solo alquiler
+  moneda       String    @default("USD")
+  cantPuntas   Int       @map("cant_puntas") // 0 (alquiler) | 1 | 2
+  comTotal     Decimal   @default(0) @map("com_total") @db.Decimal(14, 2)
   estado       String // venta: escriturada | senada ; alquiler: firmado
   fechaReserva DateTime? @map("fecha_reserva") @db.Date
   fechaFirma   DateTime? @map("fecha_firma") @db.Date
   mes          Int? // derivado de fecha_firma ?? fecha_reserva (reporting)
   anio         Int? // íd.
   obs          String?
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   puntas OperacionPunta[]
@@ -143,4 +150,165 @@ model Objetivo {
   @@unique([tenantId, usuarioId, anio])
   @@index([tenantId])
   @@map("objetivo")
+}
+
+// ============================================================================
+// Módulo Tasador de Propiedades (Sprint 0). Modelo tomado de
+// docs/prototipos/tasador_de_propiedades.html (secciones 1-6 del formulario).
+// Análisis comercial y estrategia comercial (texto libre) van en Json: no se
+// filtran/agregan campo a campo, mismo criterio que Tenant.config.
+// ============================================================================
+
+/// Tasación de una propiedad. `estado` es el estado de gestión (workflow);
+/// `estadoInmueble` es la condición física declarada del inmueble.
+model Tasacion {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  agenteId String  @map("agente_id") @db.Uuid
+  codigo   String? // identificador legible opcional (ej. TAS-2026-001), para el seed y referencia humana
+
+  // Sección 1 — Datos del informe
+  cliente       String
+  fecha         DateTime @db.Date
+  direccion     String
+  barrio        String?
+  ciudad        String?
+  tipoOperacion String   @map("tipo_operacion") // venta | alquiler
+
+  // Sección 2 — Características del inmueble
+  tipoPropiedad    String   @map("tipo_propiedad") // TipoPropiedadSchema (incluye "PH")
+  supCubierta      Decimal  @default(0) @map("sup_cubierta") @db.Decimal(10, 2)
+  supSemicubierta  Decimal  @default(0) @map("sup_semicubierta") @db.Decimal(10, 2)
+  supDescubierta   Decimal  @default(0) @map("sup_descubierta") @db.Decimal(10, 2)
+  supTerreno       Decimal? @map("sup_terreno") @db.Decimal(10, 2)
+  superficieTotal  Decimal  @map("superficie_total") @db.Decimal(10, 2) // derivada (@vacker/domain), recalculada en cada write
+  dormitorios      Int?
+  banos            Int?
+  toilette         Int?
+  ambientes        Int?
+  antiguedad       Int?
+  estadoInmueble   String?  @map("estado_inmueble")
+  disposicion      String?
+  orientacion      String?
+  cochera          Boolean  @default(false)
+  balcon           Boolean  @default(false)
+  terraza          Boolean  @default(false)
+  patio            Boolean  @default(false)
+  lavadero         Boolean  @default(false)
+  piscina          Boolean  @default(false)
+  amenities        String[] @default([])
+  detalleAmenities String?  @map("detalle_amenities")
+  expensas         Decimal? @db.Decimal(10, 2)
+  aptoCredito      String?  @map("apto_credito")
+  documentacion    String?
+
+  // Sección 3 — Análisis comercial (texto libre, sin agregación individual)
+  analisisComercial Json? @map("analisis_comercial")
+
+  // Sección 5 — Valores de tasación (auto-calculados con @vacker/domain, editables)
+  valorMinimo          Decimal? @map("valor_minimo") @db.Decimal(14, 2)
+  valorRecomendado     Decimal? @map("valor_recomendado") @db.Decimal(14, 2)
+  valorAspiracional    Decimal? @map("valor_aspiracional") @db.Decimal(14, 2)
+  margenNegociacion    String?  @map("margen_negociacion")
+  escenarioRecomendado String?  @map("escenario_recomendado")
+  plazoEstimado        String?  @map("plazo_estimado")
+
+  // Sección 6 — Estrategia comercial (texto libre)
+  estrategiaComercial Json? @map("estrategia_comercial")
+
+  // Estado de gestión (workflow) — ver TasacionEstadoHistorial para la auditoría
+  estado          String  @default("En proceso") // EstadoTasacionSchema
+  exclusividad    Json? // { tipo: 'exclusiva', dias } | { tipo: 'no' } — exigido al pasar a "Captada"
+  motivoNoCaptada String? @map("motivo_no_captada") // MotivoNoCaptadaSchema — exigido al pasar a "No captada"
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agente      Usuario                   @relation(fields: [agenteId], references: [id], onDelete: Restrict)
+  comparables TasacionComparable[]
+  fotos       TasacionFoto[]
+  historial   TasacionEstadoHistorial[]
+  informes    InformeGenerado[]
+
+  @@unique([tenantId, codigo])
+  @@index([tenantId])
+  @@index([tenantId, agenteId])
+  @@index([tenantId, estado])
+  @@map("tasacion")
+}
+
+/// Comparable de mercado cargado a mano (1..6 por tasación, validado en Zod).
+model TasacionComparable {
+  id            String  @id @default(uuid()) @db.Uuid
+  tasacionId    String  @map("tasacion_id") @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  direccion     String
+  superficie    Decimal @db.Decimal(10, 2)
+  precio        Decimal @db.Decimal(14, 2) // USD/m² = precio/superficie, calculado (no persistido)
+  dormitorios   Int?
+  banos         Int?
+  cochera       Boolean @default(false)
+  estado        String?
+  link          String?
+  observaciones String?
+
+  tasacion Tasacion @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tasacionId])
+  @@map("tasacion_comparable")
+}
+
+/// Fotos de la propiedad (hasta 3, Sprint 5). Tabla creada en Sprint 0.
+model TasacionFoto {
+  id         String @id @default(uuid()) @db.Uuid
+  tasacionId String @map("tasacion_id") @db.Uuid
+  tenantId   String @map("tenant_id") @db.Uuid
+  url        String
+  orden      Int    @default(0)
+
+  tasacion Tasacion @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tasacionId])
+  @@map("tasacion_foto")
+}
+
+/// Auditoría de cambios de estado (Sprint 3 los escribe; tabla creada ahora).
+model TasacionEstadoHistorial {
+  id             String   @id @default(uuid()) @db.Uuid
+  tasacionId     String   @map("tasacion_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  estadoAnterior String?  @map("estado_anterior")
+  estadoNuevo    String   @map("estado_nuevo")
+  usuarioId      String   @map("usuario_id") @db.Uuid
+  detalle        Json? // exclusividad u motivo del cambio, si aplica
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tasacion Tasacion @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tasacionId])
+  @@map("tasacion_estado_historial")
+}
+
+/// Informe de tasación generado en PDF (Sprint 2/5 lo puebla; tabla creada ahora).
+model InformeGenerado {
+  id         String   @id @default(uuid()) @db.Uuid
+  tasacionId String   @map("tasacion_id") @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  url        String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tasacion Tasacion @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tasacionId])
+  @@map("informe_generado")
 }

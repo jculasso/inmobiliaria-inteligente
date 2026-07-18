@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
+import { superficieTotal } from '@vacker/domain';
 
 // Seed idempotente (Paso 3): tenant Vacker + datos reales 2026 del prototipo
 // (vendedores, ventas con puntas, alquileres). Corre con el rol `postgres`
@@ -204,6 +205,68 @@ async function main(): Promise<void> {
       },
     });
     alqOk += 1;
+  }
+
+  // --- Tasaciones de ejemplo (Sprint 0 del Tasador): estados y meses
+  // distintos, repartidas entre los vendedores ya creados arriba, para poder
+  // demostrar el filtro por rol (tenant/equipo/propio) en Sprint 1+. ---
+  const agentes = [...idPorNombre.values()];
+  if (agentes.length > 0) {
+    const TASACIONES_SEED: {
+      codigo: string;
+      cliente: string;
+      direccion: string;
+      tipoPropiedad: string;
+      mes: number;
+      cubierta: number;
+      semicubierta: number;
+      descubierta: number;
+      estado: string;
+      exclusividad?: { tipo: 'exclusiva'; dias: number } | { tipo: 'no' };
+      motivoNoCaptada?: string;
+    }[] = [
+      { codigo: 'TAS-2026-001', cliente: 'María Fernández', direccion: 'Av. Libertador 4200', tipoPropiedad: 'Departamento', mes: 1, cubierta: 65, semicubierta: 0, descubierta: 6, estado: 'En proceso' },
+      { codigo: 'TAS-2026-002', cliente: 'Jorge Ibáñez', direccion: 'Charcas 3100', tipoPropiedad: 'PH', mes: 2, cubierta: 90, semicubierta: 15, descubierta: 20, estado: 'Presentada' },
+      { codigo: 'TAS-2026-003', cliente: 'Laura Gómez', direccion: 'Av. Cabildo 2050', tipoPropiedad: 'Departamento', mes: 2, cubierta: 48, semicubierta: 0, descubierta: 4, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 60 } },
+      { codigo: 'TAS-2026-004', cliente: 'Diego Alonso', direccion: 'Ruta 8 km 45', tipoPropiedad: 'Casa', mes: 3, cubierta: 180, semicubierta: 25, descubierta: 300, estado: 'Captada', exclusividad: { tipo: 'no' } },
+      { codigo: 'TAS-2026-005', cliente: 'Valeria Sosa', direccion: 'Bulnes 890', tipoPropiedad: 'Departamento', mes: 3, cubierta: 55, semicubierta: 0, descubierta: 0, estado: 'No captada', motivoNoCaptada: 'Desacuerdo de precio' },
+      { codigo: 'TAS-2026-006', cliente: 'Nicolás Peralta', direccion: 'Av. Rivadavia 8800', tipoPropiedad: 'Local', mes: 4, cubierta: 70, semicubierta: 0, descubierta: 0, estado: 'En proceso' },
+      { codigo: 'TAS-2026-007', cliente: 'Carla Duarte', direccion: 'Gorriti 4400', tipoPropiedad: 'PH', mes: 4, cubierta: 75, semicubierta: 10, descubierta: 15, estado: 'Presentada' },
+      { codigo: 'TAS-2026-008', cliente: 'Federico Luna', direccion: 'Av. Santa Fe 3500', tipoPropiedad: 'Oficina', mes: 5, cubierta: 40, semicubierta: 0, descubierta: 0, estado: 'No captada', motivoNoCaptada: 'Ya no quiere vender' },
+      { codigo: 'TAS-2026-009', cliente: 'Romina Castro', direccion: 'Av. Del Libertador 6800', tipoPropiedad: 'Casa', mes: 5, cubierta: 210, semicubierta: 30, descubierta: 150, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 90 } },
+    ];
+
+    let tasOk = 0;
+    for (const [i, t] of TASACIONES_SEED.entries()) {
+      const agenteId = agentes[i % agentes.length]!;
+      await prisma.tasacion.upsert({
+        where: { tenantId_codigo: { tenantId, codigo: t.codigo } },
+        update: {},
+        create: {
+          tenantId,
+          agenteId,
+          codigo: t.codigo,
+          cliente: t.cliente,
+          fecha: new Date(Date.UTC(2026, t.mes - 1, 10)),
+          direccion: t.direccion,
+          tipoOperacion: 'venta',
+          tipoPropiedad: t.tipoPropiedad,
+          supCubierta: t.cubierta,
+          supSemicubierta: t.semicubierta,
+          supDescubierta: t.descubierta,
+          superficieTotal: superficieTotal({
+            cubierta: t.cubierta,
+            semicubierta: t.semicubierta,
+            descubierta: t.descubierta,
+          }),
+          estado: t.estado,
+          exclusividad: t.exclusividad,
+          motivoNoCaptada: t.motivoNoCaptada,
+        },
+      });
+      tasOk += 1;
+    }
+    console.log(`Seed Tasador OK — ${tasOk} tasaciones de ejemplo`);
   }
 
   console.log(

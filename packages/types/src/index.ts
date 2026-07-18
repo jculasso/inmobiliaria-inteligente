@@ -19,3 +19,6 @@ export * from './auth';
 
 // Panel de administración de plataforma (tenants + usuarios + accesos).
 export * from './admin';
+
+// Vocabulario base del Tasador de Propiedades (Sprint 0).
+export * from './tasador';
