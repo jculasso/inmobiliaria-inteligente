@@ -1,19 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { superficieTotal } from '@vacker/domain';
+import { superficieTotal, usdM2 } from '@vacker/domain';
 import type { CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
 import { decToNum, fromDate, toDate } from '../../tablero/tablero.util';
 
-const tasacionInclude = {
+export const tasacionInclude = {
   agente: { select: { id: true, nombre: true } },
+  comparables: true,
 } satisfies Prisma.TasacionInclude;
 
-type TasacionRow = Prisma.TasacionGetPayload<{ include: typeof tasacionInclude }>;
+export type TasacionRow = Prisma.TasacionGetPayload<{ include: typeof tasacionInclude }>;
 
-/** CRUD de tasaciones (Sprint 1: secciones "Datos del informe" y "Características"). */
+/** CRUD de tasaciones: secciones "Datos del informe", "Características", "Análisis comercial", "Valores" y "Estrategia", más comparables. */
 @Injectable()
 export class TasacionesService {
   constructor(private readonly db: TenantPrismaService) {}
@@ -68,13 +69,17 @@ export class TasacionesService {
         ciudad: dto.ciudad ?? null,
         tipoOperacion: dto.tipoOperacion,
         ...datosCaracteristicas(dto),
+        ...datosValoresYComercial(dto),
+        ...(dto.comparables !== undefined
+          ? { comparables: { create: dto.comparables.map(({ cochera, ...c }) => ({ ...c, cochera, tenantId: ctx.tenantId })) } }
+          : {}),
       } as Prisma.TasacionUncheckedCreateInput;
       const row = await tx.tasacion.create({ data, include: tasacionInclude });
       return toDto(row);
     });
   }
 
-  /** Edita las secciones 1 y 2. No permite cambiar `agenteId`/`estado` (endpoint aparte). */
+  /** Edita una tasación. Si vienen `comparables`, reemplazan el set completo. */
   async update(id: string, dto: UpdateTasacion, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
       const actual = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
@@ -89,6 +94,14 @@ export class TasacionesService {
       if (dto.ciudad !== undefined) data.ciudad = dto.ciudad ?? null;
       if (dto.tipoOperacion !== undefined) data.tipoOperacion = dto.tipoOperacion;
       Object.assign(data, datosCaracteristicas(dto, actual));
+      Object.assign(data, datosValoresYComercial(dto));
+
+      if (dto.comparables !== undefined) {
+        await tx.tasacionComparable.deleteMany({ where: { tasacionId: id } });
+        data.comparables = {
+          create: dto.comparables.map(({ cochera, ...c }) => ({ ...c, cochera, tenantId: actual.tenantId })),
+        };
+      }
 
       const row = await tx.tasacion.update({ where: { id }, data, include: tasacionInclude });
       return toDto(row);
@@ -155,6 +168,28 @@ function datosCaracteristicas(
   return data;
 }
 
+/**
+ * Secciones "Valores" (5), "Análisis comercial" (3) y "Estrategia" (6). Se
+ * persisten tal cual llegan — a diferencia de `superficieTotal`, acá el
+ * servidor no recalcula nada (son campos editables por el usuario).
+ */
+function datosValoresYComercial(dto: Partial<CreateTasacion>): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  if (dto.valorMinimo !== undefined) data.valorMinimo = dto.valorMinimo ?? null;
+  if (dto.valorRecomendado !== undefined) data.valorRecomendado = dto.valorRecomendado ?? null;
+  if (dto.valorAspiracional !== undefined) data.valorAspiracional = dto.valorAspiracional ?? null;
+  if (dto.margenNegociacion !== undefined) data.margenNegociacion = dto.margenNegociacion ?? null;
+  if (dto.escenarioRecomendado !== undefined) data.escenarioRecomendado = dto.escenarioRecomendado ?? null;
+  if (dto.plazoEstimado !== undefined) data.plazoEstimado = dto.plazoEstimado ?? null;
+  if (dto.analisisComercial !== undefined) {
+    data.analisisComercial = (dto.analisisComercial ?? null) as Prisma.InputJsonValue;
+  }
+  if (dto.estrategiaComercial !== undefined) {
+    data.estrategiaComercial = (dto.estrategiaComercial ?? null) as Prisma.InputJsonValue;
+  }
+  return data;
+}
+
 /** Rango `[inicio, fin)` sobre `fecha` para un año completo o un mes puntual. */
 function rangoDeFecha(anio?: number, mes?: number): Prisma.DateTimeFilter | undefined {
   if (anio == null) return undefined;
@@ -165,7 +200,7 @@ function rangoDeFecha(anio?: number, mes?: number): Prisma.DateTimeFilter | unde
 }
 
 /** Rechaza el acceso si la tasación no cae en el alcance del rol. */
-function assertEnScope(row: TasacionRow, scope: { usuarioIds: string[] | null }): void {
+export function assertEnScope(row: TasacionRow, scope: { usuarioIds: string[] | null }): void {
   if (scope.usuarioIds === null) return;
   if (!scope.usuarioIds.includes(row.agenteId)) {
     throw new NotFoundException('Tasación no encontrada.');
@@ -173,7 +208,7 @@ function assertEnScope(row: TasacionRow, scope: { usuarioIds: string[] | null })
 }
 
 /** Mapea la fila (Decimal/Date) a la forma JSON de la API. */
-function toDto(row: TasacionRow) {
+export function toDto(row: TasacionRow) {
   return {
     id: row.id,
     codigo: row.codigo,
@@ -210,11 +245,28 @@ function toDto(row: TasacionRow) {
     expensas: row.expensas == null ? null : decToNum(row.expensas),
     aptoCredito: row.aptoCredito,
     documentacion: row.documentacion,
+    comparables: row.comparables.map((c) => {
+      const superficie = decToNum(c.superficie);
+      const precio = decToNum(c.precio);
+      return {
+        id: c.id,
+        direccion: c.direccion,
+        superficie,
+        precio,
+        dormitorios: c.dormitorios,
+        banos: c.banos,
+        cochera: c.cochera,
+        estado: c.estado,
+        link: c.link,
+        observaciones: c.observaciones,
+        usdM2: usdM2({ superficie, precio }),
+      };
+    }),
     analisisComercial: row.analisisComercial,
     valorMinimo: row.valorMinimo == null ? null : decToNum(row.valorMinimo),
     valorRecomendado: row.valorRecomendado == null ? null : decToNum(row.valorRecomendado),
     valorAspiracional: row.valorAspiracional == null ? null : decToNum(row.valorAspiracional),
-    margenNegociacion: row.margenNegociacion,
+    margenNegociacion: row.margenNegociacion == null ? null : Number(row.margenNegociacion),
     escenarioRecomendado: row.escenarioRecomendado,
     plazoEstimado: row.plazoEstimado,
     estrategiaComercial: row.estrategiaComercial,

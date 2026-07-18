@@ -209,7 +209,7 @@ model Tasacion {
   valorMinimo          Decimal? @map("valor_minimo") @db.Decimal(14, 2)
   valorRecomendado     Decimal? @map("valor_recomendado") @db.Decimal(14, 2)
   valorAspiracional    Decimal? @map("valor_aspiracional") @db.Decimal(14, 2)
-  margenNegociacion    String?  @map("margen_negociacion")
+  margenNegociacion    Decimal? @map("margen_negociacion") @db.Decimal(5, 2)
   escenarioRecomendado String?  @map("escenario_recomendado")
   plazoEstimado        String?  @map("plazo_estimado")
 

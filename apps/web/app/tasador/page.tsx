@@ -1,4 +1,4 @@
-import type { EstadoTasacion } from '@vacker/types';
+import type { EstadoTasacion, TasacionDto } from '@vacker/types';
 import { listTasaciones } from '../../lib/tasador-api';
 import { requireServerPrincipal } from '../../lib/server-principal';
 import { puedeBorrarTasaciones } from '../../lib/rbac';
@@ -18,7 +18,7 @@ export default async function TasadorPage({
   const anio = params.anio ? Number(params.anio) : undefined;
   const estado = params.estado as EstadoTasacion | undefined;
 
-  const tasaciones = await listTasaciones(ctx.accessToken, { anio, estado });
+  const tasaciones: TasacionDto[] = await listTasaciones(ctx.accessToken, { anio, estado });
 
   return (
     <div className="flex flex-col gap-4">

@@ -45,3 +45,10 @@ export async function deleteTasacion(accessToken: string, id: string) {
     method: 'DELETE',
   });
 }
+
+export async function generarInforme(accessToken: string, id: string) {
+  return apiFetch(`/tasador/tasaciones/${id}/informe`, z.object({ url: z.string() }), {
+    accessToken,
+    method: 'POST',
+  });
+}

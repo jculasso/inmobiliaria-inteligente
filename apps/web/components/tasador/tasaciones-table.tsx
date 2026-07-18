@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { TasacionDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { deleteTasacion } from '../../lib/tasador-api';
+import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
 import { fmtNum } from '../../lib/format';
 import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
 import { TasacionFormModal } from './tasacion-form-modal';
@@ -25,6 +25,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState<'create' | TasacionDto | null>(null);
+  const [generandoId, setGenerandoId] = useState<string | null>(null);
 
   const filtradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -41,6 +42,17 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
     const accessToken = await getAccessToken();
     await deleteTasacion(accessToken, id);
     router.refresh();
+  }
+
+  async function handleGenerarInforme(id: string) {
+    setGenerandoId(id);
+    try {
+      const accessToken = await getAccessToken();
+      const { url } = await generarInforme(accessToken, id);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setGenerandoId(null);
+    }
   }
 
   return (
@@ -106,6 +118,14 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
                         className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
                       >
                         ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleGenerarInforme(t.id)}
+                        disabled={generandoId === t.id}
+                        className="text-xs font-medium text-brand-red hover:underline disabled:opacity-50"
+                      >
+                        {generandoId === t.id ? 'Generando…' : 'Informe (PDF)'}
                       </button>
                       {puedeBorrar && (
                         <ConfirmDeleteButton

@@ -23,7 +23,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
+    include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx', 'test/**/*.e2e-spec.ts'],
     root: '.',
   },
   // SWC compila los decoradores de NestJS (esbuild de Vitest no soporta
