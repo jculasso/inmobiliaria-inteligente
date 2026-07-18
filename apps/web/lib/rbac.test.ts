@@ -3,6 +3,7 @@ import {
   alcanceDeModulo,
   etiquetaDeAlcance,
   puedeBorrarOperaciones,
+  puedeBorrarTasaciones,
   puedeGestionarVendedores,
   puedeVerVendedores,
 } from './rbac';
@@ -73,5 +74,17 @@ describe('puedeBorrarOperaciones', () => {
     expect(puedeBorrarOperaciones(['team_leader'])).toBe(true);
     expect(puedeBorrarOperaciones(['direccion'])).toBe(true);
     expect(puedeBorrarOperaciones(['admin_tenant'])).toBe(true);
+  });
+});
+
+describe('puedeBorrarTasaciones', () => {
+  it('un vendedor puro no puede borrar tasaciones', () => {
+    expect(puedeBorrarTasaciones(['vendedor'])).toBe(false);
+  });
+
+  it('team_leader, direccion y admin_tenant sí pueden', () => {
+    expect(puedeBorrarTasaciones(['team_leader'])).toBe(true);
+    expect(puedeBorrarTasaciones(['direccion'])).toBe(true);
+    expect(puedeBorrarTasaciones(['admin_tenant'])).toBe(true);
   });
 });
