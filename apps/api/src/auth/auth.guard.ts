@@ -48,9 +48,12 @@ export class AuthGuard implements CanActivate {
 
     const identity = await this.authProvider.verifyToken(token);
 
-    // Resolución de tenant + roles desde la base (lookup por PK, sin RLS).
+    // Resolución de tenant + roles desde la base (lookup por authUserId, sin
+    // RLS). `authUserId` es el id de Supabase Auth; `usuario.id` (la PK usada
+    // en las FKs de negocio) puede ser distinto para vendedores creados desde
+    // el Tablero antes de "activarles" el acceso.
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: identity.userId },
+      where: { authUserId: identity.userId },
       include: { roles: true },
     });
     if (!usuario || usuario.estado !== 'activo') {

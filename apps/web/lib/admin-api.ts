@@ -69,3 +69,16 @@ export async function resetPasswordUsuario(
     { accessToken, method: 'POST', body: dto },
   );
 }
+
+export async function activarAccesoUsuario(
+  accessToken: string,
+  tenantId: string,
+  id: string,
+  dto: ResetPassword,
+) {
+  return apiFetch(`/admin/tenants/${tenantId}/usuarios/${id}/activar-acceso`, UsuarioAdminDtoSchema, {
+    accessToken,
+    method: 'POST',
+    body: dto,
+  });
+}

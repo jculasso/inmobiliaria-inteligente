@@ -56,4 +56,15 @@ export class AdminUsuariosController {
   ) {
     return this.usuarios.resetPassword(tenantId, id, dto);
   }
+
+  @Post(':id/activar-acceso')
+  @Roles('admin_plataforma')
+  @ApiOperation({ summary: 'Crea la cuenta de Supabase Auth para un usuario que todavía no tiene login' })
+  activarAcceso(
+    @Param('tenantId', ParseUUIDPipe) tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(ResetPasswordSchema)) dto: ResetPassword,
+  ) {
+    return this.usuarios.activarAcceso(tenantId, id, dto);
+  }
 }

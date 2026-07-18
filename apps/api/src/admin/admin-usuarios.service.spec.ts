@@ -40,6 +40,7 @@ const usuarioRow = {
   nombre: 'Nueva Vendedora',
   email: 'nuevo@vacker.test',
   estado: 'activo',
+  authUserId: 'auth-1',
   roles: [{ rol: 'vendedor' }],
 };
 
@@ -58,7 +59,7 @@ describe('AdminUsuariosService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('create da de alta en Supabase Auth y en la base con el mismo id', async () => {
+  it('create da de alta en Supabase Auth y en la base con el mismo id + authUserId', async () => {
     const create = vi.fn();
     const findUniqueOrThrow = vi.fn().mockResolvedValue(usuarioRow);
     const db = makeDb({ create, findUniqueOrThrow });
@@ -76,6 +77,7 @@ describe('AdminUsuariosService', () => {
     expect(create).toHaveBeenCalledWith({
       data: {
         id: 'auth-1',
+        authUserId: 'auth-1',
         tenantId: TENANT_ID,
         nombre: 'Nueva Vendedora',
         email: 'nuevo@vacker.test',
@@ -89,6 +91,7 @@ describe('AdminUsuariosService', () => {
       email: 'nuevo@vacker.test',
       estado: 'activo',
       roles: ['vendedor'],
+      tieneAcceso: true,
     });
   });
 
@@ -121,8 +124,23 @@ describe('AdminUsuariosService', () => {
     expect(supabaseAdmin.setPassword).not.toHaveBeenCalled();
   });
 
-  it('resetPassword actualiza la contraseña vía Supabase Admin', async () => {
-    const db = makeDb({ findFirst: vi.fn().mockResolvedValue({ id: 'auth-1' }) });
+  it('resetPassword rechaza si el usuario todavía no tiene acceso', async () => {
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({ id: 'v1', email: 'v1@vacker.test', authUserId: null }),
+    });
+    const supabaseAdmin = makeSupabaseAdmin();
+    const service = new AdminUsuariosService(db, supabaseAdmin);
+
+    await expect(service.resetPassword(TENANT_ID, 'v1', { password: 'nuevaClave123' })).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(supabaseAdmin.setPassword).not.toHaveBeenCalled();
+  });
+
+  it('resetPassword actualiza la contraseña vía Supabase Admin usando el authUserId', async () => {
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1' }),
+    });
     const supabaseAdmin = makeSupabaseAdmin();
     const service = new AdminUsuariosService(db, supabaseAdmin);
 
@@ -130,5 +148,51 @@ describe('AdminUsuariosService', () => {
 
     expect(supabaseAdmin.setPassword).toHaveBeenCalledWith('auth-1', 'nuevaClave123');
     expect(result).toEqual({ id: 'auth-1', ok: true });
+  });
+
+  it('activarAcceso rechaza si el usuario ya tiene acceso', async () => {
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({ id: 'v1', email: 'v1@vacker.test', authUserId: 'auth-1' }),
+    });
+    const supabaseAdmin = makeSupabaseAdmin();
+    const service = new AdminUsuariosService(db, supabaseAdmin);
+
+    await expect(service.activarAcceso(TENANT_ID, 'v1', { password: 'nuevaClave123' })).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(supabaseAdmin.createUser).not.toHaveBeenCalled();
+  });
+
+  it('activarAcceso crea la cuenta de Auth y vincula authUserId sin tocar el id de negocio', async () => {
+    const update = vi.fn();
+    const findUniqueOrThrow = vi.fn().mockResolvedValue({ ...usuarioRow, id: 'vendedor-1' });
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({ id: 'vendedor-1', email: 'ezequiel@vacker.com', authUserId: null }),
+      update,
+      findUniqueOrThrow,
+    });
+    const supabaseAdmin = makeSupabaseAdmin();
+    const service = new AdminUsuariosService(db, supabaseAdmin);
+
+    const result = await service.activarAcceso(TENANT_ID, 'vendedor-1', { password: 'nuevaClave123' });
+
+    expect(supabaseAdmin.createUser).toHaveBeenCalledWith('ezequiel@vacker.com', 'nuevaClave123');
+    expect(update).toHaveBeenCalledWith({ where: { id: 'vendedor-1' }, data: { authUserId: 'auth-1' } });
+    expect(result.tieneAcceso).toBe(true);
+  });
+
+  it('activarAcceso revierte el alta en Supabase Auth si falla el update en la base', async () => {
+    const update = vi.fn().mockRejectedValue(new Error('boom'));
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({ id: 'vendedor-1', email: 'ezequiel@vacker.com', authUserId: null }),
+      update,
+    });
+    const supabaseAdmin = makeSupabaseAdmin();
+    const service = new AdminUsuariosService(db, supabaseAdmin);
+
+    await expect(
+      service.activarAcceso(TENANT_ID, 'vendedor-1', { password: 'nuevaClave123' }),
+    ).rejects.toThrow('boom');
+    expect(supabaseAdmin.deleteUser).toHaveBeenCalledWith('auth-1');
   });
 });
