@@ -31,14 +31,14 @@ const ITEMS = [
 
 describe('VendedorTotalesTable', () => {
   it('ordena por volumen descendente', () => {
-    render(<VendedorTotalesTable items={ITEMS} />);
+    render(<VendedorTotalesTable items={ITEMS} anio={2026} />);
     const filas = screen.getAllByRole('row');
     expect(filas[1]).toHaveTextContent('Ana');
     expect(filas[2]).toHaveTextContent('Beto');
   });
 
   it('muestra un mensaje cuando no hay datos', () => {
-    render(<VendedorTotalesTable items={[]} />);
+    render(<VendedorTotalesTable items={[]} anio={2026} />);
     expect(screen.getByText(/Sin datos para el período/)).toBeInTheDocument();
   });
 });

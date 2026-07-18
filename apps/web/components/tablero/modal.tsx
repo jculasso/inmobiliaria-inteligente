@@ -22,8 +22,8 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-brand bg-white p-6 shadow-lg">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-brand bg-white shadow-lg">
+        <div className="flex shrink-0 items-center justify-between border-b border-line px-6 py-4">
           <h2 className="text-lg font-bold text-ink">{title}</h2>
           <button
             type="button"
@@ -34,7 +34,7 @@ export function Modal({
             ×
           </button>
         </div>
-        {children}
+        <div className="overflow-y-auto p-6">{children}</div>
       </div>
     </div>
   );

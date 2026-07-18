@@ -64,6 +64,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
         status = HttpStatus.BAD_REQUEST;
         message = 'La operación no se pudo completar por una restricción de datos.';
       }
+    } else if (
+      exception instanceof Prisma.PrismaClientUnknownRequestError &&
+      exception.message.includes('numeric field overflow')
+    ) {
+      // Postgres 22003: un monto superó numeric(14,2). Ya validado con
+      // `MontoSchema` en los DTOs, pero se cubre acá también por si algún
+      // camino todavía no pasa por Zod (p. ej. un campo agregado sin el tope).
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Ese monto es demasiado grande.';
     } else {
       // Error no controlado: no filtramos el mensaje al cliente, pero lo logueamos.
       this.logger.error(exception instanceof Error ? exception.stack : String(exception));

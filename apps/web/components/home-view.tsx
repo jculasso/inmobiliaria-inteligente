@@ -27,8 +27,8 @@ const MODULOS: Modulo[] = [
     nombre: 'Tasador',
     descripcion: 'Valuación asistida de propiedades.',
     icono: '🏷️',
-    estado: 'dev',
-    href: null,
+    estado: 'activo',
+    href: '/tasador',
   },
   {
     nombre: 'To Do List',
@@ -108,7 +108,7 @@ export function HomeView({ sesion }: HomeViewProps) {
               bloqueada={bloqueada}
               habilitado={m.estado === 'activo' && alcance !== null}
               preview={
-                m.estado === 'activo' && sesion?.volumenAnual !== undefined ? (
+                m.href === '/tablero' && sesion?.volumenAnual !== undefined ? (
                   <div className="rounded-lg bg-surface px-3 py-2 text-xs">
                     <span className="font-bold text-ink">{fmtUSD(sesion.volumenAnual)}</span>{' '}
                     <span className="text-muted">volumen {anio}</span>

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AgregadoKpiSchema,
   ObjetivoSetDtoSchema,
   OperacionDtoSchema,
   RankingItemSchema,
@@ -22,7 +23,13 @@ import { apiFetch } from './api-client';
 export async function listOperaciones(accessToken: string, filtro: OperacionFiltro) {
   return apiFetch('/tablero/operaciones', z.array(OperacionDtoSchema), {
     accessToken,
-    searchParams: { anio: filtro.anio, mes: filtro.mes, tipo: filtro.tipo },
+    searchParams: {
+      anio: filtro.anio,
+      mes: filtro.mes,
+      tipo: filtro.tipo,
+      estado: filtro.estado,
+      usuarioId: filtro.usuarioId,
+    },
   });
 }
 
@@ -103,6 +110,14 @@ export async function getRanking(accessToken: string, filtro: KpiFiltro) {
   });
 }
 
+/** Agregados de los 12 meses del año en una sola llamada de red. */
+export async function getKpisMensual(accessToken: string, anio: number) {
+  return apiFetch('/tablero/kpis/mensual', z.array(AgregadoKpiSchema), {
+    accessToken,
+    searchParams: { anio },
+  });
+}
+
 // --- Resumen por período (Anual / Trimestral / Mensual), como el prototipo ---
 // La API no tiene un endpoint de "trimestre": se arma pidiendo los 3 meses del
 // trimestre en paralelo y sumando.
@@ -174,18 +189,15 @@ export interface ResumenPeriodoResult {
 
 /**
  * Volumen y comisión de cada trimestre del año (para el gráfico de barras +
- * línea de "Acumulado Trimestral"). Pide los 12 meses en paralelo una sola
- * vez y los agrupa en los 4 trimestres, en vez de 4 llamadas trimestrales
- * separadas (que repetirían meses).
+ * línea de "Acumulado Trimestral"). Antes pedía los 12 meses uno por uno
+ * (`getKpisResumen` × 12 → 12 round-trips); ahora es una sola llamada a
+ * `getKpisMensual` agrupada en los 4 trimestres del lado del cliente.
  */
 export async function getAgregadosPorTrimestre(
   accessToken: string,
   anio: number,
 ): Promise<AgregadoKpi[]> {
-  const resumenes = await Promise.all(
-    Array.from({ length: 12 }, (_, i) => getKpisResumen(accessToken, { anio, mes: i + 1 })),
-  );
-  const porMes = resumenes.map((r) => r.mesActual ?? AGREGADO_VACIO);
+  const porMes = await getKpisMensual(accessToken, anio);
   return [1, 2, 3, 4].map((q) => sumarAgregados(mesesDelTrimestre(q).map((m) => porMes[m - 1]!)));
 }
 

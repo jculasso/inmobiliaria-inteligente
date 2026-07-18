@@ -32,8 +32,16 @@ export class OperacionesService {
       if (filtro.tipo) where.tipo = filtro.tipo;
       if (filtro.anio != null) where.anio = filtro.anio;
       if (filtro.mes != null) where.mes = filtro.mes;
+      if (filtro.estado) where.estado = filtro.estado;
+
       // Alcance por rol: solo operaciones con al menos una punta del conjunto.
-      if (scope.usuarioIds !== null) {
+      // Si además viene `usuarioId` (drill-down por vendedor puntual), se
+      // acota a esa punta exacta — pero solo si cae dentro del alcance del
+      // rol; si no, se oculta (lista vacía), mismo criterio que `assertEnScope`.
+      if (filtro.usuarioId) {
+        const permitido = scope.usuarioIds === null || scope.usuarioIds.includes(filtro.usuarioId);
+        where.puntas = { some: { usuarioId: { in: permitido ? [filtro.usuarioId] : [] } } };
+      } else if (scope.usuarioIds !== null) {
         where.puntas = { some: { usuarioId: { in: scope.usuarioIds } } };
       }
       const rows = await tx.operacion.findMany({
