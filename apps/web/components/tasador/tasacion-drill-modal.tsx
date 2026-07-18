@@ -45,7 +45,7 @@ export function TasacionDrillModal({ titulo, subtitulo, filtro, onClose }: Props
   }, [JSON.stringify(filtro)]);
 
   return (
-    <Modal title={titulo} onClose={onClose}>
+    <Modal title={titulo} onClose={onClose} size="xl">
       {subtitulo && <p className="-mt-2 mb-3 text-xs text-muted">{subtitulo}</p>}
 
       {loading && <p className="py-6 text-sm text-muted">Cargando…</p>}
@@ -56,9 +56,9 @@ export function TasacionDrillModal({ titulo, subtitulo, filtro, onClose }: Props
       )}
 
       {tasaciones && !loading && (
-        <div className="overflow-x-auto rounded-brand border border-line">
-          <table className="w-full text-sm">
-            <thead>
+        <div className="max-h-[65vh] overflow-auto rounded-brand border border-line">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead className="sticky top-0 z-10 bg-white">
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-3 py-2">Fecha</th>
                 <th className="px-3 py-2">Cliente</th>
@@ -91,7 +91,7 @@ export function TasacionDrillModal({ titulo, subtitulo, filtro, onClose }: Props
               )}
             </tbody>
             {tasaciones.length > 0 && (
-              <tfoot>
+              <tfoot className="sticky bottom-0 bg-white">
                 <tr className="border-t-2 border-line font-bold text-ink">
                   <td className="px-3 py-2" colSpan={7}>
                     Total ({tasaciones.length})

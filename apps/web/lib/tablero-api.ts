@@ -103,13 +103,6 @@ export async function getKpisResumen(accessToken: string, filtro: KpiFiltro) {
   });
 }
 
-export async function getRanking(accessToken: string, filtro: KpiFiltro) {
-  return apiFetch('/tablero/kpis/ranking', z.array(RankingItemSchema), {
-    accessToken,
-    searchParams: { anio: filtro.anio, mes: filtro.mes },
-  });
-}
-
 /** Agregados de los 12 meses del año en una sola llamada de red. */
 export async function getKpisMensual(accessToken: string, anio: number) {
   return apiFetch('/tablero/kpis/mensual', z.array(AgregadoKpiSchema), {
@@ -118,9 +111,25 @@ export async function getKpisMensual(accessToken: string, anio: number) {
   });
 }
 
+const ResumenRangoSchema = z.object({
+  agregado: AgregadoKpiSchema,
+  ranking: z.array(RankingItemSchema),
+});
+
+/** Agregado + ranking de [mesInicio..mesFin] en una sola llamada de red. */
+export async function getResumenRango(
+  accessToken: string,
+  anio: number,
+  mesInicio: number,
+  mesFin: number,
+) {
+  return apiFetch('/tablero/kpis/rango', ResumenRangoSchema, {
+    accessToken,
+    searchParams: { anio, mesInicio, mesFin },
+  });
+}
+
 // --- Resumen por período (Anual / Trimestral / Mensual), como el prototipo ---
-// La API no tiene un endpoint de "trimestre": se arma pidiendo los 3 meses del
-// trimestre en paralelo y sumando.
 
 const AGREGADO_VACIO: AgregadoKpi = {
   volumen: 0,
@@ -154,32 +163,6 @@ export function sumarAgregados(lista: AgregadoKpi[]): AgregadoKpi {
   return { ...acc, ticketPromedio: acc.puntas > 0 ? acc.volumen / acc.puntas : 0 };
 }
 
-export function mergearRanking(listas: RankingItem[][]): RankingItem[] {
-  const porVendedor = new Map<string, RankingItem>();
-  for (const item of listas.flat()) {
-    const actual = porVendedor.get(item.usuarioId);
-    if (!actual) {
-      porVendedor.set(item.usuarioId, { ...item });
-      continue;
-    }
-    actual.volumen += item.volumen;
-    actual.operaciones += item.operaciones;
-    actual.puntas += item.puntas;
-    actual.puntasCompradoras += item.puntasCompradoras;
-    actual.puntasVendedoras += item.puntasVendedoras;
-    actual.comision += item.comision;
-  }
-
-  const items = [...porVendedor.values()].map((item) => ({
-    ...item,
-    ticketPromedio: item.puntas > 0 ? item.volumen / item.puntas : 0,
-  }));
-  const totalVolumen = items.reduce((sum, item) => sum + item.volumen, 0);
-  return items
-    .map((item) => ({ ...item, peso: totalVolumen > 0 ? item.volumen / totalVolumen : 0 }))
-    .sort((a, b) => b.volumen - a.volumen);
-}
-
 export type PeriodoResumen = 'anual' | 'trimestral' | 'mensual';
 
 export interface ResumenPeriodoResult {
@@ -201,31 +184,22 @@ export async function getAgregadosPorTrimestre(
   return [1, 2, 3, 4].map((q) => sumarAgregados(mesesDelTrimestre(q).map((m) => porMes[m - 1]!)));
 }
 
+/**
+ * Antes esto pedía 2 llamadas (resumen+ranking) para anual/mensual y 6 (3
+ * meses × 2) para trimestral — ahora siempre 1, vía `/tablero/kpis/rango`.
+ */
 export async function getResumenPeriodo(
   accessToken: string,
   opts: { anio: number; periodo: PeriodoResumen; mes?: number; trimestre?: number },
 ): Promise<ResumenPeriodoResult> {
   const { anio, periodo, mes, trimestre } = opts;
 
-  if (periodo === 'trimestral') {
-    const meses = mesesDelTrimestre(trimestre ?? 1);
-    const [resumenes, rankings] = await Promise.all([
-      Promise.all(meses.map((m) => getKpisResumen(accessToken, { anio, mes: m }))),
-      Promise.all(meses.map((m) => getRanking(accessToken, { anio, mes: m }))),
-    ]);
-    return {
-      agregado: sumarAgregados(resumenes.map((r) => r.mesActual ?? AGREGADO_VACIO)),
-      ranking: mergearRanking(rankings),
-    };
-  }
+  const [mesInicio, mesFin] =
+    periodo === 'trimestral'
+      ? [mesesDelTrimestre(trimestre ?? 1)[0], mesesDelTrimestre(trimestre ?? 1)[2]]
+      : periodo === 'mensual'
+        ? [mes ?? 1, mes ?? 1]
+        : [1, 12];
 
-  const filtroMes = periodo === 'mensual' ? mes : undefined;
-  const [resumen, ranking] = await Promise.all([
-    getKpisResumen(accessToken, { anio, mes: filtroMes }),
-    getRanking(accessToken, { anio, mes: filtroMes }),
-  ]);
-  return {
-    agregado: (periodo === 'mensual' ? resumen.mesActual : resumen.anual) ?? AGREGADO_VACIO,
-    ranking,
-  };
+  return getResumenRango(accessToken, anio, mesInicio, mesFin);
 }

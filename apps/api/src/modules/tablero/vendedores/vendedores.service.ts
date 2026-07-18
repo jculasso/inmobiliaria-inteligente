@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { CreateVendedor, ObjetivoInput, UpdateVendedor } from '@vacker/types';
+import { RolAsignableSchema, type CreateVendedor, type ObjetivoInput, type UpdateVendedor } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { decToNum } from '../tablero.util';
@@ -80,7 +80,14 @@ export class VendedoresService {
       await tx.usuario.update({ where: { id }, data });
 
       if (dto.roles !== undefined) {
-        await tx.usuarioRol.deleteMany({ where: { usuarioId: id } });
+        // Solo se reemplazan los roles asignables desde este formulario
+        // (vendedor/team_leader/direccion/admin_tenant). `admin_plataforma`
+        // (o cualquier otro rol fuera de ese conjunto) no es tocado — si se
+        // borrara acá, un simple "asignar líder" podría dejar sin acceso de
+        // plataforma a quien lo tuviera.
+        await tx.usuarioRol.deleteMany({
+          where: { usuarioId: id, rol: { in: [...RolAsignableSchema.options] } },
+        });
         await tx.usuarioRol.createMany({
           data: [...new Set(dto.roles)].map((rol) => ({ usuarioId: id, rol, tenantId: ctx.tenantId })),
         });

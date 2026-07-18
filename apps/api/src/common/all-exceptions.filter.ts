@@ -52,7 +52,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       // Errores conocidos de Prisma mapeados a HTTP (evita 500 por, p. ej.,
-      // violación de índice único bajo carrera).
+      // violación de índice único bajo carrera). Se loguean siempre con su
+      // código y meta — el mensaje que ve el cliente es genérico, pero sin
+      // este log la causa real (qué constraint, qué tabla) queda invisible.
+      this.logger.error(`Prisma ${exception.code}: ${exception.message}`, JSON.stringify(exception.meta));
       if (exception.code === 'P2002') {
         status = HttpStatus.CONFLICT;
         message = 'Ya existe un registro con esos datos únicos.';
