@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  CambiarEstadoSchema,
   CreateTasacionSchema,
   TasacionFiltroSchema,
   UpdateTasacionSchema,
+  type CambiarEstado,
   type CreateTasacion,
   type TasacionFiltro,
   type UpdateTasacion,
@@ -56,6 +58,17 @@ export class TasacionesController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.tasaciones.update(id, dto, ctxDe(user));
+  }
+
+  @Patch(':id/estado')
+  @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
+  @ApiOperation({ summary: 'Cambia el estado (captación): "Captada" exige exclusividad, "No captada" exige motivo' })
+  cambiarEstado(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(CambiarEstadoSchema)) dto: CambiarEstado,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.tasaciones.cambiarEstado(id, dto, ctxDe(user));
   }
 
   @Delete(':id')

@@ -307,3 +307,15 @@ export const TasacionDtoSchema = z.object({
   updatedAt: z.string(),
 });
 export type TasacionDto = z.infer<typeof TasacionDtoSchema>;
+
+// --- Sprint 3: cambio de estado (captación) ---
+// Discriminada por `estado`: la propia forma del contrato exige el dato que
+// pide cada transición (exclusividad al captar, motivo al no captar), sin
+// lógica if/else adicional en el servicio.
+export const CambiarEstadoSchema = z.discriminatedUnion('estado', [
+  z.object({ estado: z.literal('En proceso') }),
+  z.object({ estado: z.literal('Presentada') }),
+  z.object({ estado: z.literal('Captada'), exclusividad: ExclusividadSchema }),
+  z.object({ estado: z.literal('No captada'), motivoNoCaptada: MotivoNoCaptadaSchema }),
+]);
+export type CambiarEstado = z.infer<typeof CambiarEstadoSchema>;

@@ -8,7 +8,16 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
 import { fmtNum } from '../../lib/format';
 import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
+import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { TasacionFormModal } from './tasacion-form-modal';
+
+function detalleEstado(t: TasacionDto): string | null {
+  if (t.estado === 'Captada' && t.exclusividad) {
+    return t.exclusividad.tipo === 'exclusiva' ? `Exclusiva ${t.exclusividad.dias} días` : 'No exclusiva';
+  }
+  if (t.estado === 'No captada' && t.motivoNoCaptada) return t.motivoNoCaptada;
+  return null;
+}
 
 function estadoClass(estado: string): string {
   if (estado === 'Captada') return 'bg-success/10 text-success';
@@ -25,6 +34,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState<'create' | TasacionDto | null>(null);
+  const [modalEstado, setModalEstado] = useState<TasacionDto | null>(null);
   const [generandoId, setGenerandoId] = useState<string | null>(null);
 
   const filtradas = useMemo(() => {
@@ -105,9 +115,14 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
                   <td className="px-4 py-2">{fmtNum(t.superficieTotal)} m²</td>
                   <td className="px-4 py-2 text-muted">{t.agente.nombre}</td>
                   <td className="px-4 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(t.estado)}`}>
+                    <button
+                      type="button"
+                      onClick={() => setModalEstado(t)}
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(t.estado)}`}
+                    >
                       {t.estado}
-                    </span>
+                    </button>
+                    {detalleEstado(t) && <div className="mt-0.5 text-xs text-muted">{detalleEstado(t)}</div>}
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
@@ -148,6 +163,17 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
           onClose={() => setModal(null)}
           onSaved={() => {
             setModal(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {modalEstado && (
+        <CambiarEstadoModal
+          tasacion={modalEstado}
+          onClose={() => setModalEstado(null)}
+          onSaved={() => {
+            setModalEstado(null);
             router.refresh();
           }}
         />
