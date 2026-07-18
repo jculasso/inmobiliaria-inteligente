@@ -120,6 +120,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.47.10
         version: 2.110.6
+      '@vacker/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@vacker/types':
         specifier: workspace:*
         version: link:../../packages/types

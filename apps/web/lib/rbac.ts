@@ -49,3 +49,8 @@ export function puedeGestionarVendedores(roles: Rol[]): boolean {
 export function puedeBorrarOperaciones(roles: Rol[]): boolean {
   return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
 }
+
+/** DELETE /tasador/tasaciones/:id. */
+export function puedeBorrarTasaciones(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
+}

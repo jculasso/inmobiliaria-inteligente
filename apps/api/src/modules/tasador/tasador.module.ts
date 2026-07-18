@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
+import { TasacionesController } from './tasaciones/tasaciones.controller';
+import { TasacionesService } from './tasaciones/tasaciones.service';
 
-/**
- * Módulo Tasador de Propiedades (Sprint 0 — fundaciones). Sin controllers
- * todavía: el esquema de datos, RLS y el paquete de dominio (@vacker/domain)
- * ya están listos; el CRUD y los endpoints llegan en el Sprint 1.
- */
-@Module({})
+/** Módulo Tasador de Propiedades: CRUD de tasaciones (Sprint 1). */
+@Module({
+  controllers: [TasacionesController],
+  providers: [TasacionesService],
+})
 export class TasadorModule {}
