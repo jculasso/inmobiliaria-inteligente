@@ -63,6 +63,16 @@ suite('Aislamiento entre tenants (RLS)', () => {
        VALUES ($1, 'admin_tenant', $3), ($2, 'admin_tenant', $4)`,
       [userA, userB, tenantA, tenantB],
     );
+    // Una tasación por tenant, para verificar que el aislamiento también
+    // aplica a las tablas del módulo Tasador (no solo al núcleo).
+    await client.query(
+      `INSERT INTO tasacion
+         (id, tenant_id, agente_id, cliente, fecha, direccion, tipo_operacion, tipo_propiedad, superficie_total, updated_at)
+       VALUES
+         ($1, $3, $5, 'Cliente A', now(), 'Calle Falsa 123', 'venta', 'Casa', 100, now()),
+         ($2, $4, $6, 'Cliente B', now(), 'Calle Falsa 456', 'venta', 'Casa', 100, now())`,
+      [randomUUID(), randomUUID(), tenantA, tenantB, userA, userB],
+    );
   });
 
   afterAll(async () => {
@@ -116,5 +126,18 @@ suite('Aislamiento entre tenants (RLS)', () => {
     const r = await client.query<{ email: string }>('SELECT email FROM usuario');
     expect(r.rows).toHaveLength(1);
     expect(r.rows[0]?.email).toBe('b@iso.test');
+  });
+
+  it('el aislamiento también aplica al módulo Tasador (tabla tasacion)', async () => {
+    await enterTenant(tenantA, userA);
+    const propias = await client.query<{ cliente: string }>('SELECT cliente FROM tasacion');
+    expect(propias.rows).toHaveLength(1);
+    expect(propias.rows[0]?.cliente).toBe('Cliente A');
+
+    const upd = await client.query(
+      'UPDATE tasacion SET cliente = $1 WHERE agente_id = $2',
+      ['hackeado', userB],
+    );
+    expect(upd.rowCount).toBe(0);
   });
 });
