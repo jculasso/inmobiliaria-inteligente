@@ -319,3 +319,39 @@ export const CambiarEstadoSchema = z.discriminatedUnion('estado', [
   z.object({ estado: z.literal('No captada'), motivoNoCaptada: MotivoNoCaptadaSchema }),
 ]);
 export type CambiarEstado = z.infer<typeof CambiarEstadoSchema>;
+
+// --- Sprint 4: dashboard (KPIs, distribución por estado, ranking de captaciones) ---
+
+/**
+ * A diferencia de `KpiFiltroSchema` (Tablero, que no tiene endpoint de
+ * trimestre y arma el trimestral sumando 3 meses del lado del cliente), acá
+ * el período va explícito y el servidor resuelve el rango de fechas en una
+ * sola consulta (los KPIs de Tasador son conteos/tasas, triviales de agregar
+ * sobre cualquier rango).
+ */
+export const TasadorKpiFiltroSchema = z.object({
+  anio: z.coerce.number().int().min(2000).max(2100),
+  periodo: z.enum(['anual', 'trimestral', 'mensual']),
+  mes: z.coerce.number().int().min(1).max(12).optional(),
+  trimestre: z.coerce.number().int().min(1).max(4).optional(),
+});
+export type TasadorKpiFiltro = z.infer<typeof TasadorKpiFiltroSchema>;
+
+export const ResumenTasadorKpiSchema = z.object({
+  total: z.number(),
+  /** captadas / total (0 si total = 0). */
+  tasaCaptacion: z.number(),
+  distribucionEstado: z.array(z.object({ estado: EstadoTasacionSchema, cantidad: z.number() })),
+});
+export type ResumenTasadorKpi = z.infer<typeof ResumenTasadorKpiSchema>;
+
+export const RankingCaptacionItemSchema = z.object({
+  usuarioId: z.string(),
+  nombre: z.string(),
+  captadas: z.number(),
+  total: z.number(),
+  tasaCaptacion: z.number(),
+  /** Participación sobre el total de captadas del alcance (0..1). */
+  peso: z.number(),
+});
+export type RankingCaptacionItem = z.infer<typeof RankingCaptacionItemSchema>;

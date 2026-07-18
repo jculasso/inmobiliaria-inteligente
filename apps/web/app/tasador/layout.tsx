@@ -5,6 +5,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
 import { LogoutButton } from '../../components/logout-button';
+import { TasadorNav } from '../../components/tasador/tasador-nav';
 
 export default async function TasadorLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -48,6 +49,10 @@ export default async function TasadorLayout({ children }: { children: ReactNode 
           <span className="text-sm text-muted">{principal.email}</span>
           <LogoutButton />
         </div>
+      </div>
+
+      <div className="mt-6">
+        <TasadorNav />
       </div>
 
       <div className="mt-6">{children}</div>
