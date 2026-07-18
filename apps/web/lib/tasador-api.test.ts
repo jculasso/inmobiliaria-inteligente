@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTasacion, deleteTasacion, listTasaciones, updateTasacion } from './tasador-api';
+import {
+  createTasacion,
+  deleteTasacion,
+  generarInforme,
+  listTasaciones,
+  updateTasacion,
+} from './tasador-api';
 
 const TASACION = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -37,6 +43,7 @@ const TASACION = {
   expensas: null,
   aptoCredito: null,
   documentacion: null,
+  comparables: [],
   analisisComercial: null,
   valorMinimo: null,
   valorRecomendado: null,
@@ -115,5 +122,19 @@ describe('tasador-api', () => {
     const [url, options] = fetchMock.mock.calls[0]!;
     expect(String(url)).toBe(`http://localhost:3001/tasador/tasaciones/${TASACION.id}`);
     expect(options.method).toBe('DELETE');
+  });
+
+  it('generarInforme hace POST a /tasador/tasaciones/:id/informe y devuelve la URL', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ url: 'https://example.test/informe.pdf' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generarInforme('token', TASACION.id);
+
+    const [url, options] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe(`http://localhost:3001/tasador/tasaciones/${TASACION.id}/informe`);
+    expect(options.method).toBe('POST');
+    expect(result.url).toBe('https://example.test/informe.pdf');
   });
 });

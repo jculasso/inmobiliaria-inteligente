@@ -1,15 +1,43 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { TipoPropiedadSchema, type TasacionDto, type TipoOperacion, type TipoPropiedad } from '@vacker/types';
-import { superficieTotal } from '@vacker/domain';
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  AspectoSchema,
+  EscenarioSchema,
+  EstrategiaAccionSchema,
+  FortalezaSchema,
+  NivelSchema,
+  PerfilCompradorSchema,
+  PlazoEstimadoSchema,
+  TipoPropiedadSchema,
+  type Aspecto,
+  type ComparableInput,
+  type Escenario,
+  type EstrategiaAccion,
+  type Fortaleza,
+  type Nivel,
+  type PerfilComprador,
+  type PlazoEstimado,
+  type TasacionDto,
+  type TipoOperacion,
+  type TipoPropiedad,
+} from '@vacker/types';
+import { promedioUsdM2, superficieTotal, valoresSugeridos } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTasacion, updateTasacion } from '../../lib/tasador-api';
-import { fmtNum } from '../../lib/format';
+import { fmtNum, fmtUSD } from '../../lib/format';
 import { Modal } from '../tablero/modal';
+import { ComparablesEditor } from './comparables-editor';
 
 const TIPOS_PROPIEDAD = TipoPropiedadSchema.options;
+const NIVELES = NivelSchema.options;
+const PERFILES_COMPRADOR = PerfilCompradorSchema.options;
+const ESCENARIOS = EscenarioSchema.options;
+const PLAZOS = PlazoEstimadoSchema.options;
+const FORTALEZAS = FortalezaSchema.options;
+const ASPECTOS = AspectoSchema.options;
+const ESTRATEGIAS = EstrategiaAccionSchema.options;
 
 interface Props {
   tasacion?: TasacionDto;
@@ -50,14 +78,57 @@ export function TasacionFormModal({ tasacion, onClose, onSaved }: Props) {
   const [aptoCredito, setAptoCredito] = useState(tasacion?.aptoCredito ?? '');
   const [documentacion, setDocumentacion] = useState(tasacion?.documentacion ?? '');
 
+  // Sección 3 — Análisis comercial
+  const [fortalezas, setFortalezas] = useState<string[]>(tasacion?.analisisComercial?.fortalezas ?? []);
+  const [aspectos, setAspectos] = useState<string[]>(tasacion?.analisisComercial?.aspectos ?? []);
+  const [demanda, setDemanda] = useState<Nivel | ''>(tasacion?.analisisComercial?.demanda ?? '');
+  const [competencia, setCompetencia] = useState<Nivel | ''>(tasacion?.analisisComercial?.competencia ?? '');
+  const [perfilComprador, setPerfilComprador] = useState<PerfilComprador | ''>(
+    tasacion?.analisisComercial?.perfilComprador ?? '',
+  );
+  const [observacionesComerciales, setObservacionesComerciales] = useState(
+    tasacion?.analisisComercial?.observacionesComerciales ?? '',
+  );
+
+  // Comparables
+  const [comparables, setComparables] = useState<ComparableInput[]>(
+    tasacion?.comparables.map(({ usdM2: _usdM2, ...c }) => c) ?? [],
+  );
+
+  // Sección 5 — Valores
+  const [valorMinimo, setValorMinimo] = useState(String(tasacion?.valorMinimo ?? ''));
+  const [valorRecomendado, setValorRecomendado] = useState(String(tasacion?.valorRecomendado ?? ''));
+  const [valorAspiracional, setValorAspiracional] = useState(String(tasacion?.valorAspiracional ?? ''));
+  const [margenNegociacion, setMargenNegociacion] = useState(String(tasacion?.margenNegociacion ?? ''));
+  const [escenarioRecomendado, setEscenarioRecomendado] = useState<Escenario | ''>(
+    tasacion?.escenarioRecomendado ?? '',
+  );
+  const [plazoEstimado, setPlazoEstimado] = useState<PlazoEstimado | ''>(tasacion?.plazoEstimado ?? '');
+
+  // Sección 6 — Estrategia comercial
+  const [estrategia, setEstrategia] = useState<string[]>(tasacion?.estrategiaComercial?.estrategia ?? []);
+  const [observacionesEstrategia, setObservacionesEstrategia] = useState(
+    tasacion?.estrategiaComercial?.observacionesEstrategia ?? '',
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const preview = superficieTotal({
+  const superficieTotalPreview = superficieTotal({
     cubierta: Number(supCubierta) || 0,
     semicubierta: Number(supSemicubierta) || 0,
     descubierta: Number(supDescubierta) || 0,
   });
+
+  const sugerencia = useMemo(() => {
+    const validos = comparables.filter((c) => c.superficie > 0 && c.precio > 0);
+    if (validos.length < 3) return null;
+    return valoresSugeridos(superficieTotalPreview, promedioUsdM2(validos));
+  }, [comparables, superficieTotalPreview]);
+
+  function toggle(lista: string[], setLista: (v: string[]) => void, valor: string) {
+    setLista(lista.includes(valor) ? lista.filter((v) => v !== valor) : [...lista, valor]);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -99,6 +170,25 @@ export function TasacionFormModal({ tasacion, onClose, onSaved }: Props) {
         expensas: expensas ? Number(expensas) : null,
         aptoCredito: aptoCredito || null,
         documentacion: documentacion || null,
+        comparables: comparables.length > 0 ? comparables : undefined,
+        analisisComercial: {
+          fortalezas: fortalezas as Fortaleza[],
+          aspectos: aspectos as Aspecto[],
+          demanda: demanda || null,
+          competencia: competencia || null,
+          perfilComprador: perfilComprador || null,
+          observacionesComerciales: observacionesComerciales || null,
+        },
+        valorMinimo: valorMinimo ? Number(valorMinimo) : null,
+        valorRecomendado: valorRecomendado ? Number(valorRecomendado) : null,
+        valorAspiracional: valorAspiracional ? Number(valorAspiracional) : null,
+        margenNegociacion: margenNegociacion ? Number(margenNegociacion) : null,
+        escenarioRecomendado: escenarioRecomendado || null,
+        plazoEstimado: plazoEstimado || null,
+        estrategiaComercial: {
+          estrategia: estrategia as EstrategiaAccion[],
+          observacionesEstrategia: observacionesEstrategia || null,
+        },
       };
 
       if (tasacion) {
@@ -209,7 +299,7 @@ export function TasacionFormModal({ tasacion, onClose, onSaved }: Props) {
         </div>
         <div className="rounded-brand bg-surface px-3 py-2 text-sm">
           <span className="font-medium text-ink">Superficie total: </span>
-          <span className="font-bold text-brand-red">{fmtNum(preview)} m²</span>
+          <span className="font-bold text-brand-red">{fmtNum(superficieTotalPreview)} m²</span>
           <span className="ml-1 text-xs text-muted">(cubierta + semicubierta + 30% descubierta)</span>
         </div>
         <Campo label="Sup. terreno (m²)">
@@ -340,6 +430,143 @@ export function TasacionFormModal({ tasacion, onClose, onSaved }: Props) {
           />
         </Campo>
 
+        <p className="mt-2 text-xs font-bold uppercase tracking-wide text-muted">3. Análisis comercial</p>
+        <CheckPills label="Fortalezas" opciones={FORTALEZAS} valores={fortalezas} onToggle={(v) => toggle(fortalezas, setFortalezas, v)} />
+        <CheckPills label="Aspectos a considerar" opciones={ASPECTOS} valores={aspectos} onToggle={(v) => toggle(aspectos, setAspectos, v)} />
+        <div className="grid grid-cols-3 gap-3">
+          <Campo label="Demanda">
+            <select value={demanda} onChange={(e) => setDemanda(e.target.value as Nivel | '')} className={inputClass}>
+              <option value="">—</option>
+              {NIVELES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo label="Competencia">
+            <select value={competencia} onChange={(e) => setCompetencia(e.target.value as Nivel | '')} className={inputClass}>
+              <option value="">—</option>
+              {NIVELES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo label="Perfil de comprador">
+            <select
+              value={perfilComprador}
+              onChange={(e) => setPerfilComprador(e.target.value as PerfilComprador | '')}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {PERFILES_COMPRADOR.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        </div>
+        <Campo label="Observaciones comerciales">
+          <textarea
+            value={observacionesComerciales}
+            onChange={(e) => setObservacionesComerciales(e.target.value)}
+            className={inputClass}
+            rows={2}
+          />
+        </Campo>
+
+        <ComparablesEditor comparables={comparables} onChange={setComparables} />
+
+        <p className="mt-2 text-xs font-bold uppercase tracking-wide text-muted">5. Valores de tasación</p>
+        {sugerencia && (
+          <div className="rounded-brand bg-surface px-3 py-2 text-xs text-muted">
+            Sugerido según comparables: mínimo {fmtUSD(sugerencia.minimo)} · recomendado{' '}
+            {fmtUSD(sugerencia.recomendado)} · aspiracional {fmtUSD(sugerencia.aspiracional)} — podés
+            editar estos valores.
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-3">
+          <Campo label="Valor mínimo (USD)">
+            <input
+              type="number"
+              min={0}
+              value={valorMinimo}
+              onChange={(e) => setValorMinimo(e.target.value)}
+              placeholder={sugerencia ? String(Math.round(sugerencia.minimo)) : undefined}
+              className={inputClass}
+            />
+          </Campo>
+          <Campo label="Valor recomendado (USD)">
+            <input
+              type="number"
+              min={0}
+              value={valorRecomendado}
+              onChange={(e) => setValorRecomendado(e.target.value)}
+              placeholder={sugerencia ? String(Math.round(sugerencia.recomendado)) : undefined}
+              className={inputClass}
+            />
+          </Campo>
+          <Campo label="Valor aspiracional (USD)">
+            <input
+              type="number"
+              min={0}
+              value={valorAspiracional}
+              onChange={(e) => setValorAspiracional(e.target.value)}
+              placeholder={sugerencia ? String(Math.round(sugerencia.aspiracional)) : undefined}
+              className={inputClass}
+            />
+          </Campo>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Campo label="Margen de negociación (%)">
+            <input
+              type="number"
+              min={0}
+              value={margenNegociacion}
+              onChange={(e) => setMargenNegociacion(e.target.value)}
+              className={inputClass}
+            />
+          </Campo>
+          <Campo label="Escenario recomendado">
+            <select
+              value={escenarioRecomendado}
+              onChange={(e) => setEscenarioRecomendado(e.target.value as Escenario | '')}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {ESCENARIOS.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo label="Plazo estimado">
+            <select value={plazoEstimado} onChange={(e) => setPlazoEstimado(e.target.value as PlazoEstimado | '')} className={inputClass}>
+              <option value="">—</option>
+              {PLAZOS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        </div>
+
+        <p className="mt-2 text-xs font-bold uppercase tracking-wide text-muted">6. Estrategia comercial</p>
+        <CheckPills label="Acciones" opciones={ESTRATEGIAS} valores={estrategia} onToggle={(v) => toggle(estrategia, setEstrategia, v)} />
+        <Campo label="Observaciones de estrategia">
+          <textarea
+            value={observacionesEstrategia}
+            onChange={(e) => setObservacionesEstrategia(e.target.value)}
+            className={inputClass}
+            rows={2}
+          />
+        </Campo>
+
         {error && (
           <p role="alert" className="text-sm font-medium text-brand-red">
             {error}
@@ -356,6 +583,40 @@ export function TasacionFormModal({ tasacion, onClose, onSaved }: Props) {
         </div>
       </form>
     </Modal>
+  );
+}
+
+function CheckPills({
+  label,
+  opciones,
+  valores,
+  onToggle,
+}: {
+  label: string;
+  opciones: readonly string[];
+  valores: string[];
+  onToggle: (valor: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-ink">{label}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {opciones.map((o) => (
+          <button
+            key={o}
+            type="button"
+            onClick={() => onToggle(o)}
+            className={`rounded-full border px-2.5 py-1 text-xs ${
+              valores.includes(o)
+                ? 'border-brand-red bg-brand-red/10 text-brand-red'
+                : 'border-line text-muted hover:border-brand-red/40'
+            }`}
+          >
+            {o}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
