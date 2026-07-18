@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { superficieTotal, usdM2 } from '@vacker/domain';
-import type { CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
+import type { CambiarEstado, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
+import { DomainEventsService } from '../../../common/domain-events.service';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
@@ -17,7 +18,10 @@ export type TasacionRow = Prisma.TasacionGetPayload<{ include: typeof tasacionIn
 /** CRUD de tasaciones: secciones "Datos del informe", "Características", "Análisis comercial", "Valores" y "Estrategia", más comparables. */
 @Injectable()
 export class TasacionesService {
-  constructor(private readonly db: TenantPrismaService) {}
+  constructor(
+    private readonly db: TenantPrismaService,
+    private readonly events: DomainEventsService,
+  ) {}
 
   /** Lista tasaciones del tenant, acotadas por el scope del rol y los filtros. */
   async list(filtro: TasacionFiltro, ctx: TenantContext) {
@@ -106,6 +110,64 @@ export class TasacionesService {
       const row = await tx.tasacion.update({ where: { id }, data, include: tasacionInclude });
       return toDto(row);
     });
+  }
+
+  /**
+   * Cambia el estado de una tasación (captación). "Captada" exige exclusividad,
+   * "No captada" exige motivo — ya validado por `CambiarEstadoSchema`. Registra
+   * el cambio en `tasacionEstadoHistorial` y emite los eventos de dominio.
+   */
+  async cambiarEstado(id: string, dto: CambiarEstado, ctx: TenantContext) {
+    const row = await this.db.withTenant(async (tx) => {
+      const actual = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
+      if (!actual) throw new NotFoundException('Tasación no encontrada.');
+      assertEnScope(actual, await resolverScope(ctx, tx));
+
+      const exclusividad = dto.estado === 'Captada' ? dto.exclusividad : null;
+      const motivoNoCaptada = dto.estado === 'No captada' ? dto.motivoNoCaptada : null;
+      const detalle = dto.estado === 'Captada' ? exclusividad : motivoNoCaptada ? { motivoNoCaptada } : null;
+
+      // Ya estamos dentro de la transacción que abre `withTenant`: ambas
+      // escrituras son atómicas sin necesitar un `$transaction` anidado.
+      const updated = await tx.tasacion.update({
+        where: { id },
+        data: {
+          estado: dto.estado,
+          exclusividad: exclusividad as Prisma.InputJsonValue,
+          motivoNoCaptada,
+        },
+        include: tasacionInclude,
+      });
+      await tx.tasacionEstadoHistorial.create({
+        data: {
+          tenantId: actual.tenantId,
+          tasacionId: id,
+          estadoAnterior: actual.estado,
+          estadoNuevo: dto.estado,
+          usuarioId: ctx.userId,
+          detalle: detalle as Prisma.InputJsonValue,
+        },
+      });
+      return { updated, estadoAnterior: actual.estado };
+    });
+
+    this.events.emit('tasacion_estado_cambiado', {
+      tenantId: ctx.tenantId,
+      tasacionId: id,
+      estadoAnterior: row.estadoAnterior,
+      estadoNuevo: dto.estado,
+      usuarioId: ctx.userId,
+    });
+    if (dto.estado === 'Captada') {
+      this.events.emit('tasacion_captada', {
+        tenantId: ctx.tenantId,
+        tasacionId: id,
+        usuarioId: ctx.userId,
+        exclusividad: dto.exclusividad,
+      });
+    }
+
+    return toDto(row.updated);
   }
 
   /** Elimina una tasación (comparables/fotos/historial caen por cascade). */

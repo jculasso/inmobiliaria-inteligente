@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DomainEventsService } from '../../common/domain-events.service';
 import { InformesController } from './informes/informes.controller';
 import { InformesService } from './informes/informes.service';
 import { SupabaseStorageService } from './informes/supabase-storage.service';
@@ -8,6 +9,6 @@ import { TasacionesService } from './tasaciones/tasaciones.service';
 /** Módulo Tasador de Propiedades: CRUD de tasaciones + generación de informes en PDF. */
 @Module({
   controllers: [TasacionesController, InformesController],
-  providers: [TasacionesService, InformesService, SupabaseStorageService],
+  providers: [TasacionesService, InformesService, SupabaseStorageService, DomainEventsService],
 })
 export class TasadorModule {}

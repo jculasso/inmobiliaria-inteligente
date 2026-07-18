@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   TasacionDtoSchema,
+  type CambiarEstado,
   type CreateTasacion,
   type TasacionFiltro,
   type UpdateTasacion,
@@ -33,6 +34,14 @@ export async function createTasacion(accessToken: string, dto: CreateTasacion) {
 
 export async function updateTasacion(accessToken: string, id: string, dto: UpdateTasacion) {
   return apiFetch(`/tasador/tasaciones/${id}`, TasacionDtoSchema, {
+    accessToken,
+    method: 'PATCH',
+    body: dto,
+  });
+}
+
+export async function cambiarEstadoTasacion(accessToken: string, id: string, dto: CambiarEstado) {
+  return apiFetch(`/tasador/tasaciones/${id}/estado`, TasacionDtoSchema, {
     accessToken,
     method: 'PATCH',
     body: dto,
