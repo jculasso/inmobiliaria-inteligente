@@ -25,16 +25,18 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Refresca el token si hace falta y sincroniza las cookies (necesario en cada request).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifica el JWT localmente (JWKS cacheado, sin red) porque el
+  // proyecto firma con clave asimétrica — a diferencia de getUser(), que
+  // manda una request a Supabase en CADA navegación. Con Render y Vercel sin
+  // región cercana a Supabase (sa-east-1), ese round trip por click se sentía.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
   // "/" es pública: el login vive embebido ahí (ver app/page.tsx). El resto
   // de las rutas (p. ej. /tablero/*) exige sesión y redirige a la Home.
   const isPublicPath = PUBLIC_PATHS.includes(request.nextUrl.pathname);
 
-  if (!user && !isPublicPath) {
+  if (!claims && !isPublicPath) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
