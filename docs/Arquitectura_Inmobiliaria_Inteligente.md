@@ -417,6 +417,6 @@ Señales que indican que llegó el momento de dejar el free tier y avanzar hacia
 
 **Costo estimado**: Supabase Pro (~US$25/mes, sale de disparadores de escala §19.5) + Lightsail Container Service 2 nodos (~US$30-40/mes) + Vercel Pro si el uso pasa a ser comercial con múltiples inmobiliarias (~US$20/mes) + monitoreo (Sentry + uptime, ~US$40/mes) ronda los US$115-125/mes con presupuesto de referencia de US$200/mes, dejando margen para escalar cómputo.
 
-**Secuencia acordada**: (1) cerrar el Tablero y el Tasador funcionando "de diez" en el stack actual (free tier); (2) recién ahí ejecutar esta migración de infraestructura; (3) continuar con las apps móviles (React Native, §19.3 punto 6) ya sobre la infraestructura migrada, para no lanzarlas arrastrando el mismo problema de latencia.
+**Secuencia acordada (revisada, 2026-07-19)**: (1) cerrar el Tablero y el Tasador funcionando "de diez" en el stack actual (free tier); (2) construir las apps móviles (React Native, §19.3 punto 6) — **decisión explícita del usuario de ir con esto antes que con la migración de infraestructura**, a sabiendas de que las apps van a arrancar con el mismo problema de latencia que la web hoy (o más notorio, por la menor tolerancia de espera en mobile y la variabilidad de las redes 4G/5G); (3) recién ahí ejecutar la migración de infraestructura (Lightsail + Supabase Pro, etc.).
 
 *Documento de trabajo · **Vacker** — Inmobiliaria Inteligente 2.0 · v0.2*
