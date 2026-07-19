@@ -53,6 +53,7 @@ export class VendedoresService {
           roles: { create: roles.map((rol) => ({ rol, tenantId: ctx.tenantId })) },
         },
       });
+      if (dto.objetivo) await this.upsertObjetivo(tx, id, dto.objetivo, ctx.tenantId);
       const row = await tx.usuario.findUniqueOrThrow({ where: { id }, include: vendedorInclude });
       return toDto(row);
     });
@@ -93,6 +94,8 @@ export class VendedoresService {
         });
       }
 
+      if (dto.objetivo) await this.upsertObjetivo(tx, id, dto.objetivo, ctx.tenantId);
+
       const row = await tx.usuario.findUniqueOrThrow({ where: { id }, include: vendedorInclude });
       return toDto(row);
     });
@@ -108,30 +111,45 @@ export class VendedoresService {
     });
   }
 
-  /** Crea o actualiza el objetivo anual de un vendedor. */
+  /** Crea o actualiza el objetivo anual de un vendedor (endpoint standalone). */
   async setObjetivo(id: string, dto: ObjetivoInput, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
       await this.assertUsuarioExiste(tx, id);
-      const obj = await tx.objetivo.upsert({
-        where: { tenantId_usuarioId_anio: { tenantId: ctx.tenantId, usuarioId: id, anio: dto.anio } },
-        update: { objComision: dto.objComision, objVolumen: dto.objVolumen, objPuntas: dto.objPuntas },
-        create: {
-          tenantId: ctx.tenantId,
-          usuarioId: id,
-          anio: dto.anio,
-          objComision: dto.objComision,
-          objVolumen: dto.objVolumen,
-          objPuntas: dto.objPuntas,
-        },
-      });
-      return {
-        usuarioId: obj.usuarioId,
-        anio: obj.anio,
-        objComision: decToNum(obj.objComision),
-        objVolumen: decToNum(obj.objVolumen),
-        objPuntas: obj.objPuntas,
-      };
+      return this.upsertObjetivo(tx, id, dto, ctx.tenantId);
     });
+  }
+
+  /**
+   * Upsert del objetivo, reusado por `create`/`update` (cuando el form manda
+   * `objetivo` inline, en la misma transacción) y por `setObjetivo` (endpoint
+   * aparte). Evita un segundo POST/PUT + transacción completa solo para el
+   * objetivo — con la latencia cross-region hacia la base, eso se nota.
+   */
+  private async upsertObjetivo(
+    tx: Prisma.TransactionClient,
+    usuarioId: string,
+    dto: ObjetivoInput,
+    tenantId: string,
+  ) {
+    const obj = await tx.objetivo.upsert({
+      where: { tenantId_usuarioId_anio: { tenantId, usuarioId, anio: dto.anio } },
+      update: { objComision: dto.objComision, objVolumen: dto.objVolumen, objPuntas: dto.objPuntas },
+      create: {
+        tenantId,
+        usuarioId,
+        anio: dto.anio,
+        objComision: dto.objComision,
+        objVolumen: dto.objVolumen,
+        objPuntas: dto.objPuntas,
+      },
+    });
+    return {
+      usuarioId: obj.usuarioId,
+      anio: obj.anio,
+      objComision: decToNum(obj.objComision),
+      objVolumen: decToNum(obj.objVolumen),
+      objPuntas: obj.objPuntas,
+    };
   }
 
   private async assertEmailLibre(

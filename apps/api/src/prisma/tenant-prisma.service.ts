@@ -32,9 +32,15 @@ export class TenantPrismaService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        // set_config transaction-local (tercer arg = true). Parametrizado → sin inyección.
-        await tx.$executeRawUnsafe(`SELECT set_config('app.tenant_id', $1, true)`, context.tenantId);
-        await tx.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, context.userId);
+        // Los 2 set_config van en un solo SELECT (1 round trip en vez de 2) —
+        // con Supabase en sa-east-1 y Render sin región en Sudamérica, cada
+        // round trip a la base paga latencia entre continentes; concentrar
+        // setup en menos viajes de red importa mucho acá. Parametrizado → sin inyección.
+        await tx.$executeRawUnsafe(
+          `SELECT set_config('app.tenant_id', $1, true), set_config('app.user_id', $2, true)`,
+          context.tenantId,
+          context.userId,
+        );
         // Baja de privilegios: a partir de acá RLS aplica sobre las queries del callback.
         await tx.$executeRawUnsafe(`SET LOCAL ROLE authenticated`);
         return fn(tx);

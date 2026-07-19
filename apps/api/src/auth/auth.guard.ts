@@ -19,6 +19,9 @@ interface RequestWithPrincipal {
   principal?: AuthPrincipal;
 }
 
+/** Cuánto se cachea la resolución tenant+roles de un token ya verificado. */
+const PRINCIPAL_CACHE_TTL_MS = 30_000;
+
 /**
  * Guard global: verifica el token (vía AuthProvider), resuelve el usuario desde
  * NUESTRA base (tenant + roles) y publica el contexto de tenant en el CLS para
@@ -26,6 +29,15 @@ interface RequestWithPrincipal {
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
+  // Cache en memoria del proceso, keyeada por el JWT literal — una pantalla
+  // suele disparar varias requests casi simultáneas con el mismo token, y
+  // cada una pagaba su propio round trip a la base solo para resolver
+  // tenant+roles. Con Supabase en sa-east-1 y Render sin región cercana, ese
+  // round trip extra por request se siente. TTL corto (30s): un cambio de rol
+  // o baja de acceso tarda como mucho eso en reflejarse, aceptable para esta
+  // escala (equipo chico, no es un sistema de alto riesgo).
+  private readonly principalCache = new Map<string, { principal: AuthPrincipal; expiresAt: number }>();
+
   constructor(
     private readonly reflector: Reflector,
     @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
@@ -44,6 +56,23 @@ export class AuthGuard implements CanActivate {
     const token = this.extractBearer(req);
     if (!token) {
       throw new UnauthorizedException('Falta el token de acceso.');
+    }
+
+    const principal = await this.resolvePrincipal(token);
+    req.principal = principal;
+    const ctx: TenantContext = {
+      tenantId: principal.tenantId,
+      userId: principal.userId,
+      roles: principal.roles,
+    };
+    this.cls.set(TENANT_CTX_KEY, ctx);
+    return true;
+  }
+
+  private async resolvePrincipal(token: string): Promise<AuthPrincipal> {
+    const cached = this.principalCache.get(token);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.principal;
     }
 
     const identity = await this.authProvider.verifyToken(token);
@@ -66,15 +95,18 @@ export class AuthGuard implements CanActivate {
       tenantId: usuario.tenantId,
       roles: usuario.roles.map((r) => r.rol as Rol),
     };
+    this.principalCache.set(token, { principal, expiresAt: Date.now() + PRINCIPAL_CACHE_TTL_MS });
+    // Equipo chico (decenas de usuarios activos, no miles): un barrido
+    // ocasional alcanza para no acumular tokens vencidos indefinidamente.
+    if (this.principalCache.size > 200) this.pruneExpired();
+    return principal;
+  }
 
-    req.principal = principal;
-    const ctx: TenantContext = {
-      tenantId: principal.tenantId,
-      userId: principal.userId,
-      roles: principal.roles,
-    };
-    this.cls.set(TENANT_CTX_KEY, ctx);
-    return true;
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [key, value] of this.principalCache) {
+      if (value.expiresAt <= now) this.principalCache.delete(key);
+    }
   }
 
   private extractBearer(req: RequestWithPrincipal): string | null {

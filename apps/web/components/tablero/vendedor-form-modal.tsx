@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import type { VendedorDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { createVendedor, setObjetivoVendedor, updateVendedor } from '../../lib/tablero-api';
+import { createVendedor, updateVendedor } from '../../lib/tablero-api';
 import { Modal } from './modal';
 
 interface Props {
@@ -40,7 +40,10 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
     setLoading(true);
     try {
       const accessToken = await getAccessToken();
-      let id = vendedor?.id;
+      // Objetivo va inline en el mismo POST/PATCH (1 sola transacción en vez
+      // de 2 requests separados) — con la latencia hacia la base, evitar un
+      // segundo viaje completo solo para el objetivo se nota bastante.
+      const objetivo = { anio: anioActual, objComision: Number(objComision) || 0, objVolumen: 0, objPuntas: 0 };
 
       if (vendedor) {
         // El selector "Rol" solo alterna vendedor/team_leader — se preservan
@@ -53,24 +56,16 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
           estado,
           liderId: liderId || null,
           roles: [...new Set([rol, ...rolesElevados])],
+          objetivo,
         });
       } else {
-        const creado = await createVendedor(accessToken, {
+        await createVendedor(accessToken, {
           nombre,
           email,
           estado,
           liderId: liderId || null,
           roles: [rol],
-        });
-        id = creado.id;
-      }
-
-      if (id) {
-        await setObjetivoVendedor(accessToken, id, {
-          anio: anioActual,
-          objComision: Number(objComision) || 0,
-          objVolumen: 0,
-          objPuntas: 0,
+          objetivo,
         });
       }
 

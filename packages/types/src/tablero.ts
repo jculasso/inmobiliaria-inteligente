@@ -130,12 +130,25 @@ export type OperacionFiltro = z.infer<typeof OperacionFiltroSchema>;
 
 export const RolAsignableSchema = z.enum(['vendedor', 'team_leader', 'direccion', 'admin_tenant']);
 
+/** Objetivo anual de un vendedor. */
+export const ObjetivoInputSchema = z.object({
+  anio: z.number().int().min(2000).max(2100),
+  objComision: MontoSchema.default(0),
+  objVolumen: MontoSchema.default(0),
+  objPuntas: z.number().int().nonnegative().default(0),
+});
+export type ObjetivoInput = z.infer<typeof ObjetivoInputSchema>;
+
 export const CreateVendedorSchema = z.object({
   nombre: z.string().min(1),
   email: z.string().email(),
   estado: z.enum(['activo', 'inactivo']).default('activo'),
   liderId: z.string().uuid().nullish(),
   roles: z.array(RolAsignableSchema).min(1).default(['vendedor']),
+  // Opcional: si viene, se upsertea en la MISMA transacción del alta — evita
+  // un segundo round-trip completo (POST /vendedores + PUT /objetivo) solo
+  // para cargar el objetivo del año al crear un vendedor.
+  objetivo: ObjetivoInputSchema.optional(),
 });
 export type CreateVendedor = z.infer<typeof CreateVendedorSchema>;
 
@@ -146,18 +159,10 @@ export const UpdateVendedorSchema = z
     estado: z.enum(['activo', 'inactivo']),
     liderId: z.string().uuid().nullable(),
     roles: z.array(RolAsignableSchema).min(1),
+    objetivo: ObjetivoInputSchema,
   })
   .partial();
 export type UpdateVendedor = z.infer<typeof UpdateVendedorSchema>;
-
-/** Objetivo anual de un vendedor. */
-export const ObjetivoInputSchema = z.object({
-  anio: z.number().int().min(2000).max(2100),
-  objComision: MontoSchema.default(0),
-  objVolumen: MontoSchema.default(0),
-  objPuntas: z.number().int().nonnegative().default(0),
-});
-export type ObjetivoInput = z.infer<typeof ObjetivoInputSchema>;
 
 // --- Tipos de respuesta de KPIs ---
 // Antes eran `interface` TS puras; se pasan a Zod (shape idéntico) para poder
