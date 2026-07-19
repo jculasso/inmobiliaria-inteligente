@@ -17,6 +17,7 @@ const STATUS_CODE: Record<number, string> = {
   409: 'conflict',
   422: 'unprocessable_entity',
   500: 'internal_error',
+  503: 'service_unavailable',
 };
 
 /** Estructura de error consistente de la API (CLAUDE.md §8). */
@@ -63,6 +64,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       } else if (exception.code === 'P2025') {
         status = HttpStatus.NOT_FOUND;
         message = 'Registro no encontrado.';
+      } else if (exception.code === 'P2028') {
+        // La transacción interactiva de Prisma superó su timeout (ver
+        // TenantPrismaService.withTenant) — no es un problema de los datos,
+        // es que la operación tardó demasiado (conexión lenta a la base).
+        // No hay nada guardado a medias: Postgres deshace toda la transacción.
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        message = 'La operación tardó demasiado y se canceló. Probá de nuevo.';
       } else {
         status = HttpStatus.BAD_REQUEST;
         message = 'La operación no se pudo completar por una restricción de datos.';

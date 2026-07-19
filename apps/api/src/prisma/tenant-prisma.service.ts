@@ -30,13 +30,24 @@ export class TenantPrismaService {
       throw new InternalServerErrorException('Falta el contexto de tenant para la consulta.');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      // set_config transaction-local (tercer arg = true). Parametrizado → sin inyección.
-      await tx.$executeRawUnsafe(`SELECT set_config('app.tenant_id', $1, true)`, context.tenantId);
-      await tx.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, context.userId);
-      // Baja de privilegios: a partir de acá RLS aplica sobre las queries del callback.
-      await tx.$executeRawUnsafe(`SET LOCAL ROLE authenticated`);
-      return fn(tx);
-    });
+    return this.prisma.$transaction(
+      async (tx) => {
+        // set_config transaction-local (tercer arg = true). Parametrizado → sin inyección.
+        await tx.$executeRawUnsafe(`SELECT set_config('app.tenant_id', $1, true)`, context.tenantId);
+        await tx.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, context.userId);
+        // Baja de privilegios: a partir de acá RLS aplica sobre las queries del callback.
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE authenticated`);
+        return fn(tx);
+      },
+      // Los defaults de Prisma (timeout 5s, maxWait 2s) alcanzan en condiciones
+      // normales, pero varios servicios encadenan 5-7 queries dentro de esta
+      // misma transacción (ej. VendedoresService.update). En el free tier de
+      // Render, con latencia de red más alta hacia Supabase, eso puede superar
+      // los 5s y Prisma cierra la transacción a mitad de camino — el síntoma es
+      // un P2028 "Transaction not found" en la query siguiente, que el filtro
+      // de excepciones traduce (mal) como "restricción de datos". Se generan
+      // márgenes más amplios para que una request lenta no aborte a mitad de camino.
+      { timeout: 15_000, maxWait: 10_000 },
+    );
   }
 }
