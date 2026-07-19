@@ -7,7 +7,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   // CORS abierto al frontend local por ahora; se endurece por entorno más adelante.
-  app.enableCors({ origin: true });
+  // `maxAge` le dice al browser que cachee el preflight (OPTIONS) por 24hs —
+  // sin esto, cada request cross-origin (Vercel -> Render) paga DOS viajes de
+  // red (OPTIONS + el método real) en vez de uno, y con Render lento eso duele.
+  app.enableCors({ origin: true, maxAge: 86_400 });
 
   // Formato de error consistente { error: { code, message, details? } }.
   app.useGlobalFilters(new AllExceptionsFilter());
