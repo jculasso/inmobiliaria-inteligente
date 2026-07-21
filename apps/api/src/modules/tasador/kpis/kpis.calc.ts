@@ -11,6 +11,7 @@ export interface TasacionCalc {
   id: string;
   agenteId: string;
   nombre: string;
+  fotoUrl: string | null;
   estado: EstadoTasacion;
 }
 
@@ -43,12 +44,12 @@ export function agregar(tasaciones: TasacionCalc[], scope: ScopeSet): ResumenTas
 
 /** Ranking de agentes por cantidad de captaciones (solo agentes dentro del alcance). */
 export function ranking(tasaciones: TasacionCalc[], scope: ScopeSet): RankingCaptacionItem[] {
-  const porAgente = new Map<string, { nombre: string; captadas: number; total: number }>();
+  const porAgente = new Map<string, { nombre: string; fotoUrl: string | null; captadas: number; total: number }>();
   let captadasTotal = 0;
 
   for (const t of tasaciones) {
     if (!enAlcance(t, scope)) continue;
-    const item = porAgente.get(t.agenteId) ?? { nombre: t.nombre, captadas: 0, total: 0 };
+    const item = porAgente.get(t.agenteId) ?? { nombre: t.nombre, fotoUrl: t.fotoUrl, captadas: 0, total: 0 };
     item.total += 1;
     if (t.estado === 'Captada') {
       item.captadas += 1;
@@ -64,6 +65,7 @@ export function ranking(tasaciones: TasacionCalc[], scope: ScopeSet): RankingCap
     .map(([usuarioId, item]) => ({
       usuarioId,
       nombre: item.nombre,
+      fotoUrl: item.fotoUrl,
       captadas: item.captadas,
       total: item.total,
       tasaCaptacion: item.total ? item.captadas / item.total : 0,

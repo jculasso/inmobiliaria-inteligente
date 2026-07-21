@@ -14,6 +14,7 @@ export interface PuntaCalc {
   operacionId: string;
   usuarioId: string;
   nombre: string;
+  fotoUrl: string | null;
   lado: LadoPunta;
   /** Precio de la operación (aporte de esta punta al volumen). */
   precio: number;
@@ -67,6 +68,7 @@ export function ranking(puntas: PuntaCalc[], scope: ScopeSet): RankingItem[] {
       item = {
         usuarioId: p.usuarioId,
         nombre: p.nombre,
+        fotoUrl: p.fotoUrl,
         volumen: 0,
         operaciones: 0,
         puntas: 0,

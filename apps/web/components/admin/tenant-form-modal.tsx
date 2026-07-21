@@ -4,7 +4,8 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { MODULOS_POR_PLAN, type PlanTenant, type TenantDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { createTenant, updateTenant } from '../../lib/admin-api';
+import { createTenant, subirLogoTenant, updateTenant } from '../../lib/admin-api';
+import { AvatarUploader } from '../avatar-uploader';
 import { Modal } from '../tablero/modal';
 import { NOMBRE_MODULO } from '../../lib/modulos';
 
@@ -97,13 +98,27 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
           Branding (imagen de marca de la inmobiliaria)
         </p>
         <Campo label="URL del logo">
-          <input
-            type="url"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://…"
-            className={inputClass}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="url"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://…"
+              className={inputClass}
+            />
+            {tenant && (
+              <AvatarUploader
+                nombre={nombre || tenant.nombre}
+                fotoUrl={logoUrl || null}
+                size="md"
+                onUpload={async (file) => {
+                  const accessToken = await getAccessToken();
+                  const actualizado = await subirLogoTenant(accessToken, tenant.id, file);
+                  setLogoUrl(actualizado.config.logoUrl ?? '');
+                }}
+              />
+            )}
+          </div>
         </Campo>
         <Campo label="Nombre corto (para el título de la Home)">
           <input

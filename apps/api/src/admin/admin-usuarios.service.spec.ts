@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import type { SupabaseStorageService } from '../common/supabase-storage.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SupabaseAdminService } from './supabase-admin.service';
 import { AdminUsuariosService } from './admin-usuarios.service';
@@ -35,19 +36,28 @@ function makeSupabaseAdmin(overrides: Partial<Record<string, unknown>> = {}) {
   } as unknown as SupabaseAdminService;
 }
 
+function makeStorage(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    upload: vi.fn().mockResolvedValue('https://storage.test/usuarios-avatares/t1/auth-1.jpg'),
+    remove: vi.fn(),
+    ...overrides,
+  } as unknown as SupabaseStorageService;
+}
+
 const usuarioRow = {
   id: 'auth-1',
   nombre: 'Nueva Vendedora',
   email: 'nuevo@vacker.test',
   estado: 'activo',
   authUserId: 'auth-1',
+  fotoUrl: null,
   roles: [{ rol: 'vendedor' }],
 };
 
 describe('AdminUsuariosService', () => {
   it('create rechaza si el email ya existe en el tenant', async () => {
     const db = makeDb({ findFirst: vi.fn().mockResolvedValue({ id: 'existente' }) });
-    const service = new AdminUsuariosService(db, makeSupabaseAdmin());
+    const service = new AdminUsuariosService(db, makeSupabaseAdmin(), makeStorage());
 
     await expect(
       service.create(TENANT_ID, {
@@ -64,7 +74,7 @@ describe('AdminUsuariosService', () => {
     const findUniqueOrThrow = vi.fn().mockResolvedValue(usuarioRow);
     const db = makeDb({ create, findUniqueOrThrow });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     const result = await service.create(TENANT_ID, {
       nombre: 'Nueva Vendedora',
@@ -90,6 +100,7 @@ describe('AdminUsuariosService', () => {
       nombre: 'Nueva Vendedora',
       email: 'nuevo@vacker.test',
       estado: 'activo',
+      fotoUrl: null,
       roles: ['vendedor'],
       tieneAcceso: true,
     });
@@ -99,7 +110,7 @@ describe('AdminUsuariosService', () => {
     const create = vi.fn().mockRejectedValue(new Error('boom'));
     const db = makeDb({ create });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     await expect(
       service.create(TENANT_ID, {
@@ -116,7 +127,7 @@ describe('AdminUsuariosService', () => {
   it('resetPassword lanza 404 si el usuario no pertenece al tenant', async () => {
     const db = makeDb({ findFirst: vi.fn().mockResolvedValue(null) });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     await expect(
       service.resetPassword(TENANT_ID, 'auth-1', { password: 'nuevaClave123' }),
@@ -129,7 +140,7 @@ describe('AdminUsuariosService', () => {
       findFirst: vi.fn().mockResolvedValue({ id: 'v1', email: 'v1@vacker.test', authUserId: null }),
     });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     await expect(service.resetPassword(TENANT_ID, 'v1', { password: 'nuevaClave123' })).rejects.toThrow(
       BadRequestException,
@@ -142,7 +153,7 @@ describe('AdminUsuariosService', () => {
       findFirst: vi.fn().mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1' }),
     });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     const result = await service.resetPassword(TENANT_ID, 'auth-1', { password: 'nuevaClave123' });
 
@@ -155,7 +166,7 @@ describe('AdminUsuariosService', () => {
       findFirst: vi.fn().mockResolvedValue({ id: 'v1', email: 'v1@vacker.test', authUserId: 'auth-1' }),
     });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     await expect(service.activarAcceso(TENANT_ID, 'v1', { password: 'nuevaClave123' })).rejects.toThrow(
       BadRequestException,
@@ -172,7 +183,7 @@ describe('AdminUsuariosService', () => {
       findUniqueOrThrow,
     });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     const result = await service.activarAcceso(TENANT_ID, 'vendedor-1', { password: 'nuevaClave123' });
 
@@ -188,11 +199,64 @@ describe('AdminUsuariosService', () => {
       update,
     });
     const supabaseAdmin = makeSupabaseAdmin();
-    const service = new AdminUsuariosService(db, supabaseAdmin);
+    const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage());
 
     await expect(
       service.activarAcceso(TENANT_ID, 'vendedor-1', { password: 'nuevaClave123' }),
     ).rejects.toThrow('boom');
     expect(supabaseAdmin.deleteUser).toHaveBeenCalledWith('auth-1');
+  });
+
+  it('subirFoto sube la imagen y guarda fotoUrl', async () => {
+    const update = vi.fn();
+    const findUniqueOrThrow = vi.fn().mockResolvedValue({ ...usuarioRow, fotoUrl: 'https://storage.test/foto.jpg' });
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1', fotoUrl: null }),
+      update,
+      findUniqueOrThrow,
+    });
+    const storage = makeStorage({ upload: vi.fn().mockResolvedValue('https://storage.test/foto.jpg') });
+    const service = new AdminUsuariosService(db, makeSupabaseAdmin(), storage);
+
+    const file = { buffer: Buffer.from(''), mimetype: 'image/jpeg', originalname: 'foto.jpg', size: 1024 };
+    const result = await service.subirFoto(TENANT_ID, 'auth-1', file);
+
+    expect(storage.upload).toHaveBeenCalledWith('usuarios-avatares', `${TENANT_ID}/auth-1.jpg`, file.buffer, 'image/jpeg');
+    expect(update).toHaveBeenCalledWith({ where: { id: 'auth-1' }, data: { fotoUrl: 'https://storage.test/foto.jpg' } });
+    expect(result.fotoUrl).toBe('https://storage.test/foto.jpg');
+  });
+
+  it('subirFoto rechaza un archivo que no es imagen', async () => {
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1', fotoUrl: null }),
+    });
+    const storage = makeStorage();
+    const service = new AdminUsuariosService(db, makeSupabaseAdmin(), storage);
+
+    const file = { buffer: Buffer.from(''), mimetype: 'application/pdf', originalname: 'doc.pdf', size: 1024 };
+    await expect(service.subirFoto(TENANT_ID, 'auth-1', file)).rejects.toThrow(BadRequestException);
+    expect(storage.upload).not.toHaveBeenCalled();
+  });
+
+  it('eliminarFoto limpia fotoUrl y borra el archivo de Storage', async () => {
+    const update = vi.fn();
+    const findUniqueOrThrow = vi.fn().mockResolvedValue({ ...usuarioRow, fotoUrl: null });
+    const db = makeDb({
+      findFirst: vi.fn().mockResolvedValue({
+        id: 'auth-1',
+        email: 'x@vacker.test',
+        authUserId: 'auth-1',
+        fotoUrl: 'https://storage.test/usuarios-avatares/t1/auth-1.jpg',
+      }),
+      update,
+      findUniqueOrThrow,
+    });
+    const storage = makeStorage();
+    const service = new AdminUsuariosService(db, makeSupabaseAdmin(), storage);
+
+    await service.eliminarFoto(TENANT_ID, 'auth-1');
+
+    expect(storage.remove).toHaveBeenCalledWith('usuarios-avatares', 't1/auth-1.jpg');
+    expect(update).toHaveBeenCalledWith({ where: { id: 'auth-1' }, data: { fotoUrl: null } });
   });
 });

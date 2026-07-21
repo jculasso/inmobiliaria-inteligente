@@ -7,7 +7,7 @@ import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
 import { assertEnScope, tasacionInclude, toDto } from '../tasaciones/tasaciones.service';
 import { InformeDocument } from './informe.template';
-import { SupabaseStorageService } from './supabase-storage.service';
+import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 
 /** Genera el informe de tasación en PDF y lo sube a Supabase Storage. */
 @Injectable()

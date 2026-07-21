@@ -1,5 +1,17 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateTenantSchema,
   UpdateTenantSchema,
@@ -8,7 +20,7 @@ import {
 } from '@vacker/types';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { AdminTenantsService } from './admin-tenants.service';
+import { AdminTenantsService, type LogoFile } from './admin-tenants.service';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -38,5 +50,15 @@ export class AdminTenantsController {
     @Body(new ZodValidationPipe(UpdateTenantSchema)) dto: UpdateTenant,
   ) {
     return this.tenants.update(id, dto);
+  }
+
+  @Post(':id/logo')
+  @Roles('admin_plataforma')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Sube (o reemplaza) el logo de la inmobiliaria (5MB, imagen)' })
+  @UseInterceptors(FileInterceptor('file'))
+  subirLogo(@Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: LogoFile | undefined) {
+    if (!file) throw new BadRequestException('Falta el archivo.');
+    return this.tenants.subirLogo(id, file);
   }
 }

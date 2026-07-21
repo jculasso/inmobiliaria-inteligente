@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TasacionDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Avatar, Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
 import { fmtNum } from '../../lib/format';
@@ -117,7 +117,12 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
                   <td className="px-4 py-2">{t.direccion}</td>
                   <td className="px-4 py-2 text-muted">{t.tipoPropiedad}</td>
                   <td className="px-4 py-2">{fmtNum(t.superficieTotal)} m²</td>
-                  <td className="px-4 py-2 text-muted">{t.agente.nombre}</td>
+                  <td className="px-4 py-2 text-muted">
+                    <div className="flex items-center gap-2">
+                      <Avatar nombre={t.agente.nombre} fotoUrl={t.agente.fotoUrl} size="sm" />
+                      {t.agente.nombre}
+                    </div>
+                  </td>
                   <td className="px-4 py-2">
                     <button
                       type="button"

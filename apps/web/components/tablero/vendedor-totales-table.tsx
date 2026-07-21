@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { RankingItem } from '@vacker/types';
+import { Avatar } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { DetalleDrillModal } from './detalle-drill-modal';
 
@@ -49,8 +50,9 @@ export function VendedorTotalesTable({ items, anio }: { items: RankingItem[]; an
                 <button
                   type="button"
                   onClick={() => setDrill(item)}
-                  className="hover:text-brand-red hover:underline"
+                  className="flex items-center gap-2 hover:text-brand-red hover:underline"
                 >
+                  <Avatar nombre={item.nombre} fotoUrl={item.fotoUrl} size="sm" />
                   {item.nombre}
                 </button>
               </td>

@@ -11,7 +11,7 @@ const tasacionKpiSelect = {
   agenteId: true,
   estado: true,
   fecha: true,
-  agente: { select: { nombre: true } },
+  agente: { select: { nombre: true, fotoUrl: true } },
 } satisfies Prisma.TasacionSelect;
 
 type TasacionKpiRow = Prisma.TasacionGetPayload<{ select: typeof tasacionKpiSelect }>;
@@ -81,6 +81,7 @@ function aplanar(rows: TasacionKpiRow[]): TasacionCalc[] {
     id: r.id,
     agenteId: r.agenteId,
     nombre: r.agente.nombre,
+    fotoUrl: r.agente.fotoUrl,
     estado: r.estado as EstadoTasacion,
   }));
 }

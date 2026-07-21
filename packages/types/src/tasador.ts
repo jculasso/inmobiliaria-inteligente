@@ -305,7 +305,12 @@ export const TasacionDtoSchema = z.object({
   id: z.string().uuid(),
   codigo: z.string().nullable(),
   agenteId: z.string().uuid(),
-  agente: z.object({ id: z.string().uuid(), nombre: z.string(), email: z.string().email() }),
+  agente: z.object({
+    id: z.string().uuid(),
+    nombre: z.string(),
+    email: z.string().email(),
+    fotoUrl: z.string().nullable(),
+  }),
   cliente: z.string(),
   fecha: z.string(),
   direccion: z.string(),
@@ -363,7 +368,7 @@ export type TasacionDto = z.infer<typeof TasacionDtoSchema>;
 export const TasacionResumenDtoSchema = z.object({
   id: z.string().uuid(),
   agenteId: z.string().uuid(),
-  agente: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  agente: z.object({ id: z.string().uuid(), nombre: z.string(), fotoUrl: z.string().nullable() }),
   cliente: z.string(),
   fecha: z.string(),
   direccion: z.string(),
@@ -415,6 +420,7 @@ export type ResumenTasadorKpi = z.infer<typeof ResumenTasadorKpiSchema>;
 export const RankingCaptacionItemSchema = z.object({
   usuarioId: z.string(),
   nombre: z.string(),
+  fotoUrl: z.string().nullable(),
   captadas: z.number(),
   total: z.number(),
   tasaCaptacion: z.number(),

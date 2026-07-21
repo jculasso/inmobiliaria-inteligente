@@ -6,12 +6,12 @@ import { agregar, ranking, type TasacionCalc } from './kpis.calc';
 //   B: 2 tasaciones → 1 Captada, 1 No captada
 //   C: 1 tasación   → Presentada
 const tasaciones: TasacionCalc[] = [
-  { id: 't1', agenteId: 'a', nombre: 'A', estado: 'Captada' },
-  { id: 't2', agenteId: 'a', nombre: 'A', estado: 'Captada' },
-  { id: 't3', agenteId: 'a', nombre: 'A', estado: 'En proceso' },
-  { id: 't4', agenteId: 'b', nombre: 'B', estado: 'Captada' },
-  { id: 't5', agenteId: 'b', nombre: 'B', estado: 'No captada' },
-  { id: 't6', agenteId: 'c', nombre: 'C', estado: 'Presentada' },
+  { id: 't1', agenteId: 'a', nombre: 'A', fotoUrl: null, estado: 'Captada' },
+  { id: 't2', agenteId: 'a', nombre: 'A', fotoUrl: null, estado: 'Captada' },
+  { id: 't3', agenteId: 'a', nombre: 'A', fotoUrl: null, estado: 'En proceso' },
+  { id: 't4', agenteId: 'b', nombre: 'B', fotoUrl: null, estado: 'Captada' },
+  { id: 't5', agenteId: 'b', nombre: 'B', fotoUrl: null, estado: 'No captada' },
+  { id: 't6', agenteId: 'c', nombre: 'C', fotoUrl: null, estado: 'Presentada' },
 ];
 
 describe('agregar', () => {

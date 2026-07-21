@@ -22,7 +22,7 @@ import {
 } from './kpis.calc';
 
 const ventaConPuntas = {
-  puntas: { include: { usuario: { select: { id: true, nombre: true } } } },
+  puntas: { include: { usuario: { select: { id: true, nombre: true, fotoUrl: true } } } },
 } satisfies Prisma.OperacionInclude;
 
 type VentaRow = Prisma.OperacionGetPayload<{ include: typeof ventaConPuntas }>;
@@ -189,6 +189,7 @@ function aplanarPuntas(ventas: VentaRow[]): PuntaCalc[] {
         operacionId: v.id,
         usuarioId: p.usuarioId,
         nombre: p.usuario.nombre,
+        fotoUrl: p.usuario.fotoUrl,
         lado: p.lado as LadoPunta,
         precio,
         comision: decToNum(p.comision),

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { VendedorDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Avatar, Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { desactivarVendedor, updateVendedor } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
@@ -82,7 +82,12 @@ export function VendedoresTable({
                 const objetivo = v.objetivos.find((o) => o.anio === anioActual);
                 return (
                   <tr key={v.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2 font-medium text-ink">{v.nombre}</td>
+                    <td className="px-4 py-2 font-medium text-ink">
+                      <div className="flex items-center gap-2">
+                        <Avatar nombre={v.nombre} fotoUrl={v.fotoUrl} size="sm" />
+                        {v.nombre}
+                      </div>
+                    </td>
                     <td className="px-4 py-2">
                       <button
                         type="button"

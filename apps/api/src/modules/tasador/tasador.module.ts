@@ -4,7 +4,7 @@ import { FotosController } from './fotos/fotos.controller';
 import { FotosService } from './fotos/fotos.service';
 import { InformesController } from './informes/informes.controller';
 import { InformesService } from './informes/informes.service';
-import { SupabaseStorageService } from './informes/supabase-storage.service';
+import { SupabaseStorageService } from '../../common/supabase-storage.service';
 import { KpisController } from './kpis/kpis.controller';
 import { KpisService } from './kpis/kpis.service';
 import { ReporteController } from './reporte/reporte.controller';

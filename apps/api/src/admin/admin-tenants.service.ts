@@ -1,7 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { CreateTenant, TenantConfig, UpdateTenant } from '@vacker/types';
+import { SupabaseStorageService } from '../common/supabase-storage.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const LOGO_BUCKET = 'tenants-logos';
+const LOGO_MAX_BYTES = 5 * 1024 * 1024;
+
+export interface LogoFile {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
+}
 
 /**
  * CRUD de inmobiliarias (tenants), cross-tenant. Usa `PrismaService` directo
@@ -11,7 +22,10 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class AdminTenantsService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly storage: SupabaseStorageService,
+  ) {}
 
   async list() {
     return this.db.tenant.findMany({ orderBy: { nombre: 'asc' } });
@@ -57,4 +71,33 @@ export class AdminTenantsService {
 
     return this.db.tenant.update({ where: { id }, data });
   }
+
+  /**
+   * Sube (o reemplaza) el logo y lo persiste en `config.logoUrl` reusando
+   * `update()` — que ya mergea el config en vez de reemplazarlo, así no pisa
+   * el resto del branding (colores, nombre corto).
+   */
+  async subirLogo(id: string, file: LogoFile) {
+    const actual = await this.db.tenant.findUnique({ where: { id }, select: { id: true } });
+    if (!actual) throw new NotFoundException('Inmobiliaria no encontrada.');
+    if (!file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('El archivo debe ser una imagen.');
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      throw new BadRequestException('La imagen no puede superar los 5MB.');
+    }
+
+    const ext = extensionDe(file.mimetype, file.originalname);
+    const path = `${id}/logo${ext}`;
+    const logoUrl = await this.storage.upload(LOGO_BUCKET, path, file.buffer, file.mimetype);
+
+    return this.update(id, { config: { logoUrl } });
+  }
+}
+
+function extensionDe(mimetype: string, originalname: string): string {
+  const fromName = originalname.includes('.') ? originalname.slice(originalname.lastIndexOf('.')) : '';
+  if (fromName) return fromName;
+  const sub = mimetype.split('/')[1];
+  return sub ? `.${sub}` : '';
 }

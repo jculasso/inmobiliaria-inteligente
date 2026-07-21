@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { AuthPrincipal } from '@vacker/types';
-import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
+import { Avatar, Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
 import { tenantBrandStyle } from '../../lib/tenant-style';
@@ -40,17 +40,25 @@ export default async function TableroLayout({ children }: { children: ReactNode 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10" style={tenantBrandStyle(principal.tenant.config)}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand-red hover:underline"
-          >
-            ⌂ Inmobiliaria Inteligente
-          </Link>
-          <h1 className="mt-1 text-2xl font-extrabold text-ink">Tablero Comercial</h1>
+        <div className="flex items-center gap-3">
+          {principal.tenant.config.logoUrl && (
+            <Avatar nombre={principal.tenant.nombre} fotoUrl={principal.tenant.config.logoUrl} size="md" />
+          )}
+          <div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand-red hover:underline"
+            >
+              ⌂ Inmobiliaria Inteligente
+            </Link>
+            <h1 className="mt-1 text-2xl font-extrabold text-ink">Tablero Comercial</h1>
+          </div>
         </div>
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <span className="text-sm text-muted">{principal.email}</span>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted">{principal.email}</span>
+            <Avatar nombre={principal.nombre} fotoUrl={principal.fotoUrl} size="sm" />
+          </div>
           <LogoutButton />
         </div>
       </div>

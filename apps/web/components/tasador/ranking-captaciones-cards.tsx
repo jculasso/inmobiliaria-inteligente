@@ -1,8 +1,11 @@
 'use client';
 
+import { Avatar } from '@vacker/ui';
+
 interface Item {
   usuarioId: string;
   nombre: string;
+  fotoUrl: string | null;
   captadas: number;
 }
 
@@ -50,13 +53,7 @@ export function RankingCaptacionesCards({ ranking, seleccionado, onSelect }: Pro
             <span className="w-[26px] shrink-0 text-center text-base font-extrabold text-[#9A9A9A]">
               {medalla(i)}
             </span>
-            <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${
-                top ? 'bg-gradient-to-br from-success to-[#167a45] text-white' : 'bg-surface text-muted'
-              }`}
-            >
-              {(r.nombre || '?').trim().charAt(0).toUpperCase()}
-            </span>
+            <Avatar nombre={r.nombre} fotoUrl={r.fotoUrl} size="sm" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-bold text-ink">{r.nombre}</span>
               <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface">

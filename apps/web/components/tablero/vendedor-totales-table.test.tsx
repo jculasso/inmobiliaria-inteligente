@@ -6,6 +6,7 @@ const ITEMS = [
   {
     usuarioId: '1',
     nombre: 'Ana',
+    fotoUrl: null,
     volumen: 100,
     operaciones: 1,
     puntas: 1,
@@ -18,6 +19,7 @@ const ITEMS = [
   {
     usuarioId: '2',
     nombre: 'Beto',
+    fotoUrl: null,
     volumen: 50,
     operaciones: 1,
     puntas: 1,

@@ -22,6 +22,8 @@ function principal(roles: Rol[]): AuthPrincipal {
   return {
     userId: 'u',
     email: 'u@t.test',
+    nombre: 'Usuario Test',
+    fotoUrl: null,
     tenantId: 't',
     roles,
     tenant: { nombre: 'Test', plan: 'basico', config: {} },

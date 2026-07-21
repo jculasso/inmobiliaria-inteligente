@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { UsuarioAdminDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
+import { getAccessToken } from '../../lib/supabase/client';
+import { eliminarFotoUsuario, subirFotoUsuario } from '../../lib/admin-api';
+import { AvatarUploader } from '../avatar-uploader';
 import { UsuarioAdminFormModal } from './usuario-admin-form-modal';
 import { ResetPasswordModal } from './reset-password-modal';
 import { ActivarAccesoModal } from './activar-acceso-modal';
@@ -41,6 +44,7 @@ export function UsuariosAdminTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+              <th className="px-4 py-2">Foto</th>
               <th className="px-4 py-2">Nombre</th>
               <th className="px-4 py-2">Email</th>
               <th className="px-4 py-2">Roles</th>
@@ -52,13 +56,33 @@ export function UsuariosAdminTable({
           <tbody>
             {usuarios.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                <td colSpan={7} className="px-4 py-6 text-center text-muted">
                   Todavía no hay usuarios en esta inmobiliaria.
                 </td>
               </tr>
             ) : (
               usuarios.map((u) => (
                 <tr key={u.id} className="border-b border-line last:border-0">
+                  <td className="px-4 py-2">
+                    <AvatarUploader
+                      nombre={u.nombre}
+                      fotoUrl={u.fotoUrl}
+                      onUpload={async (file) => {
+                        const accessToken = await getAccessToken();
+                        await subirFotoUsuario(accessToken, tenantId, u.id, file);
+                        router.refresh();
+                      }}
+                      onRemove={
+                        u.fotoUrl
+                          ? async () => {
+                              const accessToken = await getAccessToken();
+                              await eliminarFotoUsuario(accessToken, tenantId, u.id);
+                              router.refresh();
+                            }
+                          : undefined
+                      }
+                    />
+                  </td>
                   <td className="px-4 py-2 font-medium text-ink">{u.nombre}</td>
                   <td className="px-4 py-2 text-muted">{u.email}</td>
                   <td className="px-4 py-2 text-muted">

@@ -3,9 +3,12 @@ import {
   activarAccesoUsuario,
   createTenant,
   createUsuarioAdmin,
+  eliminarFotoUsuario,
   listTenants,
   listUsuariosDeTenant,
   resetPasswordUsuario,
+  subirFotoUsuario,
+  subirLogoTenant,
 } from './admin-api';
 
 const TENANT = {
@@ -25,6 +28,7 @@ const USUARIO = {
   estado: 'activo',
   roles: ['vendedor'],
   tieneAcceso: true,
+  fotoUrl: null,
 };
 
 afterEach(() => {
@@ -108,5 +112,48 @@ describe('admin-api', () => {
     expect(String(url)).toBe(
       `http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/activar-acceso`,
     );
+  });
+
+  it('subirFotoUsuario hace POST multipart a .../foto', async () => {
+    const fotoUrl = 'https://storage.test/usuarios-avatares/foto.jpg';
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...USUARIO, fotoUrl }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const file = new File(['contenido'], 'foto.jpg', { type: 'image/jpeg' });
+    const result = await subirFotoUsuario('token', TENANT.id, USUARIO.id, file);
+
+    const [url, options] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe(`http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/foto`);
+    expect(options.method).toBe('POST');
+    expect(options.body).toBeInstanceOf(FormData);
+    expect(result.fotoUrl).toBe(fotoUrl);
+  });
+
+  it('eliminarFotoUsuario hace DELETE a .../foto', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...USUARIO, fotoUrl: null }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await eliminarFotoUsuario('token', TENANT.id, USUARIO.id);
+
+    const [url, options] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe(`http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/foto`);
+    expect(options.method).toBe('DELETE');
+  });
+
+  it('subirLogoTenant hace POST multipart a .../logo', async () => {
+    const logoUrl = 'https://storage.test/tenants-logos/logo.png';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ ...TENANT, config: { logoUrl } }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const file = new File(['contenido'], 'logo.png', { type: 'image/png' });
+    const result = await subirLogoTenant('token', TENANT.id, file);
+
+    const [url, options] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe(`http://localhost:3001/admin/tenants/${TENANT.id}/logo`);
+    expect(options.method).toBe('POST');
+    expect(options.body).toBeInstanceOf(FormData);
+    expect(result.config.logoUrl).toBe(logoUrl);
   });
 });

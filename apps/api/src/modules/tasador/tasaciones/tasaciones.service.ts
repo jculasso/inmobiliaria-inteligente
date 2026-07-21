@@ -9,7 +9,7 @@ import { resolverScope } from '../../tablero/scope.util';
 import { decToNum, fromDate, toDate } from '../../tablero/tablero.util';
 
 export const tasacionInclude = {
-  agente: { select: { id: true, nombre: true, email: true } },
+  agente: { select: { id: true, nombre: true, email: true, fotoUrl: true } },
   comparables: true,
   fotos: { orderBy: { orden: 'asc' } },
 } satisfies Prisma.TasacionInclude;
@@ -36,7 +36,7 @@ const tasacionScopeSelect = {
 const tasacionResumenSelect = {
   id: true,
   agenteId: true,
-  agente: { select: { id: true, nombre: true } },
+  agente: { select: { id: true, nombre: true, fotoUrl: true } },
   cliente: true,
   fecha: true,
   direccion: true,
@@ -347,7 +347,7 @@ export function toResumenDto(row: TasacionResumenRow) {
   return {
     id: row.id,
     agenteId: row.agenteId,
-    agente: { id: row.agente.id, nombre: row.agente.nombre },
+    agente: { id: row.agente.id, nombre: row.agente.nombre, fotoUrl: row.agente.fotoUrl },
     cliente: row.cliente,
     fecha: fromDate(row.fecha)!,
     direccion: row.direccion,
@@ -365,7 +365,7 @@ export function toDto(row: TasacionRow) {
     id: row.id,
     codigo: row.codigo,
     agenteId: row.agenteId,
-    agente: { id: row.agente.id, nombre: row.agente.nombre, email: row.agente.email },
+    agente: { id: row.agente.id, nombre: row.agente.nombre, email: row.agente.email, fotoUrl: row.agente.fotoUrl },
     cliente: row.cliente,
     fecha: fromDate(row.fecha)!,
     direccion: row.direccion,

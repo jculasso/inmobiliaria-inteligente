@@ -6,10 +6,10 @@ import { agregar, ranking, seguimientoObjetivos, type ObjetivoRow, type PuntaCal
 //   OP2  precio 200  → A vendedora (com 6)
 //   OP3  precio  50  → C compradora (com 1.5)
 const puntas: PuntaCalc[] = [
-  { operacionId: 'op1', usuarioId: 'a', nombre: 'A', lado: 'vendedora', precio: 100, comision: 3 },
-  { operacionId: 'op1', usuarioId: 'b', nombre: 'B', lado: 'compradora', precio: 100, comision: 2 },
-  { operacionId: 'op2', usuarioId: 'a', nombre: 'A', lado: 'vendedora', precio: 200, comision: 6 },
-  { operacionId: 'op3', usuarioId: 'c', nombre: 'C', lado: 'compradora', precio: 50, comision: 1.5 },
+  { operacionId: 'op1', usuarioId: 'a', nombre: 'A', fotoUrl: null, lado: 'vendedora', precio: 100, comision: 3 },
+  { operacionId: 'op1', usuarioId: 'b', nombre: 'B', fotoUrl: null, lado: 'compradora', precio: 100, comision: 2 },
+  { operacionId: 'op2', usuarioId: 'a', nombre: 'A', fotoUrl: null, lado: 'vendedora', precio: 200, comision: 6 },
+  { operacionId: 'op3', usuarioId: 'c', nombre: 'C', fotoUrl: null, lado: 'compradora', precio: 50, comision: 1.5 },
 ];
 
 describe('agregar', () => {

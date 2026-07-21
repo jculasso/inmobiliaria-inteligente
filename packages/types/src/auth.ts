@@ -6,6 +6,8 @@ import { PlanTenantSchema, TenantConfigSchema } from './tenant';
 export const AuthPrincipalSchema = z.object({
   userId: z.string().uuid(),
   email: z.string().email(),
+  nombre: z.string(),
+  fotoUrl: z.string().nullable(),
   tenantId: z.string().uuid(),
   roles: z.array(RolSchema),
   /** Branding + plan del tenant — resuelto en el mismo query que roles, sin round trip extra. */

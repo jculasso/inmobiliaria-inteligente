@@ -4,7 +4,7 @@ import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
 import { assertEnScope, tasacionInclude } from '../tasaciones/tasaciones.service';
-import { SupabaseStorageService } from '../informes/supabase-storage.service';
+import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 
 const BUCKET = 'tasador-fotos';
 const MAX_FOTOS = 3;

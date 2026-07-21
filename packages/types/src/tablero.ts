@@ -183,6 +183,7 @@ export type AgregadoKpi = z.infer<typeof AgregadoKpiSchema>;
 export const RankingItemSchema = z.object({
   usuarioId: z.string(),
   nombre: z.string(),
+  fotoUrl: z.string().nullable(),
   volumen: z.number(),
   operaciones: z.number(),
   puntas: z.number(),
@@ -280,6 +281,7 @@ export const VendedorDtoSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string(),
   email: z.string().email(),
+  fotoUrl: z.string().nullable(),
   estado: z.enum(['activo', 'inactivo']),
   liderId: z.string().uuid().nullable(),
   lider: z.object({ id: z.string().uuid(), nombre: z.string() }).nullable(),

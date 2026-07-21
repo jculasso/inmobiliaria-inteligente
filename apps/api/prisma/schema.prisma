@@ -50,6 +50,9 @@ model Usuario {
   // Se "activa" el acceso creándole una cuenta real y seteando este campo,
   // sin tocar `id` (que sigue siendo la PK usada en todas las FKs de negocio).
   authUserId String? @unique @map("auth_user_id") @db.Uuid
+  // Foto de perfil (usuarios-avatares en Supabase Storage) — se carga desde
+  // /admin, sin restricción de tamaño más allá de la que ya valida el upload.
+  fotoUrl    String? @map("foto_url")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

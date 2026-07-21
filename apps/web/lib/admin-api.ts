@@ -8,7 +8,7 @@ import {
   type UpdateTenant,
   type UpdateUsuarioAdmin,
 } from '@vacker/types';
-import { apiFetch } from './api-client';
+import { apiFetch, apiFetchForm } from './api-client';
 
 // --- Inmobiliarias (tenants) ---
 
@@ -22,6 +22,10 @@ export async function createTenant(accessToken: string, dto: CreateTenant) {
 
 export async function updateTenant(accessToken: string, id: string, dto: UpdateTenant) {
   return apiFetch(`/admin/tenants/${id}`, TenantDtoSchema, { accessToken, method: 'PATCH', body: dto });
+}
+
+export async function subirLogoTenant(accessToken: string, id: string, file: File) {
+  return apiFetchForm(`/admin/tenants/${id}/logo`, TenantDtoSchema, { accessToken, file });
 }
 
 // --- Usuarios de una inmobiliaria (con acceso real) ---
@@ -80,5 +84,19 @@ export async function activarAccesoUsuario(
     accessToken,
     method: 'POST',
     body: dto,
+  });
+}
+
+export async function subirFotoUsuario(accessToken: string, tenantId: string, id: string, file: File) {
+  return apiFetchForm(`/admin/tenants/${tenantId}/usuarios/${id}/foto`, UsuarioAdminDtoSchema, {
+    accessToken,
+    file,
+  });
+}
+
+export async function eliminarFotoUsuario(accessToken: string, tenantId: string, id: string) {
+  return apiFetch(`/admin/tenants/${tenantId}/usuarios/${id}/foto`, UsuarioAdminDtoSchema, {
+    accessToken,
+    method: 'DELETE',
   });
 }

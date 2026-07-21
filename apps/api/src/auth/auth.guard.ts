@@ -98,6 +98,8 @@ export class AuthGuard implements CanActivate {
     const principal: AuthPrincipal = {
       userId: usuario.id,
       email: usuario.email,
+      nombre: usuario.nombre,
+      fotoUrl: usuario.fotoUrl,
       tenantId: usuario.tenantId,
       roles: usuario.roles.map((r) => r.rol as Rol),
       tenant: {

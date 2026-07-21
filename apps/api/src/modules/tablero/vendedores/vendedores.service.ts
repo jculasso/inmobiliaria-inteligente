@@ -175,6 +175,7 @@ function toDto(row: VendedorRow) {
     id: row.id,
     nombre: row.nombre,
     email: row.email,
+    fotoUrl: row.fotoUrl,
     estado: row.estado,
     liderId: row.liderId,
     lider: row.lider ? { id: row.lider.id, nombre: row.lider.nombre } : null,

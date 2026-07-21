@@ -5,3 +5,5 @@ export type { ButtonProps, ButtonVariant, ButtonSize } from './button';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent } from './card';
 export { Badge, BADGE_LABEL } from './badge';
 export type { BadgeProps, BadgeVariant } from './badge';
+export { Avatar } from './avatar';
+export type { AvatarProps, AvatarSize } from './avatar';

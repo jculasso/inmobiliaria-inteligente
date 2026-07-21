@@ -50,6 +50,7 @@ export const UsuarioAdminDtoSchema = z.object({
   roles: z.array(RolSchema),
   /** false para vendedores creados desde el Tablero sin cuenta de Auth todavía. */
   tieneAcceso: z.boolean(),
+  fotoUrl: z.string().nullable(),
 });
 export type UsuarioAdminDto = z.infer<typeof UsuarioAdminDtoSchema>;
 

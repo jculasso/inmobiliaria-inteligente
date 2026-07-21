@@ -4,6 +4,8 @@ import { getMe, MeError } from './api';
 const PRINCIPAL = {
   userId: '11111111-1111-1111-1111-111111111111',
   email: 'demo@vacker.com',
+  nombre: 'Demo',
+  fotoUrl: null,
   tenantId: '22222222-2222-2222-2222-222222222222',
   roles: ['direccion'],
   tenant: { nombre: 'Vacker', plan: 'basico', config: {} },

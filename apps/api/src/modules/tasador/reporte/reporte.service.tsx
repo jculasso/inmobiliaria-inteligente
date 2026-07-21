@@ -7,7 +7,7 @@ import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
 import { decToNum } from '../../tablero/tablero.util';
-import { SupabaseStorageService } from '../informes/supabase-storage.service';
+import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import { agregar, ranking as rankingDe, type TasacionCalc } from '../kpis/kpis.calc';
 import { ReporteDocument, type ReporteFila } from './reporte.template';
 
@@ -22,7 +22,7 @@ const filaSelect = {
   exclusividad: true,
   motivoNoCaptada: true,
   valorRecomendado: true,
-  agente: { select: { nombre: true } },
+  agente: { select: { nombre: true, fotoUrl: true } },
 } satisfies Prisma.TasacionSelect;
 
 /** Reporte de tasaciones del período: KPIs + distribución + ranking + tabla, en PDF. */
@@ -55,6 +55,7 @@ export class ReporteService {
         id: r.id,
         agenteId: r.agenteId,
         nombre: r.agente.nombre,
+        fotoUrl: r.agente.fotoUrl,
         estado: r.estado as EstadoTasacion,
       }));
 

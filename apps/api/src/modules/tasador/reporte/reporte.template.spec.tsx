@@ -16,7 +16,7 @@ const RESUMEN: ResumenTasadorKpi = {
 };
 
 const RANKING: RankingCaptacionItem[] = [
-  { usuarioId: 'u1', nombre: 'Ana', captadas: 2, total: 3, tasaCaptacion: 0.66, peso: 1 },
+  { usuarioId: 'u1', nombre: 'Ana', fotoUrl: null, captadas: 2, total: 3, tasaCaptacion: 0.66, peso: 1 },
 ];
 
 const FILAS: ReporteFila[] = [

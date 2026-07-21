@@ -1,6 +1,7 @@
 'use client';
 
 import type { RankingCaptacionItem } from '@vacker/types';
+import { Avatar } from '@vacker/ui';
 import { fmtNum } from '../../lib/format';
 
 interface Props {
@@ -55,11 +56,15 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
                         onClick={() => onSelectAgente(r.usuarioId, r.nombre)}
                         className="flex items-center gap-2 font-medium text-ink hover:text-brand-red hover:underline"
                       >
-                        <span aria-hidden>{medalla(i)}</span> {r.nombre}
+                        <span aria-hidden>{medalla(i)}</span>
+                        <Avatar nombre={r.nombre} fotoUrl={r.fotoUrl} size="sm" />
+                        {r.nombre}
                       </button>
                     ) : (
                       <span className="flex items-center gap-2 font-medium text-ink">
-                        <span aria-hidden>{medalla(i)}</span> {r.nombre}
+                        <span aria-hidden>{medalla(i)}</span>
+                        <Avatar nombre={r.nombre} fotoUrl={r.fotoUrl} size="sm" />
+                        {r.nombre}
                       </span>
                     )}
                   </td>

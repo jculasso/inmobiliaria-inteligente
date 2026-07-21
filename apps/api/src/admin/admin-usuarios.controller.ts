@@ -1,5 +1,18 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateUsuarioAdminSchema,
   ResetPasswordSchema,
@@ -10,7 +23,7 @@ import {
 } from '@vacker/types';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { AdminUsuariosService } from './admin-usuarios.service';
+import { AdminUsuariosService, type AvatarFile } from './admin-usuarios.service';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -66,5 +79,26 @@ export class AdminUsuariosController {
     @Body(new ZodValidationPipe(ResetPasswordSchema)) dto: ResetPassword,
   ) {
     return this.usuarios.activarAcceso(tenantId, id, dto);
+  }
+
+  @Post(':id/foto')
+  @Roles('admin_plataforma')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Sube (o reemplaza) la foto de perfil de un usuario (5MB, imagen)' })
+  @UseInterceptors(FileInterceptor('file'))
+  subirFoto(
+    @Param('tenantId', ParseUUIDPipe) tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: AvatarFile | undefined,
+  ) {
+    if (!file) throw new BadRequestException('Falta el archivo.');
+    return this.usuarios.subirFoto(tenantId, id, file);
+  }
+
+  @Delete(':id/foto')
+  @Roles('admin_plataforma')
+  @ApiOperation({ summary: 'Elimina la foto de perfil de un usuario' })
+  eliminarFoto(@Param('tenantId', ParseUUIDPipe) tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.usuarios.eliminarFoto(tenantId, id);
   }
 }
