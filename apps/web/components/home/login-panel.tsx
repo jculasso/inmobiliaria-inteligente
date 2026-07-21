@@ -13,6 +13,12 @@ export function LoginPanel() {
   const [mostrarClave, setMostrarClave] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Distinto de `loading`: el login en sí (contra Supabase Auth) es rápido,
+  // pero el refresh() que sigue le pega a nuestra API — con el free tier de
+  // Render (cold start) esa espera puede notarse. Sin este estado, el
+  // formulario se quedaba en "Ingresando…" sin ninguna pista de qué se
+  // estaba esperando.
+  const [sesionIniciada, setSesionIniciada] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,8 +34,28 @@ export function LoginPanel() {
       return;
     }
 
+    setSesionIniciada(true);
     // Ya estamos en "/": re-renderiza el Server Component con la sesión nueva.
     router.refresh();
+  }
+
+  if (sesionIniciada) {
+    return (
+      <div className="relative overflow-hidden rounded-brand border border-line bg-white p-7 shadow-sm">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-red to-brand-red-dark"
+        />
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div
+            aria-hidden
+            className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-brand-red"
+          />
+          <p className="text-sm font-semibold text-ink">Cargando tu cuenta…</p>
+          <p className="text-xs text-muted">Puede tardar unos segundos si el servidor estaba inactivo.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
