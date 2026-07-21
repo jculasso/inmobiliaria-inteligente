@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, type FormEvent, type ReactNode } from 'react';
-import type { PlanTenant, TenantDto } from '@vacker/types';
+import { MODULOS_POR_PLAN, type PlanTenant, type TenantDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTenant, updateTenant } from '../../lib/admin-api';
 import { Modal } from '../tablero/modal';
+import { NOMBRE_MODULO } from '../../lib/modulos';
 
 interface Props {
   tenant?: TenantDto;
@@ -16,8 +17,12 @@ interface Props {
 export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
   const [nombre, setNombre] = useState(tenant?.nombre ?? '');
   const [slug, setSlug] = useState(tenant?.slug ?? '');
-  const [plan, setPlan] = useState<PlanTenant>((tenant?.plan as PlanTenant) ?? 'basico');
+  const [plan, setPlan] = useState<PlanTenant>(tenant?.plan ?? 'basico');
   const [estado, setEstado] = useState(tenant?.estado ?? 'activo');
+  const [logoUrl, setLogoUrl] = useState(tenant?.config.logoUrl ?? '');
+  const [colorPrimario, setColorPrimario] = useState(tenant?.config.colorPrimario ?? '');
+  const [colorPrimarioOscuro, setColorPrimarioOscuro] = useState(tenant?.config.colorPrimarioOscuro ?? '');
+  const [nombreCorto, setNombreCorto] = useState(tenant?.config.nombreCorto ?? '');
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,10 +33,16 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
     setLoading(true);
     try {
       const accessToken = await getAccessToken();
+      const config = {
+        logoUrl: logoUrl || null,
+        colorPrimario: colorPrimario || null,
+        colorPrimarioOscuro: colorPrimarioOscuro || null,
+        nombreCorto: nombreCorto || null,
+      };
       if (tenant) {
-        await updateTenant(accessToken, tenant.id, { nombre, plan, estado });
+        await updateTenant(accessToken, tenant.id, { nombre, slug, plan, estado, config });
       } else {
-        await createTenant(accessToken, { nombre, slug, plan });
+        await createTenant(accessToken, { nombre, slug, plan, config });
       }
       onSaved();
     } catch (err) {
@@ -52,7 +63,6 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             required
-            disabled={!!tenant}
             pattern="[a-z0-9-]+"
             title="Solo minúsculas, números y guiones"
             className={inputClass}
@@ -78,6 +88,64 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
               </select>
             </Campo>
           )}
+        </div>
+        <p className="text-xs text-muted">
+          Módulos incluidos: {MODULOS_POR_PLAN[plan].map((m) => NOMBRE_MODULO[m]).join(', ')}
+        </p>
+
+        <p className="mt-1 text-xs font-bold uppercase tracking-wide text-muted">
+          Branding (imagen de marca de la inmobiliaria)
+        </p>
+        <Campo label="URL del logo">
+          <input
+            type="url"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            placeholder="https://…"
+            className={inputClass}
+          />
+        </Campo>
+        <Campo label="Nombre corto (para el título de la Home)">
+          <input
+            value={nombreCorto}
+            onChange={(e) => setNombreCorto(e.target.value)}
+            placeholder={nombre || 'Ej. Vacker'}
+            className={inputClass}
+          />
+        </Campo>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Color primario">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={colorPrimario || '#c1121f'}
+                onChange={(e) => setColorPrimario(e.target.value)}
+                className="h-9 w-9 shrink-0 rounded-brand border border-line"
+              />
+              <input
+                value={colorPrimario}
+                onChange={(e) => setColorPrimario(e.target.value)}
+                placeholder="#c1121f"
+                className={inputClass}
+              />
+            </div>
+          </Campo>
+          <Campo label="Color primario oscuro">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={colorPrimarioOscuro || '#8f0d18'}
+                onChange={(e) => setColorPrimarioOscuro(e.target.value)}
+                className="h-9 w-9 shrink-0 rounded-brand border border-line"
+              />
+              <input
+                value={colorPrimarioOscuro}
+                onChange={(e) => setColorPrimarioOscuro(e.target.value)}
+                placeholder="#8f0d18"
+                className={inputClass}
+              />
+            </div>
+          </Campo>
         </div>
 
         {error && (

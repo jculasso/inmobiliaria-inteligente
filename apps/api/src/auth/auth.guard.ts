@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClsService } from 'nestjs-cls';
-import type { Rol } from '@vacker/types';
+import { PlanTenantSchema, TenantConfigSchema, type Rol } from '@vacker/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { TENANT_CTX_KEY, type TenantContext } from '../prisma/tenant-context';
 import { AUTH_PROVIDER, type AuthProvider } from './auth-provider.interface';
@@ -83,17 +83,28 @@ export class AuthGuard implements CanActivate {
     // el Tablero antes de "activarles" el acceso.
     const usuario = await this.prisma.usuario.findUnique({
       where: { authUserId: identity.userId },
-      include: { roles: true },
+      include: { roles: true, tenant: { select: { nombre: true, plan: true, config: true } } },
     });
     if (!usuario || usuario.estado !== 'activo') {
       throw new UnauthorizedException('Usuario no habilitado en la plataforma.');
     }
+
+    // `plan`/`config` son columnas sueltas (String / Json) en la base, sin
+    // constraint de enum — si alguna vez quedan con un valor inesperado, no
+    // queremos que eso tumbe el login de nadie: fallback a defaults seguros.
+    const plan = PlanTenantSchema.safeParse(usuario.tenant.plan);
+    const config = TenantConfigSchema.safeParse(usuario.tenant.config);
 
     const principal: AuthPrincipal = {
       userId: usuario.id,
       email: usuario.email,
       tenantId: usuario.tenantId,
       roles: usuario.roles.map((r) => r.rol as Rol),
+      tenant: {
+        nombre: usuario.tenant.nombre,
+        plan: plan.success ? plan.data : 'basico',
+        config: config.success ? config.data : {},
+      },
     };
     this.principalCache.set(token, { principal, expiresAt: Date.now() + PRINCIPAL_CACHE_TTL_MS });
     // Equipo chico (decenas de usuarios activos, no miles): un barrido

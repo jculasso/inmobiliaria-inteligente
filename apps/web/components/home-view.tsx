@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import type { Rol } from '@vacker/types';
+import type { ModuloKey, PlanTenant, Rol, TenantConfig } from '@vacker/types';
+import { MODULOS_POR_PLAN } from '@vacker/types';
 import type { BadgeVariant } from '@vacker/ui';
 import { alcanceDeModulo, etiquetaDeAlcance } from '../lib/rbac';
 import { fmtUSD } from '../lib/format';
@@ -8,6 +9,7 @@ import { LoginPanel } from './home/login-panel';
 import { LogoutButton } from './logout-button';
 
 interface Modulo {
+  key: ModuloKey;
   nombre: string;
   descripcion: string;
   icono: string;
@@ -17,6 +19,7 @@ interface Modulo {
 
 const MODULOS: Modulo[] = [
   {
+    key: 'tablero',
     nombre: 'Tablero Comercial',
     descripcion: 'KPIs, ranking de vendedores y seguimiento de objetivos.',
     icono: '📊',
@@ -24,6 +27,7 @@ const MODULOS: Modulo[] = [
     href: '/tablero',
   },
   {
+    key: 'tasador',
     nombre: 'Tasador',
     descripcion: 'Valuación asistida de propiedades.',
     icono: '🏷️',
@@ -31,6 +35,7 @@ const MODULOS: Modulo[] = [
     href: '/tasador',
   },
   {
+    key: 'todo',
     nombre: 'To Do List',
     descripcion: 'Agenda por vendedor sincronizada con Google Calendar.',
     icono: '🗓️',
@@ -41,28 +46,50 @@ const MODULOS: Modulo[] = [
 
 export interface HomeViewProps {
   /** `null` = modo invitado (sin sesión): todas las cards se ven apagadas. */
-  sesion: { email: string; roles: Rol[]; volumenAnual?: number } | null;
+  sesion: {
+    email: string;
+    roles: Rol[];
+    volumenAnual?: number;
+    tenant: { nombre: string; plan: PlanTenant; config: TenantConfig };
+  } | null;
 }
 
 export function HomeView({ sesion }: HomeViewProps) {
   const bloqueada = sesion === null;
   const alcance = sesion ? alcanceDeModulo(sesion.roles) : null;
   const anio = new Date().getFullYear();
+  const config = sesion?.tenant.config;
+  const modulosDelPlan = sesion ? MODULOS_POR_PLAN[sesion.tenant.plan] : [];
+  const nombreMarca = sesion ? (config?.nombreCorto ?? sesion.tenant.nombre) : 'Inmobiliaria Inteligente';
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-14 sm:py-16">
+    <main
+      className="mx-auto max-w-6xl px-6 py-14 sm:py-16"
+      style={
+        config?.colorPrimario
+          ? ({
+              '--color-brand-red': config.colorPrimario,
+              '--color-brand-red-dark': config.colorPrimarioOscuro || config.colorPrimario,
+            } as React.CSSProperties)
+          : undefined
+      }
+    >
       <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-red to-brand-red-dark shadow-lg shadow-brand-red/20">
-            <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>
-              <path d="M10 12 H90 V88 L50 66 L10 88 Z" fill="#fff" />
-            </svg>
+            {config?.logoUrl ? (
+              <img src={config.logoUrl} alt={nombreMarca} className="h-9 w-9 rounded-lg object-contain" />
+            ) : (
+              <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>
+                <path d="M10 12 H90 V88 L50 66 L10 88 Z" fill="#fff" />
+              </svg>
+            )}
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-red">
               Inmobiliaria Inteligente
             </p>
-            <h1 className="text-3xl font-extrabold text-ink">Vacker · Plataforma 2.0</h1>
+            <h1 className="text-3xl font-extrabold text-ink">{nombreMarca} · Plataforma 2.0</h1>
           </div>
         </div>
 
@@ -89,8 +116,8 @@ export function HomeView({ sesion }: HomeViewProps) {
 
       <p className="mt-4 max-w-2xl text-muted">
         {sesion
-          ? 'Centro de operaciones de Vacker. Cada usuario ve los módulos habilitados según su rol.'
-          : 'Centro de operaciones de Vacker. Iniciá sesión para desbloquear tus módulos.'}
+          ? `Centro de operaciones de ${nombreMarca}. Cada usuario ve los módulos habilitados según su rol.`
+          : 'Iniciá sesión para desbloquear los módulos de tu inmobiliaria.'}
       </p>
 
       <div className={`mt-10 grid gap-6 ${bloqueada ? 'items-start lg:grid-cols-[360px_1fr]' : ''}`}>
@@ -106,7 +133,7 @@ export function HomeView({ sesion }: HomeViewProps) {
               estado={m.estado}
               href={m.href}
               bloqueada={bloqueada}
-              habilitado={m.estado === 'activo' && alcance !== null}
+              habilitado={m.estado === 'activo' && alcance !== null && modulosDelPlan.includes(m.key)}
               preview={
                 m.href === '/tablero' && sesion?.volumenAnual !== undefined ? (
                   <div className="rounded-lg bg-surface px-3 py-2 text-xs">

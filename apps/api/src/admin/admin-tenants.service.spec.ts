@@ -44,7 +44,7 @@ describe('AdminTenantsService', () => {
     const result = await service.create({ nombre: 'Otra', slug: 'otra', plan: 'basico' });
 
     expect(create).toHaveBeenCalledWith({
-      data: { nombre: 'Otra', slug: 'otra', plan: 'basico' },
+      data: { nombre: 'Otra', slug: 'otra', plan: 'basico', config: {} },
     });
     expect(result.slug).toBe('otra');
   });
@@ -67,5 +67,32 @@ describe('AdminTenantsService', () => {
 
     expect(update).toHaveBeenCalledWith({ where: { id: 't1' }, data: { estado: 'suspendido' } });
     expect(result.estado).toBe('suspendido');
+  });
+
+  it('update rechaza cambiar el slug a uno ya usado por otro tenant', async () => {
+    const findUnique = vi
+      .fn()
+      .mockResolvedValueOnce({ id: 't1', slug: 'vieja' }) // lookup del propio tenant
+      .mockResolvedValueOnce({ id: 't2', slug: 'nueva' }); // lookup del slug nuevo, ya tomado
+    const db = makeDb({ findUnique });
+    const service = new AdminTenantsService(db);
+
+    await expect(service.update('t1', { slug: 'nueva' })).rejects.toThrow(BadRequestException);
+  });
+
+  it('update mergea config en vez de reemplazarlo', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    const db = makeDb({
+      findUnique: vi.fn().mockResolvedValue({ id: 't1', slug: 'vacker', config: { logoUrl: 'https://x/logo.png' } }),
+      update,
+    });
+    const service = new AdminTenantsService(db);
+
+    await service.update('t1', { config: { colorPrimario: '#123456' } });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: { config: { logoUrl: 'https://x/logo.png', colorPrimario: '#123456' } },
+    });
   });
 });

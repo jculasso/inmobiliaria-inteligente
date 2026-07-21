@@ -2,35 +2,42 @@
 // accesos). Solo lo usa el rol `admin_plataforma` (cross-tenant).
 import { z } from 'zod';
 import { RolSchema } from './rol';
+import { PlanTenantSchema, TenantConfigSchema } from './tenant';
 
-export const PlanTenantSchema = z.enum(['basico', 'profesional', 'enterprise']);
-export type PlanTenant = z.infer<typeof PlanTenantSchema>;
+export { PlanTenantSchema };
+export type { PlanTenant } from './tenant';
+
+const SlugSchema = z
+  .string()
+  .min(1)
+  .regex(/^[a-z0-9-]+$/, 'Solo minúsculas, números y guiones.');
 
 export const TenantDtoSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string(),
   slug: z.string(),
-  plan: z.string(),
+  plan: PlanTenantSchema,
   estado: z.enum(['activo', 'suspendido']),
+  config: TenantConfigSchema,
   createdAt: z.string(),
 });
 export type TenantDto = z.infer<typeof TenantDtoSchema>;
 
 export const CreateTenantSchema = z.object({
   nombre: z.string().min(1),
-  slug: z
-    .string()
-    .min(1)
-    .regex(/^[a-z0-9-]+$/, 'Solo minúsculas, números y guiones.'),
+  slug: SlugSchema,
   plan: PlanTenantSchema.default('basico'),
+  config: TenantConfigSchema.optional(),
 });
 export type CreateTenant = z.infer<typeof CreateTenantSchema>;
 
 export const UpdateTenantSchema = z
   .object({
     nombre: z.string().min(1),
+    slug: SlugSchema,
     plan: PlanTenantSchema,
     estado: z.enum(['activo', 'suspendido']),
+    config: TenantConfigSchema,
   })
   .partial();
 export type UpdateTenant = z.infer<typeof UpdateTenantSchema>;

@@ -1,4 +1,4 @@
-import type { Rol } from '@vacker/types';
+import type { PlanTenant, Rol, TenantConfig } from '@vacker/types';
 
 /** Usuario autenticado ya resuelto (identidad + tenant + roles). */
 export interface AuthPrincipal {
@@ -6,4 +6,5 @@ export interface AuthPrincipal {
   email: string;
   tenantId: string;
   roles: Rol[];
+  tenant: { nombre: string; plan: PlanTenant; config: TenantConfig };
 }

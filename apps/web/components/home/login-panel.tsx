@@ -40,7 +40,7 @@ export function LoginPanel() {
       />
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red">Acceso</p>
       <h2 className="mt-1 text-xl font-extrabold text-ink">Iniciar sesión</h2>
-      <p className="mt-1 text-sm text-muted">Accedé con tu cuenta de Vacker para desbloquear tus módulos.</p>
+      <p className="mt-1 text-sm text-muted">Accedé con tu cuenta para desbloquear los módulos de tu inmobiliaria.</p>
 
       <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-1.5">

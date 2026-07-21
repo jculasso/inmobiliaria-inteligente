@@ -19,7 +19,13 @@ function makeReflector(required: Rol[] | undefined): Reflector {
 }
 
 function principal(roles: Rol[]): AuthPrincipal {
-  return { userId: 'u', email: 'u@t.test', tenantId: 't', roles };
+  return {
+    userId: 'u',
+    email: 'u@t.test',
+    tenantId: 't',
+    roles,
+    tenant: { nombre: 'Test', plan: 'basico', config: {} },
+  };
 }
 
 describe('RolesGuard', () => {

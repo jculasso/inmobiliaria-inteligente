@@ -9,7 +9,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: 'Inmobiliaria Inteligente · Vacker',
+  title: 'Inmobiliaria Inteligente',
   description: 'Plataforma SaaS multi-tenant para inmobiliarias.',
 };
 

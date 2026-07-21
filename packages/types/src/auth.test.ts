@@ -6,6 +6,7 @@ const base = {
   email: 'demo@vacker.com',
   tenantId: '22222222-2222-2222-2222-222222222222',
   roles: ['vendedor'],
+  tenant: { nombre: 'Vacker', plan: 'basico', config: {} },
 };
 
 describe('AuthPrincipalSchema', () => {

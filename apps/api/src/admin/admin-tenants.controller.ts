@@ -32,7 +32,7 @@ export class AdminTenantsController {
 
   @Patch(':id')
   @Roles('admin_plataforma')
-  @ApiOperation({ summary: 'Edita una inmobiliaria (nombre, plan, estado)' })
+  @ApiOperation({ summary: 'Edita una inmobiliaria (nombre, slug, plan, estado, branding)' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(UpdateTenantSchema)) dto: UpdateTenant,

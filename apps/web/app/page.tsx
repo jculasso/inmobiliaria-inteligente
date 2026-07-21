@@ -33,7 +33,9 @@ export default async function Home() {
       alcanceDeModulo(principal.roles) !== null ? (resumen?.anual.volumen ?? undefined) : undefined;
 
     return (
-      <HomeView sesion={{ email: principal.email, roles: principal.roles, volumenAnual }} />
+      <HomeView
+        sesion={{ email: principal.email, roles: principal.roles, volumenAnual, tenant: principal.tenant }}
+      />
     );
   } catch (err) {
     const message =

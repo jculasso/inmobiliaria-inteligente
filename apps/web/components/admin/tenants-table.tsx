@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { TenantDto } from '@vacker/types';
+import { MODULOS_POR_PLAN, type TenantDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
+import { NOMBRE_MODULO } from '../../lib/modulos';
 import { TenantFormModal } from './tenant-form-modal';
 
 export function TenantsTable({ tenants }: { tenants: TenantDto[] }) {
@@ -27,6 +28,7 @@ export function TenantsTable({ tenants }: { tenants: TenantDto[] }) {
               <th className="px-4 py-2">Nombre</th>
               <th className="px-4 py-2">Slug</th>
               <th className="px-4 py-2">Plan</th>
+              <th className="px-4 py-2">Módulos</th>
               <th className="px-4 py-2">Estado</th>
               <th className="px-4 py-2" />
             </tr>
@@ -34,7 +36,7 @@ export function TenantsTable({ tenants }: { tenants: TenantDto[] }) {
           <tbody>
             {tenants.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                <td colSpan={6} className="px-4 py-6 text-center text-muted">
                   Todavía no hay inmobiliarias cargadas.
                 </td>
               </tr>
@@ -44,6 +46,9 @@ export function TenantsTable({ tenants }: { tenants: TenantDto[] }) {
                   <td className="px-4 py-2 font-medium text-ink">{t.nombre}</td>
                   <td className="px-4 py-2 text-muted">{t.slug}</td>
                   <td className="px-4 py-2 capitalize text-muted">{t.plan}</td>
+                  <td className="px-4 py-2 text-xs text-muted">
+                    {MODULOS_POR_PLAN[t.plan].map((m) => NOMBRE_MODULO[m]).join(', ')}
+                  </td>
                   <td className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-semibold ${

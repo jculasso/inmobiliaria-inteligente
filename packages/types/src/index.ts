@@ -14,6 +14,9 @@ export * from './rol';
 // Contratos del módulo Tablero Comercial (Paso 3).
 export * from './tablero';
 
+// Forma de un tenant (branding, plan, módulos por plan) — la usan auth.ts y admin.ts.
+export * from './tenant';
+
 // Contrato de auth compartido (respuesta de GET /me, Paso 4).
 export * from './auth';
 
