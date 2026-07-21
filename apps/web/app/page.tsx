@@ -18,17 +18,19 @@ export default async function Home() {
   }
 
   try {
-    const principal = await getMe(session.access_token);
+    // getMe y el preview de volumen van en paralelo (antes: uno esperaba al
+    // otro). El preview es opcional y se descarta solo si el usuario termina
+    // sin acceso al Tablero — pedirlo en paralelo cuesta como mucho una
+    // consulta de más que se ignora, pero corta a la mitad la espera típica
+    // (con la latencia cross-region hacia la base, esto se sentía bastante
+    // en el primer render después de loguearse).
+    const [principal, resumen] = await Promise.all([
+      getMe(session.access_token),
+      getKpisResumen(session.access_token, { anio: new Date().getFullYear() }).catch(() => null),
+    ]);
 
-    let volumenAnual: number | undefined;
-    if (alcanceDeModulo(principal.roles) !== null) {
-      try {
-        const resumen = await getKpisResumen(session.access_token, { anio: new Date().getFullYear() });
-        volumenAnual = resumen.anual.volumen;
-      } catch {
-        // Preview opcional para la card del Tablero: si falla, se omite sin romper la Home.
-      }
-    }
+    const volumenAnual =
+      alcanceDeModulo(principal.roles) !== null ? (resumen?.anual.volumen ?? undefined) : undefined;
 
     return (
       <HomeView sesion={{ email: principal.email, roles: principal.roles, volumenAnual }} />

@@ -41,6 +41,19 @@ describe('LoginPanel', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it('alterna mostrar/ocultar la clave', async () => {
+    render(<LoginPanel />);
+
+    const claveInput = screen.getByLabelText(/Clave/);
+    expect(claveInput).toHaveAttribute('type', 'password');
+
+    await userEvent.click(screen.getByRole('button', { name: /Mostrar clave/ }));
+    expect(claveInput).toHaveAttribute('type', 'text');
+
+    await userEvent.click(screen.getByRole('button', { name: /Ocultar clave/ }));
+    expect(claveInput).toHaveAttribute('type', 'password');
+  });
+
   it('muestra un error cuando las credenciales son inválidas', async () => {
     signInWithPassword.mockResolvedValue({ error: { message: 'Invalid credentials' } });
     render(<LoginPanel />);
