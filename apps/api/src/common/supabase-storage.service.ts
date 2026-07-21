@@ -21,9 +21,17 @@ export class SupabaseStorageService {
    */
   async upload(bucket: string, path: string, buffer: Buffer, contentType: string): Promise<string> {
     let res = await this.subir(bucket, path, buffer, contentType);
-    if (!res.ok && res.status === 404) {
-      await this.asegurarBucket(bucket);
-      res = await this.subir(bucket, path, buffer, contentType);
+    if (!res.ok) {
+      const body = await res.clone().text().catch(() => '');
+      // Igual que en `asegurarBucket()`: Supabase Storage no siempre devuelve
+      // el 404 como status HTTP real — a veces responde 400 con el 404 como
+      // texto dentro del body (`{"statusCode":"404","error":"Bucket not
+      // found",...}`), así que hay que revisar ambos lugares.
+      const bucketNoExiste = res.status === 404 || /"statusCode":"?404"?/.test(body) || /bucket not found/i.test(body);
+      if (bucketNoExiste) {
+        await this.asegurarBucket(bucket);
+        res = await this.subir(bucket, path, buffer, contentType);
+      }
     }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
