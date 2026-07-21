@@ -7,7 +7,10 @@ import { UsuariosAdminTable } from '../../../../components/admin/usuarios-admin-
 export default async function AdminTenantPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireServerPrincipal();
-  if (!ctx) return null;
+  // El layout ya validó sesión + rol; si esto igual falla es un problema
+  // transitorio (ej. timeout hacia el backend) — mejor mostrar el error que
+  // devolver una página en blanco sin explicación.
+  if (!ctx) throw new Error('No se pudo cargar tu perfil. Probá recargar la página.');
 
   const [tenants, usuarios] = await Promise.all([
     listTenants(ctx.accessToken),

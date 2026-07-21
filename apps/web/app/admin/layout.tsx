@@ -1,15 +1,46 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import type { AuthPrincipal } from '@vacker/types';
 import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
-import { requireServerPrincipal } from '../../lib/server-principal';
+import { getMe, MeError } from '../../lib/api';
+import { createClient } from '../../lib/supabase/server';
 import { LogoutButton } from '../../components/logout-button';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const ctx = await requireServerPrincipal();
-  if (!ctx) redirect('/');
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!ctx.principal.roles.includes('admin_plataforma')) {
+  // Solo redirige a la Home si de verdad no hay sesión. Antes esto se
+  // resolvía con requireServerPrincipal(), que colapsaba "sin sesión" y
+  // "falló /me" (ej. un timeout transitorio hacia el backend) en el mismo
+  // `null` — cualquiera de los dos mandaba silenciosamente a la Home sin
+  // ningún mensaje, lo que se veía como si /admin "no funcionara" estando
+  // logueado. Acá se distingue: sin sesión → Home; sesión pero falló /me →
+  // error visible (mismo criterio que /tablero/layout.tsx).
+  if (!session) redirect('/');
+
+  let principal: AuthPrincipal;
+  try {
+    principal = await getMe(session.access_token);
+  } catch (err) {
+    const message = err instanceof MeError ? err.message : 'No se pudo cargar tu perfil.';
+    return (
+      <main className="mx-auto flex min-h-screen max-w-lg items-center px-6">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>No se pudo cargar la administración</CardTitle>
+            <CardDescription>{message} Probá recargar la página.</CardDescription>
+          </CardHeader>
+          <LogoutButton />
+        </Card>
+      </main>
+    );
+  }
+
+  if (!principal.roles.includes('admin_plataforma')) {
     return (
       <main className="mx-auto flex min-h-screen max-w-lg items-center px-6">
         <Card className="w-full">
@@ -40,7 +71,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <h1 className="mt-1 text-2xl font-extrabold text-ink">Administración de plataforma</h1>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className="text-sm text-muted">{ctx.principal.email}</span>
+          <span className="text-sm text-muted">{principal.email}</span>
           <LogoutButton />
         </div>
       </div>
