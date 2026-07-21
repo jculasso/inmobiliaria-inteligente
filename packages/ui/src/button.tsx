@@ -35,7 +35,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       // Sin asChild, un <button> por defecto es type="button" para evitar submits accidentales.
       type={asChild ? undefined : (type ?? 'button')}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-brand font-semibold transition-colors',
+        'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-brand font-semibold transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40',
         'disabled:pointer-events-none disabled:opacity-50',
         variantClasses[variant],
