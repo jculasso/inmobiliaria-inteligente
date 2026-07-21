@@ -4,6 +4,7 @@ import {
   ResumenTasadorKpiSchema,
   TasacionDtoSchema,
   TasacionFotoDtoSchema,
+  TasacionResumenDtoSchema,
   type CambiarEstado,
   type CreateTasacion,
   type TasacionFiltro,
@@ -14,6 +15,19 @@ import { apiFetch, apiFetchForm } from './api-client';
 
 export async function listTasaciones(accessToken: string, filtro: TasacionFiltro) {
   return apiFetch('/tasador/tasaciones', z.array(TasacionDtoSchema), {
+    accessToken,
+    searchParams: {
+      anio: filtro.anio,
+      mes: filtro.mes,
+      estado: filtro.estado,
+      agenteId: filtro.agenteId,
+    },
+  });
+}
+
+/** Igual que `listTasaciones` pero liviano (sin comparables/fotos/análisis) — para el dashboard. */
+export async function listTasacionesResumen(accessToken: string, filtro: TasacionFiltro) {
+  return apiFetch('/tasador/tasaciones/resumen', z.array(TasacionResumenDtoSchema), {
     accessToken,
     searchParams: {
       anio: filtro.anio,

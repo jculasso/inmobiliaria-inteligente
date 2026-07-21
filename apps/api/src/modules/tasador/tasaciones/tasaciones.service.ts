@@ -16,6 +16,22 @@ export const tasacionInclude = {
 
 export type TasacionRow = Prisma.TasacionGetPayload<{ include: typeof tasacionInclude }>;
 
+const tasacionResumenSelect = {
+  id: true,
+  agenteId: true,
+  agente: { select: { id: true, nombre: true } },
+  cliente: true,
+  fecha: true,
+  direccion: true,
+  tipoPropiedad: true,
+  valorRecomendado: true,
+  estado: true,
+  exclusividad: true,
+  motivoNoCaptada: true,
+} satisfies Prisma.TasacionSelect;
+
+type TasacionResumenRow = Prisma.TasacionGetPayload<{ select: typeof tasacionResumenSelect }>;
+
 /** CRUD de tasaciones: secciones "Datos del informe", "Características", "Análisis comercial", "Valores" y "Estrategia", más comparables. */
 @Injectable()
 export class TasacionesService {
@@ -27,21 +43,7 @@ export class TasacionesService {
   /** Lista tasaciones del tenant, acotadas por el scope del rol y los filtros. */
   async list(filtro: TasacionFiltro, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
-      const where: Prisma.TasacionWhereInput = {};
-      if (filtro.estado) where.estado = filtro.estado;
-
-      const rango = rangoDeFecha(filtro.anio, filtro.mes);
-      if (rango) where.fecha = rango;
-
-      // Alcance por rol: `agenteId` explícito solo tiene sentido cuando el
-      // scope ya es todo el tenant (dirección/admin filtrando un agente puntual).
-      if (scope.usuarioIds !== null) {
-        where.agenteId = { in: scope.usuarioIds };
-      } else if (filtro.agenteId) {
-        where.agenteId = filtro.agenteId;
-      }
-
+      const where = await this.whereDe(filtro, ctx, tx);
       const rows = await tx.tasacion.findMany({
         where,
         include: tasacionInclude,
@@ -49,6 +51,46 @@ export class TasacionesService {
       });
       return rows.map(toDto);
     });
+  }
+
+  /**
+   * Igual que `list()` pero con un `select` liviano (sin comparables, fotos,
+   * análisis ni estrategia comercial) — para vistas de resumen (dashboard)
+   * que no necesitan la fila completa.
+   */
+  async listResumen(filtro: TasacionFiltro, ctx: TenantContext) {
+    return this.db.withTenant(async (tx) => {
+      const where = await this.whereDe(filtro, ctx, tx);
+      const rows = await tx.tasacion.findMany({
+        where,
+        select: tasacionResumenSelect,
+        orderBy: [{ fecha: 'desc' }],
+      });
+      return rows.map(toResumenDto);
+    });
+  }
+
+  /** Arma el `where` de listado (filtros + alcance por rol) — compartido por `list()` y `listResumen()`. */
+  private async whereDe(
+    filtro: TasacionFiltro,
+    ctx: TenantContext,
+    tx: Prisma.TransactionClient,
+  ): Promise<Prisma.TasacionWhereInput> {
+    const scope = await resolverScope(ctx, tx);
+    const where: Prisma.TasacionWhereInput = {};
+    if (filtro.estado) where.estado = filtro.estado;
+
+    const rango = rangoDeFecha(filtro.anio, filtro.mes);
+    if (rango) where.fecha = rango;
+
+    // Alcance por rol: `agenteId` explícito solo tiene sentido cuando el
+    // scope ya es todo el tenant (dirección/admin filtrando un agente puntual).
+    if (scope.usuarioIds !== null) {
+      where.agenteId = { in: scope.usuarioIds };
+    } else if (filtro.agenteId) {
+      where.agenteId = filtro.agenteId;
+    }
+    return where;
   }
 
   /** Devuelve una tasación por id (RLS + scope). */
@@ -268,6 +310,23 @@ export function assertEnScope(row: TasacionRow, scope: { usuarioIds: string[] | 
   if (!scope.usuarioIds.includes(row.agenteId)) {
     throw new NotFoundException('Tasación no encontrada.');
   }
+}
+
+/** Mapea la fila liviana (select de resumen) a la forma JSON de la API. */
+export function toResumenDto(row: TasacionResumenRow) {
+  return {
+    id: row.id,
+    agenteId: row.agenteId,
+    agente: { id: row.agente.id, nombre: row.agente.nombre },
+    cliente: row.cliente,
+    fecha: fromDate(row.fecha)!,
+    direccion: row.direccion,
+    tipoPropiedad: row.tipoPropiedad,
+    valorRecomendado: row.valorRecomendado == null ? null : decToNum(row.valorRecomendado),
+    estado: row.estado,
+    exclusividad: row.exclusividad,
+    motivoNoCaptada: row.motivoNoCaptada,
+  };
 }
 
 /** Mapea la fila (Decimal/Date) a la forma JSON de la API. */

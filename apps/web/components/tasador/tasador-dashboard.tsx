@@ -2,10 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { EstadoTasacionSchema, type AuthPrincipal, type TasacionDto } from '@vacker/types';
+import type { AuthPrincipal, RankingCaptacionItem, ResumenTasadorKpi, TasacionResumenDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarInforme, listTasaciones } from '../../lib/tasador-api';
+import {
+  generarInforme,
+  getKpisMensualTasador,
+  getKpisResumenTasador,
+  getRankingCaptaciones,
+  listTasacionesResumen,
+} from '../../lib/tasador-api';
 import { fmtUSD } from '../../lib/format';
 import { ETIQUETA_ROL, rolPrincipal } from '../../lib/rbac';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
@@ -15,7 +21,6 @@ import { RankingCaptacionesCards } from './ranking-captaciones-cards';
 import { TendenciaBars, type TendenciaBar } from './tendencia-bars';
 
 const MESES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-const ESTADOS = EstadoTasacionSchema.options;
 
 const DESCRIPCION_ALCANCE: Partial<Record<string, string>> = {
   direccion: 've todas las tasaciones del tenant',
@@ -29,7 +34,7 @@ type Vista = 'mensual' | 'trimestral' | 'anual';
 interface Drill {
   full: string;
   titulo: string;
-  tasaciones: TasacionDto[];
+  tasaciones: TasacionResumenDto[];
 }
 
 /** Fecha de una tasación (solo día, sin hora) — se lee en UTC para no correrse un día según el huso horario del browser. */
@@ -46,27 +51,49 @@ function trimestreDe(fecha: string): number {
 
 export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
   const router = useRouter();
-  const [tasaciones, setTasaciones] = useState<TasacionDto[] | null>(null);
+  const anio = useMemo(() => new Date().getFullYear(), []);
+
+  // Datos ya agregados en el servidor (1 query cada uno) — reemplaza el
+  // patrón anterior de traer TODO el historial y calcular todo client-side.
+  const [kpisMensual, setKpisMensual] = useState<ResumenTasadorKpi[] | null>(null);
+  const [resumenAnual, setResumenAnual] = useState<ResumenTasadorKpi | null>(null);
+  const [rankingAnual, setRankingAnual] = useState<RankingCaptacionItem[] | null>(null);
+  // Liviano (sin comparables/fotos/análisis) y acotado al año — alcanza para
+  // "últimas tasaciones" y el drill-down de cualquier período/estado/vendedor
+  // del año en curso, sin pedir el historial completo del tenant.
+  const [tasaciones, setTasaciones] = useState<TasacionResumenDto[] | null>(null);
+
   const [vista, setVista] = useState<Vista>('mensual');
   const [drill, setDrill] = useState<Drill | null>(null);
-  const [modalEstado, setModalEstado] = useState<TasacionDto | null>(null);
+  const [modalEstado, setModalEstado] = useState<TasacionResumenDto | null>(null);
   const [generandoId, setGenerandoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelado = false;
+  function cargar(): void {
     getAccessToken()
-      .then((accessToken) => listTasaciones(accessToken, {}))
-      .then((r) => {
-        if (!cancelado) setTasaciones(r);
+      .then((accessToken) =>
+        Promise.all([
+          getKpisMensualTasador(accessToken, anio),
+          getKpisResumenTasador(accessToken, { anio, periodo: 'anual' }),
+          getRankingCaptaciones(accessToken, { anio, periodo: 'anual' }),
+          listTasacionesResumen(accessToken, { anio }),
+        ]),
+      )
+      .then(([mensual, resumen, ranking, resumenTasaciones]) => {
+        setKpisMensual(mensual);
+        setResumenAnual(resumen);
+        setRankingAnual(ranking);
+        setTasaciones(resumenTasaciones);
       })
       .catch((err) => {
-        if (!cancelado) setError(err instanceof Error ? err.message : 'No se pudieron cargar las tasaciones.');
+        setError(err instanceof Error ? err.message : 'No se pudieron cargar las tasaciones.');
       });
-    return () => {
-      cancelado = true;
-    };
-  }, []);
+  }
+
+  useEffect(() => {
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anio]);
 
   const rol = rolPrincipal(principal.roles);
 
@@ -84,43 +111,31 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
   }
 
   const now = useMemo(() => new Date(), []);
-  const curMonthKey = now.getFullYear() * 12 + now.getMonth();
-  const curQuarter = Math.floor(now.getMonth() / 3);
-  const curYear = now.getFullYear();
+  const curMonth = now.getMonth();
+  const curQuarter = Math.floor(curMonth / 3);
 
-  const total = tasaciones?.length ?? 0;
-  const inMonth = tasaciones?.filter((t) => claveMes(t.fecha) === curMonthKey).length ?? 0;
-  const inQuarter =
-    tasaciones?.filter((t) => anioDe(t.fecha) === curYear && trimestreDe(t.fecha) === curQuarter).length ?? 0;
-  const captadas = tasaciones?.filter((t) => t.estado === 'Captada').length ?? 0;
-  const tasaCaptacion = total ? Math.round((captadas / total) * 100) : 0;
+  const total = resumenAnual?.total ?? 0;
+  const inMonth = kpisMensual?.[curMonth]?.total ?? 0;
+  const inQuarter = kpisMensual
+    ? kpisMensual.slice(curQuarter * 3, curQuarter * 3 + 3).reduce((acc, k) => acc + k.total, 0)
+    : 0;
+  const tasaCaptacion = resumenAnual ? Math.round(resumenAnual.tasaCaptacion * 100) : 0;
 
   const buckets: TendenciaBar[] = useMemo(() => {
-    if (!tasaciones) return [];
+    if (!kpisMensual) return [];
     if (vista === 'mensual') {
-      return Array.from({ length: 6 }, (_, idx) => {
-        const i = 5 - idx;
-        const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const key = dt.getFullYear() * 12 + dt.getMonth();
-        const recs = tasaciones.filter((t) => claveMes(t.fecha) === key);
-        return { label: MESES_ABBR[dt.getMonth()]!, full: `${MESES_ABBR[dt.getMonth()]} ${dt.getFullYear()}`, total: recs.length };
-      });
+      return kpisMensual.map((k, i) => ({ label: MESES_ABBR[i]!, full: `${MESES_ABBR[i]} ${anio}`, total: k.total }));
     }
     if (vista === 'trimestral') {
       return [0, 1, 2, 3].map((q) => {
-        const recs = tasaciones.filter((t) => anioDe(t.fecha) === curYear && trimestreDe(t.fecha) === q);
-        return { label: `T${q + 1}`, full: `Trimestre ${q + 1} · ${curYear}`, total: recs.length };
+        const total3 = kpisMensual.slice(q * 3, q * 3 + 3).reduce((acc, k) => acc + k.total, 0);
+        return { label: `T${q + 1}`, full: `Trimestre ${q + 1} · ${anio}`, total: total3 };
       });
     }
-    const years = Array.from(new Set(tasaciones.map((t) => anioDe(t.fecha)))).sort();
-    return years.map((y) => {
-      const recs = tasaciones.filter((t) => anioDe(t.fecha) === y);
-      return { label: String(y), full: `Año ${y} (acumulado)`, total: recs.length };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasaciones, vista]);
+    return [{ label: String(anio), full: `Año ${anio}`, total: resumenAnual?.total ?? 0 }];
+  }, [kpisMensual, resumenAnual, vista, anio]);
 
-  function bucketTasaciones(full: string): TasacionDto[] {
+  function bucketTasaciones(full: string): TasacionResumenDto[] {
     if (!tasaciones) return [];
     if (vista === 'mensual') {
       const [mesLbl, anioStr] = full.split(' ');
@@ -130,33 +145,12 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
     }
     if (vista === 'trimestral') {
       const q = Number(full.match(/Trimestre (\d)/)![1]) - 1;
-      return tasaciones.filter((t) => anioDe(t.fecha) === curYear && trimestreDe(t.fecha) === q);
+      return tasaciones.filter((t) => anioDe(t.fecha) === anio && trimestreDe(t.fecha) === q);
     }
-    const y = Number(full.match(/Año (\d+)/)![1]);
-    return tasaciones.filter((t) => anioDe(t.fecha) === y);
+    return tasaciones;
   }
 
-  const ranking = useMemo(() => {
-    if (!tasaciones) return [];
-    const porAgente = new Map<string, { usuarioId: string; nombre: string; captadas: number }>();
-    for (const t of tasaciones) {
-      if (t.estado !== 'Captada') continue;
-      const item = porAgente.get(t.agenteId) ?? { usuarioId: t.agenteId, nombre: t.agente.nombre, captadas: 0 };
-      item.captadas += 1;
-      porAgente.set(t.agenteId, item);
-    }
-    return [...porAgente.values()].sort((a, b) => b.captadas - a.captadas);
-  }, [tasaciones]);
-
-  const distribucionEstado = useMemo(
-    () =>
-      ESTADOS.map((estado) => ({
-        estado,
-        cantidad: tasaciones?.filter((t) => t.estado === estado).length ?? 0,
-      })),
-    [tasaciones],
-  );
-
+  const distribucionEstado = resumenAnual?.distribucionEstado ?? [];
   const listaActual = drill ? drill.tasaciones : (tasaciones ?? []).slice(0, 10);
 
   return (
@@ -197,7 +191,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
         </p>
       )}
 
-      {tasaciones === null ? (
+      {resumenAnual === null ? (
         <p className="py-6 text-sm text-muted">Cargando…</p>
       ) : total === 0 ? (
         <div className="rounded-brand border border-dashed border-line bg-white p-14 text-center">
@@ -224,7 +218,9 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
             </div>
             <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
               <div className="text-2xl font-extrabold leading-none text-ink">{total}</div>
-              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Total tasaciones</div>
+              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Total tasaciones · {anio}
+              </div>
             </div>
             <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
               <div className="text-2xl font-extrabold leading-none text-success">{tasaCaptacion}%</div>
@@ -276,7 +272,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
             <div className="rounded-brand border border-line bg-white p-5 shadow-sm">
               <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">Ranking de captaciones por vendedor</p>
               <RankingCaptacionesCards
-                ranking={ranking}
+                ranking={rankingAnual ?? []}
                 seleccionado={drill?.full.startsWith('Captaciones de ') ? drill.full.replace('Captaciones de ', '') : null}
                 onSelect={(r) =>
                   setDrill({
@@ -387,9 +383,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
           onClose={() => setModalEstado(null)}
           onSaved={() => {
             setModalEstado(null);
-            getAccessToken()
-              .then((accessToken) => listTasaciones(accessToken, {}))
-              .then(setTasaciones);
+            cargar();
           }}
         />
       )}

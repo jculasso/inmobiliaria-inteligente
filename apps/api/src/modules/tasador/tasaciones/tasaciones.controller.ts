@@ -32,6 +32,16 @@ export class TasacionesController {
     return this.tasaciones.list(filtro, ctxDe(user));
   }
 
+  @Get('resumen')
+  @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
+  @ApiOperation({ summary: 'Lista tasaciones en formato liviano (sin comparables/fotos/análisis) — para el dashboard' })
+  listResumen(
+    @Query(new ZodValidationPipe(TasacionFiltroSchema)) filtro: TasacionFiltro,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.tasaciones.listResumen(filtro, ctxDe(user));
+  }
+
   @Get(':id')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
   @ApiOperation({ summary: 'Detalle de una tasación' })

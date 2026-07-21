@@ -324,6 +324,26 @@ export const TasacionDtoSchema = z.object({
 });
 export type TasacionDto = z.infer<typeof TasacionDtoSchema>;
 
+/**
+ * Versión liviana de `TasacionDto` para vistas de resumen (dashboard): sin
+ * comparables, fotos, análisis ni estrategia comercial — solo lo que se
+ * necesita para listar "últimas tasaciones" y resolver un drill-down.
+ */
+export const TasacionResumenDtoSchema = z.object({
+  id: z.string().uuid(),
+  agenteId: z.string().uuid(),
+  agente: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  cliente: z.string(),
+  fecha: z.string(),
+  direccion: z.string(),
+  tipoPropiedad: TipoPropiedadSchema,
+  valorRecomendado: z.number().nullable(),
+  estado: EstadoTasacionSchema,
+  exclusividad: ExclusividadSchema.nullable(),
+  motivoNoCaptada: z.string().nullable(),
+});
+export type TasacionResumenDto = z.infer<typeof TasacionResumenDtoSchema>;
+
 // --- Sprint 3: cambio de estado (captación) ---
 // Discriminada por `estado`: la propia forma del contrato exige el dato que
 // pide cada transición (exclusividad al captar, motivo al no captar), sin

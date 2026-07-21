@@ -18,7 +18,8 @@ const ESTADOS = EstadoTasacionSchema.options;
 const MOTIVOS = MotivoNoCaptadaSchema.options;
 
 interface Props {
-  tasacion: TasacionDto;
+  /** Alcanza con los campos de estado — acepta tanto `TasacionDto` completo como `TasacionResumenDto`. */
+  tasacion: Pick<TasacionDto, 'id' | 'cliente' | 'estado' | 'exclusividad' | 'motivoNoCaptada'>;
   onClose: () => void;
   onSaved: () => void;
 }
