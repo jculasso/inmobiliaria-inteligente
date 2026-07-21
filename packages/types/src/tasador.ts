@@ -42,6 +42,34 @@ export const ExclusividadSchema = z.discriminatedUnion('tipo', [
 ]);
 export type Exclusividad = z.infer<typeof ExclusividadSchema>;
 
+// --- Vocabulario de la sección 2 (Características del inmueble), tomado
+// literal de las constantes *_OPS del prototipo. ---
+
+export const EstadoInmuebleSchema = z.enum(['Excelente', 'Muy bueno', 'Bueno', 'Regular', 'A reciclar']);
+export type EstadoInmueble = z.infer<typeof EstadoInmuebleSchema>;
+
+export const DisposicionSchema = z.enum(['Frente', 'Contrafrente', 'Interno', 'Lateral', 'No aplica']);
+export type Disposicion = z.infer<typeof DisposicionSchema>;
+
+export const OrientacionSchema = z.enum([
+  'Norte',
+  'Sur',
+  'Este',
+  'Oeste',
+  'Noreste',
+  'Noroeste',
+  'Sudeste',
+  'Sudoeste',
+  'No especificada',
+]);
+export type Orientacion = z.infer<typeof OrientacionSchema>;
+
+export const DocumentacionSchema = z.enum(['Completa', 'Pendiente de revisión', 'Con observaciones', 'No aplica']);
+export type Documentacion = z.infer<typeof DocumentacionSchema>;
+
+export const AptoCreditoSchema = z.enum(['Sí', 'No', 'A revisar']);
+export type AptoCredito = z.infer<typeof AptoCreditoSchema>;
+
 // --- Vocabulario de las secciones 3 (Análisis comercial) y 6 (Estrategia
 // comercial), tomado literal de las constantes *_OPS del prototipo. ---
 
@@ -190,9 +218,9 @@ const TasacionCaracteristicasFields = {
   toilette: z.number().int().nonnegative().nullish(),
   ambientes: z.number().int().nonnegative().nullish(),
   antiguedad: z.number().int().nonnegative().nullish(),
-  estadoInmueble: z.string().nullish(),
-  disposicion: z.string().nullish(),
-  orientacion: z.string().nullish(),
+  estadoInmueble: EstadoInmuebleSchema.nullish(),
+  disposicion: DisposicionSchema.nullish(),
+  orientacion: OrientacionSchema.nullish(),
   cochera: z.boolean().default(false),
   balcon: z.boolean().default(false),
   terraza: z.boolean().default(false),
@@ -202,8 +230,8 @@ const TasacionCaracteristicasFields = {
   amenities: z.array(z.string()).default([]),
   detalleAmenities: z.string().nullish(),
   expensas: z.number().nonnegative().nullish(),
-  aptoCredito: z.string().nullish(),
-  documentacion: z.string().nullish(),
+  aptoCredito: AptoCreditoSchema.nullish(),
+  documentacion: DocumentacionSchema.nullish(),
 };
 
 /**

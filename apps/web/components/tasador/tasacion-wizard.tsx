@@ -4,11 +4,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type {
   ComparableInput,
+  AptoCredito,
   Aspecto,
+  Disposicion,
+  Documentacion,
   Escenario,
+  EstadoInmueble,
   EstrategiaAccion,
   Fortaleza,
   Nivel,
+  Orientacion,
   PerfilComprador,
   PlazoEstimado,
   TasacionDto,
@@ -73,9 +78,11 @@ export function TasacionWizard({ tasacion }: Props) {
   const [toilette, setToilette] = useState(String(tasacion?.toilette ?? ''));
   const [ambientes, setAmbientes] = useState(String(tasacion?.ambientes ?? ''));
   const [antiguedad, setAntiguedad] = useState(String(tasacion?.antiguedad ?? ''));
-  const [estadoInmueble, setEstadoInmueble] = useState(tasacion?.estadoInmueble ?? '');
-  const [disposicion, setDisposicion] = useState(tasacion?.disposicion ?? '');
-  const [orientacion, setOrientacion] = useState(tasacion?.orientacion ?? '');
+  const [estadoInmueble, setEstadoInmueble] = useState<EstadoInmueble | ''>(
+    (tasacion?.estadoInmueble as EstadoInmueble) ?? '',
+  );
+  const [disposicion, setDisposicion] = useState<Disposicion | ''>((tasacion?.disposicion as Disposicion) ?? '');
+  const [orientacion, setOrientacion] = useState<Orientacion | ''>((tasacion?.orientacion as Orientacion) ?? '');
   const [cochera, setCochera] = useState(tasacion?.cochera ?? false);
   const [balcon, setBalcon] = useState(tasacion?.balcon ?? false);
   const [terraza, setTerraza] = useState(tasacion?.terraza ?? false);
@@ -85,8 +92,10 @@ export function TasacionWizard({ tasacion }: Props) {
   const [amenities, setAmenities] = useState(tasacion?.amenities.join(', ') ?? '');
   const [detalleAmenities, setDetalleAmenities] = useState(tasacion?.detalleAmenities ?? '');
   const [expensas, setExpensas] = useState(String(tasacion?.expensas ?? ''));
-  const [aptoCredito, setAptoCredito] = useState(tasacion?.aptoCredito ?? '');
-  const [documentacion, setDocumentacion] = useState(tasacion?.documentacion ?? '');
+  const [aptoCredito, setAptoCredito] = useState<AptoCredito | ''>((tasacion?.aptoCredito as AptoCredito) ?? '');
+  const [documentacion, setDocumentacion] = useState<Documentacion | ''>(
+    (tasacion?.documentacion as Documentacion) ?? '',
+  );
   const [fotos, setFotos] = useState<TasacionFotoDto[]>(tasacion?.fotos ?? []);
 
   // Sección 3

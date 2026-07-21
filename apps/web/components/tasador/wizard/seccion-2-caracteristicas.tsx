@@ -1,11 +1,30 @@
 'use client';
 
-import { TipoPropiedadSchema, type TasacionFotoDto, type TipoPropiedad } from '@vacker/types';
+import {
+  AptoCreditoSchema,
+  DisposicionSchema,
+  DocumentacionSchema,
+  EstadoInmuebleSchema,
+  OrientacionSchema,
+  TipoPropiedadSchema,
+  type AptoCredito,
+  type Disposicion,
+  type Documentacion,
+  type EstadoInmueble,
+  type Orientacion,
+  type TasacionFotoDto,
+  type TipoPropiedad,
+} from '@vacker/types';
 import { fmtNum } from '../../../lib/format';
 import { FotosUploader } from '../fotos-uploader';
 import { Campo, inputClass } from './campo';
 
 const TIPOS_PROPIEDAD = TipoPropiedadSchema.options;
+const ESTADOS_INMUEBLE = EstadoInmuebleSchema.options;
+const DISPOSICIONES = DisposicionSchema.options;
+const ORIENTACIONES = OrientacionSchema.options;
+const DOCUMENTACIONES = DocumentacionSchema.options;
+const APTOS_CREDITO = AptoCreditoSchema.options;
 
 interface Props {
   tipoPropiedad: TipoPropiedad;
@@ -29,12 +48,12 @@ interface Props {
   setAmbientes: (v: string) => void;
   antiguedad: string;
   setAntiguedad: (v: string) => void;
-  disposicion: string;
-  setDisposicion: (v: string) => void;
-  orientacion: string;
-  setOrientacion: (v: string) => void;
-  estadoInmueble: string;
-  setEstadoInmueble: (v: string) => void;
+  disposicion: Disposicion | '';
+  setDisposicion: (v: Disposicion | '') => void;
+  orientacion: Orientacion | '';
+  setOrientacion: (v: Orientacion | '') => void;
+  estadoInmueble: EstadoInmueble | '';
+  setEstadoInmueble: (v: EstadoInmueble | '') => void;
   cochera: boolean;
   setCochera: (v: boolean) => void;
   balcon: boolean;
@@ -53,10 +72,10 @@ interface Props {
   setDetalleAmenities: (v: string) => void;
   expensas: string;
   setExpensas: (v: string) => void;
-  aptoCredito: string;
-  setAptoCredito: (v: string) => void;
-  documentacion: string;
-  setDocumentacion: (v: string) => void;
+  aptoCredito: AptoCredito | '';
+  setAptoCredito: (v: AptoCredito | '') => void;
+  documentacion: Documentacion | '';
+  setDocumentacion: (v: Documentacion | '') => void;
   tasacionId: string | null;
   fotos: TasacionFotoDto[];
   setFotos: (fotos: TasacionFotoDto[]) => void;
@@ -226,14 +245,47 @@ export function Seccion2Caracteristicas(props: Props) {
           />
         </Campo>
         <Campo label="Disposición">
-          <input value={disposicion} onChange={(e) => setDisposicion(e.target.value)} className={inputClass} />
+          <select
+            value={disposicion}
+            onChange={(e) => setDisposicion(e.target.value as Disposicion | '')}
+            className={inputClass}
+          >
+            <option value="">Seleccionar...</option>
+            {DISPOSICIONES.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
         </Campo>
         <Campo label="Orientación">
-          <input value={orientacion} onChange={(e) => setOrientacion(e.target.value)} className={inputClass} />
+          <select
+            value={orientacion}
+            onChange={(e) => setOrientacion(e.target.value as Orientacion | '')}
+            className={inputClass}
+          >
+            <option value="">Seleccionar...</option>
+            {ORIENTACIONES.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
         </Campo>
       </div>
       <Campo label="Estado del inmueble">
-        <input value={estadoInmueble} onChange={(e) => setEstadoInmueble(e.target.value)} className={inputClass} />
+        <select
+          value={estadoInmueble}
+          onChange={(e) => setEstadoInmueble(e.target.value as EstadoInmueble | '')}
+          className={inputClass}
+        >
+          <option value="">Seleccionar...</option>
+          {ESTADOS_INMUEBLE.map((e) => (
+            <option key={e} value={e}>
+              {e}
+            </option>
+          ))}
+        </select>
       </Campo>
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm sm:grid-cols-3">
@@ -278,11 +330,33 @@ export function Seccion2Caracteristicas(props: Props) {
           />
         </Campo>
         <Campo label="Apto crédito">
-          <input value={aptoCredito} onChange={(e) => setAptoCredito(e.target.value)} className={inputClass} />
+          <select
+            value={aptoCredito}
+            onChange={(e) => setAptoCredito(e.target.value as AptoCredito | '')}
+            className={inputClass}
+          >
+            <option value="">Seleccionar...</option>
+            {APTOS_CREDITO.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
         </Campo>
       </div>
       <Campo label="Documentación">
-        <input value={documentacion} onChange={(e) => setDocumentacion(e.target.value)} className={inputClass} />
+        <select
+          value={documentacion}
+          onChange={(e) => setDocumentacion(e.target.value as Documentacion | '')}
+          className={inputClass}
+        >
+          <option value="">Seleccionar...</option>
+          {DOCUMENTACIONES.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
       </Campo>
 
       {tasacionId ? (
