@@ -1,0 +1,17 @@
+name: Keep API awake
+
+# Parche mientras la API vive en el free tier de Render (se duerme por
+# inactividad y el primer request después tarda 30-60s+). Pinguea /health
+# cada 10 minutos para que no llegue a dormirse. No reemplaza la migración
+# de infraestructura ya decidida (Lightsail) — es solo un paliativo.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: curl -fsS --max-time 30 https://inmobiliaria-inteligente.onrender.com/health
