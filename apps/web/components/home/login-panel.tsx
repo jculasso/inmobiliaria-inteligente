@@ -1,13 +1,21 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import { createClient } from '../../lib/supabase/client';
+
+/** Ruta a la que volver tras loguear (ver middleware.ts: ?redirect= es el destino original, ej. /admin, antes de rebotar a la Home). Solo se acepta un path relativo propio, para no habilitar un open redirect. */
+function destinoTrasLogin(searchParams: URLSearchParams): string | null {
+  const redirect = searchParams.get('redirect');
+  if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) return redirect;
+  return null;
+}
 
 /** Formulario de login embebido en la Home (ver components/home-view.tsx, modo invitado). */
 export function LoginPanel() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mostrarClave, setMostrarClave] = useState(false);
@@ -35,8 +43,14 @@ export function LoginPanel() {
     }
 
     setSesionIniciada(true);
-    // Ya estamos en "/": re-renderiza el Server Component con la sesión nueva.
-    router.refresh();
+    const destino = destinoTrasLogin(searchParams);
+    if (destino) {
+      // Venías de una ruta protegida (ej. /admin) que te rebotó a loguearte acá — te manda de vuelta.
+      router.push(destino);
+    } else {
+      // Ya estamos en "/": re-renderiza el Server Component con la sesión nueva.
+      router.refresh();
+    }
   }
 
   if (sesionIniciada) {

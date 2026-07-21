@@ -52,7 +52,13 @@ export async function middleware(request: NextRequest) {
   const isPublicPath = PUBLIC_PATHS.includes(request.nextUrl.pathname);
 
   if (!claims && !isPublicPath) {
-    return NextResponse.redirect(new URL('/', request.url));
+    // Guarda el destino original (ej. /admin) como ?redirect= para que el
+    // login embebido en la Home pueda mandar para allá apenas loguees, en
+    // vez de dejarte en la Home y que tengas que volver a escribir la URL
+    // a mano.
+    const loginUrl = new URL('/', request.url);
+    loginUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.redirect(loginUrl);
   }
 
   return response;

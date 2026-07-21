@@ -5,8 +5,10 @@ import { LoginPanel } from './login-panel';
 
 const push = vi.fn();
 const refresh = vi.fn();
+let redirectParam: string | null = null;
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh }),
+  useSearchParams: () => new URLSearchParams(redirectParam ? { redirect: redirectParam } : {}),
 }));
 
 const signInWithPassword = vi.fn();
@@ -16,6 +18,7 @@ vi.mock('../../lib/supabase/client', () => ({
 
 afterEach(() => {
   vi.clearAllMocks();
+  redirectParam = null;
 });
 
 describe('LoginPanel', () => {
@@ -39,6 +42,33 @@ describe('LoginPanel', () => {
       password: 'secreta123',
     });
     expect(refresh).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('vuelve a la ruta original (?redirect=) en vez de la Home cuando venía de una ruta protegida', async () => {
+    redirectParam = '/admin';
+    signInWithPassword.mockResolvedValue({ error: null });
+    render(<LoginPanel />);
+
+    await userEvent.type(screen.getByLabelText(/Email/), 'admin@vacker.com');
+    await userEvent.type(screen.getByLabelText(/Clave/), 'secreta123');
+    await userEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
+
+    expect(push).toHaveBeenCalledWith('/admin');
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('ignora un ?redirect= que no sea un path relativo propio (open redirect)', async () => {
+    redirectParam = '//evil.example.com';
+    signInWithPassword.mockResolvedValue({ error: null });
+    render(<LoginPanel />);
+
+    await userEvent.type(screen.getByLabelText(/Email/), 'demo@vacker.com');
+    await userEvent.type(screen.getByLabelText(/Clave/), 'secreta123');
+    await userEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
+
+    expect(refresh).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('alterna mostrar/ocultar la clave', async () => {
