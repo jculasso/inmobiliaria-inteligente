@@ -1,9 +1,11 @@
 'use client';
 
-import type { ComparableInput } from '@vacker/types';
+import { EstadoInmuebleSchema, type ComparableInput, type EstadoInmueble } from '@vacker/types';
 import { promedioUsdM2, usdM2 } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
+
+const ESTADOS_INMUEBLE = EstadoInmuebleSchema.options;
 
 const COMPARABLE_VACIO: ComparableInput = {
   direccion: '',
@@ -12,7 +14,7 @@ const COMPARABLE_VACIO: ComparableInput = {
   dormitorios: null,
   banos: null,
   cochera: false,
-  estado: '',
+  estado: null,
   link: '',
   observaciones: '',
 };
@@ -118,10 +120,28 @@ export function ComparablesEditor({ comparables, onChange }: Props) {
               Cochera
             </label>
           </div>
+          <select
+            value={c.estado ?? ''}
+            onChange={(e) => actualizar(i, { estado: (e.target.value || null) as EstadoInmueble | null })}
+            className={inputClass}
+          >
+            <option value="">Estado — seleccionar...</option>
+            {ESTADOS_INMUEBLE.map((e) => (
+              <option key={e} value={e}>
+                {e}
+              </option>
+            ))}
+          </select>
           <input
             value={c.link ?? ''}
             onChange={(e) => actualizar(i, { link: e.target.value })}
             placeholder="Link (opcional)"
+            className={inputClass}
+          />
+          <input
+            value={c.observaciones ?? ''}
+            onChange={(e) => actualizar(i, { observaciones: e.target.value })}
+            placeholder="Observaciones (opcional)"
             className={inputClass}
           />
         </div>

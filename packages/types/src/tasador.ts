@@ -180,7 +180,10 @@ export const ComparableInputSchema = z.object({
   dormitorios: z.number().int().nonnegative().nullish(),
   banos: z.number().int().nonnegative().nullish(),
   cochera: z.boolean().default(false),
-  estado: z.string().nullish(),
+  // Nunca hubo un input en el editor de comparables para este campo — no hay
+  // filas persistidas con texto libre que romper, a diferencia de los campos
+  // análogos de la sección 2 (ver TasacionCaracteristicasFields más abajo).
+  estado: EstadoInmuebleSchema.nullish(),
   link: z.string().nullish(),
   observaciones: z.string().nullish(),
 });
