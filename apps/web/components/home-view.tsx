@@ -3,6 +3,7 @@ import { MODULOS_POR_PLAN } from '@vacker/types';
 import type { BadgeVariant } from '@vacker/ui';
 import { alcanceDeModulo, etiquetaDeAlcance } from '../lib/rbac';
 import { fmtUSD } from '../lib/format';
+import { tenantBrandStyle } from '../lib/tenant-style';
 import { ModuleCard } from './home/module-card';
 import { LoginPanel } from './home/login-panel';
 import { LogoutButton } from './logout-button';
@@ -62,17 +63,7 @@ export function HomeView({ sesion }: HomeViewProps) {
   const nombreMarca = sesion ? (config?.nombreCorto ?? sesion.tenant.nombre) : 'Inmobiliaria Inteligente';
 
   return (
-    <main
-      className="mx-auto max-w-6xl px-6 py-14 sm:py-16"
-      style={
-        config?.colorPrimario
-          ? ({
-              '--color-brand-red': config.colorPrimario,
-              '--color-brand-red-dark': config.colorPrimarioOscuro || config.colorPrimario,
-            } as React.CSSProperties)
-          : undefined
-      }
-    >
+    <main className="mx-auto max-w-6xl px-6 py-14 sm:py-16" style={tenantBrandStyle(config)}>
       <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-red to-brand-red-dark shadow-lg shadow-brand-red/20">

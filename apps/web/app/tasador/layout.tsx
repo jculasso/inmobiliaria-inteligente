@@ -4,6 +4,7 @@ import type { AuthPrincipal } from '@vacker/types';
 import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
+import { tenantBrandStyle } from '../../lib/tenant-style';
 import { LogoutButton } from '../../components/logout-button';
 import { TasadorNav } from '../../components/tasador/tasador-nav';
 
@@ -37,7 +38,7 @@ export default async function TasadorLayout({ children }: { children: ReactNode 
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10" style={tenantBrandStyle(principal.tenant.config)}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link
