@@ -1,3 +1,5 @@
+import { ColdStartHint } from '../../../components/cold-start-hint';
+
 /**
  * Skeleton propio de "Tasaciones" (antes reusaba el del dashboard, con forma
  * de KPIs+gráfico — no se parecía en nada a esta pantalla y se sentía como un
@@ -17,6 +19,7 @@ export default function Loading() {
           <div key={i} className="h-12 animate-pulse border-b border-line last:border-0" />
         ))}
       </div>
+      <ColdStartHint />
     </div>
   );
 }

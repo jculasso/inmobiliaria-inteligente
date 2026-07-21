@@ -1,3 +1,5 @@
+import { ColdStartHint } from '../components/cold-start-hint';
+
 /**
  * Se muestra automáticamente mientras `app/page.tsx` (Server Component
  * async) espera la respuesta de la API — sin esto, con la API en el free
@@ -23,6 +25,7 @@ export default function Loading() {
       </div>
 
       <p className="mt-8 text-center text-sm text-muted">Cargando…</p>
+      <ColdStartHint />
     </main>
   );
 }

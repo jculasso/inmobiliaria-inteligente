@@ -1,3 +1,5 @@
+import { ColdStartHint } from '../../../components/cold-start-hint';
+
 /**
  * Skeleton propio de "Reporte" (misma razón que tasaciones/loading.tsx: el
  * genérico del dashboard no se parece a esta pantalla).
@@ -15,6 +17,7 @@ export default function Loading() {
         ))}
       </div>
       <div className="h-40 animate-pulse rounded-brand border border-line bg-white" />
+      <ColdStartHint />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { ColdStartHint } from '../../components/cold-start-hint';
+
 /**
  * Feedback instantáneo mientras el dashboard espera la respuesta de la API
  * (ver app/loading.tsx). Ocupa solo el `children` de `TasadorLayout` — el
@@ -15,6 +17,7 @@ export default function Loading() {
         ))}
       </div>
       <div className="h-64 animate-pulse rounded-brand border border-line bg-white" />
+      <ColdStartHint />
     </div>
   );
 }
