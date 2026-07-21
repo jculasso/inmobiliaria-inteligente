@@ -40,17 +40,15 @@ describe('agregar', () => {
 });
 
 describe('ranking', () => {
-  it('ordena por captadas desc y calcula peso relativo', () => {
+  it('ordena por captadas desc, calcula peso relativo y excluye agentes sin ninguna captación', () => {
     const r = ranking(tasaciones, null);
-    expect(r.map((x) => x.usuarioId)).toEqual(['a', 'b', 'c']);
+    // 'c' no tiene captadas (solo una tasación "Presentada") y no debe aparecer.
+    expect(r.map((x) => x.usuarioId)).toEqual(['a', 'b']);
     expect(r[0]).toMatchObject({ usuarioId: 'a', captadas: 2, total: 3 });
     expect(r[0]?.tasaCaptacion).toBeCloseTo(2 / 3);
     expect(r[0]?.peso).toBeCloseTo(2 / 3);
     expect(r[1]).toMatchObject({ usuarioId: 'b', captadas: 1, total: 2 });
     expect(r[1]?.peso).toBeCloseTo(1 / 3);
-    expect(r[2]).toMatchObject({ usuarioId: 'c', captadas: 0, total: 1 });
-    expect(r[2]?.tasaCaptacion).toBe(0);
-    expect(r[2]?.peso).toBe(0);
   });
 
   it('con scope de un agente solo aparece ese agente (peso 1)', () => {

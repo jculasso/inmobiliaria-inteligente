@@ -58,6 +58,9 @@ export function ranking(tasaciones: TasacionCalc[], scope: ScopeSet): RankingCap
   }
 
   return [...porAgente.entries()]
+    // El ranking es "de captaciones" — un agente sin ninguna no aporta nada
+    // a esa clasificación, así que no tiene sentido listarlo con 0.
+    .filter(([, item]) => item.captadas > 0)
     .map(([usuarioId, item]) => ({
       usuarioId,
       nombre: item.nombre,

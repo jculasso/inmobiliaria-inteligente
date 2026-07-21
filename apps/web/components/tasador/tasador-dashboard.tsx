@@ -19,13 +19,14 @@ import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { EstadoDistribucion } from './estado-distribucion';
 import { KpiCard } from '../tablero/kpi-card';
 import { RankingCaptacionesCards } from './ranking-captaciones-cards';
+import { TasacionesDrillModal } from './tasaciones-drill-modal';
 import { TendenciaBars, type TendenciaBar } from './tendencia-bars';
 
 const MESES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const DESCRIPCION_ALCANCE: Partial<Record<string, string>> = {
-  direccion: 've todas las tasaciones del tenant',
-  admin_tenant: 've todas las tasaciones del tenant',
+  direccion: 've todas las tasaciones de la inmobiliaria',
+  admin_tenant: 've todas las tasaciones de la inmobiliaria',
   team_leader: 've sus tasaciones y las de su equipo',
   vendedor: 've únicamente sus tasaciones',
 };
@@ -33,8 +34,8 @@ const DESCRIPCION_ALCANCE: Partial<Record<string, string>> = {
 type Vista = 'mensual' | 'trimestral' | 'anual';
 
 interface Drill {
-  full: string;
   titulo: string;
+  subtitulo?: string;
   tasaciones: TasacionResumenDto[];
 }
 
@@ -152,7 +153,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
   }
 
   const distribucionEstado = resumenAnual?.distribucionEstado ?? [];
-  const listaActual = drill ? drill.tasaciones : (tasaciones ?? []).slice(0, 10);
+  const ultimasTasaciones = (tasaciones ?? []).slice(0, 10);
 
   return (
     <div className="flex flex-col gap-6">
@@ -209,10 +210,44 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <KpiCard label="Este mes" value={String(inMonth)} />
-            <KpiCard label="Este trimestre" value={String(inQuarter)} />
-            <KpiCard label={`Total tasaciones · ${anio}`} value={String(total)} />
-            <KpiCard label="Tasa de captación" value={`${tasaCaptacion}%`} tone="success" />
+            <KpiCard
+              label="Este mes"
+              value={String(inMonth)}
+              onClick={() =>
+                setDrill({
+                  titulo: `Tasaciones de ${MESES_ABBR[curMonth]} ${anio}`,
+                  tasaciones: (tasaciones ?? []).filter((t) => claveMes(t.fecha) === curMonth + anio * 12),
+                })
+              }
+            />
+            <KpiCard
+              label="Este trimestre"
+              value={String(inQuarter)}
+              onClick={() =>
+                setDrill({
+                  titulo: `Tasaciones · Trimestre ${curQuarter + 1} · ${anio}`,
+                  tasaciones: (tasaciones ?? []).filter(
+                    (t) => anioDe(t.fecha) === anio && trimestreDe(t.fecha) === curQuarter,
+                  ),
+                })
+              }
+            />
+            <KpiCard
+              label={`Total tasaciones · ${anio}`}
+              value={String(total)}
+              onClick={() => setDrill({ titulo: `Tasaciones · ${anio}`, tasaciones: tasaciones ?? [] })}
+            />
+            <KpiCard
+              label="Tasa de captación"
+              value={`${tasaCaptacion}%`}
+              tone="success"
+              onClick={() =>
+                setDrill({
+                  titulo: `Tasaciones captadas · ${anio}`,
+                  tasaciones: (tasaciones ?? []).filter((t) => t.estado === 'Captada'),
+                })
+              }
+            />
           </div>
 
           <div className="inline-flex w-full flex-wrap gap-1 rounded-[10px] bg-surface p-1 shadow-[inset_0_0_0_1px_var(--color-line)] sm:w-fit sm:flex-nowrap">
@@ -226,10 +261,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
               <button
                 key={v}
                 type="button"
-                onClick={() => {
-                  setVista(v);
-                  setDrill(null);
-                }}
+                onClick={() => setVista(v)}
                 className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
                   vista === v ? 'bg-white text-brand-red shadow-sm' : 'text-muted hover:text-brand-red'
                 }`}
@@ -246,24 +278,20 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
               </p>
               <TendenciaBars
                 datos={buckets}
-                seleccionado={drill?.full ?? null}
-                onSelect={(b) =>
-                  setDrill(
-                    b.total > 0
-                      ? { full: b.full, titulo: `Tasaciones de ${b.full}`, tasaciones: bucketTasaciones(b.full) }
-                      : null,
-                  )
-                }
+                seleccionado={null}
+                onSelect={(b) => {
+                  if (b.total === 0) return;
+                  setDrill({ titulo: `Tasaciones de ${b.full}`, tasaciones: bucketTasaciones(b.full) });
+                }}
               />
             </Card>
             <Card>
               <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">Ranking de captaciones por vendedor</p>
               <RankingCaptacionesCards
                 ranking={rankingAnual ?? []}
-                seleccionado={drill?.full.startsWith('Captaciones de ') ? drill.full.replace('Captaciones de ', '') : null}
+                seleccionado={null}
                 onSelect={(r) =>
                   setDrill({
-                    full: `Captaciones de ${r.nombre}`,
                     titulo: `Captaciones de ${r.nombre}`,
                     tasaciones: (tasaciones ?? []).filter((t) => t.estado === 'Captada' && t.agenteId === r.usuarioId),
                   })
@@ -279,7 +307,6 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
               distribucion={distribucionEstado}
               onSelect={(estado) =>
                 setDrill({
-                  full: `estado:${estado}`,
                   titulo: `Tasaciones · ${estado}`,
                   tasaciones: (tasaciones ?? []).filter((t) => t.estado === estado),
                 })
@@ -289,28 +316,20 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
 
           <Card className="px-5 py-4">
             <div className="flex items-center justify-between pb-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted">
-                {drill ? `${drill.titulo} (${drill.tasaciones.length})` : 'Últimas tasaciones'}
-              </p>
-              {drill ? (
-                <button type="button" onClick={() => setDrill(null)} className="text-xs font-bold text-brand-red hover:underline">
-                  × Quitar filtro
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => router.push('/tasador/tasaciones')}
-                  className="text-xs font-bold text-brand-red hover:underline"
-                >
-                  Ver historial completo →
-                </button>
-              )}
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">Últimas tasaciones</p>
+              <button
+                type="button"
+                onClick={() => router.push('/tasador/tasaciones')}
+                className="text-xs font-bold text-brand-red hover:underline"
+              >
+                Ver historial completo →
+              </button>
             </div>
             <div className="flex flex-col">
-              {listaActual.length === 0 ? (
+              {ultimasTasaciones.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted">Sin tasaciones para mostrar.</p>
               ) : (
-                listaActual.map((t) => {
+                ultimasTasaciones.map((t) => {
                   const det = detalleEstado(t);
                   return (
                     <div
@@ -362,6 +381,15 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
             </div>
           </Card>
         </>
+      )}
+
+      {drill && (
+        <TasacionesDrillModal
+          titulo={drill.titulo}
+          subtitulo={drill.subtitulo}
+          tasaciones={drill.tasaciones}
+          onClose={() => setDrill(null)}
+        />
       )}
 
       {modalEstado && (
