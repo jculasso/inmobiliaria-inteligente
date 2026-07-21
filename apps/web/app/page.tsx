@@ -38,10 +38,13 @@ export default async function Home() {
       />
     );
   } catch (err) {
-    const message =
-      err instanceof MeError
-        ? err.message
-        : 'No se pudo cargar tu perfil. Intentá de nuevo en unos minutos.';
+    // Solo MeError significa "la API respondió, pero mal" (p. ej. 401 =
+    // cuenta sin tenant vinculado) — ahí sí aplica este mensaje. Cualquier
+    // otro error (fetch que nunca llegó a responder: timeout, red caída,
+    // Render todavía despertando) NO es un problema de la cuenta; se
+    // relanza para que lo resuelva app/error.tsx con un mensaje correcto y
+    // un botón de reintentar, en vez de decirle al usuario algo falso.
+    if (!(err instanceof MeError)) throw err;
 
     return (
       <main className="mx-auto flex min-h-screen max-w-lg items-center px-6">
@@ -50,7 +53,7 @@ export default async function Home() {
             <CardTitle>Tu cuenta no está habilitada todavía</CardTitle>
             <CardDescription>
               Iniciaste sesión con Supabase, pero tu usuario aún no está vinculado a un tenant de
-              la plataforma. Pedile a un administrador que te dé de alta. ({message})
+              la plataforma. Pedile a un administrador que te dé de alta. ({err.message})
             </CardDescription>
           </CardHeader>
           <div>

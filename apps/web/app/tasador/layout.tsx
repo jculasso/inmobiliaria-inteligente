@@ -19,13 +19,16 @@ export default async function TasadorLayout({ children }: { children: ReactNode 
   try {
     principal = await getMe(session.access_token);
   } catch (err) {
-    const message = err instanceof MeError ? err.message : 'No se pudo cargar tu perfil.';
+    // Solo MeError es un problema real de la cuenta (p. ej. 401 sin tenant
+    // vinculado). Cualquier otro error (timeout/red hacia la API) se
+    // relanza para que lo resuelva error.tsx con un mensaje correcto.
+    if (!(err instanceof MeError)) throw err;
     return (
       <main className="mx-auto flex min-h-screen max-w-lg items-center px-6">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Tu cuenta no está habilitada todavía</CardTitle>
-            <CardDescription>{message}</CardDescription>
+            <CardDescription>{err.message}</CardDescription>
           </CardHeader>
           <LogoutButton />
         </Card>
