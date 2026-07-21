@@ -11,6 +11,7 @@ import { decToNum, fromDate, toDate } from '../../tablero/tablero.util';
 export const tasacionInclude = {
   agente: { select: { id: true, nombre: true } },
   comparables: true,
+  fotos: { orderBy: { orden: 'asc' } },
 } satisfies Prisma.TasacionInclude;
 
 export type TasacionRow = Prisma.TasacionGetPayload<{ include: typeof tasacionInclude }>;
@@ -324,6 +325,7 @@ export function toDto(row: TasacionRow) {
         usdM2: usdM2({ superficie, precio }),
       };
     }),
+    fotos: row.fotos.map((f) => ({ id: f.id, url: f.url, orden: f.orden })),
     analisisComercial: row.analisisComercial,
     valorMinimo: row.valorMinimo == null ? null : decToNum(row.valorMinimo),
     valorRecomendado: row.valorRecomendado == null ? null : decToNum(row.valorRecomendado),

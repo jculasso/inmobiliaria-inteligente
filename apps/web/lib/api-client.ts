@@ -64,3 +64,40 @@ export async function apiFetch<T>(
   }
   return parsed.data;
 }
+
+/** Variante de `apiFetch` para subir un archivo (`multipart/form-data`) — sin forzar `Content-Type: json`. */
+export async function apiFetchForm<T>(
+  path: string,
+  schema: ZodType<T>,
+  { accessToken, file }: { accessToken: string; file: File },
+): Promise<T> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new ApiError('Falta NEXT_PUBLIC_API_URL en el entorno.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${apiUrl}${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
+    throw new ApiError(errorBody?.error?.message ?? `POST ${path} devolvió ${res.status}`, {
+      status: res.status,
+      code: errorBody?.error?.code,
+    });
+  }
+
+  const json: unknown = await res.json();
+  const parsed = schema.safeParse(json);
+  if (!parsed.success) {
+    throw new ApiError(`La respuesta de POST ${path} no tiene el formato esperado.`);
+  }
+  return parsed.data;
+}

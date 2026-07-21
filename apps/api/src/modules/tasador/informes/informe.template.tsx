@@ -30,6 +30,10 @@ const styles = StyleSheet.create({
     paddingBottom: 3,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  cols: { flexDirection: 'row', gap: 24 },
+  col: { flex: 1 },
+  fotos: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  foto: { flex: 1, height: 90, borderRadius: 4, objectFit: 'cover' },
   card: {
     width: '31%',
     borderWidth: 1,
@@ -75,6 +79,21 @@ function fmtUSD(v: number | null): string {
   return `USD ${Math.round(v).toLocaleString('es-AR')}`;
 }
 
+function fmtFecha(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+}
+
+function fmtSiNo(v: boolean): string {
+  return v ? 'Sí' : 'No';
+}
+
+function fmtAmenities(t: TasacionDto): string {
+  if (t.amenities.length === 0) return '—';
+  return t.detalleAmenities ? `${t.amenities.join(', ')} — ${t.detalleAmenities}` : t.amenities.join(', ');
+}
+
 function textoAnalisisComercial(t: TasacionDto): string {
   const a = t.analisisComercial;
   if (!a) return 'Sin análisis comercial cargado todavía.';
@@ -117,6 +136,10 @@ export function InformeDocument({
           {logoUrl ? <Image src={logoUrl} style={styles.logo} /> : null}
         </View>
 
+        <FichaRow label="Cliente" value={t.cliente} />
+        <FichaRow label="Agente responsable" value={t.agente.nombre} />
+        <FichaRow label="Fecha" value={fmtFecha(t.fecha)} />
+
         <Text style={styles.sectionTitle}>1. Resumen ejecutivo</Text>
         <View style={styles.row}>
           <Card label="Tipo" value={t.tipoPropiedad} />
@@ -130,15 +153,43 @@ export function InformeDocument({
         </View>
 
         <Text style={styles.sectionTitle}>2. Características de la propiedad</Text>
-        <FichaRow label="Tipo de propiedad" value={t.tipoPropiedad} />
-        <FichaRow label="Tipo de operación" value={t.tipoOperacion} />
-        <FichaRow label="Ambientes" value={String(t.ambientes ?? '—')} />
-        <FichaRow label="Dormitorios" value={String(t.dormitorios ?? '—')} />
-        <FichaRow label="Baños" value={String(t.banos ?? '—')} />
-        <FichaRow label="Sup. cubierta" value={`${t.supCubierta} m²`} />
-        <FichaRow label="Sup. semicubierta" value={`${t.supSemicubierta} m²`} />
-        <FichaRow label="Sup. descubierta" value={`${t.supDescubierta} m²`} />
-        <FichaRow label="Sup. total" value={`${t.superficieTotal} m²`} />
+        <View style={styles.cols}>
+          <View style={styles.col}>
+            <FichaRow label="Tipo de propiedad" value={t.tipoPropiedad} />
+            <FichaRow label="Tipo de operación" value={t.tipoOperacion} />
+            <FichaRow label="Ambientes" value={String(t.ambientes ?? '—')} />
+            <FichaRow label="Dormitorios" value={String(t.dormitorios ?? '—')} />
+            <FichaRow label="Baños" value={String(t.banos ?? '—')} />
+            <FichaRow label="Toilettes" value={String(t.toilette ?? '—')} />
+            <FichaRow label="Sup. cubierta" value={`${t.supCubierta} m²`} />
+            <FichaRow label="Sup. semicubierta" value={`${t.supSemicubierta} m²`} />
+            <FichaRow label="Sup. descubierta" value={`${t.supDescubierta} m²`} />
+            <FichaRow label="Sup. total" value={`${t.superficieTotal} m²`} />
+            <FichaRow label="Estado general" value={t.estadoInmueble ?? '—'} />
+          </View>
+          <View style={styles.col}>
+            <FichaRow label="Disposición" value={t.disposicion ?? '—'} />
+            <FichaRow label="Orientación" value={t.orientacion ?? '—'} />
+            <FichaRow label="Cochera" value={fmtSiNo(t.cochera)} />
+            <FichaRow label="Balcón" value={fmtSiNo(t.balcon)} />
+            <FichaRow label="Patio" value={fmtSiNo(t.patio)} />
+            <FichaRow label="Terraza" value={fmtSiNo(t.terraza)} />
+            <FichaRow label="Lavadero" value={fmtSiNo(t.lavadero)} />
+            <FichaRow label="Piscina" value={fmtSiNo(t.piscina)} />
+            <FichaRow label="Amenities" value={fmtAmenities(t)} />
+            <FichaRow label="Expensas" value={t.expensas != null ? `ARS ${t.expensas.toLocaleString('es-AR')}` : '—'} />
+            <FichaRow label="Documentación" value={t.documentacion ?? '—'} />
+            <FichaRow label="Apto crédito" value={t.aptoCredito ?? '—'} />
+          </View>
+        </View>
+
+        {t.fotos.length > 0 && (
+          <View style={styles.fotos}>
+            {t.fotos.slice(0, 3).map((f) => (
+              <Image key={f.id} src={f.url} style={styles.foto} />
+            ))}
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>3. Análisis comercial</Text>
         <Text style={styles.paragraph}>{textoAnalisisComercial(t)}</Text>
@@ -150,15 +201,25 @@ export function InformeDocument({
               <View style={styles.tableHeaderRow}>
                 <Text style={styles.th}>Dirección</Text>
                 <Text style={styles.th}>Sup.</Text>
+                <Text style={styles.th}>Dor.</Text>
+                <Text style={styles.th}>Baños</Text>
+                <Text style={styles.th}>Coch.</Text>
                 <Text style={styles.th}>Precio</Text>
                 <Text style={styles.th}>USD/m²</Text>
+                <Text style={[styles.th, { flex: 2 }]}>Observaciones</Text>
+                <Text style={styles.th}>Link</Text>
               </View>
               {t.comparables.map((c) => (
                 <View key={c.id} style={styles.tableRow}>
                   <Text style={styles.td}>{c.direccion}</Text>
                   <Text style={styles.td}>{c.superficie} m²</Text>
+                  <Text style={styles.td}>{c.dormitorios ?? '—'}</Text>
+                  <Text style={styles.td}>{c.banos ?? '—'}</Text>
+                  <Text style={styles.td}>{fmtSiNo(c.cochera)}</Text>
                   <Text style={styles.td}>{fmtUSD(c.precio)}</Text>
                   <Text style={styles.td}>{fmtUSD(c.usdM2)}</Text>
+                  <Text style={[styles.td, { flex: 2 }]}>{c.observaciones ?? '—'}</Text>
+                  <Text style={styles.td}>{c.link ?? '—'}</Text>
                 </View>
               ))}
             </View>

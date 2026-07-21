@@ -19,6 +19,7 @@ import {
   type PerfilComprador,
   type PlazoEstimado,
   type TasacionDto,
+  type TasacionFotoDto,
   type TipoOperacion,
   type TipoPropiedad,
 } from '@vacker/types';
@@ -29,6 +30,7 @@ import { createTasacion, updateTasacion } from '../../lib/tasador-api';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { Modal } from '../tablero/modal';
 import { ComparablesEditor } from './comparables-editor';
+import { FotosUploader } from './fotos-uploader';
 
 const TIPOS_PROPIEDAD = TipoPropiedadSchema.options;
 const NIVELES = NivelSchema.options;
@@ -89,6 +91,9 @@ export function TasacionFormModal({ tasacion, onClose, onSaved }: Props) {
   const [observacionesComerciales, setObservacionesComerciales] = useState(
     tasacion?.analisisComercial?.observacionesComerciales ?? '',
   );
+
+  // Fotos (se suben directo a Storage — requieren que la tasación ya exista)
+  const [fotos, setFotos] = useState<TasacionFotoDto[]>(tasacion?.fotos ?? []);
 
   // Comparables
   const [comparables, setComparables] = useState<ComparableInput[]>(
@@ -429,6 +434,12 @@ export function TasacionFormModal({ tasacion, onClose, onSaved }: Props) {
             className={inputClass}
           />
         </Campo>
+
+        {tasacion ? (
+          <FotosUploader tasacionId={tasacion.id} fotos={fotos} onChange={setFotos} />
+        ) : (
+          <p className="text-xs text-muted">Podés cargar fotos una vez que guardes la tasación por primera vez.</p>
+        )}
 
         <p className="mt-2 text-xs font-bold uppercase tracking-wide text-muted">3. Análisis comercial</p>
         <CheckPills label="Fortalezas" opciones={FORTALEZAS} valores={fortalezas} onToggle={(v) => toggle(fortalezas, setFortalezas, v)} />

@@ -7,6 +7,7 @@ import { cn } from '@vacker/ui';
 const TABS = [
   { href: '/tasador', label: 'Dashboard' },
   { href: '/tasador/tasaciones', label: 'Tasaciones' },
+  { href: '/tasador/reporte', label: 'Reporte' },
 ];
 
 export function TasadorNav() {

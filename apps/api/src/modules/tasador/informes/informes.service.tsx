@@ -35,7 +35,7 @@ export class InformesService {
     const buffer = await renderToBuffer(
       <InformeDocument tasacion={dto} tenantNombre={tenantNombre} logoUrl={logoUrl} />,
     );
-    const url = await this.storage.upload(`${ctx.tenantId}/${id}.pdf`, buffer, 'application/pdf');
+    const url = await this.storage.upload('informes-tasador', `${ctx.tenantId}/${id}.pdf`, buffer, 'application/pdf');
 
     await this.db.withTenant((tx) =>
       tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId: id, url } }),

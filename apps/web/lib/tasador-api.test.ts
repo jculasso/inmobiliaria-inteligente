@@ -44,6 +44,7 @@ const TASACION = {
   aptoCredito: null,
   documentacion: null,
   comparables: [],
+  fotos: [],
   analisisComercial: null,
   valorMinimo: null,
   valorRecomendado: null,

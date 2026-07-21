@@ -19,6 +19,14 @@ export type TipoPropiedad = z.infer<typeof TipoPropiedadSchema>;
 export const EstadoTasacionSchema = z.enum(['En proceso', 'Presentada', 'Captada', 'No captada']);
 export type EstadoTasacion = z.infer<typeof EstadoTasacionSchema>;
 
+/** Color por estado (tomado del prototipo), compartido entre Dashboard y Reporte. */
+export const ESTADO_TASACION_COLOR: Record<EstadoTasacion, string> = {
+  'En proceso': '#9AA0A6',
+  Presentada: '#B7791F',
+  Captada: '#1E9E5A',
+  'No captada': '#C1121F',
+};
+
 export const MotivoNoCaptadaSchema = z.enum([
   'Desacuerdo de precio',
   'Ya no quiere vender',
@@ -161,6 +169,13 @@ export const ComparableDtoSchema = ComparableInputSchema.extend({
 });
 export type ComparableDto = z.infer<typeof ComparableDtoSchema>;
 
+export const TasacionFotoDtoSchema = z.object({
+  id: z.string().uuid(),
+  url: z.string(),
+  orden: z.number().int(),
+});
+export type TasacionFotoDto = z.infer<typeof TasacionFotoDtoSchema>;
+
 // --- CRUD: secciones 1 (Datos del informe), 2 (Características), 3+5+6
 // (análisis comercial, valores, estrategia) y comparables. ---
 
@@ -292,6 +307,7 @@ export const TasacionDtoSchema = z.object({
   aptoCredito: z.string().nullable(),
   documentacion: z.string().nullable(),
   comparables: z.array(ComparableDtoSchema),
+  fotos: z.array(TasacionFotoDtoSchema),
   analisisComercial: AnalisisComercialSchema.nullable(),
   valorMinimo: z.number().nullable(),
   valorRecomendado: z.number().nullable(),

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vacker — Sistema de Tasación</title>
+  <title>Tasador de Propiedades — Inmobiliaria Inteligente</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M10 10 H90 V90 L50 65 L10 90 Z' fill='%23C1121F'/%3E%3C/svg%3E" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -341,8 +341,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 <body>
   <div id="loading">
     <div class="mark"></div>
-    <div class="text">VACKER</div>
-    <div class="sub">Cargando sistema de tasación...</div>
+    <div class="text">TASADOR</div>
+    <div class="sub">Cargando tasador de propiedades...</div>
   </div>
 
   <div id="root"></div>
@@ -387,7 +387,7 @@ const SECTIONS = [{
   name: 'Estrategia comercial'
 }];
 const TIPOS_OPERACION = ['Venta', 'Alquiler', 'Venta y alquiler'];
-const TIPOS_PROPIEDAD = ['Departamento', 'Casa', 'Local', 'Terreno', 'Cochera', 'Oficina', 'Galpón', 'Otro'];
+const TIPOS_PROPIEDAD = ['Departamento', 'PH', 'Casa', 'Local', 'Terreno', 'Cochera', 'Oficina', 'Galpón', 'Otro'];
 const ESTADO_OPS = ['Excelente', 'Muy bueno', 'Bueno', 'Regular', 'A reciclar'];
 const DISPOSICION_OPS = ['Frente', 'Contrafrente', 'Interno', 'Lateral', 'No aplica'];
 const ORIENTACION_OPS = ['Norte', 'Sur', 'Este', 'Oeste', 'Noreste', 'Noroeste', 'Sudeste', 'Sudoeste', 'No especificada'];
@@ -411,10 +411,13 @@ const EMPTY_COMPARABLE = {
   superficie: '',
   precio: '',
   dormitorios: '',
+  banos: '',
   estado: 'Bueno',
   cocheraComp: 'No',
   observaciones: ''
 };
+// Motivos de No captada (según definición de negocio)
+const MOTIVOS_NO_CAPTADA = ['Desacuerdo de precio', 'Ya no quiere vender', 'Prefiere otra inmobiliaria', 'Documentación incompleta'];
 
 // Helper global: normalizar URL para que siempre tenga protocolo
 const normalizeUrl = url => {
@@ -475,6 +478,7 @@ const INITIAL_DATA = {
     superficie: '80',
     precio: '125000',
     dormitorios: '2',
+    banos: '1',
     estado: 'Bueno',
     cocheraComp: 'Sí',
     observaciones: 'Tipología similar'
@@ -484,6 +488,7 @@ const INITIAL_DATA = {
     superficie: '82',
     precio: '135000',
     dormitorios: '2',
+    banos: '2',
     estado: 'Muy bueno',
     cocheraComp: 'Sí',
     observaciones: 'Reciclado a nuevo'
@@ -493,6 +498,7 @@ const INITIAL_DATA = {
     superficie: '75',
     precio: '115000',
     dormitorios: '2',
+    banos: '1',
     estado: 'Bueno',
     cocheraComp: 'No',
     observaciones: 'Sin cochera'
@@ -502,6 +508,7 @@ const INITIAL_DATA = {
     superficie: '85',
     precio: '142000',
     dormitorios: '3',
+    banos: '2',
     estado: 'Excelente',
     cocheraComp: 'Sí',
     observaciones: 'A estrenar, premium'
@@ -570,8 +577,40 @@ const EMPTY_DATA = {
 /* ============================================================
    HISTORIAL DE TASACIONES (persistencia local)
    ============================================================ */
-const ESTADOS_TASACION = ['En proceso', 'Presentada', 'Captada', 'No captada', 'Descartada'];
-const HISTORY_KEY = 'vacker_tasaciones_v1';
+const ESTADOS_TASACION = ['En proceso', 'Presentada', 'Captada', 'No captada'];
+
+/* ============================================================
+   MULTI-TENANT + ROLES (RBAC)
+   Vacker es el primer tenant. Los roles son los mismos que el
+   Tablero Comercial: CEO, Team Leader y Vendedor.
+   ============================================================ */
+const TENANT = { id: 'vacker', nombre: 'Vacker Negocios Inmobiliarios', corto: 'Vacker' };
+const ROLES = ['CEO', 'Team Leader', 'Vendedor'];
+const USERS = [
+  { email: 'direccion@vacker.com.ar', nombre: 'Dirección Vacker', rol: 'CEO', lider: null, tel: '+54 341 555-1000' },
+  { email: 'juan.perez@vacker.com.ar', nombre: 'Juan Pérez', rol: 'Team Leader', lider: null, tel: '+54 341 555-1234' },
+  { email: 'lucia.ramirez@vacker.com.ar', nombre: 'Lucía Ramírez', rol: 'Vendedor', lider: 'juan.perez@vacker.com.ar', tel: '+54 341 555-2210' },
+  { email: 'marcos.ferreyra@vacker.com.ar', nombre: 'Marcos Ferreyra', rol: 'Vendedor', lider: 'juan.perez@vacker.com.ar', tel: '+54 341 555-3387' },
+  { email: 'sofia.duarte@vacker.com.ar', nombre: 'Sofía Duarte', rol: 'Team Leader', lider: null, tel: '+54 341 555-4456' },
+  { email: 'diego.peralta@vacker.com.ar', nombre: 'Diego Peralta', rol: 'Vendedor', lider: 'sofia.duarte@vacker.com.ar', tel: '+54 341 555-5501' }
+];
+const SELLERS = USERS.filter(u => u.rol !== 'CEO'); // usuarios que captan (TL también captan)
+function userByEmail(email) { return USERS.find(u => u.email === email) || null; }
+// ¿El usuario `user` puede ver una tasación cuyo agente es `ownerEmail`?
+function canSee(user, ownerEmail) {
+  if (!user) return true;
+  if (user.rol === 'CEO') return true;
+  if (user.rol === 'Team Leader') {
+    if (ownerEmail === user.email) return true;
+    const owner = userByEmail(ownerEmail);
+    return !!(owner && owner.lider === user.email);
+  }
+  return ownerEmail === user.email; // Vendedor: sólo las suyas
+}
+function visibleHistory(user, history) {
+  return (history || []).filter(r => canSee(user, (r.data && r.data.emailAgente) || ''));
+}
+const HISTORY_KEY = 'tasador_propiedades_v2';
 function loadHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch (e) { return []; }
 }
@@ -581,14 +620,10 @@ function saveHistory(list) {
 function makeId() {
   return 'T' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
-const SEED_FLAG = 'vacker_seeded_v1';
+const SEED_FLAG = 'tasador_propiedades_seeded_v2';
 function buildSampleData() {
   const now = new Date();
-  const agentes = [
-    ['Juan Pérez', 'juan.perez@vacker.com.ar', '+54 341 555-1234'],
-    ['Lucía Ramírez', 'lucia.ramirez@vacker.com.ar', '+54 341 555-2210'],
-    ['Marcos Ferreyra', 'marcos.ferreyra@vacker.com.ar', '+54 341 555-3387']
-  ];
+  const agentes = SELLERS.map(u => [u.nombre, u.email, u.tel]);
   // [mesesAtrás, tipoPropiedad, tipoOperación, dirección, barrio, cliente, supCubierta, valMin, valRec, valAsp, estado]
   const T = [
     [0, 'Departamento', 'Venta', 'Córdoba 1250, Piso 6°', 'Centro', 'Lucía Fernández', 72, 95000, 108000, 120000, 'En proceso'],
@@ -600,7 +635,7 @@ function buildSampleData() {
     [2, 'Casa', 'Venta', 'Wheelwright 2100', 'Pichincha', 'Grupo Norte', 165, 205000, 230000, 255000, 'Presentada'],
     [2, 'Oficina', 'Venta', 'Rioja 1020, Of. 5', 'Centro', 'Estudio Legal MB', 45, 62000, 70000, 78000, 'En proceso'],
     [3, 'Departamento', 'Venta', 'Montevideo 660, Piso 2°', 'Centro', 'Ana Torres', 63, 82000, 92000, 102000, 'No captada'],
-    [3, 'Terreno', 'Venta', 'Av. Francia 4500', 'Fisherton', 'Desarrollos SUR', 300, 95000, 110000, 125000, 'Descartada'],
+    [3, 'Terreno', 'Venta', 'Av. Francia 4500', 'Fisherton', 'Desarrollos SUR', 300, 95000, 110000, 125000, 'No captada'],
     [4, 'Departamento', 'Alquiler', 'Corrientes 1330, Piso 5°', 'Centro', 'Marina López', 60, 400, 440, 480, 'Captada'],
     [4, 'Casa', 'Venta', 'Zeballos 2870', 'Abasto', 'Roberto Díaz', 155, 148000, 165000, 182000, 'Presentada'],
     [5, 'Cochera', 'Venta', 'Balcarce 950, Coch. 12', 'Centro', 'Diego Peralta', 12, 14000, 16500, 18500, 'Captada'],
@@ -610,17 +645,18 @@ function buildSampleData() {
     [8, 'Casa', 'Venta', 'Alvear 1650', 'Parque', 'Familia Romero', 180, 230000, 258000, 285000, 'Presentada'],
     [9, 'Departamento', 'Alquiler', 'Santa Fe 1120, Piso 4°', 'Centro', 'Nadia Vera', 58, 360, 400, 440, 'En proceso'],
     [10, 'Oficina', 'Venta', 'Maipú 830, Of. 9', 'Centro', 'Consultora Delta', 52, 70000, 80000, 90000, 'No captada'],
-    [11, 'Departamento', 'Venta', 'Dorrego 240, Piso 1°', 'Centro', 'Hernán Costa', 66, 88000, 99000, 110000, 'Descartada']
+    [11, 'Departamento', 'Venta', 'Dorrego 240, Piso 1°', 'Centro', 'Hernán Costa', 66, 88000, 99000, 110000, 'No captada']
   ];
   return T.map((r, i) => {
     const dt = new Date(now.getFullYear(), now.getMonth() - r[0], (i * 7) % 26 + 2, 10, 0, 0);
     const iso = dt.toISOString();
     const ag = agentes[i % agentes.length];
-    return {
+    let estado = r[10] === 'Descartada' ? 'No captada' : r[10];
+    const rec = {
       id: 'DEMO' + (i + 1),
       creado: iso,
       actualizado: iso,
-      estado: r[10],
+      estado: estado,
       data: Object.assign({}, EMPTY_DATA, {
         fecha: iso.split('T')[0],
         agente: ag[0], emailAgente: ag[1], telefonoAgente: ag[2],
@@ -634,6 +670,13 @@ function buildSampleData() {
         valorMinimo: String(r[7]), valorRecomendado: String(r[8]), valorAspiracional: String(r[9])
       })
     };
+    if (estado === 'Captada') {
+      const excl = i % 3 !== 0;
+      rec.exclusividad = excl ? { tipo: 'exclusiva', dias: [30, 60, 90][i % 3] } : { tipo: 'no' };
+    } else if (estado === 'No captada') {
+      rec.motivoNoCaptada = MOTIVOS_NO_CAPTADA[i % MOTIVOS_NO_CAPTADA.length];
+    }
+    return rec;
   });
 }
 
@@ -649,6 +692,9 @@ function VackerTasador() {
   const [errors, setErrors] = useState([]);
   const [history, setHistory] = useState(loadHistory);
   const [currentId, setCurrentId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(USERS[0]); // Rol activo (RBAC). CEO por defecto.
+  const [estadoModal, setEstadoModal] = useState(null); // {id, estado} al cambiar a Captada / No captada
+  const visible = useMemo(() => visibleHistory(currentUser, history), [currentUser, history]);
   useEffect(() => {
     if (history.length === 0 && !localStorage.getItem(SEED_FLAG)) {
       const demo = buildSampleData();
@@ -734,7 +780,7 @@ function VackerTasador() {
     const errs = [];
     if (!((_data$direccion = data.direccion) != null && _data$direccion.trim())) errs.push('Dirección de la propiedad');
     if (!((_data$cliente = data.cliente) != null && _data$cliente.trim())) errs.push('Cliente propietario');
-    const totalSup = (parseFloat(data.superficieCubierta) || 0) + (parseFloat(data.superficieSemicubierta) || 0) + (parseFloat(data.superficieDescubierta) || 0);
+    const totalSup = (parseFloat(data.superficieCubierta) || 0) + (parseFloat(data.superficieSemicubierta) || 0) + (parseFloat(data.superficieDescubierta) || 0) * 0.3;
     if (!totalSup) errs.push('Superficie (cubierta, semi o descubierta)');
     if (!data.valorRecomendado) errs.push('Valor recomendado de publicación');
     return errs;
@@ -771,12 +817,28 @@ function VackerTasador() {
     });
     return id;
   };
-  const setEstado = (id, estado) => {
+  const applyEstado = (id, estado, extra) => {
     setHistory(prev => {
-      const list = prev.map(r => r.id === id ? { ...r, estado: estado } : r);
+      const list = prev.map(r => r.id === id ? { ...r, estado: estado, ...(extra || {}) } : r);
       saveHistory(list);
       return list;
     });
+  };
+  const setEstado = (id, estado) => {
+    // Captada -> pedir exclusividad; No captada -> pedir motivo
+    if (estado === 'Captada' || estado === 'No captada') {
+      setEstadoModal({ id: id, estado: estado });
+    } else {
+      applyEstado(id, estado, { exclusividad: null, motivoNoCaptada: null });
+    }
+  };
+  const confirmEstadoModal = extra => {
+    if (!estadoModal) return;
+    const clear = estadoModal.estado === 'Captada'
+      ? { motivoNoCaptada: null }
+      : { exclusividad: null };
+    applyEstado(estadoModal.id, estadoModal.estado, { ...clear, ...extra });
+    setEstadoModal(null);
   };
   const deleteRecord = (id) => {
     if (!window.confirm('¿Eliminar esta tasación del historial? Esta acción no se puede deshacer.')) return;
@@ -799,7 +861,8 @@ function VackerTasador() {
     window.scrollTo(0, 0);
   };
   const newTasacion = () => {
-    setData(EMPTY_DATA);
+    // Prefill del agente con el usuario activo (el dueño de la tasación)
+    setData({ ...EMPTY_DATA, agente: currentUser.nombre, emailAgente: currentUser.email, telefonoAgente: currentUser.tel });
     setPhotos([]);
     setErrors([]);
     setCurrentSection(1);
@@ -810,6 +873,11 @@ function VackerTasador() {
   const goHistory = () => {
     setHistory(loadHistory());
     setMode('history');
+    window.scrollTo(0, 0);
+  };
+  const goReporte = () => {
+    setHistory(loadHistory());
+    setMode('reporte');
     window.scrollTo(0, 0);
   };
   const goDashboard = () => {
@@ -858,7 +926,7 @@ function VackerTasador() {
     const cliente = cleanPart(data.cliente, "Cliente sin completar");
     const domicilio = cleanPart(data.direccion, "Domicilio sin completar");
     const previousTitle = document.title;
-    document.title = `Tasacion Vacker - ${cliente} - ${domicilio}`;
+    document.title = `Tasacion ${TENANT.corto} - ${cliente} - ${domicilio}`;
     setTimeout(() => {
       window.print();
       setTimeout(() => { document.title = previousTitle; }, 500);
@@ -870,7 +938,8 @@ function VackerTasador() {
     const c = parseFloat(data.superficieCubierta) || 0;
     const s = parseFloat(data.superficieSemicubierta) || 0;
     const d = parseFloat(data.superficieDescubierta) || 0;
-    const total = c + s + d;
+    // Semi-cubierta computa al 100%; descubierta computa al 30%
+    const total = Math.round((c + s + d * 0.3) * 100) / 100;
     return total > 0 ? total : null;
   }, [data.superficieCubierta, data.superficieSemicubierta, data.superficieDescubierta]);
   const antiguedadLabel = useMemo(() => {
@@ -1571,26 +1640,139 @@ function VackerTasador() {
         }
 
         @media print { .vk-topbar { display: none !important; } }
+
+        /* ===== Multi-tenant / rol (RBAC) ===== */
+        .vk-tenant-chip { margin-left: 12px; align-self: center; font-size: 10.5px; font-weight: 700; letter-spacing: .5px; color: ${COLORS.red}; background: rgba(193,18,31,.1); border: 1px solid rgba(193,18,31,.25); padding: 3px 9px; border-radius: 999px; text-transform: uppercase; }
+        .vk-userswitch { display: flex; align-items: center; gap: 7px; background: #F6F6F6; border: 1px solid #E6E6E6; border-radius: 9px; padding: 3px 8px 3px 4px; }
+        .vk-user-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(140deg, ${COLORS.red}, ${COLORS.redDark}); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+        .vk-user-select { font-family: inherit; font-size: 12px; font-weight: 600; color: #333; border: none; background: transparent; cursor: pointer; outline: none; max-width: 190px; }
+        .vk-rol-nota { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: #333; background: #fff; border: 1px solid #E6E6E6; border-left: 3px solid ${COLORS.red}; border-radius: 10px; padding: 10px 14px; margin-bottom: 20px; }
+        .vk-rol-chip { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #fff; background: ${COLORS.red}; padding: 3px 9px; border-radius: 999px; }
+
+        /* ===== Segmented control (vistas) ===== */
+        .vk-seg { display: inline-flex; background: #EFEFF1; border-radius: 10px; padding: 4px; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+        .vk-seg-btn { font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: #555; padding: 8px 16px; border-radius: 8px; transition: all .15s; }
+        .vk-seg-btn:hover { color: ${COLORS.red}; }
+        .vk-seg-btn.active { background: #fff; color: ${COLORS.red}; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+
+        /* ===== Barras clicables (drill down) ===== */
+        .vk-bar-col.clickable { cursor: pointer; border-radius: 8px; transition: background .15s; }
+        .vk-bar-col.clickable:hover { background: #FBEDEE; }
+        .vk-bar-col.sel { background: #FBEDEE; }
+        .vk-bar-col.sel .vk-bar-fill { filter: brightness(1.05); }
+
+        /* ===== Ranking ===== */
+        .vk-rank-row { display: grid; grid-template-columns: 34px 1fr 40px; align-items: center; gap: 10px; }
+        .vk-rank-pos { font-size: 13px; font-weight: 800; color: ${COLORS.red}; }
+
+        /* ===== Badge de detalle (exclusividad / motivo) ===== */
+        .vk-detalle-badge { display: inline-block; margin-top: 6px; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #F0F0F2; color: #6B6B6B; }
+        .vk-detalle-badge.cap { background: rgba(30,158,90,.14); color: #1E9E5A; }
+        .vk-detalle-badge.no { background: rgba(193,18,31,.1); color: ${COLORS.red}; }
+
+        /* ===== Reporte de captaciones ===== */
+        .vk-rep-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+        .vk-rep-controls .vk-seg { margin-bottom: 0; }
+        .vk-rep-sel { width: auto; min-width: 120px; }
+        .vk-repest-row { display: grid; grid-template-columns: 14px 130px 1fr 110px; align-items: center; gap: 12px; }
+        .vk-repest-name { font-size: 13px; color: #333; font-weight: 600; }
+        .vk-repest-cnt { font-size: 13px; font-weight: 700; color: #1D1D1F; text-align: right; white-space: pre; }
+        .vk-rep-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .vk-chip { font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; background: #fff; border: 1px solid #E6E6E6; color: #555; padding: 7px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px; transition: all .15s; }
+        .vk-chip:hover { border-color: ${COLORS.red}; color: ${COLORS.red}; }
+        .vk-chip.active { background: ${COLORS.red}; border-color: ${COLORS.red}; color: #fff; }
+        .vk-chip-n { font-size: 11px; font-weight: 800; background: #EFEFF1; color: #555; border-radius: 999px; padding: 1px 7px; }
+        .vk-chip.active .vk-chip-n { background: rgba(255,255,255,.28); color: #fff; }
+        .vk-estado-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 11px; border-radius: 999px; white-space: nowrap; }
+        @media (max-width: 640px) { .vk-repest-row { grid-template-columns: 14px 1fr 70px; } .vk-repest-name { display: none; } }
+
+        /* ===== Modal de estado ===== */
+        .vk-modal-overlay { position: fixed; inset: 0; background: rgba(20,20,25,.45); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+        .vk-modal { background: #fff; border-radius: 16px; padding: 26px; width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,.28); }
+        .vk-modal-title { font-size: 17px; font-weight: 800; color: #1D1D1F; margin-bottom: 6px; }
+        .vk-modal-desc { font-size: 13px; color: #6B6B6B; margin: 0 0 16px; }
+        .vk-modal-radio { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #333; padding: 10px 12px; border: 1px solid #E6E6E6; border-radius: 10px; margin-bottom: 10px; cursor: pointer; }
+        .vk-modal-radio:hover { border-color: ${COLORS.red}; }
+        .vk-modal-acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+        /* ===== Comparables en tarjetas ===== */
+        .vk-comp-cards { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+        .vk-comp-card { border: 1px solid #E6E6E6; border-radius: 14px; padding: 16px 18px; background: #FCFCFD; transition: box-shadow .15s, border-color .15s; }
+        .vk-comp-card:hover { border-color: #D8D8DC; box-shadow: 0 4px 16px rgba(0,0,0,.05); }
+        .vk-comp-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .vk-comp-num { font-size: 12px; font-weight: 800; letter-spacing: .4px; color: #fff; background: linear-gradient(140deg, ${COLORS.red}, ${COLORS.redDark}); padding: 4px 11px; border-radius: 999px; }
+        .vk-comp-usdm2 { font-size: 12px; font-weight: 700; color: ${COLORS.red}; background: rgba(193,18,31,.08); padding: 4px 10px; border-radius: 999px; }
+        .vk-comp-del { margin-left: auto; font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; background: #fff; border: 1px solid #E6E6E6; color: #888; padding: 6px 11px; border-radius: 8px; }
+        .vk-comp-del:hover { border-color: ${COLORS.red}; color: #fff; background: ${COLORS.red}; }
+        .vk-comp-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+        .vk-comp-f.full { grid-column: 1 / -1; }
+        .vk-comp-grid > .vk-field:not(.full) { grid-column: span 2; }
+        .vk-comp-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+        @media (max-width: 900px) { .vk-comp-grid { grid-template-columns: repeat(2, 1fr); } .vk-comp-grid > .vk-field:not(.full) { grid-column: span 1; } .vk-comp-stats { grid-template-columns: repeat(2, 1fr); } }
+
+        /* ===== Estado + detalle en fila (recent) ===== */
+        .vk-recent-estado { display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
+        .vk-recent-estado .vk-detalle-badge { margin-top: 0; text-align: center; }
+
+        /* ===== Ranking rediseñado ===== */
+        .vk-rank-list { display: flex; flex-direction: column; gap: 8px; }
+        .vk-rank-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #EDEDED; border-radius: 12px; cursor: pointer; transition: all .15s; background: #fff; }
+        .vk-rank-item:hover { border-color: ${COLORS.red}; background: #FFFBFB; transform: translateX(2px); }
+        .vk-rank-item.sel { border-color: ${COLORS.red}; background: #FFF3F3; box-shadow: 0 0 0 1px rgba(193,18,31,.15) inset; }
+        .vk-rank-item.top { background: linear-gradient(90deg, #FFFDF6, #fff); }
+        .vk-rank-medal { font-size: 17px; width: 26px; text-align: center; font-weight: 800; color: #9A9A9A; flex-shrink: 0; }
+        .vk-rank-av { width: 32px; height: 32px; border-radius: 50%; background: #EFEFF1; color: #555; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; flex-shrink: 0; }
+        .vk-rank-item.top .vk-rank-av { background: linear-gradient(140deg, #1E9E5A, #167a45); color: #fff; }
+        .vk-rank-info { flex: 1; min-width: 0; }
+        .vk-rank-name { font-size: 13px; font-weight: 700; color: #1D1D1F; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .vk-rank-bar { height: 8px; border-radius: 5px; background: #F0F0F2; overflow: hidden; }
+        .vk-rank-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #22b968, #1E9E5A); transition: width .4s ease; }
+        .vk-rank-badge { flex-shrink: 0; min-width: 30px; text-align: center; font-size: 14px; font-weight: 800; color: #1E9E5A; background: rgba(30,158,90,.12); padding: 5px 10px; border-radius: 999px; }
+
+        /* ===== Estado clicable (drill down) ===== */
+        .vk-estado-row.clickable { cursor: pointer; border-radius: 9px; padding: 5px 8px; margin: 0 -8px; transition: background .15s; }
+        .vk-estado-row.clickable:hover { background: #F7F7F9; }
+        .vk-estado-row.clickable.sel { background: #FBEDEE; box-shadow: inset 0 0 0 1px rgba(193,18,31,.15); }
+
+        /* ===== Polish general ===== */
+        .vk-panel { border-radius: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.03); }
+        .vk-kpi { border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.03); position: relative; overflow: hidden; }
+        .vk-kpi::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, ${COLORS.red}, ${COLORS.redDark}); opacity: .0; transition: opacity .2s; }
+        .vk-kpi:hover::before { opacity: 1; }
+        .vk-kpi.green::before { background: linear-gradient(90deg, #22b968, #1E9E5A); opacity: 1; }
+        .vk-bar-fill { background: linear-gradient(180deg, #d61f2c, ${COLORS.redDark}); box-shadow: 0 2px 6px rgba(193,18,31,.2); }
+        .vk-bar-col.clickable:hover .vk-bar-fill { filter: brightness(1.08); }
+        .vk-bar-num { background: #F6F6F6; padding: 1px 8px; border-radius: 999px; }
+        .vk-bar-col.sel .vk-bar-num { background: ${COLORS.red}; color: #fff; }
+        .vk-hist-title { letter-spacing: -0.02em; }
+        .vk-recent { border-radius: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.03); }
+        .vk-seg { box-shadow: inset 0 0 0 1px #E6E6E6; }
+
+        @media print { .vk-rep-controls, .vk-back { display: none !important; } }
       `), /*#__PURE__*/React.createElement("div", {
     className: "vacker-app"
   }, /*#__PURE__*/React.createElement(TopBar, {
     mode: mode,
     currentId: currentId,
-    historyCount: history.length,
+    historyCount: visible.length,
     onDashboard: goDashboard,
     onNew: newTasacion,
-    onHistory: goHistory
+    onHistory: goHistory,
+    onReporte: goReporte,
+    currentUser: currentUser,
+    setCurrentUser: setCurrentUser
   }), mode === 'dashboard' ? /*#__PURE__*/React.createElement(DashboardView, {
-    history: history,
+    history: visible,
+    currentUser: currentUser,
     setEstado: setEstado,
     openRecord: openRecord,
     newTasacion: newTasacion,
     goHistory: goHistory,
+    goReporte: goReporte,
     seedDemo: seedDemo,
     clearHistory: clearHistory,
     formatUSD: formatUSD
   }) : mode === 'history' ? /*#__PURE__*/React.createElement(HistoryView, {
-    history: history,
+    history: visible,
     currentId: currentId,
     setEstado: setEstado,
     deleteRecord: deleteRecord,
@@ -1598,6 +1780,13 @@ function VackerTasador() {
     newTasacion: newTasacion,
     goDashboard: goDashboard,
     formatUSD: formatUSD
+  }) : mode === 'reporte' ? /*#__PURE__*/React.createElement(ReporteView, {
+    history: visible,
+    currentUser: currentUser,
+    openRecord: openRecord,
+    goDashboard: goDashboard,
+    formatUSD: formatUSD,
+    formatNum: formatNum
   }) : mode === 'form' ? /*#__PURE__*/React.createElement(FormView, {
     data: data,
     updateField: updateField,
@@ -1605,6 +1794,7 @@ function VackerTasador() {
     updateComparable: updateComparable,
     addComparable: addComparable,
     removeComparable: removeComparable,
+    superficieTotalCalc: superficieTotalCalc,
     currentSection: currentSection,
     setCurrentSection: setCurrentSection,
     logo: logo,
@@ -1639,6 +1829,10 @@ function VackerTasador() {
     printReport: printReport,
     downloadPDF: downloadPDF,
     generatingPdf: generatingPdf
+  }), estadoModal && /*#__PURE__*/React.createElement(EstadoModal, {
+    estadoModal: estadoModal,
+    onConfirm: confirmEstadoModal,
+    onCancel: () => setEstadoModal(null)
   })));
 }
 
@@ -1653,6 +1847,7 @@ function FormView(props) {
     updateComparable,
     addComparable,
     removeComparable,
+    superficieTotalCalc,
     currentSection,
     setCurrentSection,
     logo,
@@ -1795,7 +1990,7 @@ function FormView(props) {
       color: COLORS.red,
       marginBottom: 4
     }
-  }, "Vacker \xB7 Sistema de tasaci\xF3n"), /*#__PURE__*/React.createElement("h1", {
+  }, "Tasador de Propiedades \xB7 " + TENANT.corto), /*#__PURE__*/React.createElement("h1", {
     style: {
       fontSize: 26,
       fontWeight: 700,
@@ -1815,7 +2010,7 @@ function FormView(props) {
     data: data,
     updateField: updateField,
     toggleArrayItem: toggleArrayItem
-  }), currentSection === 4 && /*#__PURE__*/React.createElement(Section4, {
+  }), currentSection === 4 && /*#__PURE__*/React.createElement(SectionComparables, {
     data: data,
     updateComparable: updateComparable,
     addComparable: addComparable,
@@ -1828,7 +2023,10 @@ function FormView(props) {
     updateField: updateField,
     rangeDiffPct: rangeDiffPct,
     formatUSD: formatUSD,
-    escenarioComment: escenarioComment
+    formatNum: formatNum,
+    escenarioComment: escenarioComment,
+    superficieTotalCalc: superficieTotalCalc,
+    calculations: calculations
   }), currentSection === 6 && /*#__PURE__*/React.createElement(Section6, {
     data: data,
     updateField: updateField,
@@ -1968,7 +2166,7 @@ function Section2({
   data,
   updateField
 }) {
-  const totalSup = (parseFloat(data.superficieCubierta) || 0) + (parseFloat(data.superficieSemicubierta) || 0) + (parseFloat(data.superficieDescubierta) || 0);
+  const totalSup = Math.round(((parseFloat(data.superficieCubierta) || 0) + (parseFloat(data.superficieSemicubierta) || 0) + (parseFloat(data.superficieDescubierta) || 0) * 0.3) * 100) / 100;
   return /*#__PURE__*/React.createElement("div", {
     className: "vk-card"
   }, /*#__PURE__*/React.createElement("h2", {
@@ -2058,7 +2256,7 @@ function Section2({
       color: COLORS.mutedText,
       fontSize: 11.5
     }
-  }, "(suma autom\xE1tica de cubierta + semi + descubierta)")), /*#__PURE__*/React.createElement("div", {
+  }, "(cubierta + semi-cubierta + 30% de la descubierta)")), /*#__PURE__*/React.createElement("div", {
     style: {
       height: 14
     }
@@ -2358,7 +2556,11 @@ function Section4({
     style: {
       width: 70
     }
-  }, "Dorm."), /*#__PURE__*/React.createElement("th", null, "Estado"), /*#__PURE__*/React.createElement("th", {
+  }, "Dorm."), /*#__PURE__*/React.createElement("th", {
+    style: {
+      width: 70
+    }
+  }, "Ba\xF1os"), /*#__PURE__*/React.createElement("th", null, "Estado"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 70
     }
@@ -2403,6 +2605,10 @@ function Section4({
       type: "number",
       value: c.dormitorios,
       onChange: e => updateComparable(i, 'dormitorios', e.target.value)
+    })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: c.banos,
+      onChange: e => updateComparable(i, 'banos', e.target.value)
     })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("select", {
       value: c.estado,
       onChange: e => updateComparable(i, 'estado', e.target.value)
@@ -2490,15 +2696,40 @@ function Section5({
   updateField,
   rangeDiffPct,
   formatUSD,
-  escenarioComment
+  formatNum,
+  escenarioComment,
+  superficieTotalCalc,
+  calculations
 }) {
+  const avgM2 = (calculations && calculations.avgUsdPerM2) || 0;
+  const sup = superficieTotalCalc || 0;
+  const aspSugerido = sup && avgM2 ? Math.round(sup * avgM2) : 0;
+  const recSugerido = aspSugerido ? Math.round(aspSugerido * 0.94) : 0; // -6%
+  const minSugerido = aspSugerido ? Math.round(aspSugerido * 0.90) : 0; // -10%
+  const aplicarSugeridos = () => {
+    if (!aspSugerido) return;
+    updateField('valorAspiracional', String(aspSugerido));
+    updateField('valorRecomendado', String(recSugerido));
+    updateField('valorMinimo', String(minSugerido));
+  };
+  const autoPanel = /*#__PURE__*/React.createElement("div", {
+    style: { marginBottom: 18, padding: 18, background: '#FFF7F7', border: `1px solid ${COLORS.softGray}`, borderLeft: `3px solid ${COLORS.red}`, borderRadius: 8 }
+  },
+    /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.red, marginBottom: 8 } }, "Cálculo sugerido de valores"),
+    aspSugerido ? /*#__PURE__*/React.createElement("div", { style: { fontSize: 12.5, color: COLORS.textGray, lineHeight: 1.6 } },
+      /*#__PURE__*/React.createElement("div", null, "Aspiracional = Sup. total ", /*#__PURE__*/React.createElement("strong", null, sup, " m²"), " × USD/m² promedio ", /*#__PURE__*/React.createElement("strong", null, "$", formatNum(avgM2)), " = ", /*#__PURE__*/React.createElement("strong", { style: { color: COLORS.red } }, formatUSD(aspSugerido))),
+      /*#__PURE__*/React.createElement("div", null, "Recomendado (−6%): ", /*#__PURE__*/React.createElement("strong", null, formatUSD(recSugerido)), " · Mínimo (−10%): ", /*#__PURE__*/React.createElement("strong", null, formatUSD(minSugerido))),
+      /*#__PURE__*/React.createElement("button", { className: "vk-btn vk-btn-primary", onClick: aplicarSugeridos, style: { marginTop: 10, fontSize: 12, padding: '8px 14px' } }, "Aplicar valores sugeridos"),
+      /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, color: COLORS.mutedText, marginLeft: 10 } }, "Los valores quedan editables después de aplicarlos.")
+    ) : /*#__PURE__*/React.createElement("div", { style: { fontSize: 12.5, color: COLORS.mutedText } }, "Completá la superficie (sección 2) y al menos un comparable con precio y superficie (sección 4) para calcular el valor aspiracional automáticamente.")
+  );
   return /*#__PURE__*/React.createElement("div", {
     className: "vk-card"
   }, /*#__PURE__*/React.createElement("h2", {
     className: "vk-section-title"
   }, "Valores de tasaci\xF3n"), /*#__PURE__*/React.createElement("p", {
     className: "vk-section-subtitle"
-  }, "Defin\xED el rango de valores y el escenario de comercializaci\xF3n."), /*#__PURE__*/React.createElement("div", {
+  }, "Defin\xED el rango de valores y el escenario de comercializaci\xF3n."), autoPanel, /*#__PURE__*/React.createElement("div", {
     className: "vk-grid-3"
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Valor m\xEDnimo competitivo (USD)"
@@ -3112,7 +3343,13 @@ function ReportView({
     className: "vk-report-section vk-avoid-break"
   }, /*#__PURE__*/React.createElement("h2", null, "Comparables de mercado"), /*#__PURE__*/React.createElement("table", {
     className: "vk-report-table"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Zona"), /*#__PURE__*/React.createElement("th", null, "Sup."), /*#__PURE__*/React.createElement("th", null, "Precio"), /*#__PURE__*/React.createElement("th", null, "USD/m\xB2"), /*#__PURE__*/React.createElement("th", null, "Observaciones"), /*#__PURE__*/React.createElement("th", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Zona"), /*#__PURE__*/React.createElement("th", null, "Sup."), /*#__PURE__*/React.createElement("th", {
+    style: { textAlign: 'center' }
+  }, "Dor."), /*#__PURE__*/React.createElement("th", {
+    style: { textAlign: 'center' }
+  }, "Ba\xF1os"), /*#__PURE__*/React.createElement("th", {
+    style: { textAlign: 'center' }
+  }, "Coch."), /*#__PURE__*/React.createElement("th", null, "Precio"), /*#__PURE__*/React.createElement("th", null, "USD/m\xB2"), /*#__PURE__*/React.createElement("th", null, "Observaciones"), /*#__PURE__*/React.createElement("th", {
     style: {
       textAlign: 'center'
     }
@@ -3122,6 +3359,12 @@ function ReportView({
     return /*#__PURE__*/React.createElement("tr", {
       key: i
     }, /*#__PURE__*/React.createElement("td", null, c.direccion || '—'), /*#__PURE__*/React.createElement("td", null, c.superficie ? `${c.superficie} m²` : '—'), /*#__PURE__*/React.createElement("td", {
+      style: { textAlign: 'center' }
+    }, c.dormitorios || '—'), /*#__PURE__*/React.createElement("td", {
+      style: { textAlign: 'center' }
+    }, c.banos || '—'), /*#__PURE__*/React.createElement("td", {
+      style: { textAlign: 'center' }
+    }, c.cocheraComp || '—'), /*#__PURE__*/React.createElement("td", {
       style: {
         fontWeight: 600
       }
@@ -3311,7 +3554,7 @@ function ReportView({
     style: {
       color: COLORS.textGray
     }
-  }, "Vacker Negocios Inmobiliarios"), data.agente && ` · ${data.agente}`), /*#__PURE__*/React.createElement("div", null, formatDate(data.fecha))))));
+  }, TENANT.nombre), data.agente && ` · ${data.agente}`), /*#__PURE__*/React.createElement("div", null, formatDate(data.fecha))))));
 }
 
 /* ============================================================
@@ -3321,7 +3564,7 @@ function Field({
   label,
   children
 }) {
-  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  return /*#__PURE__*/React.createElement("div", { className: "vk-field" }, /*#__PURE__*/React.createElement("label", {
     className: "vk-label"
   }, label), children);
 }
@@ -3408,24 +3651,80 @@ function ResumenCard({
    BARRA SUPERIOR (homogénea con la Home)
    ============================================================ */
 function TopBar(props) {
-  const { mode, currentId, historyCount, onDashboard, onNew, onHistory } = props;
+  const { mode, currentId, historyCount, onDashboard, onNew, onHistory, onReporte, currentUser, setCurrentUser } = props;
   const navBtn = (label, active, onClick, count) => /*#__PURE__*/React.createElement('button', {
     className: 'vk-nav-btn' + (active ? ' active' : ''),
     onClick: onClick
   }, label, count != null ? /*#__PURE__*/React.createElement('span', { className: 'vk-nav-count' }, count) : null);
+  const userSwitch = /*#__PURE__*/React.createElement('div', { className: 'vk-userswitch', title: 'Usuario activo (rol)' },
+    /*#__PURE__*/React.createElement('span', { className: 'vk-user-avatar' }, (currentUser.nombre || '?').trim().charAt(0)),
+    /*#__PURE__*/React.createElement('select', {
+      className: 'vk-user-select',
+      value: currentUser.email,
+      onChange: e => setCurrentUser(USERS.find(u => u.email === e.target.value) || USERS[0])
+    }, USERS.map(u => /*#__PURE__*/React.createElement('option', { key: u.email, value: u.email }, u.nombre + ' · ' + u.rol))));
   return /*#__PURE__*/React.createElement('div', { className: 'vk-topbar vk-no-print' },
     /*#__PURE__*/React.createElement('button', { className: 'vk-topbar-brand', onClick: onDashboard, title: 'Ir al inicio del Tasador' },
       /*#__PURE__*/React.createElement('span', { className: 'vk-topbar-mark' },
         /*#__PURE__*/React.createElement('svg', { viewBox: '0 0 100 100' },
           /*#__PURE__*/React.createElement('path', { d: 'M10 12 H90 V88 L50 66 L10 88 Z', fill: '#fff' }))),
       /*#__PURE__*/React.createElement('span', { className: 'vk-topbar-txt' },
-        /*#__PURE__*/React.createElement('span', { className: 'vk-topbar-name' }, 'VACKER'),
-        /*#__PURE__*/React.createElement('span', { className: 'vk-topbar-sub' }, 'TASADOR DE PROPIEDADES'))),
+        /*#__PURE__*/React.createElement('span', { className: 'vk-topbar-name' }, 'TASADOR DE PROPIEDADES'),
+        /*#__PURE__*/React.createElement('span', { className: 'vk-topbar-sub' }, 'INMOBILIARIA INTELIGENTE')),
+      /*#__PURE__*/React.createElement('span', { className: 'vk-tenant-chip' }, TENANT.corto)),
     /*#__PURE__*/React.createElement('div', { className: 'vk-topbar-actions' },
       navBtn('◧ Dashboard', mode === 'dashboard', onDashboard, null),
       navBtn('＋ Nueva tasación', (mode === 'form' || mode === 'report') && !currentId, onNew, null),
       navBtn('Historial', mode === 'history', onHistory, historyCount || null),
+      navBtn('⤓ Reporte de tasaciones', mode === 'reporte', onReporte, null),
+      userSwitch,
       /*#__PURE__*/React.createElement('a', { className: 'vk-nav-btn home', href: 'home_inmobiliaria_inteligente.html', title: 'Volver a Inmobiliaria Inteligente' }, '⌂ Inmobiliaria')));
+}
+
+/* ============================================================
+   MODAL DE ESTADO — exclusividad (Captada) / motivo (No captada)
+   ============================================================ */
+function EstadoModal({ estadoModal, onConfirm, onCancel }) {
+  const esCaptada = estadoModal.estado === 'Captada';
+  const [tipoExcl, setTipoExcl] = useState('exclusiva');
+  const [dias, setDias] = useState('60');
+  const [motivo, setMotivo] = useState(MOTIVOS_NO_CAPTADA[0]);
+  const confirmar = () => {
+    if (esCaptada) {
+      const d = parseInt(dias);
+      onConfirm({ exclusividad: tipoExcl === 'exclusiva' ? { tipo: 'exclusiva', dias: (!isNaN(d) && d > 0) ? d : 30 } : { tipo: 'no' } });
+    } else {
+      onConfirm({ motivoNoCaptada: motivo });
+    }
+  };
+  return /*#__PURE__*/React.createElement('div', { className: 'vk-modal-overlay', onClick: onCancel },
+    /*#__PURE__*/React.createElement('div', { className: 'vk-modal', onClick: e => e.stopPropagation() },
+      /*#__PURE__*/React.createElement('div', { className: 'vk-modal-title' }, esCaptada ? 'Marcar como CAPTADA' : 'Marcar como NO CAPTADA'),
+      /*#__PURE__*/React.createElement('p', { className: 'vk-modal-desc' }, esCaptada ? 'Indicá la condición de exclusividad de la captación.' : 'Indicá el motivo por el que no se captó la propiedad.'),
+      esCaptada
+        ? /*#__PURE__*/React.createElement('div', null,
+            /*#__PURE__*/React.createElement('label', { className: 'vk-modal-radio' },
+              /*#__PURE__*/React.createElement('input', { type: 'radio', name: 'excl', checked: tipoExcl === 'exclusiva', onChange: () => setTipoExcl('exclusiva') }),
+              /*#__PURE__*/React.createElement('span', null, 'Exclusiva por'),
+              /*#__PURE__*/React.createElement('input', { type: 'number', className: 'vk-input', style: { width: 80, margin: '0 6px', padding: '6px 8px' }, value: dias, min: '1', onChange: e => { setDias(e.target.value); setTipoExcl('exclusiva'); } }),
+              /*#__PURE__*/React.createElement('span', null, 'días')),
+            /*#__PURE__*/React.createElement('label', { className: 'vk-modal-radio' },
+              /*#__PURE__*/React.createElement('input', { type: 'radio', name: 'excl', checked: tipoExcl === 'no', onChange: () => setTipoExcl('no') }),
+              /*#__PURE__*/React.createElement('span', null, 'No exclusiva')))
+        : /*#__PURE__*/React.createElement('select', { className: 'vk-select', value: motivo, onChange: e => setMotivo(e.target.value) },
+            MOTIVOS_NO_CAPTADA.map(m => /*#__PURE__*/React.createElement('option', { key: m, value: m }, m))),
+      /*#__PURE__*/React.createElement('div', { className: 'vk-modal-acts' },
+        /*#__PURE__*/React.createElement('button', { className: 'vk-btn vk-btn-secondary', onClick: onCancel }, 'Cancelar'),
+        /*#__PURE__*/React.createElement('button', { className: 'vk-btn vk-btn-primary', onClick: confirmar }, 'Confirmar'))));
+}
+
+// Etiqueta legible de exclusividad / motivo para listados
+function estadoDetalle(r) {
+  if (r.estado === 'Captada' && r.exclusividad) {
+    return r.exclusividad.tipo === 'exclusiva' ? ('Exclusiva ' + r.exclusividad.dias + ' días') : 'No exclusiva';
+  }
+  if (r.estado === 'No captada' && r.motivoNoCaptada) return r.motivoNoCaptada;
+  return '';
 }
 
 /* ============================================================
@@ -3488,7 +3787,7 @@ function HistoryView(props) {
       /*#__PURE__*/React.createElement('div', { className: 'vk-hist-cell vk-hist-main' },
         /*#__PURE__*/React.createElement('div', { className: 'vk-hist-dir' }, d.direccion || 'Sin dirección'),
         /*#__PURE__*/React.createElement('div', { className: 'vk-hist-meta' },
-          (d.tipoPropiedad || '—') + ' · ' + (d.tipoOperacion || '—') + (ubic ? ' · ' + ubic : ''))),
+          (d.tipoPropiedad || '—') + ' · ' + (d.tipoOperacion || '—') + (ubic ? ' · ' + ubic : '') + (d.agente ? ' · ' + d.agente : ''))),
       /*#__PURE__*/React.createElement('div', { className: 'vk-hist-cell' },
         /*#__PURE__*/React.createElement('span', { className: 'vk-hist-k' }, 'Cliente'),
         /*#__PURE__*/React.createElement('span', null, d.cliente || '—')),
@@ -3499,7 +3798,8 @@ function HistoryView(props) {
         /*#__PURE__*/React.createElement('span', { className: 'vk-hist-k' }, 'Actualizada'),
         /*#__PURE__*/React.createElement('span', null, fmtDate(r.actualizado || r.creado))),
       /*#__PURE__*/React.createElement('div', { className: 'vk-hist-cell vk-hist-estado' },
-        /*#__PURE__*/React.createElement('span', { className: 'vk-hist-k' }, 'Estado'), select),
+        /*#__PURE__*/React.createElement('span', { className: 'vk-hist-k' }, 'Estado'), select,
+        estadoDetalle(r) ? /*#__PURE__*/React.createElement('span', { className: 'vk-detalle-badge ' + estadoKey(r.estado) }, estadoDetalle(r)) : null),
       /*#__PURE__*/React.createElement('div', { className: 'vk-hist-cell vk-hist-acts' },
         /*#__PURE__*/React.createElement('button', { className: 'vk-mini', onClick: () => openRecord(r.id, 'report') }, 'Ver informe'),
         /*#__PURE__*/React.createElement('button', { className: 'vk-mini', onClick: () => openRecord(r.id, 'form') }, 'Editar'),
@@ -3523,7 +3823,9 @@ function estadoKeyOf(est) {
   return 'proc';
 }
 function DashboardView(props) {
-  const { history, setEstado, openRecord, newTasacion, goHistory, seedDemo, clearHistory, formatUSD } = props;
+  const { history, currentUser, setEstado, openRecord, newTasacion, goHistory, goReporte, seedDemo, clearHistory, formatUSD } = props;
+  const [vista, setVista] = useState('Mensual');
+  const [drill, setDrill] = useState(null); // { full, recs }
   const demoBar = /*#__PURE__*/React.createElement('div', { className: 'vk-demo-bar' },
     /*#__PURE__*/React.createElement('span', { className: 'vk-demo-lbl' }, 'Datos de demostración'),
     /*#__PURE__*/React.createElement('button', { className: 'vk-demo-btn', onClick: seedDemo }, 'Cargar 20 de ejemplo'),
@@ -3538,6 +3840,14 @@ function DashboardView(props) {
   const captadas = history.filter(r => r.estado === 'Captada').length;
   const tasa = total ? Math.round(captadas / total * 100) : 0;
 
+  const rolNota = /*#__PURE__*/React.createElement('div', { className: 'vk-rol-nota' },
+    /*#__PURE__*/React.createElement('span', { className: 'vk-rol-chip' }, currentUser.rol),
+    /*#__PURE__*/React.createElement('span', null, currentUser.nombre + ' · ' + TENANT.corto + ' — '),
+    /*#__PURE__*/React.createElement('span', { style: { color: '#6B6B6B' } },
+      currentUser.rol === 'CEO' ? 've todas las tasaciones del tenant'
+        : currentUser.rol === 'Team Leader' ? 've sus tasaciones y las de su equipo'
+        : 've únicamente sus tasaciones'));
+
   // Empty state
   if (total === 0) {
     return /*#__PURE__*/React.createElement('div', { className: 'vk-dash-wrap' },
@@ -3546,6 +3856,7 @@ function DashboardView(props) {
           /*#__PURE__*/React.createElement('h1', { className: 'vk-hist-title' }, 'Tasador de Propiedades'),
           /*#__PURE__*/React.createElement('p', { className: 'vk-hist-desc' }, 'Panel de control de tasaciones. Empezá creando tu primera tasación.')),
         /*#__PURE__*/React.createElement('button', { className: 'vk-btn-primary', onClick: newTasacion }, '＋ Nueva tasación')),
+      rolNota,
       /*#__PURE__*/React.createElement('div', { className: 'vk-empty' },
         /*#__PURE__*/React.createElement('div', { className: 'vk-empty-ic' }, '🏷️'),
         /*#__PURE__*/React.createElement('h3', null, 'Todavía no hay tasaciones'),
@@ -3555,15 +3866,34 @@ function DashboardView(props) {
           /*#__PURE__*/React.createElement('button', { className: 'vk-demo-btn big', onClick: seedDemo }, 'Cargar 20 de ejemplo'))));
   }
 
-  // Monthly (last 6 months)
-  const months = [];
-  for (let i = 5; i >= 0; i--) {
-    const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = dt.getFullYear() * 12 + dt.getMonth();
-    const count = history.filter(r => { const d = recDate(r); return d.getFullYear() * 12 + d.getMonth() === key; }).length;
-    months.push({ label: MESES_ABBR[dt.getMonth()], count: count });
+  // Buckets según la vista seleccionada (Mensual / Trimestral / Anual acumuladas)
+  let buckets = [];
+  if (vista === 'Mensual') {
+    for (let i = 5; i >= 0; i--) {
+      const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = dt.getFullYear() * 12 + dt.getMonth();
+      const recs = history.filter(r => { const d = recDate(r); return d.getFullYear() * 12 + d.getMonth() === key; });
+      buckets.push({ label: MESES_ABBR[dt.getMonth()], full: MESES_ABBR[dt.getMonth()] + ' ' + dt.getFullYear(), recs: recs });
+    }
+  } else if (vista === 'Trimestral') {
+    for (let q = 0; q < 4; q++) {
+      const recs = history.filter(r => { const d = recDate(r); return d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === q; });
+      buckets.push({ label: 'T' + (q + 1), full: 'Trimestre ' + (q + 1) + ' · ' + now.getFullYear(), recs: recs });
+    }
+  } else {
+    const years = Array.from(new Set(history.map(r => recDate(r).getFullYear()))).sort();
+    years.forEach(y => {
+      const recs = history.filter(r => recDate(r).getFullYear() === y);
+      buckets.push({ label: String(y), full: 'Año ' + y + ' (acumulado)', recs: recs });
+    });
   }
-  const maxM = Math.max(1, ...months.map(m => m.count));
+  const maxB = Math.max(1, ...buckets.map(b => b.recs.length));
+
+  // Ranking de propiedades captadas por vendedor
+  const rankMap = {};
+  history.forEach(r => { if (r.estado === 'Captada') { const n = (r.data && r.data.agente) || '—'; rankMap[n] = (rankMap[n] || 0) + 1; } });
+  const ranking = Object.keys(rankMap).map(n => ({ nombre: n, count: rankMap[n] })).sort((a, b) => b.count - a.count);
+  const maxR = Math.max(1, ...ranking.map(x => x.count));
 
   const estadoCounts = ESTADOS_TASACION.map(e => ({ estado: e, count: history.filter(r => (r.estado || 'En proceso') === e).length }));
   const maxE = Math.max(1, ...estadoCounts.map(e => e.count));
@@ -3575,8 +3905,10 @@ function DashboardView(props) {
   const head = /*#__PURE__*/React.createElement('div', { className: 'vk-hist-head' },
     /*#__PURE__*/React.createElement('div', null,
       /*#__PURE__*/React.createElement('h1', { className: 'vk-hist-title' }, 'Dashboard de tasaciones'),
-      /*#__PURE__*/React.createElement('p', { className: 'vk-hist-desc' }, 'Resumen de la actividad de tasación y seguimiento de captación.')),
-    /*#__PURE__*/React.createElement('button', { className: 'vk-btn-primary', onClick: newTasacion }, '＋ Nueva tasación'));
+      /*#__PURE__*/React.createElement('p', { className: 'vk-hist-desc' }, 'Resumen de la actividad de tasación y seguimiento de captación. Hacé clic en un período para ver sus tasaciones.')),
+    /*#__PURE__*/React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+      /*#__PURE__*/React.createElement('button', { className: 'vk-btn-primary', onClick: newTasacion }, '＋ Nueva tasación'),
+      /*#__PURE__*/React.createElement('button', { className: 'vk-nav-btn', onClick: goReporte }, '⤓ Reporte de tasaciones')));
 
   const kpis = /*#__PURE__*/React.createElement('div', { className: 'vk-kpis' },
     kpi('Este mes', inMonth, null),
@@ -3584,40 +3916,89 @@ function DashboardView(props) {
     kpi('Total tasaciones', total, null),
     kpi('Tasa de captación', tasa + '%', 'green'));
 
+  const segControl = /*#__PURE__*/React.createElement('div', { className: 'vk-seg' },
+    ['Mensual', 'Trimestral', 'Anual acumuladas'].map(v => {
+      const key = v === 'Anual acumuladas' ? 'Anual' : v;
+      return /*#__PURE__*/React.createElement('button', {
+        key: v,
+        className: 'vk-seg-btn' + (vista === key ? ' active' : ''),
+        onClick: () => { setVista(key); setDrill(null); }
+      }, v);
+    }));
+
   const barChart = /*#__PURE__*/React.createElement('div', { className: 'vk-panel' },
-    /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Tasaciones por mes'),
+    /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Tasaciones · ' + (vista === 'Anual' ? 'anual acumuladas' : vista.toLowerCase())),
     /*#__PURE__*/React.createElement('div', { className: 'vk-bars' },
-      months.map((m, i) => /*#__PURE__*/React.createElement('div', { className: 'vk-bar-col', key: i },
-        /*#__PURE__*/React.createElement('div', { className: 'vk-bar-num' }, m.count),
+      buckets.map((b, i) => /*#__PURE__*/React.createElement('div', {
+        className: 'vk-bar-col clickable' + (drill && drill.full === b.full ? ' sel' : ''),
+        key: i,
+        onClick: () => setDrill(b.recs.length ? { full: b.full, titulo: 'Tasaciones de ' + b.full, recs: b.recs } : null),
+        title: 'Ver tasaciones de ' + b.full
+      },
+        /*#__PURE__*/React.createElement('div', { className: 'vk-bar-num' }, b.recs.length),
         /*#__PURE__*/React.createElement('div', { className: 'vk-bar-track' },
-          /*#__PURE__*/React.createElement('div', { className: 'vk-bar-fill', style: { height: Math.round(m.count / maxM * 100) + '%' } })),
-        /*#__PURE__*/React.createElement('div', { className: 'vk-bar-lbl' }, m.label)))));
+          /*#__PURE__*/React.createElement('div', { className: 'vk-bar-fill', style: { height: Math.round(b.recs.length / maxB * 100) + '%' } })),
+        /*#__PURE__*/React.createElement('div', { className: 'vk-bar-lbl' }, b.label)))));
 
-  const estadoChart = /*#__PURE__*/React.createElement('div', { className: 'vk-panel' },
-    /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Tasaciones por estado'),
+  const medals = ['🥇', '🥈', '🥉'];
+  const rankPanel = /*#__PURE__*/React.createElement('div', { className: 'vk-panel' },
+    /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Ranking de captaciones por vendedor'),
+    ranking.length === 0
+      ? /*#__PURE__*/React.createElement('div', { style: { fontSize: 12.5, color: '#6B6B6B', padding: '10px 0' } }, 'Todavía no hay propiedades captadas.')
+      : /*#__PURE__*/React.createElement('div', { className: 'vk-rank-list' },
+          ranking.map((x, i) => {
+            const recs = history.filter(rr => rr.estado === 'Captada' && ((rr.data && rr.data.agente) || '—') === x.nombre);
+            return /*#__PURE__*/React.createElement('div', {
+              className: 'vk-rank-item' + (i < 3 ? ' top' : '') + (drill && drill.full === ('Captaciones de ' + x.nombre) ? ' sel' : ''),
+              key: i,
+              onClick: () => setDrill({ full: 'Captaciones de ' + x.nombre, titulo: 'Captaciones de ' + x.nombre, recs: recs }),
+              title: 'Ver captaciones de ' + x.nombre
+            },
+              /*#__PURE__*/React.createElement('span', { className: 'vk-rank-medal' }, i < 3 ? medals[i] : (i + 1) + '°'),
+              /*#__PURE__*/React.createElement('span', { className: 'vk-rank-av' }, (x.nombre || '?').trim().charAt(0)),
+              /*#__PURE__*/React.createElement('div', { className: 'vk-rank-info' },
+                /*#__PURE__*/React.createElement('div', { className: 'vk-rank-name' }, x.nombre),
+                /*#__PURE__*/React.createElement('div', { className: 'vk-rank-bar' },
+                  /*#__PURE__*/React.createElement('div', { className: 'vk-rank-fill', style: { width: Math.round(x.count / maxR * 100) + '%' } }))),
+              /*#__PURE__*/React.createElement('span', { className: 'vk-rank-badge' }, x.count));
+          })));
+
+  const estadoChart = /*#__PURE__*/React.createElement('div', { className: 'vk-panel', style: { marginBottom: 26 } },
+    /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Tasaciones por estado ', /*#__PURE__*/React.createElement('span', { style: { fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#9A9A9A' } }, '· hacé clic para ver el detalle')),
     /*#__PURE__*/React.createElement('div', { className: 'vk-estado-rows' },
-      estadoCounts.map((e, i) => /*#__PURE__*/React.createElement('div', { className: 'vk-estado-row', key: i },
-        /*#__PURE__*/React.createElement('span', { className: 'vk-estado-dot', style: { background: ESTADO_COLOR[e.estado] } }),
-        /*#__PURE__*/React.createElement('span', { className: 'vk-estado-name' }, e.estado),
-        /*#__PURE__*/React.createElement('span', { className: 'vk-estado-track' },
-          /*#__PURE__*/React.createElement('span', { className: 'vk-estado-fill', style: { width: Math.round(e.count / maxE * 100) + '%', background: ESTADO_COLOR[e.estado] } })),
-        /*#__PURE__*/React.createElement('span', { className: 'vk-estado-cnt' }, e.count)))));
+      estadoCounts.map((e, i) => {
+        const recs = history.filter(r => (r.estado || 'En proceso') === e.estado);
+        return /*#__PURE__*/React.createElement('div', {
+          className: 'vk-estado-row clickable' + (drill && drill.full === ('estado:' + e.estado) ? ' sel' : ''),
+          key: i,
+          onClick: () => setDrill(recs.length ? { full: 'estado:' + e.estado, titulo: 'Tasaciones · ' + e.estado, recs: recs } : null),
+          title: 'Ver tasaciones en estado ' + e.estado
+        },
+          /*#__PURE__*/React.createElement('span', { className: 'vk-estado-dot', style: { background: ESTADO_COLOR[e.estado] } }),
+          /*#__PURE__*/React.createElement('span', { className: 'vk-estado-name' }, e.estado),
+          /*#__PURE__*/React.createElement('span', { className: 'vk-estado-track' },
+            /*#__PURE__*/React.createElement('span', { className: 'vk-estado-fill', style: { width: Math.round(e.count / maxE * 100) + '%', background: ESTADO_COLOR[e.estado] } })),
+          /*#__PURE__*/React.createElement('span', { className: 'vk-estado-cnt' }, e.count));
+      })));
 
-  const panels = /*#__PURE__*/React.createElement('div', { className: 'vk-panels' }, barChart, estadoChart);
+  const panels = /*#__PURE__*/React.createElement('div', { className: 'vk-panels' }, barChart, rankPanel);
 
-  const recent = history.slice(0, 10).map(r => {
+  const listSource = drill ? drill.recs : history.slice(0, 10);
+  const recent = listSource.map(r => {
     const d = r.data || {};
-    const ubic = [d.barrio, d.ciudad].filter(Boolean).join(', ');
+    const det = estadoDetalle(r);
     return /*#__PURE__*/React.createElement('div', { className: 'vk-recent-row', key: r.id },
       /*#__PURE__*/React.createElement('div', { className: 'vk-recent-main' },
         /*#__PURE__*/React.createElement('div', { className: 'vk-recent-dir' }, d.direccion || 'Sin dirección'),
-        /*#__PURE__*/React.createElement('div', { className: 'vk-recent-meta' }, (d.cliente || '—') + ' · ' + (d.tipoPropiedad || '—') + (ubic ? ' · ' + ubic : ''))),
+        /*#__PURE__*/React.createElement('div', { className: 'vk-recent-meta' }, (d.cliente || '—') + ' · ' + (d.tipoPropiedad || '—') + (d.agente ? ' · ' + d.agente : ''))),
       /*#__PURE__*/React.createElement('div', { className: 'vk-recent-val' }, formatUSD(d.valorRecomendado)),
-      /*#__PURE__*/React.createElement('select', {
-        className: 'vk-estado-select ' + estadoKeyOf(r.estado),
-        value: r.estado || 'En proceso',
-        onChange: e => setEstado(r.id, e.target.value)
-      }, ESTADOS_TASACION.map(op => /*#__PURE__*/React.createElement('option', { key: op, value: op }, op))),
+      /*#__PURE__*/React.createElement('div', { className: 'vk-recent-estado' },
+        /*#__PURE__*/React.createElement('select', {
+          className: 'vk-estado-select ' + estadoKeyOf(r.estado),
+          value: r.estado || 'En proceso',
+          onChange: e => setEstado(r.id, e.target.value)
+        }, ESTADOS_TASACION.map(op => /*#__PURE__*/React.createElement('option', { key: op, value: op }, op))),
+        det ? /*#__PURE__*/React.createElement('span', { className: 'vk-detalle-badge ' + estadoKeyOf(r.estado) }, det) : null),
       /*#__PURE__*/React.createElement('div', { className: 'vk-recent-acts' },
         /*#__PURE__*/React.createElement('button', { className: 'vk-mini', onClick: () => openRecord(r.id, 'form') }, 'Editar'),
         /*#__PURE__*/React.createElement('button', { className: 'vk-mini', onClick: () => openRecord(r.id, 'report') }, 'Ver')));
@@ -3625,11 +4006,205 @@ function DashboardView(props) {
 
   const recentBlock = /*#__PURE__*/React.createElement('div', { className: 'vk-recent' },
     /*#__PURE__*/React.createElement('div', { className: 'vk-recent-head' },
-      /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Últimas tasaciones'),
-      /*#__PURE__*/React.createElement('button', { className: 'vk-link-btn', onClick: goHistory }, 'Ver historial completo →')),
+      /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, drill ? (drill.titulo + ' (' + drill.recs.length + ')') : 'Últimas tasaciones'),
+      drill
+        ? /*#__PURE__*/React.createElement('button', { className: 'vk-link-btn', onClick: () => setDrill(null) }, '× Quitar filtro')
+        : /*#__PURE__*/React.createElement('button', { className: 'vk-link-btn', onClick: goHistory }, 'Ver historial completo →')),
     /*#__PURE__*/React.createElement('div', { className: 'vk-recent-list' }, recent));
 
-  return /*#__PURE__*/React.createElement('div', { className: 'vk-dash-wrap' }, head, kpis, panels, recentBlock, demoBar);
+  return /*#__PURE__*/React.createElement('div', { className: 'vk-dash-wrap' }, head, rolNota, kpis, segControl, panels, estadoChart, recentBlock, demoBar);
+}
+
+/* ============================================================
+   SECTION 4 (rediseñada) — Comparables en tarjetas espaciosas
+   ============================================================ */
+function SectionComparables({ data, updateComparable, addComparable, removeComparable, calculations, formatUSD, formatNum }) {
+  const cards = data.comparables.map((c, i) => {
+    const usdM2 = c.precio && c.superficie ? parseFloat(c.precio) / parseFloat(c.superficie) : null;
+    return /*#__PURE__*/React.createElement('div', { className: 'vk-comp-card', key: i },
+      /*#__PURE__*/React.createElement('div', { className: 'vk-comp-card-head' },
+        /*#__PURE__*/React.createElement('span', { className: 'vk-comp-num' }, 'Comparable ' + (i + 1)),
+        /*#__PURE__*/React.createElement('span', { className: 'vk-comp-usdm2' }, usdM2 ? ('$' + formatNum(usdM2) + ' /m²') : 'USD/m² —'),
+        /*#__PURE__*/React.createElement('button', { className: 'vk-comp-del', onClick: () => removeComparable(i), title: 'Eliminar comparable' }, '× Quitar')),
+      /*#__PURE__*/React.createElement('div', { className: 'vk-comp-grid' },
+        /*#__PURE__*/React.createElement('div', { className: 'vk-comp-f full' }, /*#__PURE__*/React.createElement(Field, { label: 'Link de la publicación' },
+          /*#__PURE__*/React.createElement('input', { className: 'vk-input', value: c.link, onChange: e => updateComparable(i, 'link', e.target.value), placeholder: 'https://...' }))),
+        /*#__PURE__*/React.createElement('div', { className: 'vk-comp-f full' }, /*#__PURE__*/React.createElement(Field, { label: 'Dirección / Zona' },
+          /*#__PURE__*/React.createElement('input', { className: 'vk-input', value: c.direccion, onChange: e => updateComparable(i, 'direccion', e.target.value), placeholder: 'Zona o dirección' }))),
+        /*#__PURE__*/React.createElement(Field, { label: 'Superficie (m²)' },
+          /*#__PURE__*/React.createElement('input', { className: 'vk-input', type: 'number', value: c.superficie, onChange: e => updateComparable(i, 'superficie', e.target.value), placeholder: 'Ej: 80' })),
+        /*#__PURE__*/React.createElement(Field, { label: 'Precio (USD)' },
+          /*#__PURE__*/React.createElement('input', { className: 'vk-input', type: 'number', value: c.precio, onChange: e => updateComparable(i, 'precio', e.target.value), placeholder: 'Ej: 120000' })),
+        /*#__PURE__*/React.createElement(Field, { label: 'Dormitorios' },
+          /*#__PURE__*/React.createElement('input', { className: 'vk-input', type: 'number', value: c.dormitorios, onChange: e => updateComparable(i, 'dormitorios', e.target.value), placeholder: 'Ej: 2' })),
+        /*#__PURE__*/React.createElement(Field, { label: 'Baños' },
+          /*#__PURE__*/React.createElement('input', { className: 'vk-input', type: 'number', value: c.banos, onChange: e => updateComparable(i, 'banos', e.target.value), placeholder: 'Ej: 1' })),
+        /*#__PURE__*/React.createElement(Field, { label: 'Estado' },
+          /*#__PURE__*/React.createElement('select', { className: 'vk-select', value: c.estado, onChange: e => updateComparable(i, 'estado', e.target.value) }, ESTADO_OPS.map(o => /*#__PURE__*/React.createElement('option', { key: o }, o)))),
+        /*#__PURE__*/React.createElement(Field, { label: 'Cochera' },
+          /*#__PURE__*/React.createElement('select', { className: 'vk-select', value: c.cocheraComp, onChange: e => updateComparable(i, 'cocheraComp', e.target.value) }, SI_NO.map(o => /*#__PURE__*/React.createElement('option', { key: o }, o)))),
+        /*#__PURE__*/React.createElement('div', { className: 'vk-comp-f full' }, /*#__PURE__*/React.createElement(Field, { label: 'Observaciones' },
+          /*#__PURE__*/React.createElement('input', { className: 'vk-input', value: c.observaciones, onChange: e => updateComparable(i, 'observaciones', e.target.value), placeholder: 'Ej: Reciclado a nuevo, sin cochera...' })))));
+  });
+  return /*#__PURE__*/React.createElement('div', { className: 'vk-card' },
+    /*#__PURE__*/React.createElement('h2', { className: 'vk-section-title' }, 'Comparables de mercado'),
+    /*#__PURE__*/React.createElement('p', { className: 'vk-section-subtitle' }, 'Cargá entre 3 y 6 propiedades comparables. La app calcula USD/m² y promedios automáticamente.'),
+    data.comparables.length === 0
+      ? /*#__PURE__*/React.createElement('div', { style: { padding: 32, background: COLORS.bgGray, borderRadius: 10, textAlign: 'center', marginBottom: 16, color: COLORS.mutedText, fontSize: 13 } }, 'Todavía no cargaste comparables. Agregá al menos 3 para una mejor referencia.')
+      : /*#__PURE__*/React.createElement('div', { className: 'vk-comp-cards' }, cards),
+    /*#__PURE__*/React.createElement('button', { className: 'vk-btn vk-btn-secondary', onClick: addComparable, disabled: data.comparables.length >= 6, style: { opacity: data.comparables.length >= 6 ? 0.5 : 1, marginTop: 4 } }, '+ Agregar comparable ', data.comparables.length >= 6 && '(máx. 6)'),
+    calculations.count > 0 && /*#__PURE__*/React.createElement('div', { style: { marginTop: 22, padding: 18, background: COLORS.bgGray, borderRadius: 10, borderLeft: `3px solid ${COLORS.red}` } },
+      /*#__PURE__*/React.createElement('div', { style: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.mutedText, marginBottom: 12 } }, 'Resumen automático'),
+      /*#__PURE__*/React.createElement('div', { className: 'vk-comp-stats' },
+        /*#__PURE__*/React.createElement(Stat, { label: 'Comparables', value: calculations.count }),
+        /*#__PURE__*/React.createElement(Stat, { label: 'Precio mín.', value: formatUSD(calculations.minPrice) }),
+        /*#__PURE__*/React.createElement(Stat, { label: 'Precio máx.', value: formatUSD(calculations.maxPrice) }),
+        /*#__PURE__*/React.createElement(Stat, { label: 'Precio promedio', value: formatUSD(calculations.avgPrice) }),
+        /*#__PURE__*/React.createElement(Stat, { label: 'USD/m² promedio', value: `$${formatNum(calculations.avgUsdPerM2)}` }))));
+}
+
+/* ============================================================
+   REPORTE DE CAPTACIONES (Anual / Trimestral / Mensual + PDF)
+   ============================================================ */
+function ReporteView(props) {
+  const { history, currentUser, openRecord, goDashboard, formatUSD, formatNum } = props;
+  const now = new Date();
+  const [periodo, setPeriodo] = useState('Anual');
+  const [anio, setAnio] = useState(now.getFullYear());
+  const [trimestre, setTrimestre] = useState(Math.floor(now.getMonth() / 3));
+  const [mes, setMes] = useState(now.getMonth());
+  const [filtro, setFiltro] = useState('Todas'); // filtro por estado dentro del reporte
+  const recDate = r => new Date(r.creado || r.actualizado || Date.now());
+  const years = Array.from(new Set(history.map(r => recDate(r).getFullYear()))).sort((a, b) => b - a);
+  if (years.indexOf(now.getFullYear()) === -1) years.unshift(now.getFullYear());
+
+  const enPeriodo = r => {
+    const d = recDate(r);
+    if (d.getFullYear() !== Number(anio)) return false;
+    if (periodo === 'Trimestral') return Math.floor(d.getMonth() / 3) === Number(trimestre);
+    if (periodo === 'Mensual') return d.getMonth() === Number(mes);
+    return true;
+  };
+  const enPer = history.filter(enPeriodo);                         // TODAS las tasaciones del período
+  const byEstado = ESTADOS_TASACION.map(e => ({ estado: e, count: enPer.filter(r => (r.estado || 'En proceso') === e).length }));
+  const maxE = Math.max(1, ...byEstado.map(e => e.count));
+  const captadas = enPer.filter(r => r.estado === 'Captada');
+  const tasa = enPer.length ? Math.round(captadas.length / enPer.length * 100) : 0;
+  const montoTotal = enPer.reduce((s, r) => s + (parseFloat(r.data && r.data.valorRecomendado) || 0), 0);
+  const filtradas = filtro === 'Todas' ? enPer : enPer.filter(r => (r.estado || 'En proceso') === filtro);
+
+  // Ranking de captaciones por vendedor dentro del período
+  const rankMap = {};
+  captadas.forEach(r => { const n = (r.data && r.data.agente) || '—'; rankMap[n] = (rankMap[n] || 0) + 1; });
+  const ranking = Object.keys(rankMap).map(n => ({ nombre: n, count: rankMap[n] })).sort((a, b) => b.count - a.count);
+  const maxR = Math.max(1, ...ranking.map(x => x.count));
+
+  const periodoLabel = periodo === 'Anual' ? ('Año ' + anio)
+    : periodo === 'Trimestral' ? ('Trimestre ' + (Number(trimestre) + 1) + ' · ' + anio)
+    : (MESES_ABBR[Number(mes)] + ' ' + anio);
+
+  const guardarPdf = () => {
+    const prev = document.title;
+    document.title = 'Reporte de Tasaciones - ' + TENANT.corto + ' - ' + periodoLabel;
+    setTimeout(() => { window.print(); setTimeout(() => { document.title = prev; }, 500); }, 100);
+  };
+
+  const selector = /*#__PURE__*/React.createElement('div', { className: 'vk-rep-controls vk-no-print' },
+    /*#__PURE__*/React.createElement('div', { className: 'vk-seg' },
+      ['Anual', 'Trimestral', 'Mensual'].map(p => /*#__PURE__*/React.createElement('button', {
+        key: p, className: 'vk-seg-btn' + (periodo === p ? ' active' : ''), onClick: () => setPeriodo(p)
+      }, p))),
+    /*#__PURE__*/React.createElement('select', { className: 'vk-select vk-rep-sel', value: anio, onChange: e => setAnio(e.target.value) },
+      years.map(y => /*#__PURE__*/React.createElement('option', { key: y, value: y }, y))),
+    periodo === 'Trimestral' ? /*#__PURE__*/React.createElement('select', { className: 'vk-select vk-rep-sel', value: trimestre, onChange: e => setTrimestre(e.target.value) },
+      [0, 1, 2, 3].map(q => /*#__PURE__*/React.createElement('option', { key: q, value: q }, 'Trimestre ' + (q + 1)))) : null,
+    periodo === 'Mensual' ? /*#__PURE__*/React.createElement('select', { className: 'vk-select vk-rep-sel', value: mes, onChange: e => setMes(e.target.value) },
+      MESES_ABBR.map((m, idx) => /*#__PURE__*/React.createElement('option', { key: idx, value: idx }, m))) : null,
+    /*#__PURE__*/React.createElement('button', { className: 'vk-btn vk-btn-primary', onClick: guardarPdf, style: { marginLeft: 'auto' } }, '🖨 Guardar PDF'));
+
+  const resumen = /*#__PURE__*/React.createElement('div', { className: 'vk-kpis' },
+    /*#__PURE__*/React.createElement('div', { className: 'vk-kpi' }, /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-val' }, enPer.length), /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-lbl' }, 'Tasaciones')),
+    /*#__PURE__*/React.createElement('div', { className: 'vk-kpi green' }, /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-val' }, captadas.length), /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-lbl' }, 'Captadas')),
+    /*#__PURE__*/React.createElement('div', { className: 'vk-kpi' }, /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-val' }, tasa + '%'), /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-lbl' }, 'Tasa de captación')),
+    /*#__PURE__*/React.createElement('div', { className: 'vk-kpi' }, /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-val', style: { fontSize: 20 } }, formatUSD(montoTotal)), /*#__PURE__*/React.createElement('div', { className: 'vk-kpi-lbl' }, 'Valor publicación total')));
+
+  // Gráfica: distribución por estado del período
+  const grafica = /*#__PURE__*/React.createElement('div', { className: 'vk-panel', style: { marginBottom: 22 } },
+    /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Distribución por estado · ' + periodoLabel),
+    /*#__PURE__*/React.createElement('div', { className: 'vk-estado-rows' },
+      byEstado.map((e, i) => {
+        const pct = enPer.length ? Math.round(e.count / enPer.length * 100) : 0;
+        return /*#__PURE__*/React.createElement('div', { className: 'vk-repest-row', key: i },
+          /*#__PURE__*/React.createElement('span', { className: 'vk-estado-dot', style: { background: ESTADO_COLOR[e.estado] } }),
+          /*#__PURE__*/React.createElement('span', { className: 'vk-repest-name' }, e.estado),
+          /*#__PURE__*/React.createElement('span', { className: 'vk-estado-track' },
+            /*#__PURE__*/React.createElement('span', { className: 'vk-estado-fill', style: { width: Math.round(e.count / maxE * 100) + '%', background: ESTADO_COLOR[e.estado] } })),
+          /*#__PURE__*/React.createElement('span', { className: 'vk-repest-cnt' }, e.count + '  (' + pct + '%)'));
+      })));
+
+  // Chips de filtro por estado
+  const chips = /*#__PURE__*/React.createElement('div', { className: 'vk-rep-chips vk-no-print' },
+    ['Todas'].concat(ESTADOS_TASACION).map(op => {
+      const n = op === 'Todas' ? enPer.length : enPer.filter(r => (r.estado || 'En proceso') === op).length;
+      return /*#__PURE__*/React.createElement('button', {
+        key: op, className: 'vk-chip' + (filtro === op ? ' active' : ''), onClick: () => setFiltro(op)
+      }, op, /*#__PURE__*/React.createElement('span', { className: 'vk-chip-n' }, n));
+    }));
+
+  const estadoPill = est => /*#__PURE__*/React.createElement('span', { className: 'vk-estado-pill', style: { background: ESTADO_COLOR[est] + '22', color: ESTADO_COLOR[est] } }, est);
+
+  const tabla = filtradas.length === 0
+    ? /*#__PURE__*/React.createElement('div', { className: 'vk-empty', style: { marginTop: 20 } },
+        /*#__PURE__*/React.createElement('div', { className: 'vk-empty-ic' }, '📄'),
+        /*#__PURE__*/React.createElement('h3', null, 'Sin tasaciones'),
+        /*#__PURE__*/React.createElement('p', null, 'No hay tasaciones' + (filtro !== 'Todas' ? ' en estado "' + filtro + '"' : '') + ' para ' + periodoLabel + '.'))
+    : /*#__PURE__*/React.createElement('table', { className: 'vk-report-table', style: { marginTop: 4 } },
+        /*#__PURE__*/React.createElement('thead', null, /*#__PURE__*/React.createElement('tr', null,
+          /*#__PURE__*/React.createElement('th', null, 'Fecha'),
+          /*#__PURE__*/React.createElement('th', null, 'Propiedad'),
+          /*#__PURE__*/React.createElement('th', null, 'Cliente'),
+          /*#__PURE__*/React.createElement('th', null, 'Vendedor'),
+          /*#__PURE__*/React.createElement('th', null, 'Estado'),
+          /*#__PURE__*/React.createElement('th', null, 'Detalle'),
+          /*#__PURE__*/React.createElement('th', { style: { textAlign: 'right' } }, 'Valor'))),
+        /*#__PURE__*/React.createElement('tbody', null, filtradas.map(r => {
+          const d = r.data || {};
+          const det = estadoDetalle(r);
+          return /*#__PURE__*/React.createElement('tr', { key: r.id, style: { cursor: 'pointer' }, onClick: () => openRecord(r.id, 'report') },
+            /*#__PURE__*/React.createElement('td', null, new Date(recDate(r)).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })),
+            /*#__PURE__*/React.createElement('td', null, (d.direccion || '—') + (d.barrio ? ' · ' + d.barrio : '')),
+            /*#__PURE__*/React.createElement('td', null, d.cliente || '—'),
+            /*#__PURE__*/React.createElement('td', null, d.agente || '—'),
+            /*#__PURE__*/React.createElement('td', null, estadoPill(r.estado || 'En proceso')),
+            /*#__PURE__*/React.createElement('td', { style: { fontSize: 11.5, color: COLORS.mutedText } }, det || '—'),
+            /*#__PURE__*/React.createElement('td', { style: { textAlign: 'right', fontWeight: 700, color: COLORS.red } }, formatUSD(d.valorRecomendado)));
+        })));
+
+  const medals = ['🥇', '🥈', '🥉'];
+  const rankBlock = ranking.length > 0 ? /*#__PURE__*/React.createElement('div', { className: 'vk-panel', style: { marginTop: 22 } },
+    /*#__PURE__*/React.createElement('div', { className: 'vk-panel-title' }, 'Ranking de captaciones por vendedor · ' + periodoLabel),
+    /*#__PURE__*/React.createElement('div', { className: 'vk-rank-list' },
+      ranking.map((x, i) => /*#__PURE__*/React.createElement('div', { className: 'vk-rank-item' + (i < 3 ? ' top' : ''), key: i },
+        /*#__PURE__*/React.createElement('span', { className: 'vk-rank-medal' }, i < 3 ? medals[i] : (i + 1) + '°'),
+        /*#__PURE__*/React.createElement('span', { className: 'vk-rank-av' }, (x.nombre || '?').trim().charAt(0)),
+        /*#__PURE__*/React.createElement('div', { className: 'vk-rank-info' },
+          /*#__PURE__*/React.createElement('div', { className: 'vk-rank-name' }, x.nombre),
+          /*#__PURE__*/React.createElement('div', { className: 'vk-rank-bar' },
+            /*#__PURE__*/React.createElement('div', { className: 'vk-rank-fill', style: { width: Math.round(x.count / maxR * 100) + '%' } }))),
+        /*#__PURE__*/React.createElement('span', { className: 'vk-rank-badge' }, x.count))))) : null;
+
+  return /*#__PURE__*/React.createElement('div', { className: 'vk-dash-wrap vk-reporte' },
+    /*#__PURE__*/React.createElement('button', { className: 'vk-back vk-no-print', onClick: goDashboard }, '← Volver al dashboard'),
+    /*#__PURE__*/React.createElement('div', { className: 'vk-hist-head' },
+      /*#__PURE__*/React.createElement('div', null,
+        /*#__PURE__*/React.createElement('h1', { className: 'vk-hist-title' }, 'Reporte de Tasaciones'),
+        /*#__PURE__*/React.createElement('p', { className: 'vk-hist-desc' }, TENANT.nombre + ' · ' + periodoLabel + ' · ' + currentUser.rol + ' (' + currentUser.nombre + ')'))),
+    selector,
+    resumen,
+    grafica,
+    chips,
+    tabla,
+    rankBlock);
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

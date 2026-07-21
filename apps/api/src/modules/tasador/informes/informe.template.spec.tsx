@@ -55,6 +55,10 @@ const TASACION: TasacionDto = {
       usdM2: 2000,
     },
   ],
+  fotos: [
+    { id: 'f1', url: 'https://example.com/foto1.jpg', orden: 0 },
+    { id: 'f2', url: 'https://example.com/foto2.jpg', orden: 1 },
+  ],
   analisisComercial: {
     fortalezas: ['Excelente ubicación'],
     aspectos: ['Necesita mejoras'],
