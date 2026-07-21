@@ -233,6 +233,24 @@ export function TasacionWizard({ tasacion }: Props) {
   }
 
   /**
+   * Todas las secciones juntas — se usa al generar el informe o finalizar,
+   * momentos en los que hace falta que TODO lo cargado esté guardado sin
+   * importar cuál sea la sección activa (si el usuario saltó de "Comparables"
+   * directo a "Estrategia", por ejemplo, "Valores" nunca se guardó porque
+   * `guardarSeccionActiva` solo manda los datos de la sección activa).
+   */
+  function datosCompletos() {
+    return {
+      ...datosSeccion1(),
+      ...datosSeccion2(),
+      ...datosSeccion3(),
+      ...datosSeccion4(),
+      ...datosSeccion5(),
+      ...datosSeccion6(),
+    };
+  }
+
+  /**
    * Guarda la sección activa: crea la tasación en la sección 1 (primer guardado) o
    * hace un PATCH parcial. `destino` es la sección a la que se quiere navegar después —
    * si esta llamada crea la tasación, `router.replace` cambia de página (/nueva → /[id]/editar)
@@ -266,6 +284,33 @@ export function TasacionWizard({ tasacion }: Props) {
     }
   }
 
+  /** Guarda TODAS las secciones en un solo PATCH — ver `datosCompletos()`. */
+  async function guardarTodo(): Promise<boolean> {
+    if (!cliente.trim() || !fecha || !direccion.trim()) {
+      setError('Completá cliente, fecha y dirección antes de continuar.');
+      return false;
+    }
+
+    setError(null);
+    setGuardando(true);
+    try {
+      const accessToken = await getAccessToken();
+      if (!tasacionId) {
+        const creada = await createTasacion(accessToken, datosCompletos());
+        setTasacionId(creada.id);
+        router.replace(`/tasador/tasaciones/${creada.id}/editar`);
+      } else {
+        await updateTasacion(accessToken, tasacionId, datosCompletos());
+      }
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la tasación.');
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   async function irA(seccion: number) {
     if (seccion === seccionActiva) return;
     const habiaId = !!tasacionId;
@@ -286,7 +331,7 @@ export function TasacionWizard({ tasacion }: Props) {
   }
 
   async function handleGenerarInforme() {
-    const ok = await guardarSeccionActiva(seccionActiva);
+    const ok = await guardarTodo();
     if (!ok || !tasacionId) return;
     setGenerandoInforme(true);
     try {
@@ -302,7 +347,7 @@ export function TasacionWizard({ tasacion }: Props) {
   }
 
   async function handleFinalizar() {
-    const ok = await guardarSeccionActiva(seccionActiva);
+    const ok = await guardarTodo();
     if (ok) router.push('/tasador/tasaciones');
   }
 
