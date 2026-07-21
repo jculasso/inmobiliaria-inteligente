@@ -30,7 +30,22 @@ export async function middleware(request: NextRequest) {
   // manda una request a Supabase en CADA navegación. Con Render y Vercel sin
   // región cercana a Supabase (sa-east-1), ese round trip por click se sentía.
   const { data } = await supabase.auth.getClaims();
-  const claims = data?.claims;
+  let claims = data?.claims;
+
+  // getClaims() no refresca el token si venció (a diferencia de getUser()) —
+  // solo cuando el chequeo local falla vale la pena pagar el round trip: le
+  // da a Supabase la chance de refrescarlo con el refresh_token y reescribir
+  // las cookies antes de decidir que no hay sesión. En navegación dura (URL
+  // directa, bookmark, nueva pestaña) suele ser justo cuando el token ya
+  // expiró, así que sin este fallback cualquier ruta protegida rebotaba a la
+  // Home aunque la sesión siguiera siendo válida.
+  if (!claims) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData.user) {
+      const retry = await supabase.auth.getClaims();
+      claims = retry.data?.claims;
+    }
+  }
 
   // "/" es pública: el login vive embebido ahí (ver app/page.tsx). El resto
   // de las rutas (p. ej. /tablero/*) exige sesión y redirige a la Home.
