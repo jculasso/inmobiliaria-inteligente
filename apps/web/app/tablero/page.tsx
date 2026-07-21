@@ -1,4 +1,4 @@
-import { getKpisResumen } from '../../lib/tablero-api';
+import { getKpisResumen, getResumenRango } from '../../lib/tablero-api';
 import { requireServerPrincipal } from '../../lib/server-principal';
 import { FiltroPeriodo } from '../../components/tablero/filtro-periodo';
 import { DashboardKpis } from '../../components/tablero/dashboard-kpis';
@@ -20,7 +20,15 @@ export default async function TableroDashboardPage({
   // elige con el tab "Acumulado Anual" del Resumen, no con "todos los meses".
   const mes = params.mes ? Number(params.mes) : hoy.getMonth() + 1;
 
-  const resumen = await getKpisResumen(ctx.accessToken, { anio, mes });
+  // Se piden en paralelo: el resumen del mes seleccionado (KPIs de arriba) y
+  // el acumulado anual (año completo), que es el tab por defecto de
+  // ResumenAcumulado/RankingTable — evita que esos componentes lo vuelvan a
+  // pedir al montar con los valores por defecto (mismo dato, un round-trip
+  // menos en el hop más lento del stack).
+  const [resumen, resumenAnual] = await Promise.all([
+    getKpisResumen(ctx.accessToken, { anio, mes }),
+    getResumenRango(ctx.accessToken, anio, 1, 12),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -33,10 +41,10 @@ export default async function TableroDashboardPage({
 
       <section className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">📊 Resumen acumulado</p>
-        <ResumenAcumulado anio={anio} mesSeleccionado={mes} />
+        <ResumenAcumulado anio={anio} mesSeleccionado={mes} inicial={resumenAnual} />
       </section>
 
-      <RankingTable anio={anio} mesSeleccionado={mes} />
+      <RankingTable anio={anio} mesSeleccionado={mes} inicial={resumenAnual} />
     </div>
   );
 }

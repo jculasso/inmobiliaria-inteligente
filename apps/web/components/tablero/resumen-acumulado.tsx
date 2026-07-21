@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AgregadoKpi, RankingItem } from '@vacker/types';
 import { Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -38,14 +38,28 @@ function metricas(agg: AgregadoKpi) {
   );
 }
 
-export function ResumenAcumulado({ anio, mesSeleccionado }: { anio: number; mesSeleccionado: number }) {
+interface Props {
+  anio: number;
+  mesSeleccionado: number;
+  /** Acumulado anual ya resuelto server-side (mismo dato que pide el tab "Acumulado Anual" por defecto) — evita repetir esa consulta al montar. */
+  inicial?: { agregado: AgregadoKpi; ranking: RankingItem[] };
+}
+
+export function ResumenAcumulado({ anio, mesSeleccionado, inicial }: Props) {
   const [tab, setTab] = useState<PeriodoResumen>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
-  const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(inicial ?? null);
+  const [loading, setLoading] = useState(!inicial);
   const [porTrimestre, setPorTrimestre] = useState<AgregadoKpi[] | null>(null);
+  const primerRender = useRef(true);
 
   useEffect(() => {
+    // El tab por defecto ('anual') ya viene resuelto desde el servidor junto
+    // con la página — nos ahorramos repetir la misma consulta al montar.
+    if (primerRender.current) {
+      primerRender.current = false;
+      if (inicial && tab === 'anual') return;
+    }
     let cancelado = false;
     setLoading(true);
     getAccessToken()
@@ -63,6 +77,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado }: { anio: number; mesS
     return () => {
       cancelado = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anio, tab, mesSeleccionado, trimestre]);
 
   useEffect(() => {

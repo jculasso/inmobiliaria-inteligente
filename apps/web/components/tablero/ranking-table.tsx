@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { RankingItem } from '@vacker/types';
+import { useEffect, useRef, useState } from 'react';
+import type { AgregadoKpi, RankingItem } from '@vacker/types';
 import { Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
@@ -27,17 +27,31 @@ const TRIMESTRES = [1, 2, 3, 4];
 /** Ranking de vendedores con alcance de período propio (independiente del
  * filtro de la página), como en el prototipo: Acumulado año / Acumulado
  * trimestral (+ Q1-Q4) / Mes seleccionado. */
-export function RankingTable({ anio, mesSeleccionado }: { anio: number; mesSeleccionado: number }) {
+interface Props {
+  anio: number;
+  mesSeleccionado: number;
+  /** Acumulado anual ya resuelto server-side (mismo dato que pide el scope "Acumulado año" por defecto) — evita repetir esa consulta al montar. */
+  inicial?: { agregado: AgregadoKpi; ranking: RankingItem[] };
+}
+
+export function RankingTable({ anio, mesSeleccionado, inicial }: Props) {
   const [open, setOpen] = useState(true);
   const [scope, setScope] = useState<RankScope>('anio');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
-  const [items, setItems] = useState<RankingItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<RankingItem[]>(inicial?.ranking ?? []);
+  const [loading, setLoading] = useState(!inicial);
+  const primerRender = useRef(true);
 
   useEffect(() => {
+    const periodo = SCOPE_A_PERIODO[scope];
+    // El scope por defecto ('anio' → periodo 'anual') ya viene resuelto desde
+    // el servidor junto con la página — nos ahorramos repetir la consulta.
+    if (primerRender.current) {
+      primerRender.current = false;
+      if (inicial && periodo === 'anual') return;
+    }
     let cancelado = false;
     setLoading(true);
-    const periodo = SCOPE_A_PERIODO[scope];
     getAccessToken()
       .then((accessToken) =>
         getOrFetch(`resumen:${anio}:${periodo}:${mesSeleccionado}:${trimestre}`, () =>
@@ -53,6 +67,7 @@ export function RankingTable({ anio, mesSeleccionado }: { anio: number; mesSelec
     return () => {
       cancelado = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anio, scope, trimestre, mesSeleccionado]);
 
   return (
