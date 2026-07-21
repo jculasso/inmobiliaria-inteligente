@@ -1,88 +1,142 @@
 import React from 'react';
-import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Document, Image, Link, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { promedioUsdM2 } from '@vacker/domain';
 import type { TasacionDto } from '@vacker/types';
 
-// Layout de las 7 secciones del informe, en el mismo orden que el prototipo
-// (docs/prototipos/tasador_de_propiedades.html, bloque "REPORT VIEW"):
-// 1. Resumen ejecutivo · 2. Características · 3. Análisis comercial ·
-// 4. Comparables de mercado · 5. Estimación de valor ·
-// 6. Estrategia de comercialización · 7. Conclusión.
+// Réplica del informe del prototipo (docs/prototipos/tasador_de_propiedades.html,
+// función `renderReporteTasacion`): encabezado con logo + "DOCUMENTO INTERNO" y
+// fecha, título con tipo de propiedad, ficha cliente/agente, línea divisoria de
+// color, y las 7 secciones en el mismo orden: Resumen ejecutivo · Características
+// · Análisis comercial · Comparables de mercado · Estimación de valor ·
+// Estrategia de comercialización · Conclusión.
 
-const RED = '#C1121F';
 const INK = '#1D1D1F';
 const MUTED = '#6B6B6B';
 const LINE = '#E6E6E6';
+const SURFACE = '#F4F5F7';
 
-const styles = StyleSheet.create({
-  page: { padding: 32, fontSize: 10, color: INK, fontFamily: 'Helvetica' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  logo: { width: 48, height: 48, objectFit: 'contain' },
-  brandName: { fontSize: 14, fontWeight: 700, color: RED },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: INK,
-    marginTop: 16,
-    marginBottom: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
-    paddingBottom: 3,
-  },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  cols: { flexDirection: 'row', gap: 24 },
-  col: { flex: 1 },
-  fotos: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  foto: { flex: 1, height: 90, borderRadius: 4, objectFit: 'cover' },
-  card: {
-    width: '31%',
-    borderWidth: 1,
-    borderColor: LINE,
-    borderRadius: 6,
-    padding: 8,
-    marginBottom: 8,
-  },
-  cardLabel: { fontSize: 8, color: MUTED, textTransform: 'uppercase' },
-  cardValue: { fontSize: 11, fontWeight: 700, marginTop: 2 },
-  fichaRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: LINE },
-  fichaLabel: { color: MUTED },
-  fichaValue: { fontWeight: 700 },
-  paragraph: { lineHeight: 1.5, color: INK },
-  table: { borderWidth: 1, borderColor: LINE, borderRadius: 4 },
-  tableHeaderRow: { flexDirection: 'row', backgroundColor: '#F4F5F7', borderBottomWidth: 1, borderBottomColor: LINE },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE },
-  th: { flex: 1, padding: 4, fontSize: 8, color: MUTED, textTransform: 'uppercase' },
-  td: { flex: 1, padding: 4, fontSize: 9 },
-  disclaimer: { marginTop: 12, fontSize: 8, color: MUTED, lineHeight: 1.4 },
-});
-
-function Card({ label, value, destacado }: { label: string; value: string; destacado?: boolean }) {
-  return (
-    <View style={styles.card}>
-      <Text style={styles.cardLabel}>{label}</Text>
-      <Text style={[styles.cardValue, destacado ? { color: RED } : {}]}>{value}</Text>
-    </View>
-  );
-}
-
-function FichaRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.fichaRow}>
-      <Text style={styles.fichaLabel}>{label}</Text>
-      <Text style={styles.fichaValue}>{value}</Text>
-    </View>
-  );
+function crearEstilos(red: string, redDark: string) {
+  return StyleSheet.create({
+    page: { padding: 36, fontSize: 9.5, color: INK, fontFamily: 'Helvetica' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    logoBox: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    logoImg: { width: 36, height: 36, objectFit: 'contain' },
+    logoFallback: { width: 36, height: 36, borderRadius: 8, backgroundColor: red },
+    brandName: { fontSize: 11, fontWeight: 700, color: INK },
+    docMeta: { alignItems: 'flex-end' },
+    docMetaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
+    docMetaValue: { fontSize: 8.5, color: MUTED, marginTop: 2 },
+    kicker: { fontSize: 8, fontWeight: 700, color: red, letterSpacing: 1.5, marginTop: 18 },
+    title: { fontSize: 22, fontWeight: 800, color: INK, marginTop: 4 },
+    subtitle: { fontSize: 10, color: MUTED, marginTop: 2 },
+    fichaRow: { flexDirection: 'row', gap: 32, marginTop: 14 },
+    fichaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
+    fichaValue: { fontSize: 10, fontWeight: 700, color: INK, marginTop: 2 },
+    fichaSub: { fontSize: 8.5, color: MUTED, marginTop: 1 },
+    divider: { height: 2.5, backgroundColor: red, marginTop: 14, marginBottom: 14 },
+    sectionTitle: { fontSize: 11, fontWeight: 800, color: INK, marginBottom: 8, marginTop: 4 },
+    sectionUnderline: { width: 32, height: 2.5, backgroundColor: red, marginBottom: 10, marginTop: -6 },
+    resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    resumenCard: {
+      width: '23.5%',
+      borderWidth: 1,
+      borderColor: LINE,
+      borderRadius: 6,
+      padding: 8,
+      marginBottom: 8,
+    },
+    resumenCardDestacado: { backgroundColor: red, borderColor: redDark },
+    resumenLabel: { fontSize: 7, fontWeight: 700, color: MUTED, letterSpacing: 0.5 },
+    resumenLabelDestacado: { color: 'rgba(255,255,255,0.85)' },
+    resumenValue: { fontSize: 10.5, fontWeight: 700, color: INK, marginTop: 3 },
+    resumenValueDestacado: { color: '#FFFFFF' },
+    cols: { flexDirection: 'row', gap: 28 },
+    col: { flex: 1 },
+    fichaLineaRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: LINE,
+    },
+    fichaLineaLabel: { color: MUTED, fontSize: 9 },
+    fichaLineaValue: { fontWeight: 700, fontSize: 9 },
+    paragraph: { lineHeight: 1.5, color: INK, fontSize: 9.5 },
+    paragraphMuted: { lineHeight: 1.4, color: MUTED, fontSize: 8.5, fontStyle: 'italic' },
+    fotos: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 4 },
+    foto: { flex: 1, height: 84, borderRadius: 4, objectFit: 'cover' },
+    table: { borderWidth: 1, borderColor: LINE, borderRadius: 4, marginBottom: 8 },
+    tableHeaderRow: { flexDirection: 'row', backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: LINE },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE },
+    th: { flex: 1, padding: 5, fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 0.5 },
+    td: { flex: 1, padding: 5, fontSize: 8.5 },
+    tdLink: { flex: 1, padding: 5 },
+    linkPill: {
+      backgroundColor: red,
+      color: '#FFFFFF',
+      fontSize: 7.5,
+      fontWeight: 700,
+      paddingVertical: 3,
+      paddingHorizontal: 6,
+      borderRadius: 4,
+      alignSelf: 'flex-start',
+    },
+    valorTable: { borderWidth: 1, borderColor: LINE, borderRadius: 4, marginTop: 4 },
+    valorHeaderRow: { flexDirection: 'row', backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: LINE },
+    valorRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE, alignItems: 'center' },
+    valorTh: { flex: 1, padding: 6, fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 0.5 },
+    valorTd: { flex: 1, padding: 6, fontSize: 9 },
+    valorTdBold: { flex: 1, padding: 6, fontSize: 9, fontWeight: 700, textAlign: 'right' },
+    sugeridoBox: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: red,
+      borderRadius: 8,
+      padding: 12,
+      marginTop: 10,
+    },
+    sugeridoLabel: { fontSize: 8, fontWeight: 700, color: '#FFFFFF', letterSpacing: 0.5 },
+    sugeridoSub: { fontSize: 8, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+    sugeridoValor: { fontSize: 20, fontWeight: 800, color: '#FFFFFF' },
+    margenTexto: { fontSize: 8.5, color: MUTED, textAlign: 'center', marginTop: 8 },
+    pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+    pill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    pillDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: red },
+    pillText: { fontSize: 8.5, color: INK },
+    disclaimer: {
+      marginTop: 10,
+      padding: 8,
+      backgroundColor: SURFACE,
+      borderRadius: 6,
+      fontSize: 8,
+      color: MUTED,
+      lineHeight: 1.4,
+      fontStyle: 'italic',
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 18,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: LINE,
+      fontSize: 8,
+      color: MUTED,
+    },
+    footerBrand: { fontWeight: 700, color: INK },
+  });
 }
 
 function fmtUSD(v: number | null): string {
   if (v == null) return '—';
-  return `USD ${Math.round(v).toLocaleString('es-AR')}`;
+  return `$${Math.round(v).toLocaleString('es-AR')}`;
 }
 
 function fmtFecha(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
 function fmtSiNo(v: boolean): string {
@@ -90,29 +144,36 @@ function fmtSiNo(v: boolean): string {
 }
 
 function fmtAmenities(t: TasacionDto): string {
-  if (t.amenities.length === 0) return '—';
-  return t.detalleAmenities ? `${t.amenities.join(', ')} — ${t.detalleAmenities}` : t.amenities.join(', ');
+  if (t.amenities.length === 0) return 'No';
+  return t.detalleAmenities ? `Sí — ${t.detalleAmenities}` : 'Sí';
 }
 
 function textoAnalisisComercial(t: TasacionDto): string {
   const a = t.analisisComercial;
-  if (!a) return 'Sin análisis comercial cargado todavía.';
-  const partes: string[] = [];
-  if (a.fortalezas.length > 0) partes.push(`Fortalezas destacadas: ${a.fortalezas.join(', ')}.`);
-  if (a.aspectos.length > 0) partes.push(`Aspectos a considerar: ${a.aspectos.join(', ')}.`);
-  if (a.demanda) partes.push(`La demanda estimada para este tipo de propiedad es ${a.demanda.toLowerCase()}.`);
-  if (a.competencia) partes.push(`El nivel de competencia en la zona es ${a.competencia.toLowerCase()}.`);
-  if (a.perfilComprador) partes.push(`El perfil de comprador esperado es: ${a.perfilComprador.toLowerCase()}.`);
+  const base = `Se trata de un/a ${t.tipoPropiedad.toLowerCase()} ubicado en ${t.barrio ?? t.direccion}, en estado ${
+    (t.estadoInmueble ?? 'a definir').toLowerCase()
+  }, con una superficie total de ${t.superficieTotal} m².`;
+  if (!a) return `${base} Análisis comercial pendiente de completar.`;
+  const partes: string[] = [base];
+  if (a.fortalezas.length > 0) {
+    partes.push(`Entre sus principales fortalezas se destacan: ${a.fortalezas.join(', ').toLowerCase()}.`);
+  }
+  if (a.aspectos.length > 0) {
+    partes.push(`Como aspectos a considerar para la estrategia comercial mencionamos: ${a.aspectos.join(', ').toLowerCase()}.`);
+  }
+  if (a.demanda) partes.push(`El nivel de demanda estimado para esta tipología es ${a.demanda.toLowerCase()},`);
+  if (a.competencia) partes.push(`con una competencia ${a.competencia.toLowerCase()} en la zona.`);
+  if (a.perfilComprador) partes.push(`El perfil probable de comprador corresponde a ${a.perfilComprador.toLowerCase()}.`);
   if (a.observacionesComerciales) partes.push(a.observacionesComerciales);
-  return partes.length > 0 ? partes.join(' ') : 'Sin análisis comercial cargado todavía.';
+  return partes.join(' ');
 }
 
 function textoConclusion(t: TasacionDto): string {
   return (
-    `En base a las características relevadas y al análisis de mercado realizado, se estima un valor ` +
-    `recomendado de ${fmtUSD(t.valorRecomendado)} para la propiedad ubicada en ${t.direccion}, ` +
-    `dentro de un escenario de ${t.escenarioRecomendado?.toLowerCase() ?? 'venta equilibrada'} ` +
-    `y un plazo estimado de comercialización de ${t.plazoEstimado ?? 'a definir'}.`
+    `En función del análisis realizado, consideramos que el valor comercial probable de la propiedad se ` +
+    `encuentra entre ${fmtUSD(t.valorMinimo)} y ${fmtUSD(t.valorAspiracional)}. Nuestra recomendación es iniciar ` +
+    `la comercialización en ${fmtUSD(t.valorRecomendado)}, ya que representa un valor competitivo frente a la ` +
+    `oferta actual y permite captar compradores reales desde el comienzo.`
   );
 }
 
@@ -120,66 +181,109 @@ export function InformeDocument({
   tasacion,
   tenantNombre,
   logoUrl,
+  colorPrimario,
+  colorPrimarioOscuro,
 }: {
   tasacion: TasacionDto;
   tenantNombre: string;
   logoUrl?: string | null;
+  colorPrimario?: string | null;
+  colorPrimarioOscuro?: string | null;
 }) {
   const t = tasacion;
   const promedio = promedioUsdM2(t.comparables);
+  const precios = t.comparables.map((c) => c.precio).filter((p): p is number => p != null);
+  const rangoMin = precios.length > 0 ? Math.min(...precios) : null;
+  const rangoMax = precios.length > 0 ? Math.max(...precios) : null;
+  const red = colorPrimario || '#C1121F';
+  const redDark = colorPrimarioOscuro || red;
+  const styles = crearEstilos(red, redDark);
+  const fechaHoy = fmtFecha(new Date().toISOString());
 
   return (
     <Document title={`Informe de tasación — ${t.direccion}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.brandName}>{tenantNombre}</Text>
-          {logoUrl ? <Image src={logoUrl} style={styles.logo} /> : null}
+          <View style={styles.logoBox}>
+            {logoUrl ? <Image src={logoUrl} style={styles.logoImg} /> : <View style={styles.logoFallback} />}
+            <Text style={styles.brandName}>{tenantNombre}</Text>
+          </View>
+          <View style={styles.docMeta}>
+            <Text style={styles.docMetaLabel}>DOCUMENTO INTERNO</Text>
+            <Text style={styles.docMetaValue}>{fechaHoy}</Text>
+          </View>
         </View>
 
-        <FichaRow label="Cliente" value={t.cliente} />
-        <FichaRow label="Agente responsable" value={t.agente.nombre} />
-        <FichaRow label="Fecha" value={fmtFecha(t.fecha)} />
+        <Text style={styles.kicker}>INFORME DE TASACIÓN COMERCIAL</Text>
+        <Text style={styles.title}>{t.tipoPropiedad}</Text>
+        <Text style={styles.subtitle}>
+          {t.direccion}
+          {t.barrio ? ` · ${t.barrio}` : ''}
+          {t.ciudad ? `, ${t.ciudad}` : ''}
+        </Text>
 
-        <Text style={styles.sectionTitle}>1. Resumen ejecutivo</Text>
-        <View style={styles.row}>
-          <Card label="Tipo" value={t.tipoPropiedad} />
-          <Card label="Ubicación" value={`${t.direccion}${t.barrio ? `, ${t.barrio}` : ''}`} />
-          <Card label="Superficie total" value={`${t.superficieTotal} m²`} />
-          <Card label="Estado general" value={t.estadoInmueble ?? '—'} />
-          <Card label="Valor mínimo" value={fmtUSD(t.valorMinimo)} />
-          <Card label="Valor recomendado" value={fmtUSD(t.valorRecomendado)} destacado />
-          <Card label="Escenario" value={t.escenarioRecomendado ?? '—'} />
-          <Card label="Plazo estimado" value={t.plazoEstimado ?? '—'} />
+        <View style={styles.fichaRow}>
+          <View>
+            <Text style={styles.fichaLabel}>CLIENTE</Text>
+            <Text style={styles.fichaValue}>{t.cliente}</Text>
+          </View>
+          <View>
+            <Text style={styles.fichaLabel}>AGENTE RESPONSABLE</Text>
+            <Text style={styles.fichaValue}>{t.agente.nombre}</Text>
+            <Text style={styles.fichaSub}>{t.agente.email}</Text>
+          </View>
         </View>
 
-        <Text style={styles.sectionTitle}>2. Características de la propiedad</Text>
+        <View style={styles.divider} />
+
+        <Text style={styles.sectionTitle}>RESUMEN EJECUTIVO</Text>
+        <View style={styles.sectionUnderline} />
+        <View style={styles.resumenGrid}>
+          <ResumenCard styles={styles} label="TIPO" value={t.tipoPropiedad} />
+          <ResumenCard styles={styles} label="UBICACIÓN" value={t.barrio ?? t.direccion} />
+          <ResumenCard styles={styles} label="SUP. TOTAL" value={`${t.superficieTotal} m²`} />
+          <ResumenCard styles={styles} label="ESTADO GENERAL" value={t.estadoInmueble ?? '—'} />
+          <ResumenCard styles={styles} label="VALOR MÍNIMO" value={fmtUSD(t.valorMinimo)} />
+          <ResumenCard styles={styles} label="VALOR RECOMENDADO" value={fmtUSD(t.valorRecomendado)} destacado />
+          <ResumenCard styles={styles} label="ESCENARIO" value={t.escenarioRecomendado ?? '—'} />
+          <ResumenCard styles={styles} label="PLAZO ESTIMADO" value={t.plazoEstimado ?? '—'} />
+        </View>
+
+        <Text style={styles.sectionTitle}>CARACTERÍSTICAS DE LA PROPIEDAD</Text>
+        <View style={styles.sectionUnderline} />
         <View style={styles.cols}>
           <View style={styles.col}>
-            <FichaRow label="Tipo de propiedad" value={t.tipoPropiedad} />
-            <FichaRow label="Tipo de operación" value={t.tipoOperacion} />
-            <FichaRow label="Ambientes" value={String(t.ambientes ?? '—')} />
-            <FichaRow label="Dormitorios" value={String(t.dormitorios ?? '—')} />
-            <FichaRow label="Baños" value={String(t.banos ?? '—')} />
-            <FichaRow label="Toilettes" value={String(t.toilette ?? '—')} />
-            <FichaRow label="Sup. cubierta" value={`${t.supCubierta} m²`} />
-            <FichaRow label="Sup. semicubierta" value={`${t.supSemicubierta} m²`} />
-            <FichaRow label="Sup. descubierta" value={`${t.supDescubierta} m²`} />
-            <FichaRow label="Sup. total" value={`${t.superficieTotal} m²`} />
-            <FichaRow label="Estado general" value={t.estadoInmueble ?? '—'} />
+            <FichaLinea styles={styles} label="Tipo de propiedad" value={t.tipoPropiedad} />
+            <FichaLinea
+              styles={styles}
+              label="Tipo de operación"
+              value={t.tipoOperacion.charAt(0).toUpperCase() + t.tipoOperacion.slice(1)}
+            />
+            <FichaLinea styles={styles} label="Ambientes" value={String(t.ambientes ?? '—')} />
+            <FichaLinea styles={styles} label="Dormitorios" value={String(t.dormitorios ?? '—')} />
+            <FichaLinea styles={styles} label="Baños" value={String(t.banos ?? '—')} />
+            <FichaLinea styles={styles} label="Sup. cubierta" value={`${t.supCubierta} m²`} />
+            <FichaLinea styles={styles} label="Sup. semi-cubierta" value={`${t.supSemicubierta} m²`} />
+            <FichaLinea styles={styles} label="Sup. descubierta" value={`${t.supDescubierta} m²`} />
+            <FichaLinea styles={styles} label="Sup. total" value={`${t.superficieTotal} m²`} />
+            <FichaLinea styles={styles} label="Antigüedad" value={t.antiguedad != null ? `${t.antiguedad} años` : '—'} />
+            <FichaLinea styles={styles} label="Estado general" value={t.estadoInmueble ?? '—'} />
           </View>
           <View style={styles.col}>
-            <FichaRow label="Disposición" value={t.disposicion ?? '—'} />
-            <FichaRow label="Orientación" value={t.orientacion ?? '—'} />
-            <FichaRow label="Cochera" value={fmtSiNo(t.cochera)} />
-            <FichaRow label="Balcón" value={fmtSiNo(t.balcon)} />
-            <FichaRow label="Patio" value={fmtSiNo(t.patio)} />
-            <FichaRow label="Terraza" value={fmtSiNo(t.terraza)} />
-            <FichaRow label="Lavadero" value={fmtSiNo(t.lavadero)} />
-            <FichaRow label="Piscina" value={fmtSiNo(t.piscina)} />
-            <FichaRow label="Amenities" value={fmtAmenities(t)} />
-            <FichaRow label="Expensas" value={t.expensas != null ? `ARS ${t.expensas.toLocaleString('es-AR')}` : '—'} />
-            <FichaRow label="Documentación" value={t.documentacion ?? '—'} />
-            <FichaRow label="Apto crédito" value={t.aptoCredito ?? '—'} />
+            <FichaLinea styles={styles} label="Disposición" value={t.disposicion ?? '—'} />
+            <FichaLinea styles={styles} label="Orientación" value={t.orientacion ?? '—'} />
+            <FichaLinea styles={styles} label="Cocheras" value={fmtSiNo(t.cochera)} />
+            <FichaLinea styles={styles} label="Toilettes" value={String(t.toilette ?? '—')} />
+            <FichaLinea styles={styles} label="Balcón" value={fmtSiNo(t.balcon)} />
+            <FichaLinea styles={styles} label="Lavadero" value={fmtSiNo(t.lavadero)} />
+            <FichaLinea styles={styles} label="Piscina" value={fmtSiNo(t.piscina)} />
+            <FichaLinea styles={styles} label="Amenities" value={fmtAmenities(t)} />
+            <FichaLinea
+              styles={styles}
+              label="Expensas"
+              value={t.expensas != null ? `ARS ${t.expensas.toLocaleString('es-AR')}` : '—'}
+            />
+            <FichaLinea styles={styles} label="Documentación" value={t.documentacion ?? '—'} />
           </View>
         </View>
 
@@ -191,15 +295,17 @@ export function InformeDocument({
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>3. Análisis comercial</Text>
+        <Text style={styles.sectionTitle}>ANÁLISIS COMERCIAL</Text>
+        <View style={styles.sectionUnderline} />
         <Text style={styles.paragraph}>{textoAnalisisComercial(t)}</Text>
 
         {t.comparables.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>4. Comparables de mercado</Text>
+            <Text style={[styles.sectionTitle, { marginTop: 14 }]}>COMPARABLES DE MERCADO</Text>
+            <View style={styles.sectionUnderline} />
             <View style={styles.table}>
               <View style={styles.tableHeaderRow}>
-                <Text style={styles.th}>Dirección</Text>
+                <Text style={styles.th}>Zona</Text>
                 <Text style={styles.th}>Sup.</Text>
                 <Text style={styles.th}>Dor.</Text>
                 <Text style={styles.th}>Baños</Text>
@@ -207,7 +313,7 @@ export function InformeDocument({
                 <Text style={styles.th}>Precio</Text>
                 <Text style={styles.th}>USD/m²</Text>
                 <Text style={[styles.th, { flex: 2 }]}>Observaciones</Text>
-                <Text style={styles.th}>Link</Text>
+                {t.comparables.some((c) => c.link) && <Text style={styles.th}>Link</Text>}
               </View>
               {t.comparables.map((c) => (
                 <View key={c.id} style={styles.tableRow}>
@@ -219,44 +325,142 @@ export function InformeDocument({
                   <Text style={styles.td}>{fmtUSD(c.precio)}</Text>
                   <Text style={styles.td}>{fmtUSD(c.usdM2)}</Text>
                   <Text style={[styles.td, { flex: 2 }]}>{c.observaciones ?? '—'}</Text>
-                  <Text style={styles.td}>{c.link ?? '—'}</Text>
+                  {t.comparables.some((x) => x.link) && (
+                    <View style={styles.tdLink}>
+                      {c.link ? (
+                        <Link src={c.link} style={styles.linkPill}>
+                          Ver →
+                        </Link>
+                      ) : (
+                        <Text style={styles.td}>—</Text>
+                      )}
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
-            <Text style={[styles.paragraph, { marginTop: 6 }]}>
-              Promedio USD/m² de los comparables: {fmtUSD(promedio)}.
+            <Text style={styles.paragraphMuted}>
+              Los inmuebles comparables relevados se ubican dentro de un rango aproximado de {fmtUSD(rangoMin)} a{' '}
+              {fmtUSD(rangoMax)}, con un promedio de USD/m² de {fmtUSD(promedio)}. Estos valores funcionan como
+              referencia de mercado, considerando que los precios publicados pueden diferir de los valores finales
+              de cierre.
             </Text>
           </>
         )}
 
-        <Text style={styles.sectionTitle}>5. Estimación de valor</Text>
-        <FichaRow label="Valor mínimo" value={fmtUSD(t.valorMinimo)} />
-        <FichaRow label="Valor recomendado" value={fmtUSD(t.valorRecomendado)} />
-        <FichaRow label="Valor aspiracional" value={fmtUSD(t.valorAspiracional)} />
-        <FichaRow label="Margen de negociación" value={t.margenNegociacion != null ? `${t.margenNegociacion}%` : '—'} />
-        <FichaRow label="Escenario recomendado" value={t.escenarioRecomendado ?? '—'} />
-        <FichaRow label="Plazo estimado" value={t.plazoEstimado ?? '—'} />
+        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTIMACIÓN DE VALOR</Text>
+        <View style={styles.sectionUnderline} />
+        <View style={styles.valorTable}>
+          <View style={styles.valorHeaderRow}>
+            <Text style={styles.valorTh}>Escenario</Text>
+            <Text style={styles.valorTh}>Estrategia</Text>
+            <Text style={[styles.valorTh, { textAlign: 'right' }]}>Valor</Text>
+          </View>
+          <View style={styles.valorRow}>
+            <Text style={styles.valorTd}>Venta rápida</Text>
+            <Text style={[styles.valorTd, { color: MUTED }]}>Valor mínimo competitivo</Text>
+            <Text style={styles.valorTdBold}>{fmtUSD(t.valorMinimo)}</Text>
+          </View>
+          <View style={styles.valorRow}>
+            <Text style={styles.valorTd}>Venta equilibrada</Text>
+            <Text style={[styles.valorTd, { color: MUTED }]}>Valor recomendado</Text>
+            <Text style={[styles.valorTdBold, { color: red }]}>{fmtUSD(t.valorRecomendado)}</Text>
+          </View>
+          <View style={[styles.valorRow, { borderBottomWidth: 0 }]}>
+            <Text style={styles.valorTd}>Venta aspiracional</Text>
+            <Text style={[styles.valorTd, { color: MUTED }]}>Valor máximo</Text>
+            <Text style={styles.valorTdBold}>{fmtUSD(t.valorAspiracional)}</Text>
+          </View>
+        </View>
 
-        <Text style={styles.sectionTitle}>6. Estrategia de comercialización</Text>
+        <View style={styles.sugeridoBox}>
+          <View>
+            <Text style={styles.sugeridoLabel}>VALOR SUGERIDO DE PUBLICACIÓN</Text>
+            <Text style={styles.sugeridoSub}>
+              {t.escenarioRecomendado ?? 'Venta equilibrada'} · Plazo estimado: {t.plazoEstimado ?? 'a definir'}
+            </Text>
+          </View>
+          <Text style={styles.sugeridoValor}>{fmtUSD(t.valorRecomendado)}</Text>
+        </View>
+        {t.margenNegociacion != null && (
+          <Text style={styles.margenTexto}>Margen de negociación estimado: {t.margenNegociacion}%</Text>
+        )}
+
+        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTRATEGIA DE COMERCIALIZACIÓN</Text>
+        <View style={styles.sectionUnderline} />
+        {t.estrategiaComercial && t.estrategiaComercial.estrategia.length > 0 && (
+          <View style={styles.pills}>
+            {t.estrategiaComercial.estrategia.map((e) => (
+              <View key={e} style={styles.pill}>
+                <View style={styles.pillDot} />
+                <Text style={styles.pillText}>{e}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         <Text style={styles.paragraph}>
-          {t.estrategiaComercial && t.estrategiaComercial.estrategia.length > 0
-            ? t.estrategiaComercial.estrategia.join(' · ')
-            : 'Sin acciones de estrategia cargadas todavía.'}
+          Una correcta tasación debe estar acompañada por una estrategia comercial activa. Recomendamos iniciar la
+          publicación con una presentación profesional del inmueble, difusión en portales, trabajo sobre base de
+          datos y seguimiento de resultados durante las primeras semanas.
         </Text>
         {t.estrategiaComercial?.observacionesEstrategia && (
-          <Text style={[styles.paragraph, { marginTop: 6, fontStyle: 'italic' }]}>
+          <Text style={[styles.paragraph, { marginTop: 6, fontStyle: 'italic', color: MUTED }]}>
             {t.estrategiaComercial.observacionesEstrategia}
           </Text>
         )}
 
-        <Text style={styles.sectionTitle}>7. Conclusión</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>CONCLUSIÓN</Text>
+        <View style={styles.sectionUnderline} />
         <Text style={styles.paragraph}>{textoConclusion(t)}</Text>
         <Text style={styles.disclaimer}>
-          El presente informe constituye una estimación comercial realizada en base a la información
-          disponible al momento de su elaboración y a un relevamiento de mercado comparativo. No
-          constituye una tasación con validez legal ni un peritaje técnico.
+          El presente informe constituye una estimación comercial basada en información disponible al momento de su
+          elaboración. No representa una tasación bancaria, judicial ni fiscal. El valor final de venta puede variar
+          según condiciones de negociación, documentación, contexto económico y respuesta del mercado.
         </Text>
+
+        <View style={styles.footer}>
+          <Text>
+            <Text style={styles.footerBrand}>{tenantNombre}</Text> · {t.agente.nombre}
+          </Text>
+          <Text>{fechaHoy}</Text>
+        </View>
       </Page>
     </Document>
+  );
+}
+
+function ResumenCard({
+  styles,
+  label,
+  value,
+  destacado,
+}: {
+  styles: ReturnType<typeof crearEstilos>;
+  label: string;
+  value: string;
+  destacado?: boolean;
+}) {
+  return (
+    <View style={[styles.resumenCard, destacado ? styles.resumenCardDestacado : {}]}>
+      <Text style={[styles.resumenLabel, destacado ? styles.resumenLabelDestacado : {}]}>{label}</Text>
+      <Text style={[styles.resumenValue, destacado ? styles.resumenValueDestacado : {}]}>{value}</Text>
+    </View>
+  );
+}
+
+function FichaLinea({
+  styles,
+  label,
+  value,
+}: {
+  styles: ReturnType<typeof crearEstilos>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.fichaLineaRow}>
+      <Text style={styles.fichaLineaLabel}>{label}</Text>
+      <Text style={styles.fichaLineaValue}>{value}</Text>
+    </View>
   );
 }

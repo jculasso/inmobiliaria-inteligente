@@ -18,22 +18,30 @@ export class InformesService {
   ) {}
 
   async generar(id: string, ctx: TenantContext): Promise<{ url: string }> {
-    const { dto, tenantNombre, logoUrl } = await this.db.withTenant(async (tx) => {
+    const { dto, tenantNombre, logoUrl, colorPrimario, colorPrimarioOscuro } = await this.db.withTenant(async (tx) => {
       const row = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
       if (!row) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(row, await resolverScope(ctx, tx));
 
       const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } });
-      const config = tenant.config as { logoUrl?: string } | null;
+      const config = tenant.config as { logoUrl?: string; colorPrimario?: string; colorPrimarioOscuro?: string } | null;
       return {
         dto: toDto(row) as TasacionDto,
         tenantNombre: tenant.nombre,
         logoUrl: config?.logoUrl ?? null,
+        colorPrimario: config?.colorPrimario ?? null,
+        colorPrimarioOscuro: config?.colorPrimarioOscuro ?? null,
       };
     });
 
     const buffer = await renderToBuffer(
-      <InformeDocument tasacion={dto} tenantNombre={tenantNombre} logoUrl={logoUrl} />,
+      <InformeDocument
+        tasacion={dto}
+        tenantNombre={tenantNombre}
+        logoUrl={logoUrl}
+        colorPrimario={colorPrimario}
+        colorPrimarioOscuro={colorPrimarioOscuro}
+      />,
     );
     const url = await this.storage.upload('informes-tasador', `${ctx.tenantId}/${id}.pdf`, buffer, 'application/pdf');
 

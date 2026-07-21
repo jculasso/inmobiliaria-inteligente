@@ -6,12 +6,12 @@ import { ESTADO_TASACION_COLOR } from '@vacker/types';
 // Mirror de `docs/prototipos/tasador_de_propiedades.html`, función `ReporteView`:
 // KPIs del período · distribución por estado · tabla de tasaciones · ranking.
 
-const RED = '#C1121F';
 const INK = '#1D1D1F';
 const MUTED = '#6B6B6B';
 const LINE = '#E6E6E6';
 
-const styles = StyleSheet.create({
+function crearEstilos(RED: string) {
+  return StyleSheet.create({
   page: { padding: 32, fontSize: 10, color: INK, fontFamily: 'Helvetica' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   logo: { width: 48, height: 48, objectFit: 'contain' },
@@ -46,8 +46,9 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: LINE },
   rankMedal: { width: 20, fontSize: 11 },
   rankName: { flex: 1, fontSize: 10, fontWeight: 700 },
-  rankCount: { width: 30, fontSize: 10, fontWeight: 700, color: RED, textAlign: 'right' },
-});
+    rankCount: { width: 30, fontSize: 10, fontWeight: 700, color: RED, textAlign: 'right' },
+  });
+}
 
 function fmtUSD(v: number | null): string {
   if (v == null) return '—';
@@ -86,6 +87,7 @@ export function ReporteDocument({
   periodoLabel,
   tenantNombre,
   logoUrl,
+  colorPrimario,
 }: {
   resumen: ResumenTasadorKpi;
   ranking: RankingCaptacionItem[];
@@ -93,7 +95,10 @@ export function ReporteDocument({
   periodoLabel: string;
   tenantNombre: string;
   logoUrl?: string | null;
+  colorPrimario?: string | null;
 }) {
+  const RED = colorPrimario || '#C1121F';
+  const styles = crearEstilos(RED);
   const valorTotal = filas.reduce((s, f) => s + (f.valorRecomendado ?? 0), 0);
   const maxDist = Math.max(...resumen.distribucionEstado.map((d) => d.cantidad), 1);
   const maxRank = Math.max(...ranking.map((r) => r.captadas), 1);

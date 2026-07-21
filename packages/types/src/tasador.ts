@@ -274,7 +274,7 @@ export const TasacionDtoSchema = z.object({
   id: z.string().uuid(),
   codigo: z.string().nullable(),
   agenteId: z.string().uuid(),
-  agente: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  agente: z.object({ id: z.string().uuid(), nombre: z.string(), email: z.string().email() }),
   cliente: z.string(),
   fecha: z.string(),
   direccion: z.string(),
