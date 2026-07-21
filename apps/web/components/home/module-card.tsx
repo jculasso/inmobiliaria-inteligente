@@ -6,13 +6,13 @@ import type { BadgeVariant } from '@vacker/ui';
 const ACCENTO: Record<BadgeVariant, string> = {
   activo: 'bg-success',
   dev: 'bg-warning',
-  soon: 'bg-[#CBCBD0]',
+  soon: 'bg-inactive-accent',
 };
 
 const ICONO_FONDO: Record<BadgeVariant, string> = {
   activo: 'bg-success/10',
   dev: 'bg-warning/10',
-  soon: 'bg-[#F0F0F2]',
+  soon: 'bg-inactive',
 };
 
 export interface ModuleCardProps {

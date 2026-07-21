@@ -8,7 +8,7 @@ import { cn } from './lib/cn';
 const variantClasses = {
   activo: 'bg-success/10 text-success',
   dev: 'bg-warning/10 text-warning',
-  soon: 'bg-[#F0F0F2] text-muted',
+  soon: 'bg-inactive text-muted',
 } as const;
 
 export type BadgeVariant = keyof typeof variantClasses;

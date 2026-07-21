@@ -44,7 +44,7 @@ export function EstadoDistribucion({ distribucion, periodoLabel, onSelect, titul
               key={d.estado}
               type="button"
               onClick={() => onSelect(d.estado)}
-              className="flex items-center gap-2 text-left"
+              className="flex items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
             >
               {fila}
             </button>

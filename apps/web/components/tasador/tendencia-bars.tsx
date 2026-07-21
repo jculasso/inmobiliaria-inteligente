@@ -49,7 +49,7 @@ export function TendenciaBars({
                 style={{
                   height: `${Math.max((d.total / max) * 100, d.total > 0 ? 2 : 0)}%`,
                   minHeight: d.total > 0 ? 4 : 0,
-                  background: 'linear-gradient(180deg, #d61f2c, #8f0d18)',
+                  background: 'linear-gradient(180deg, #d61f2c, var(--color-brand-red-dark))',
                   filter: sel ? 'brightness(1.08)' : undefined,
                 }}
               />

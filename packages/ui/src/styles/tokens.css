@@ -16,6 +16,8 @@
   --color-surface: #f4f5f7; /* fondo */
   --color-success: #1e9e5a; /* éxito / activo */
   --color-warning: #b7791f; /* en desarrollo / advertencia */
+  --color-inactive: #f0f0f2; /* fondo — módulo/estado "Próximamente" */
+  --color-inactive-accent: #cbcbd0; /* acento — barra/ícono "Próximamente" */
 
   /* Radio de esquinas de marca */
   --radius-brand: 16px;

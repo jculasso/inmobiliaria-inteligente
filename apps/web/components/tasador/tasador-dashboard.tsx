@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AuthPrincipal, RankingCaptacionItem, ResumenTasadorKpi, TasacionResumenDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Button, Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import {
   generarInforme,
@@ -17,6 +17,7 @@ import { ETIQUETA_ROL, rolPrincipal } from '../../lib/rbac';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { EstadoDistribucion } from './estado-distribucion';
+import { KpiCard } from '../tablero/kpi-card';
 import { RankingCaptacionesCards } from './ranking-captaciones-cards';
 import { TendenciaBars, type TendenciaBar } from './tendencia-bars';
 
@@ -208,24 +209,10 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
-              <div className="text-2xl font-extrabold leading-none text-ink">{inMonth}</div>
-              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Este mes</div>
-            </div>
-            <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
-              <div className="text-2xl font-extrabold leading-none text-ink">{inQuarter}</div>
-              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Este trimestre</div>
-            </div>
-            <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
-              <div className="text-2xl font-extrabold leading-none text-ink">{total}</div>
-              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                Total tasaciones · {anio}
-              </div>
-            </div>
-            <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
-              <div className="text-2xl font-extrabold leading-none text-success">{tasaCaptacion}%</div>
-              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Tasa de captación</div>
-            </div>
+            <KpiCard label="Este mes" value={String(inMonth)} />
+            <KpiCard label="Este trimestre" value={String(inQuarter)} />
+            <KpiCard label={`Total tasaciones · ${anio}`} value={String(total)} />
+            <KpiCard label="Tasa de captación" value={`${tasaCaptacion}%`} tone="success" />
           </div>
 
           <div className="inline-flex w-fit gap-1 rounded-[10px] bg-surface p-1 shadow-[inset_0_0_0_1px_var(--color-line)]">
@@ -253,7 +240,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
-            <div className="rounded-brand border border-line bg-white p-5 shadow-sm">
+            <Card>
               <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">
                 Tasaciones · {vista === 'anual' ? 'anual acumuladas' : vista}
               </p>
@@ -268,8 +255,8 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
                   )
                 }
               />
-            </div>
-            <div className="rounded-brand border border-line bg-white p-5 shadow-sm">
+            </Card>
+            <Card>
               <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">Ranking de captaciones por vendedor</p>
               <RankingCaptacionesCards
                 ranking={rankingAnual ?? []}
@@ -282,10 +269,10 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
                   })
                 }
               />
-            </div>
+            </Card>
           </div>
 
-          <div className="rounded-brand border border-line bg-white p-5 shadow-sm">
+          <Card>
             <EstadoDistribucion
               titulo="Tasaciones por estado"
               periodoLabel="hacé clic para ver el detalle"
@@ -298,9 +285,9 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
                 })
               }
             />
-          </div>
+          </Card>
 
-          <div className="rounded-brand border border-line bg-white px-5 py-4 shadow-sm">
+          <Card className="px-5 py-4">
             <div className="flex items-center justify-between pb-2">
               <p className="text-xs font-bold uppercase tracking-wide text-muted">
                 {drill ? `${drill.titulo} (${drill.tasaciones.length})` : 'Últimas tasaciones'}
@@ -355,7 +342,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
                         <button
                           type="button"
                           onClick={() => router.push(`/tasador/tasaciones/${t.id}/editar`)}
-                          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red"
+                          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
                         >
                           Editar
                         </button>
@@ -363,7 +350,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
                           type="button"
                           onClick={() => handleGenerarInforme(t.id)}
                           disabled={generandoId === t.id}
-                          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red disabled:opacity-50"
+                          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40 disabled:opacity-50"
                         >
                           {generandoId === t.id ? '…' : 'Ver'}
                         </button>
@@ -373,7 +360,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
                 })
               )}
             </div>
-          </div>
+          </Card>
         </>
       )}
 
