@@ -134,7 +134,7 @@ export function Seccion2Caracteristicas(props: Props) {
           ))}
         </select>
       </Campo>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Campo label="Sup. cubierta (m²)">
           <input
             type="number"
@@ -182,7 +182,7 @@ export function Seccion2Caracteristicas(props: Props) {
         />
       </Campo>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Campo label="Dormitorios">
           <input
             type="number"
@@ -215,7 +215,7 @@ export function Seccion2Caracteristicas(props: Props) {
         </Campo>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Campo label="Antigüedad (años)">
           <input
             type="number"
@@ -236,7 +236,7 @@ export function Seccion2Caracteristicas(props: Props) {
         <input value={estadoInmueble} onChange={(e) => setEstadoInmueble(e.target.value)} className={inputClass} />
       </Campo>
 
-      <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-sm">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm sm:grid-cols-3">
         {(
           [
             ['Cochera', cochera, setCochera],
@@ -266,7 +266,7 @@ export function Seccion2Caracteristicas(props: Props) {
         />
       </Campo>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label="Expensas (USD)">
           <input
             type="number"

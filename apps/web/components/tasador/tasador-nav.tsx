@@ -14,7 +14,7 @@ export function TasadorNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 border-b border-line">
+    <nav className="flex gap-1 overflow-x-auto border-b border-line">
       {TABS.map((tab) => {
         const activo = pathname === tab.href;
         return (
@@ -22,7 +22,7 @@ export function TasadorNav() {
             key={tab.href}
             href={tab.href}
             className={cn(
-              'border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors',
+              'shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors',
               activo
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-muted hover:text-ink',

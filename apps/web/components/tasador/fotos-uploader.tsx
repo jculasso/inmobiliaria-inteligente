@@ -49,7 +49,7 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-wide text-muted">
           Fotos de la propiedad ({fotos.length}/{MAX_FOTOS})
         </p>
@@ -72,7 +72,7 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
       {error && <p className="text-xs text-brand-red">{error}</p>}
 
       {fotos.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {fotos.map((f) => (
             <div key={f.id} className="group relative aspect-[4/3] overflow-hidden rounded-brand border border-line">
               <img src={f.url} alt="" className="h-full w-full object-cover" />

@@ -38,7 +38,7 @@ export function Seccion1Datos({
       <Campo label="Cliente">
         <input value={cliente} onChange={(e) => setCliente(e.target.value)} required className={inputClass} />
       </Campo>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label="Fecha">
           <input
             type="date"
@@ -62,7 +62,7 @@ export function Seccion1Datos({
       <Campo label="Dirección">
         <input value={direccion} onChange={(e) => setDireccion(e.target.value)} required className={inputClass} />
       </Campo>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label="Barrio">
           <input value={barrio} onChange={(e) => setBarrio(e.target.value)} className={inputClass} />
         </Campo>

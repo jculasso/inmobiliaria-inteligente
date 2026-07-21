@@ -73,7 +73,7 @@ export function ComparablesEditor({ comparables, onChange }: Props) {
             placeholder="Dirección"
             className={inputClass}
           />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <input
               type="number"
               min={0}
@@ -96,7 +96,7 @@ export function ComparablesEditor({ comparables, onChange }: Props) {
               USD/m²: {c.superficie > 0 ? fmtUSD(usdM2(c)) : '—'}
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <input
               type="number"
               min={0}

@@ -139,7 +139,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
       size="lg"
     >
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Campo label="Código">
             <input value={codigo} onChange={(e) => setCodigo(e.target.value)} required className={inputClass} />
           </Campo>
@@ -154,7 +154,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         </div>
 
         {tipo === 'venta' ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Campo label="Precio (USD)">
               <input
                 type="number"
@@ -181,7 +181,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
             </Campo>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Campo label="Valor mensual (USD)">
               <input
                 type="number"
@@ -219,7 +219,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Campo label="Fecha reserva">
             <input
               type="date"

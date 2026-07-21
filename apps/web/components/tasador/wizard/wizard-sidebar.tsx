@@ -20,7 +20,7 @@ export function WizardSidebar({ activa, onCambiar, error }: Props) {
   const progreso = (activa / SECCIONES.length) * 100;
 
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col gap-4 border-r border-line bg-white p-5">
+    <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-line bg-white p-4 lg:w-[280px] lg:border-b-0 lg:border-r lg:p-5">
       <div>
         <div className="mb-1.5 flex items-center justify-between text-xs text-muted">
           <span>Progreso</span>
@@ -33,13 +33,14 @@ export function WizardSidebar({ activa, onCambiar, error }: Props) {
         </div>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      {/* En mobile/tablet es un stepper horizontal con scroll; desde lg: pasa a lista vertical (no entra el sidebar fijo en una pantalla angosta). */}
+      <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
         {SECCIONES.map((s) => (
           <button
             key={s.id}
             type="button"
             onClick={() => onCambiar(s.id)}
-            className={`flex items-center gap-2.5 rounded-brand px-3 py-2.5 text-left text-sm transition-colors ${
+            className={`flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-brand px-3 py-2.5 text-left text-sm transition-colors ${
               activa === s.id ? 'bg-brand-red/10 font-semibold text-brand-red' : 'text-ink hover:bg-surface'
             }`}
           >

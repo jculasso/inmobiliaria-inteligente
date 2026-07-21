@@ -45,7 +45,7 @@ export function TrimestreChart({
   const linePoints = datos.map((d, i) => `${xFor(i) + barWidth / 2},${yCom(d.comision)}`).join(' ');
 
   return (
-    <div className="rounded-brand border border-line bg-white p-4">
+    <div className="overflow-x-auto rounded-brand border border-line bg-white p-4">
       <svg
         viewBox={`0 0 ${width} ${height + 26}`}
         className="w-full min-w-[520px]"

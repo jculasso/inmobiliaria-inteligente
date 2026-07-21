@@ -63,7 +63,7 @@ export function Seccion3Analisis({
         valores={aspectos}
         onToggle={(v) => toggle(aspectos, setAspectos, v)}
       />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Campo label="Demanda">
           <select value={demanda} onChange={(e) => setDemanda(e.target.value as Nivel | '')} className={inputClass}>
             <option value="">—</option>

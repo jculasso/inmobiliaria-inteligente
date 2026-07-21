@@ -215,7 +215,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
             <KpiCard label="Tasa de captación" value={`${tasaCaptacion}%`} tone="success" />
           </div>
 
-          <div className="inline-flex w-fit gap-1 rounded-[10px] bg-surface p-1 shadow-[inset_0_0_0_1px_var(--color-line)]">
+          <div className="inline-flex w-full flex-wrap gap-1 rounded-[10px] bg-surface p-1 shadow-[inset_0_0_0_1px_var(--color-line)] sm:w-fit sm:flex-nowrap">
             {(
               [
                 ['mensual', 'Mensual'],
@@ -315,7 +315,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
                   return (
                     <div
                       key={t.id}
-                      className="grid grid-cols-[2fr_1fr_130px_auto] items-center gap-3.5 border-t border-surface py-3 first:border-t-0"
+                      className="grid grid-cols-1 gap-2 border-t border-surface py-3 first:border-t-0 sm:grid-cols-[2fr_1fr_130px_auto] sm:items-center sm:gap-3.5"
                     >
                       <div>
                         <div className="text-sm font-bold text-ink">{t.direccion}</div>

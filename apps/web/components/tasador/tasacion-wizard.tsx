@@ -291,11 +291,11 @@ export function TasacionWizard({ tasacion }: Props) {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] gap-0 overflow-hidden rounded-brand border border-line bg-white">
+    <div className="flex flex-col overflow-hidden rounded-brand border border-line bg-white lg:min-h-[calc(100vh-8rem)] lg:flex-row">
       <WizardSidebar activa={seccionActiva} onCambiar={irA} error={error} />
 
       <div className="flex flex-1 flex-col">
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {seccionActiva === 1 && (
             <Seccion1Datos
               cliente={cliente}
@@ -414,11 +414,11 @@ export function TasacionWizard({ tasacion }: Props) {
           )}
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-between border-t border-line bg-white px-6 py-3">
+        <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-white px-4 py-3 sm:px-6">
           <Button type="button" variant="secondary" onClick={() => router.push('/tasador/tasaciones')}>
             Cancelar
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {seccionActiva > 1 && (
               <Button type="button" variant="secondary" onClick={handleAnterior} disabled={guardando}>
                 ← Anterior

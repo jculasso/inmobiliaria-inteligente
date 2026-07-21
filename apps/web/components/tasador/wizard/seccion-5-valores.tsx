@@ -54,7 +54,7 @@ export function Seccion5Valores({
           estos valores.
         </div>
       )}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Campo label="Valor mínimo (USD)">
           <input
             type="number"
@@ -86,7 +86,7 @@ export function Seccion5Valores({
           />
         </Campo>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Campo label="Margen de negociación (%)">
           <input
             type="number"

@@ -38,8 +38,8 @@ export default async function TableroLayout({ children }: { children: ReactNode 
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10" style={tenantBrandStyle(principal.tenant.config)}>
-      <div className="flex items-start justify-between gap-4">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10" style={tenantBrandStyle(principal.tenant.config)}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link
             href="/"
@@ -49,7 +49,7 @@ export default async function TableroLayout({ children }: { children: ReactNode 
           </Link>
           <h1 className="mt-1 text-2xl font-extrabold text-ink">Tablero Comercial</h1>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start gap-2 sm:items-end">
           <span className="text-sm text-muted">{principal.email}</span>
           <LogoutButton />
         </div>

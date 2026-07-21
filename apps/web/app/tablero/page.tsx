@@ -32,7 +32,7 @@ export default async function TableroDashboardPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-ink">Dashboard</h2>
         <FiltroPeriodo anio={anio} mes={mes} />
       </div>

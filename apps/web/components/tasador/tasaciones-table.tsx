@@ -52,7 +52,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}

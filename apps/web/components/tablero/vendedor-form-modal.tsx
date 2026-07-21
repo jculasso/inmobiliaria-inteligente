@@ -92,7 +92,7 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
             className={inputClass}
           />
         </Campo>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Campo label="Estado">
             <select
               value={estado}

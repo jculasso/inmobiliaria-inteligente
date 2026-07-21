@@ -36,7 +36,7 @@ export function FiltroPeriodo({ anio, mes }: { anio: number; mes: number }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label="Año"
         value={anio}
