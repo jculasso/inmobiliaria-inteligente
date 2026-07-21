@@ -6,6 +6,7 @@ import {
   puedeBorrarTasaciones,
   puedeGestionarVendedores,
   puedeVerVendedores,
+  rolPrincipal,
 } from './rbac';
 
 describe('alcanceDeModulo', () => {
@@ -37,6 +38,16 @@ describe('alcanceDeModulo', () => {
 describe('etiquetaDeAlcance', () => {
   it('traduce el alcance a texto', () => {
     expect(etiquetaDeAlcance('total')).toBe('Total');
+  });
+});
+
+describe('rolPrincipal', () => {
+  it('prioriza dirección sobre el resto', () => {
+    expect(rolPrincipal(['vendedor', 'direccion'])).toBe('direccion');
+  });
+
+  it('devuelve null si ningún rol tiene alcance de tenant', () => {
+    expect(rolPrincipal(['admin_plataforma'])).toBeNull();
   });
 });
 

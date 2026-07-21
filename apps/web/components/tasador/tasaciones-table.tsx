@@ -7,22 +7,9 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
 import { fmtNum } from '../../lib/format';
+import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
 import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
-
-function detalleEstado(t: TasacionDto): string | null {
-  if (t.estado === 'Captada' && t.exclusividad) {
-    return t.exclusividad.tipo === 'exclusiva' ? `Exclusiva ${t.exclusividad.dias} días` : 'No exclusiva';
-  }
-  if (t.estado === 'No captada' && t.motivoNoCaptada) return t.motivoNoCaptada;
-  return null;
-}
-
-function estadoClass(estado: string): string {
-  if (estado === 'Captada') return 'bg-success/10 text-success';
-  if (estado === 'No captada') return 'bg-brand-red/10 text-brand-red';
-  return 'bg-surface text-muted';
-}
 
 interface Props {
   tasaciones: TasacionDto[];

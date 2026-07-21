@@ -7,16 +7,18 @@ interface Props {
   distribucion: ResumenTasadorKpi['distribucionEstado'];
   periodoLabel: string;
   onSelect?: (estado: EstadoTasacion) => void;
+  /** Por defecto "Distribución por estado" (Reporte); el Dashboard pasa el copy del prototipo. */
+  titulo?: string;
 }
 
 /** Barras proporcionales por estado, coloreadas — compartido entre Dashboard y Reporte. */
-export function EstadoDistribucion({ distribucion, periodoLabel, onSelect }: Props) {
+export function EstadoDistribucion({ distribucion, periodoLabel, onSelect, titulo = 'Distribución por estado' }: Props) {
   const max = Math.max(...distribucion.map((d) => d.cantidad), 1);
 
   return (
     <div>
       <p className="mb-2 text-sm font-bold text-ink">
-        Distribución por estado <span className="text-xs font-normal text-muted">({periodoLabel})</span>
+        {titulo} <span className="text-xs font-normal text-muted">({periodoLabel})</span>
       </p>
       <div className="flex flex-col gap-2">
         {distribucion.map((d) => {

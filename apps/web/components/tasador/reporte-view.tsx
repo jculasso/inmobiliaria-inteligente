@@ -12,6 +12,7 @@ import {
   listTasaciones,
 } from '../../lib/tasador-api';
 import { fmtUSD } from '../../lib/format';
+import { detalleEstado } from '../../lib/tasacion-estado';
 import { EstadoDistribucion } from './estado-distribucion';
 import { RankingCaptaciones } from './ranking-captaciones';
 import { KpiCard } from '../tablero/kpi-card';
@@ -26,14 +27,6 @@ const PERIODOS: { key: Periodo; label: string }[] = [
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const ESTADOS = EstadoTasacionSchema.options;
-
-function detalleEstado(t: TasacionDto): string {
-  if (t.estado === 'Captada' && t.exclusividad) {
-    return t.exclusividad.tipo === 'exclusiva' ? `Exclusiva ${t.exclusividad.dias} días` : 'No exclusiva';
-  }
-  if (t.estado === 'No captada' && t.motivoNoCaptada) return t.motivoNoCaptada;
-  return '—';
-}
 
 export function ReporteView({ anioInicial }: { anioInicial: number }) {
   const [periodo, setPeriodo] = useState<Periodo>('anual');
@@ -247,7 +240,7 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
                             {t.estado}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-xs text-muted">{detalleEstado(t)}</td>
+                        <td className="px-4 py-2 text-xs text-muted">{detalleEstado(t) ?? '—'}</td>
                         <td className="px-4 py-2 text-right font-semibold text-brand-red">
                           {fmtUSD(t.valorRecomendado)}
                         </td>

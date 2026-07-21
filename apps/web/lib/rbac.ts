@@ -31,6 +31,20 @@ export function etiquetaDeAlcance(alcance: AlcanceModulo): string {
   return ETIQUETA[alcance];
 }
 
+export const ETIQUETA_ROL: Record<Rol, string> = {
+  vendedor: 'Vendedor',
+  team_leader: 'Team Leader',
+  direccion: 'Dirección',
+  admin_tenant: 'Admin tenant',
+  admin_plataforma: 'Admin plataforma',
+};
+
+/** Rol más privilegiado del usuario dentro del tenant (mismo orden que `alcanceDeModulo`). */
+export function rolPrincipal(roles: Rol[]): Rol | null {
+  const match = PRIORIDAD.find((p) => roles.includes(p.rol));
+  return match?.rol ?? null;
+}
+
 // Gates de UI para el Tablero: reflejan literalmente los @Roles() de
 // apps/api/src/modules/tablero/{operaciones,vendedores}.controller.ts, para no
 // ofrecer en el front acciones que la API va a rechazar con 403.

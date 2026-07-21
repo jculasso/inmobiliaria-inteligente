@@ -224,6 +224,7 @@ async function main(): Promise<void> {
       estado: string;
       exclusividad?: { tipo: 'exclusiva'; dias: number } | { tipo: 'no' };
       motivoNoCaptada?: string;
+      valorRecomendado?: number;
     }[] = [
       { codigo: 'TAS-2026-001', cliente: 'María Fernández', direccion: 'Av. Libertador 4200', tipoPropiedad: 'Departamento', mes: 1, cubierta: 65, semicubierta: 0, descubierta: 6, estado: 'En proceso' },
       { codigo: 'TAS-2026-002', cliente: 'Jorge Ibáñez', direccion: 'Charcas 3100', tipoPropiedad: 'PH', mes: 2, cubierta: 90, semicubierta: 15, descubierta: 20, estado: 'Presentada' },
@@ -234,6 +235,30 @@ async function main(): Promise<void> {
       { codigo: 'TAS-2026-007', cliente: 'Carla Duarte', direccion: 'Gorriti 4400', tipoPropiedad: 'PH', mes: 4, cubierta: 75, semicubierta: 10, descubierta: 15, estado: 'Presentada' },
       { codigo: 'TAS-2026-008', cliente: 'Federico Luna', direccion: 'Av. Santa Fe 3500', tipoPropiedad: 'Oficina', mes: 5, cubierta: 40, semicubierta: 0, descubierta: 0, estado: 'No captada', motivoNoCaptada: 'Ya no quiere vender' },
       { codigo: 'TAS-2026-009', cliente: 'Romina Castro', direccion: 'Av. Del Libertador 6800', tipoPropiedad: 'Casa', mes: 5, cubierta: 210, semicubierta: 30, descubierta: 150, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 90 } },
+
+      // --- 20 registros extra (pedido explícito del usuario) — concentrados
+      // en junio/julio para poder probar "Este mes"/"Este trimestre" y el
+      // gráfico mensual con datos recientes, repartidos entre vendedores. ---
+      { codigo: 'TAS-2026-010', cliente: 'Lucía Fernández', direccion: 'Córdoba 1250, Piso 6°', tipoPropiedad: 'Departamento', mes: 6, cubierta: 62, semicubierta: 0, descubierta: 0, estado: 'En proceso', valorRecomendado: 108000 },
+      { codigo: 'TAS-2026-011', cliente: 'Martín Gómez', direccion: 'Salta 3400', tipoPropiedad: 'Casa', mes: 6, cubierta: 160, semicubierta: 20, descubierta: 200, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 60 }, valorRecomendado: 195000 },
+      { codigo: 'TAS-2026-012', cliente: 'Paula Ríos', direccion: 'Mitre 850, Piso 3°', tipoPropiedad: 'Departamento', mes: 6, cubierta: 3, semicubierta: 0, descubierta: 0, estado: 'No captada', motivoNoCaptada: 'Documentación incompleta', valorRecomendado: 420 },
+      { codigo: 'TAS-2026-013', cliente: 'Sofía Duarte', direccion: 'Bv. Oroño 1580, Piso 8°', tipoPropiedad: 'Departamento', mes: 6, cubierta: 105, semicubierta: 8, descubierta: 10, estado: 'Captada', exclusividad: { tipo: 'no' }, valorRecomendado: 152000 },
+      { codigo: 'TAS-2026-014', cliente: 'Diego Peralta', direccion: 'San Martín 740', tipoPropiedad: 'Local', mes: 6, cubierta: 85, semicubierta: 0, descubierta: 0, estado: 'No captada', motivoNoCaptada: 'Desacuerdo de precio', valorRecomendado: 240000 },
+      { codigo: 'TAS-2026-015', cliente: 'Julián Pérez', direccion: 'Pellegrini 1650, Piso 4°', tipoPropiedad: 'Departamento', mes: 6, cubierta: 58, semicubierta: 0, descubierta: 5, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 45 }, valorRecomendado: 132000 },
+      { codigo: 'TAS-2026-016', cliente: 'Camila Torres', direccion: 'Entre Ríos 890', tipoPropiedad: 'PH', mes: 7, cubierta: 72, semicubierta: 12, descubierta: 18, estado: 'En proceso', valorRecomendado: 118000 },
+      { codigo: 'TAS-2026-017', cliente: 'Rodrigo Suárez', direccion: 'Av. Pellegrini 2400', tipoPropiedad: 'Departamento', mes: 7, cubierta: 50, semicubierta: 0, descubierta: 0, estado: 'Presentada', valorRecomendado: 96000 },
+      { codigo: 'TAS-2026-018', cliente: 'Ana Belén Ortiz', direccion: 'Rioja 1120', tipoPropiedad: 'Casa', mes: 7, cubierta: 140, semicubierta: 15, descubierta: 250, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 90 }, valorRecomendado: 210000 },
+      { codigo: 'TAS-2026-019', cliente: 'Franco Molina', direccion: 'Balcarce 3300', tipoPropiedad: 'Oficina', mes: 7, cubierta: 45, semicubierta: 0, descubierta: 0, estado: 'No captada', motivoNoCaptada: 'Ya no quiere vender', valorRecomendado: 85000 },
+      { codigo: 'TAS-2026-020', cliente: 'Yamila Acosta', direccion: 'Moreno 780', tipoPropiedad: 'PH', mes: 7, cubierta: 68, semicubierta: 10, descubierta: 12, estado: 'Presentada', valorRecomendado: 121000 },
+      { codigo: 'TAS-2026-021', cliente: 'Ezequiel Navarro', direccion: 'San Lorenzo 2200', tipoPropiedad: 'Departamento', mes: 7, cubierta: 39, semicubierta: 0, descubierta: 0, estado: 'Captada', exclusividad: { tipo: 'no' }, valorRecomendado: 78000 },
+      { codigo: 'TAS-2026-022', cliente: 'Brenda Vega', direccion: 'Corrientes 4550', tipoPropiedad: 'Departamento', mes: 7, cubierta: 55, semicubierta: 0, descubierta: 6, estado: 'En proceso', valorRecomendado: 102000 },
+      { codigo: 'TAS-2026-023', cliente: 'Ignacio Bravo', direccion: 'Urquiza 1980', tipoPropiedad: 'Casa', mes: 7, cubierta: 175, semicubierta: 20, descubierta: 280, estado: 'Presentada', valorRecomendado: 265000 },
+      { codigo: 'TAS-2026-024', cliente: 'Milagros Cano', direccion: 'Sarmiento 610', tipoPropiedad: 'Local', mes: 5, cubierta: 60, semicubierta: 0, descubierta: 0, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 30 }, valorRecomendado: 148000 },
+      { codigo: 'TAS-2026-025', cliente: 'Tomás Ledesma', direccion: 'Belgrano 2050', tipoPropiedad: 'Departamento', mes: 4, cubierta: 47, semicubierta: 0, descubierta: 0, estado: 'No captada', motivoNoCaptada: 'Desacuerdo de precio', valorRecomendado: 91000 },
+      { codigo: 'TAS-2026-026', cliente: 'Agustina Rey', direccion: 'Av. Alberdi 3100', tipoPropiedad: 'PH', mes: 3, cubierta: 82, semicubierta: 8, descubierta: 14, estado: 'Captada', exclusividad: { tipo: 'no' }, valorRecomendado: 137000 },
+      { codigo: 'TAS-2026-027', cliente: 'Bruno Aguirre', direccion: 'Catamarca 1770', tipoPropiedad: 'Departamento', mes: 2, cubierta: 41, semicubierta: 0, descubierta: 0, estado: 'En proceso', valorRecomendado: 74000 },
+      { codigo: 'TAS-2026-028', cliente: 'Florencia Paz', direccion: 'Av. Francia 450', tipoPropiedad: 'Casa', mes: 6, cubierta: 190, semicubierta: 25, descubierta: 320, estado: 'Presentada', valorRecomendado: 285000 },
+      { codigo: 'TAS-2026-029', cliente: 'Gastón Farías', direccion: 'Tucumán 2890', tipoPropiedad: 'Oficina', mes: 7, cubierta: 33, semicubierta: 0, descubierta: 0, estado: 'Captada', exclusividad: { tipo: 'exclusiva', dias: 60 }, valorRecomendado: 63000 },
     ];
 
     let tasOk = 0;
@@ -262,6 +287,7 @@ async function main(): Promise<void> {
           estado: t.estado,
           exclusividad: t.exclusividad,
           motivoNoCaptada: t.motivoNoCaptada,
+          valorRecomendado: t.valorRecomendado,
         },
       });
       tasOk += 1;
