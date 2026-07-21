@@ -24,7 +24,7 @@ export const TenantDtoSchema = z.object({
 export type TenantDto = z.infer<typeof TenantDtoSchema>;
 
 export const CreateTenantSchema = z.object({
-  nombre: z.string().min(1),
+  nombre: z.string().trim().min(1),
   slug: SlugSchema,
   plan: PlanTenantSchema.default('basico'),
   config: TenantConfigSchema.optional(),
@@ -33,7 +33,7 @@ export type CreateTenant = z.infer<typeof CreateTenantSchema>;
 
 export const UpdateTenantSchema = z
   .object({
-    nombre: z.string().min(1),
+    nombre: z.string().trim().min(1),
     slug: SlugSchema,
     plan: PlanTenantSchema,
     estado: z.enum(['activo', 'suspendido']),

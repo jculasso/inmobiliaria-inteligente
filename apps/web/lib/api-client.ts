@@ -20,7 +20,14 @@ interface ApiFetchOptions {
 
 /** Formato de error de la API (CLAUDE.md §8): { error: { code, message, details? } }. */
 interface ApiErrorBody {
-  error?: { code?: string; message?: string };
+  error?: { code?: string; message?: string; details?: { path?: string; message: string }[] };
+}
+
+/** Arma un mensaje legible a partir del error de la API, priorizando el detalle de validación por campo. */
+function mensajeDeError(errorBody: ApiErrorBody | null, fallback: string): string {
+  const detalle = errorBody?.error?.details?.[0];
+  if (detalle) return detalle.path ? `${detalle.path}: ${detalle.message}` : detalle.message;
+  return errorBody?.error?.message ?? fallback;
 }
 
 /** Cliente HTTP tipado contra apps/api, con validación de respuesta vía Zod. */
@@ -51,7 +58,7 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
-    throw new ApiError(errorBody?.error?.message ?? `${method} ${path} devolvió ${res.status}`, {
+    throw new ApiError(mensajeDeError(errorBody, `${method} ${path} devolvió ${res.status}`), {
       status: res.status,
       code: errorBody?.error?.code,
     });
@@ -88,7 +95,7 @@ export async function apiFetchForm<T>(
 
   if (!res.ok) {
     const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
-    throw new ApiError(errorBody?.error?.message ?? `POST ${path} devolvió ${res.status}`, {
+    throw new ApiError(mensajeDeError(errorBody, `POST ${path} devolvió ${res.status}`), {
       status: res.status,
       code: errorBody?.error?.code,
     });

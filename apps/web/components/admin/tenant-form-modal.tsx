@@ -61,7 +61,7 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
         <Campo label="Slug (identificador único, ej. vacker)">
           <input
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => setSlug(e.target.value.toLowerCase())}
             required
             pattern="[a-z0-9-]+"
             title="Solo minúsculas, números y guiones"
