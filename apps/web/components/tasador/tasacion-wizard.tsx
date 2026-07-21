@@ -134,6 +134,22 @@ export function TasacionWizard({ tasacion }: Props) {
     return valoresSugeridos(superficieTotalPreview, promedioUsdM2(validos));
   }, [comparables, superficieTotalPreview]);
 
+  // El input solo mostraba la sugerencia como `placeholder` (texto gris que
+  // desaparece al tipear, nunca un valor real): si el usuario no tocaba el
+  // campo, se guardaba `null` y el informe mostraba "—" en vez del valor
+  // sugerido. Ahora se precompletan de verdad la primera vez que hay
+  // suficientes comparables — y solo esa vez, para no pisar un valor ya
+  // cargado o editado a mano.
+  useEffect(() => {
+    if (!sugerencia) return;
+    const sinTocar = valorMinimo === '' && valorRecomendado === '' && valorAspiracional === '';
+    if (!sinTocar) return;
+    setValorMinimo(String(Math.round(sugerencia.minimo)));
+    setValorRecomendado(String(Math.round(sugerencia.recomendado)));
+    setValorAspiracional(String(Math.round(sugerencia.aspiracional)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sugerencia]);
+
   function datosSeccion1() {
     return { cliente, fecha, direccion, barrio: barrio || null, ciudad: ciudad || null, tipoOperacion };
   }

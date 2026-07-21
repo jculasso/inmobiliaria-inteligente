@@ -42,8 +42,9 @@ export async function getTasacion(accessToken: string, id: string) {
   return apiFetch(`/tasador/tasaciones/${id}`, TasacionDtoSchema, { accessToken });
 }
 
+/** El wizard solo lee `.id` (para navegar a `/[id]/editar`) — el backend responde liviano. */
 export async function createTasacion(accessToken: string, dto: CreateTasacion) {
-  return apiFetch('/tasador/tasaciones', TasacionDtoSchema, {
+  return apiFetch('/tasador/tasaciones', z.object({ id: z.string() }), {
     accessToken,
     method: 'POST',
     body: dto,

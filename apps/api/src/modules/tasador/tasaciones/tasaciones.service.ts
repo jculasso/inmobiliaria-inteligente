@@ -120,8 +120,13 @@ export class TasacionesService {
     });
   }
 
-  /** Crea una tasación. El dueño (`agenteId`) es siempre quien la crea. */
-  async create(dto: CreateTasacion, ctx: TenantContext) {
+  /**
+   * Crea una tasación (dueño = quien la crea). El wizard llama esto una sola
+   * vez (sección 1, primer guardado) y solo lee `.id` para navegar a la ruta
+   * de edición — el `select` liviano evita el JOIN de comparables+fotos+agente
+   * que nadie consume acá.
+   */
+  async create(dto: CreateTasacion, ctx: TenantContext): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
       const data = {
         tenantId: ctx.tenantId,
@@ -138,8 +143,7 @@ export class TasacionesService {
           ? { comparables: { create: dto.comparables.map(({ cochera, ...c }) => ({ ...c, cochera, tenantId: ctx.tenantId })) } }
           : {}),
       } as Prisma.TasacionUncheckedCreateInput;
-      const row = await tx.tasacion.create({ data, include: tasacionInclude });
-      return toDto(row);
+      return tx.tasacion.create({ data, select: { id: true } });
     });
   }
 
