@@ -8,11 +8,12 @@ import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
 import { decToNum } from '../../tablero/tablero.util';
 import { SupabaseStorageService } from '../informes/supabase-storage.service';
-import { KpisService } from '../kpis/kpis.service';
+import { agregar, ranking as rankingDe, type TasacionCalc } from '../kpis/kpis.calc';
 import { ReporteDocument, type ReporteFila } from './reporte.template';
 
 const filaSelect = {
   id: true,
+  agenteId: true,
   fecha: true,
   direccion: true,
   barrio: true,
@@ -29,24 +30,35 @@ const filaSelect = {
 export class ReporteService {
   constructor(
     private readonly db: TenantPrismaService,
-    private readonly kpis: KpisService,
     private readonly storage: SupabaseStorageService,
   ) {}
 
   async generar(filtro: TasadorKpiFiltro, ctx: TenantContext): Promise<{ url: string }> {
-    const [resumen, ranking] = await Promise.all([
-      this.kpis.resumen(filtro, ctx),
-      this.kpis.ranking(filtro, ctx),
-    ]);
-
-    const { filas, tenantNombre, logoUrl } = await this.db.withTenant(async (tx) => {
+    // Antes: resumen() y ranking() traían las tasaciones del período cada uno
+    // en su propia transacción, y esta función las volvía a traer una
+    // tercera vez con otro `select` para armar la tabla — 3 round trips
+    // trayendo básicamente las mismas filas. Ahora se trae una sola vez
+    // (con el `select` que alcanza para las tres cosas) y el resumen/ranking
+    // se calculan en memoria con las mismas funciones puras de kpis.calc.
+    const { filas, resumen, ranking, tenantNombre, logoUrl, colorPrimario } = await this.db.withTenant(async (tx) => {
       const scope = await resolverScope(ctx, tx);
       const where: Prisma.TasacionWhereInput = { fecha: rangoDeFecha(filtro) };
       if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
-      const rows = await tx.tasacion.findMany({ where, select: filaSelect, orderBy: { fecha: 'desc' } });
 
-      const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } });
-      const config = tenant.config as { logoUrl?: string } | null;
+      const [rows, tenant] = await Promise.all([
+        tx.tasacion.findMany({ where, select: filaSelect, orderBy: { fecha: 'desc' } }),
+        tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
+      ]);
+
+      const scopeSet = scope.usuarioIds === null ? null : new Set(scope.usuarioIds);
+      const calc: TasacionCalc[] = rows.map((r) => ({
+        id: r.id,
+        agenteId: r.agenteId,
+        nombre: r.agente.nombre,
+        estado: r.estado as EstadoTasacion,
+      }));
+
+      const config = tenant.config as { logoUrl?: string; colorPrimario?: string } | null;
       const mapped: ReporteFila[] = rows.map((r) => ({
         id: r.id,
         fecha: r.fecha.toISOString().slice(0, 10),
@@ -59,7 +71,14 @@ export class ReporteService {
         motivoNoCaptada: r.motivoNoCaptada,
         valorRecomendado: r.valorRecomendado == null ? null : decToNum(r.valorRecomendado),
       }));
-      return { filas: mapped, tenantNombre: tenant.nombre, logoUrl: config?.logoUrl ?? null };
+      return {
+        filas: mapped,
+        resumen: agregar(calc, scopeSet),
+        ranking: rankingDe(calc, scopeSet),
+        tenantNombre: tenant.nombre,
+        logoUrl: config?.logoUrl ?? null,
+        colorPrimario: config?.colorPrimario ?? null,
+      };
     });
 
     const periodoLabel = etiquetaPeriodo(filtro);
@@ -71,6 +90,7 @@ export class ReporteService {
         periodoLabel={periodoLabel}
         tenantNombre={tenantNombre}
         logoUrl={logoUrl}
+        colorPrimario={colorPrimario}
       />,
     );
 

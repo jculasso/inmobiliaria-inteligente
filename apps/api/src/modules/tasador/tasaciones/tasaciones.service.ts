@@ -9,12 +9,29 @@ import { resolverScope } from '../../tablero/scope.util';
 import { decToNum, fromDate, toDate } from '../../tablero/tablero.util';
 
 export const tasacionInclude = {
-  agente: { select: { id: true, nombre: true } },
+  agente: { select: { id: true, nombre: true, email: true } },
   comparables: true,
   fotos: { orderBy: { orden: 'asc' } },
 } satisfies Prisma.TasacionInclude;
 
 export type TasacionRow = Prisma.TasacionGetPayload<{ include: typeof tasacionInclude }>;
+
+/**
+ * Select mínimo para el pre-check de scope/existencia + las superficies
+ * actuales (únicos campos que `update()`/`remove()`/`cambiarEstado()` leen
+ * de la fila antes de escribir) — evita el JOIN de comparables/fotos que
+ * `tasacionInclude` trae siempre, innecesario acá porque ese resultado no
+ * se devuelve al llamador.
+ */
+const tasacionScopeSelect = {
+  id: true,
+  tenantId: true,
+  agenteId: true,
+  estado: true,
+  supCubierta: true,
+  supSemicubierta: true,
+  supDescubierta: true,
+} satisfies Prisma.TasacionSelect;
 
 const tasacionResumenSelect = {
   id: true,
@@ -126,10 +143,16 @@ export class TasacionesService {
     });
   }
 
-  /** Edita una tasación. Si vienen `comparables`, reemplazan el set completo. */
-  async update(id: string, dto: UpdateTasacion, ctx: TenantContext) {
+  /**
+   * Edita una tasación. Si vienen `comparables`, reemplazan el set completo.
+   * Devuelve solo `{ id }`: el wizard llama esto una vez por sección (hasta
+   * 6 veces por edición) y descarta la fila completa — pedirla/devolverla
+   * con el JOIN de comparables+fotos en cada guardado intermedio era trabajo
+   * de base de datos que nadie consumía.
+   */
+  async update(id: string, dto: UpdateTasacion, ctx: TenantContext): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
-      const actual = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
+      const actual = await tx.tasacion.findUnique({ where: { id }, select: tasacionScopeSelect });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(actual, await resolverScope(ctx, tx));
 
@@ -150,8 +173,8 @@ export class TasacionesService {
         };
       }
 
-      const row = await tx.tasacion.update({ where: { id }, data, include: tasacionInclude });
-      return toDto(row);
+      await tx.tasacion.update({ where: { id }, data, select: { id: true } });
+      return { id };
     });
   }
 
@@ -216,7 +239,7 @@ export class TasacionesService {
   /** Elimina una tasación (comparables/fotos/historial caen por cascade). */
   async remove(id: string, ctx: TenantContext): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
-      const actual = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
+      const actual = await tx.tasacion.findUnique({ where: { id }, select: { agenteId: true } });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(actual, await resolverScope(ctx, tx));
       await tx.tasacion.delete({ where: { id } });
@@ -233,7 +256,7 @@ export class TasacionesService {
  */
 function datosCaracteristicas(
   dto: Partial<CreateTasacion>,
-  actual?: TasacionRow,
+  actual?: Pick<TasacionRow, 'supCubierta' | 'supSemicubierta' | 'supDescubierta'>,
 ): Record<string, unknown> {
   const supCubierta = dto.supCubierta ?? (actual ? decToNum(actual.supCubierta) : 0);
   const supSemicubierta = dto.supSemicubierta ?? (actual ? decToNum(actual.supSemicubierta) : 0);
@@ -305,7 +328,7 @@ function rangoDeFecha(anio?: number, mes?: number): Prisma.DateTimeFilter | unde
 }
 
 /** Rechaza el acceso si la tasación no cae en el alcance del rol. */
-export function assertEnScope(row: TasacionRow, scope: { usuarioIds: string[] | null }): void {
+export function assertEnScope(row: Pick<TasacionRow, 'agenteId'>, scope: { usuarioIds: string[] | null }): void {
   if (scope.usuarioIds === null) return;
   if (!scope.usuarioIds.includes(row.agenteId)) {
     throw new NotFoundException('Tasación no encontrada.');
@@ -335,7 +358,7 @@ export function toDto(row: TasacionRow) {
     id: row.id,
     codigo: row.codigo,
     agenteId: row.agenteId,
-    agente: { id: row.agente.id, nombre: row.agente.nombre },
+    agente: { id: row.agente.id, nombre: row.agente.nombre, email: row.agente.email },
     cliente: row.cliente,
     fecha: fromDate(row.fecha)!,
     direccion: row.direccion,

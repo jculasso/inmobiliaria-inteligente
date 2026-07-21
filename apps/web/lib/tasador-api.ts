@@ -50,8 +50,13 @@ export async function createTasacion(accessToken: string, dto: CreateTasacion) {
   });
 }
 
+/**
+ * El wizard guarda por sección (hasta 6 PATCH por edición) y nunca usa la
+ * fila devuelta — el backend responde liviano ({ id }) en vez del DTO
+ * completo con comparables/fotos, que era trabajo de más en cada guardado.
+ */
 export async function updateTasacion(accessToken: string, id: string, dto: UpdateTasacion) {
-  return apiFetch(`/tasador/tasaciones/${id}`, TasacionDtoSchema, {
+  return apiFetch(`/tasador/tasaciones/${id}`, z.object({ id: z.string() }), {
     accessToken,
     method: 'PATCH',
     body: dto,

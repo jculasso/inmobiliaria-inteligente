@@ -11,7 +11,7 @@ const TASACION = {
   id: '11111111-1111-1111-1111-111111111111',
   codigo: null,
   agenteId: '22222222-2222-2222-2222-222222222222',
-  agente: { id: '22222222-2222-2222-2222-222222222222', nombre: 'Ana' },
+  agente: { id: '22222222-2222-2222-2222-222222222222', nombre: 'Ana', email: 'ana@vacker.com' },
   cliente: 'Cliente Uno',
   fecha: '2026-03-10',
   direccion: 'Calle Falsa 123',
