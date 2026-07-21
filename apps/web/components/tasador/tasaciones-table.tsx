@@ -9,7 +9,6 @@ import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
 import { fmtNum } from '../../lib/format';
 import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
-import { TasacionFormModal } from './tasacion-form-modal';
 
 function detalleEstado(t: TasacionDto): string | null {
   if (t.estado === 'Captada' && t.exclusividad) {
@@ -33,7 +32,6 @@ interface Props {
 export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
-  const [modal, setModal] = useState<'create' | TasacionDto | null>(null);
   const [modalEstado, setModalEstado] = useState<TasacionDto | null>(null);
   const [generandoId, setGenerandoId] = useState<string | null>(null);
 
@@ -78,7 +76,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
           <span className="whitespace-nowrap text-xs text-muted">
             {filtradas.length} de {tasaciones.length} tasaciones
           </span>
-          <Button variant="primary" size="sm" onClick={() => setModal('create')}>
+          <Button variant="primary" size="sm" onClick={() => router.push('/tasador/tasaciones/nueva')}>
             ＋ Nueva tasación
           </Button>
         </div>
@@ -128,7 +126,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => setModal(t)}
+                        onClick={() => router.push(`/tasador/tasaciones/${t.id}/editar`)}
                         aria-label="Editar"
                         className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
                       >
@@ -156,17 +154,6 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
           </tbody>
         </table>
       </div>
-
-      {modal && (
-        <TasacionFormModal
-          tasacion={modal === 'create' ? undefined : modal}
-          onClose={() => setModal(null)}
-          onSaved={() => {
-            setModal(null);
-            router.refresh();
-          }}
-        />
-      )}
 
       {modalEstado && (
         <CambiarEstadoModal
