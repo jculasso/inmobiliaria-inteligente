@@ -63,8 +63,9 @@ export async function updateTasacion(accessToken: string, id: string, dto: Updat
   });
 }
 
+/** El modal ya conoce el resultado (lo construyó para el `body`); nadie lee el DTO completo de vuelta. */
 export async function cambiarEstadoTasacion(accessToken: string, id: string, dto: CambiarEstado) {
-  return apiFetch(`/tasador/tasaciones/${id}/estado`, TasacionDtoSchema, {
+  return apiFetch(`/tasador/tasaciones/${id}/estado`, z.object({ id: z.string() }), {
     accessToken,
     method: 'PATCH',
     body: dto,

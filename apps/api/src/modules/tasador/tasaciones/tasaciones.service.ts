@@ -183,9 +183,12 @@ export class TasacionesService {
    * "No captada" exige motivo — ya validado por `CambiarEstadoSchema`. Registra
    * el cambio en `tasacionEstadoHistorial` y emite los eventos de dominio.
    */
-  async cambiarEstado(id: string, dto: CambiarEstado, ctx: TenantContext) {
-    const row = await this.db.withTenant(async (tx) => {
-      const actual = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
+  async cambiarEstado(id: string, dto: CambiarEstado, ctx: TenantContext): Promise<{ id: string }> {
+    const estadoAnterior = await this.db.withTenant(async (tx) => {
+      // Pre-check liviano (igual que update()/remove()): ni el modal del
+      // front ni sus llamadores leen el DTO completo que devolvía esto antes,
+      // así que no hace falta el JOIN de comparables/fotos de `tasacionInclude`.
+      const actual = await tx.tasacion.findUnique({ where: { id }, select: tasacionScopeSelect });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(actual, await resolverScope(ctx, tx));
 
@@ -195,14 +198,14 @@ export class TasacionesService {
 
       // Ya estamos dentro de la transacción que abre `withTenant`: ambas
       // escrituras son atómicas sin necesitar un `$transaction` anidado.
-      const updated = await tx.tasacion.update({
+      await tx.tasacion.update({
         where: { id },
         data: {
           estado: dto.estado,
           exclusividad: exclusividad as Prisma.InputJsonValue,
           motivoNoCaptada,
         },
-        include: tasacionInclude,
+        select: { id: true },
       });
       await tx.tasacionEstadoHistorial.create({
         data: {
@@ -214,13 +217,13 @@ export class TasacionesService {
           detalle: detalle as Prisma.InputJsonValue,
         },
       });
-      return { updated, estadoAnterior: actual.estado };
+      return actual.estado;
     });
 
     this.events.emit('tasacion_estado_cambiado', {
       tenantId: ctx.tenantId,
       tasacionId: id,
-      estadoAnterior: row.estadoAnterior,
+      estadoAnterior,
       estadoNuevo: dto.estado,
       usuarioId: ctx.userId,
     });
@@ -233,7 +236,7 @@ export class TasacionesService {
       });
     }
 
-    return toDto(row.updated);
+    return { id };
   }
 
   /** Elimina una tasación (comparables/fotos/historial caen por cascade). */

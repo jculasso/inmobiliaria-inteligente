@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TasacionDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
@@ -22,16 +22,22 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   const [modalEstado, setModalEstado] = useState<TasacionDto | null>(null);
   const [generandoId, setGenerandoId] = useState<string | null>(null);
 
+  // Copia local del prop: un cambio de estado se patchea acá sin pedirle a
+  // Next.js que vuelva a correr `listTasaciones()` (pesado — trae comparables,
+  // fotos, análisis y estrategia de cada fila) solo para reflejar un campo.
+  const [rows, setRows] = useState(tasaciones);
+  useEffect(() => setRows(tasaciones), [tasaciones]);
+
   const filtradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return tasaciones;
-    return tasaciones.filter(
+    if (!q) return rows;
+    return rows.filter(
       (t) =>
         t.cliente.toLowerCase().includes(q) ||
         t.direccion.toLowerCase().includes(q) ||
         t.agente.nombre.toLowerCase().includes(q),
     );
-  }, [tasaciones, busqueda]);
+  }, [rows, busqueda]);
 
   async function handleDelete(id: string) {
     const accessToken = await getAccessToken();
@@ -146,9 +152,10 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
         <CambiarEstadoModal
           tasacion={modalEstado}
           onClose={() => setModalEstado(null)}
-          onSaved={() => {
+          onSaved={(patch) => {
+            const id = modalEstado.id;
             setModalEstado(null);
-            router.refresh();
+            setRows((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
           }}
         />
       )}

@@ -6,6 +6,7 @@ import {
   MotivoNoCaptadaSchema,
   type CambiarEstado,
   type EstadoTasacion,
+  type Exclusividad,
   type MotivoNoCaptada,
   type TasacionDto,
 } from '@vacker/types';
@@ -17,11 +18,18 @@ import { Modal } from '../tablero/modal';
 const ESTADOS = EstadoTasacionSchema.options;
 const MOTIVOS = MotivoNoCaptadaSchema.options;
 
+/** Lo que cambió, tal como lo persistió el backend — alcanza para que el llamador patchee su estado local sin refetch. */
+export interface EstadoPatch {
+  estado: EstadoTasacion;
+  exclusividad: Exclusividad | null;
+  motivoNoCaptada: string | null;
+}
+
 interface Props {
   /** Alcanza con los campos de estado — acepta tanto `TasacionDto` completo como `TasacionResumenDto`. */
   tasacion: Pick<TasacionDto, 'id' | 'cliente' | 'estado' | 'exclusividad' | 'motivoNoCaptada'>;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (patch: EstadoPatch) => void;
 }
 
 /** Cambia el estado de una tasación. "Captada" pide exclusividad, "No captada" pide motivo. */
@@ -64,7 +72,11 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
     try {
       const accessToken = await getAccessToken();
       await cambiarEstadoTasacion(accessToken, tasacion.id, dto);
-      onSaved();
+      onSaved({
+        estado,
+        exclusividad: dto.estado === 'Captada' ? dto.exclusividad : null,
+        motivoNoCaptada: dto.estado === 'No captada' ? dto.motivoNoCaptada : null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cambiar el estado.');
     } finally {

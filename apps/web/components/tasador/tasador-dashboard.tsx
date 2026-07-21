@@ -97,6 +97,28 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anio]);
 
+  /**
+   * Un cambio de estado no afecta `kpisMensual` (totales del mes no cambian)
+   * ni requiere volver a pedir `tasaciones` (se patchea localmente en
+   * `onSaved`) — solo `resumenAnual`/`rankingAnual` dependen del estado.
+   */
+  function refrescarResumenYRanking(): void {
+    getAccessToken()
+      .then((accessToken) =>
+        Promise.all([
+          getKpisResumenTasador(accessToken, { anio, periodo: 'anual' }),
+          getRankingCaptaciones(accessToken, { anio, periodo: 'anual' }),
+        ]),
+      )
+      .then(([resumen, ranking]) => {
+        setResumenAnual(resumen);
+        setRankingAnual(ranking);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'No se pudieron cargar las tasaciones.');
+      });
+  }
+
   const rol = rolPrincipal(principal.roles);
 
   async function handleGenerarInforme(id: string) {
@@ -396,9 +418,11 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
         <CambiarEstadoModal
           tasacion={modalEstado}
           onClose={() => setModalEstado(null)}
-          onSaved={() => {
+          onSaved={(patch) => {
+            const id = modalEstado.id;
             setModalEstado(null);
-            cargar();
+            setTasaciones((prev) => prev?.map((t) => (t.id === id ? { ...t, ...patch } : t)) ?? prev);
+            refrescarResumenYRanking();
           }}
         />
       )}
