@@ -12,20 +12,32 @@ import { ConfigService } from '@nestjs/config';
 export class SupabaseStorageService {
   constructor(private readonly config: ConfigService) {}
 
-  /** Sube (o sobrescribe) un archivo y devuelve su URL pública. Crea el bucket si no existe. */
+  /**
+   * Sube (o sobrescribe) un archivo y devuelve su URL pública. El bucket casi
+   * siempre ya existe (se crea una única vez, la primera llamada) — probar
+   * `asegurarBucket()` antes de cada subida era un round trip de más a
+   * Supabase Storage en el 100% de los casos; ahora se intenta subir directo
+   * y solo se crea el bucket como fallback si la subida falla por eso.
+   */
   async upload(bucket: string, path: string, buffer: Buffer, contentType: string): Promise<string> {
-    await this.asegurarBucket(bucket);
-
-    const res = await fetch(`${this.baseUrl()}/storage/v1/object/${bucket}/${path}`, {
-      method: 'POST',
-      headers: { ...this.headers(), 'Content-Type': contentType, 'x-upsert': 'true' },
-      body: buffer,
-    });
+    let res = await this.subir(bucket, path, buffer, contentType);
+    if (!res.ok && res.status === 404) {
+      await this.asegurarBucket(bucket);
+      res = await this.subir(bucket, path, buffer, contentType);
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new InternalServerErrorException(`No se pudo subir el archivo a Supabase Storage: ${body}`);
     }
     return `${this.baseUrl()}/storage/v1/object/public/${bucket}/${path}`;
+  }
+
+  private subir(bucket: string, path: string, buffer: Buffer, contentType: string): Promise<Response> {
+    return fetch(`${this.baseUrl()}/storage/v1/object/${bucket}/${path}`, {
+      method: 'POST',
+      headers: { ...this.headers(), 'Content-Type': contentType, 'x-upsert': 'true' },
+      body: buffer,
+    });
   }
 
   /** Elimina un archivo. No falla si ya no existe. */

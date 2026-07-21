@@ -19,11 +19,17 @@ export class InformesService {
 
   async generar(id: string, ctx: TenantContext): Promise<{ url: string }> {
     const { dto, tenantNombre, logoUrl, colorPrimario, colorPrimarioOscuro } = await this.db.withTenant(async (tx) => {
-      const row = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
+      // La fila y el tenant no dependen uno del otro — pedirlos en paralelo
+      // ahorra un round trip completo (relevante: Render/Supabase están en
+      // regiones distintas, cada ida y vuelta de más se siente).
+      const [row, tenant, scope] = await Promise.all([
+        tx.tasacion.findUnique({ where: { id }, include: tasacionInclude }),
+        tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
+        resolverScope(ctx, tx),
+      ]);
       if (!row) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(row, await resolverScope(ctx, tx));
+      assertEnScope(row, scope);
 
-      const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } });
       const config = tenant.config as { logoUrl?: string; colorPrimario?: string; colorPrimarioOscuro?: string } | null;
       return {
         dto: toDto(row) as TasacionDto,

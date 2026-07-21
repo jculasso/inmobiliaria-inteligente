@@ -21,6 +21,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   const [busqueda, setBusqueda] = useState('');
   const [modalEstado, setModalEstado] = useState<TasacionDto | null>(null);
   const [generandoId, setGenerandoId] = useState<string | null>(null);
+  const [errorInforme, setErrorInforme] = useState<string | null>(null);
 
   // Copia local del prop: un cambio de estado se patchea acá sin pedirle a
   // Next.js que vuelva a correr `listTasaciones()` (pesado — trae comparables,
@@ -47,10 +48,16 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
 
   async function handleGenerarInforme(id: string) {
     setGenerandoId(id);
+    setErrorInforme(null);
     try {
       const accessToken = await getAccessToken();
       const { url } = await generarInforme(accessToken, id);
       window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      // Antes un error acá quedaba solo en la consola: el botón volvía a su
+      // estado normal (el `finally` ya lo hacía) pero sin ningún aviso, así
+      // que un fallo real se sentía igual que un click que "no hizo nada".
+      setErrorInforme(err instanceof Error ? err.message : 'No se pudo generar el informe.');
     } finally {
       setGenerandoId(null);
     }
@@ -74,6 +81,12 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
           </Button>
         </div>
       </div>
+
+      {errorInforme && (
+        <p role="alert" className="text-sm font-medium text-brand-red">
+          {errorInforme}
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded-brand border border-line bg-white">
         <table className="w-full text-sm">
