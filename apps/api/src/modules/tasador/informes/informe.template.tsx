@@ -68,8 +68,11 @@ function crearEstilos(red: string, redDark: string) {
     table: { borderWidth: 1, borderColor: LINE, borderRadius: 4, marginBottom: 8 },
     tableHeaderRow: { flexDirection: 'row', backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: LINE },
     tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE },
+    tableRowAlt: { backgroundColor: SURFACE },
     th: { flex: 1, padding: 5, fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 0.5 },
     td: { flex: 1, padding: 5, fontSize: 8.5 },
+    tdBold: { flex: 1, padding: 5, fontSize: 8.5, fontWeight: 700, color: INK },
+    tdRed: { flex: 1, padding: 5, fontSize: 8.5, fontWeight: 700, color: red },
     tdLink: { flex: 1, padding: 5 },
     linkPill: {
       backgroundColor: red,
@@ -101,9 +104,17 @@ function crearEstilos(red: string, redDark: string) {
     sugeridoValor: { fontSize: 20, fontWeight: 800, color: '#FFFFFF' },
     margenTexto: { fontSize: 8.5, color: MUTED, textAlign: 'center', marginTop: 8 },
     pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-    pill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    pillDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: red },
-    pillText: { fontSize: 8.5, color: INK },
+    pill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: SURFACE,
+      borderRadius: 11,
+      paddingVertical: 4,
+      paddingHorizontal: 9,
+    },
+    pillDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: red },
+    pillText: { fontSize: 8, color: INK },
     disclaimer: {
       marginTop: 10,
       padding: 8,
@@ -150,11 +161,6 @@ function confianzaEstilo(nivel: string): { bg: string; text: string } {
   return { bg: '#FBE3E5', text: '#C1121F' };
 }
 
-function fmtAmenities(t: TasacionDto): string {
-  if (t.amenities.length === 0) return 'No';
-  return t.detalleAmenities ? `Sí — ${t.detalleAmenities}` : 'Sí';
-}
-
 function fmtFechaCorta(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -168,6 +174,49 @@ function obsComparable(c: ComparableDto): string {
       .filter(Boolean)
       .join(' · ') || '—'
   );
+}
+
+/**
+ * Características a mostrar en el PDF: se omiten los campos sin valor o en
+ * "No"/0 (booleanos en false, números en 0/null, enums vacíos). Devuelve la
+ * lista visible para repartir en dos columnas.
+ */
+function caracteristicas(t: TasacionDto): { label: string; value: string }[] {
+  const items: { label: string; value: string }[] = [];
+  const texto = (label: string, value: string | null | undefined) => {
+    if (value) items.push({ label, value });
+  };
+  const numero = (label: string, v: number | null, sufijo = '') => {
+    if (v != null && v > 0) items.push({ label, value: `${v}${sufijo}` });
+  };
+  const siVerdadero = (label: string, v: boolean) => {
+    if (v) items.push({ label, value: 'Sí' });
+  };
+
+  texto('Tipo de propiedad', t.tipoPropiedad);
+  texto('Tipo de operación', t.tipoOperacion.charAt(0).toUpperCase() + t.tipoOperacion.slice(1));
+  numero('Ambientes', t.ambientes);
+  numero('Dormitorios', t.dormitorios);
+  numero('Baños', t.banos);
+  numero('Toilettes', t.toilette);
+  numero('Sup. cubierta', t.supCubierta, ' m²');
+  numero('Sup. semi-cubierta', t.supSemicubierta, ' m²');
+  numero('Sup. descubierta', t.supDescubierta, ' m²');
+  numero('Sup. total', t.superficieTotal, ' m²');
+  if (t.antiguedad != null && t.antiguedad > 0) items.push({ label: 'Antigüedad', value: `${t.antiguedad} años` });
+  texto('Estado general', t.estadoInmueble);
+  texto('Disposición', t.disposicion);
+  texto('Orientación', t.orientacion);
+  siVerdadero('Cochera', t.cochera);
+  siVerdadero('Balcón', t.balcon);
+  siVerdadero('Terraza', t.terraza);
+  siVerdadero('Patio', t.patio);
+  siVerdadero('Lavadero', t.lavadero);
+  siVerdadero('Piscina', t.piscina);
+  if (t.amenities.length > 0) items.push({ label: 'Amenities', value: t.detalleAmenities ? `Sí — ${t.detalleAmenities}` : 'Sí' });
+  if (t.expensas != null && t.expensas > 0) items.push({ label: 'Expensas', value: `ARS ${t.expensas.toLocaleString('es-AR')}` });
+  texto('Documentación', t.documentacion);
+  return items;
 }
 
 function textoAnalisisComercial(t: TasacionDto): string {
@@ -284,41 +333,24 @@ export function InformeDocument({
         <View wrap={false}>
         <Text style={styles.sectionTitle}>CARACTERÍSTICAS DE LA PROPIEDAD</Text>
         <View style={styles.sectionUnderline} />
-        <View style={styles.cols}>
-          <View style={styles.col}>
-            <FichaLinea styles={styles} label="Tipo de propiedad" value={t.tipoPropiedad} />
-            <FichaLinea
-              styles={styles}
-              label="Tipo de operación"
-              value={t.tipoOperacion.charAt(0).toUpperCase() + t.tipoOperacion.slice(1)}
-            />
-            <FichaLinea styles={styles} label="Ambientes" value={String(t.ambientes ?? '—')} />
-            <FichaLinea styles={styles} label="Dormitorios" value={String(t.dormitorios ?? '—')} />
-            <FichaLinea styles={styles} label="Baños" value={String(t.banos ?? '—')} />
-            <FichaLinea styles={styles} label="Sup. cubierta" value={`${t.supCubierta} m²`} />
-            <FichaLinea styles={styles} label="Sup. semi-cubierta" value={`${t.supSemicubierta} m²`} />
-            <FichaLinea styles={styles} label="Sup. descubierta" value={`${t.supDescubierta} m²`} />
-            <FichaLinea styles={styles} label="Sup. total" value={`${t.superficieTotal} m²`} />
-            <FichaLinea styles={styles} label="Antigüedad" value={t.antiguedad != null ? `${t.antiguedad} años` : '—'} />
-            <FichaLinea styles={styles} label="Estado general" value={t.estadoInmueble ?? '—'} />
-          </View>
-          <View style={styles.col}>
-            <FichaLinea styles={styles} label="Disposición" value={t.disposicion ?? '—'} />
-            <FichaLinea styles={styles} label="Orientación" value={t.orientacion ?? '—'} />
-            <FichaLinea styles={styles} label="Cocheras" value={fmtSiNo(t.cochera)} />
-            <FichaLinea styles={styles} label="Toilettes" value={String(t.toilette ?? '—')} />
-            <FichaLinea styles={styles} label="Balcón" value={fmtSiNo(t.balcon)} />
-            <FichaLinea styles={styles} label="Lavadero" value={fmtSiNo(t.lavadero)} />
-            <FichaLinea styles={styles} label="Piscina" value={fmtSiNo(t.piscina)} />
-            <FichaLinea styles={styles} label="Amenities" value={fmtAmenities(t)} />
-            <FichaLinea
-              styles={styles}
-              label="Expensas"
-              value={t.expensas != null ? `ARS ${t.expensas.toLocaleString('es-AR')}` : '—'}
-            />
-            <FichaLinea styles={styles} label="Documentación" value={t.documentacion ?? '—'} />
-          </View>
-        </View>
+        {(() => {
+          const items = caracteristicas(t);
+          const mitad = Math.ceil(items.length / 2);
+          return (
+            <View style={styles.cols}>
+              <View style={styles.col}>
+                {items.slice(0, mitad).map((it) => (
+                  <FichaLinea key={it.label} styles={styles} label={it.label} value={it.value} />
+                ))}
+              </View>
+              <View style={styles.col}>
+                {items.slice(mitad).map((it) => (
+                  <FichaLinea key={it.label} styles={styles} label={it.label} value={it.value} />
+                ))}
+              </View>
+            </View>
+          );
+        })()}
         </View>
 
         {t.fotos.length > 0 && (
@@ -341,8 +373,8 @@ export function InformeDocument({
             <View style={styles.sectionUnderline} />
             <View style={styles.table}>
               <View style={styles.tableHeaderRow}>
-                <Text style={styles.th}>Zona</Text>
-                <Text style={styles.th}>Sup.</Text>
+                <Text style={[styles.th, { flex: 1.4 }]}>Dirección</Text>
+                <Text style={styles.th}>Sup. Tot.</Text>
                 <Text style={styles.th}>Dor.</Text>
                 <Text style={styles.th}>Baños</Text>
                 <Text style={styles.th}>Coch.</Text>
@@ -351,15 +383,15 @@ export function InformeDocument({
                 <Text style={[styles.th, { flex: 2 }]}>Observaciones</Text>
                 {t.comparables.some((c) => c.link) && <Text style={styles.th}>Link</Text>}
               </View>
-              {t.comparables.map((c) => (
-                <View key={c.id} style={styles.tableRow}>
-                  <Text style={styles.td}>{c.direccion}</Text>
+              {t.comparables.map((c, idx) => (
+                <View key={c.id} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]}>
+                  <Text style={[styles.tdBold, { flex: 1.4 }]}>{c.direccion}</Text>
                   <Text style={styles.td}>{c.superficie} m²</Text>
                   <Text style={styles.td}>{c.dormitorios ?? '—'}</Text>
                   <Text style={styles.td}>{c.banos ?? '—'}</Text>
                   <Text style={styles.td}>{fmtSiNo(c.cochera)}</Text>
                   <Text style={styles.td}>{fmtUSD(c.precio)}</Text>
-                  <Text style={styles.td}>{fmtUSD(c.usdM2)}</Text>
+                  <Text style={styles.tdRed}>{fmtUSD(c.usdM2)}</Text>
                   <Text style={[styles.td, { flex: 2 }]}>{obsComparable(c)}</Text>
                   {t.comparables.some((x) => x.link) && (
                     <View style={styles.tdLink}>

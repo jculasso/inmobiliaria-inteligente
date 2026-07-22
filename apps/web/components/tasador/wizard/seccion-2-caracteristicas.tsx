@@ -307,7 +307,14 @@ export function Seccion2Caracteristicas(props: Props) {
       </div>
 
       <Campo label="Amenities">
-        <input value={amenities} onChange={(e) => setAmenities(e.target.value)} className={inputClass} />
+        <select
+          value={amenities ? 'Sí' : 'No'}
+          onChange={(e) => setAmenities(e.target.value === 'Sí' ? 'Sí' : '')}
+          className={inputClass}
+        >
+          <option>No</option>
+          <option>Sí</option>
+        </select>
       </Campo>
       <Campo label="Detalle de amenities">
         <textarea
