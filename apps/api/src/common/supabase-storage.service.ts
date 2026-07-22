@@ -5,6 +5,13 @@ import { ConfigService } from '@nestjs/config';
 const SIGNED_URL_TTL = 60 * 60;
 
 /**
+ * Techo de espera al firmar (ms). Con Render y Supabase en regiones distintas,
+ * un firmado que se cuelga no debe colgar la request que lo pidió — mejor cortar
+ * y que el llamador decida (ver `firmarFotos` en tasaciones.service).
+ */
+const SIGN_TIMEOUT_MS = 8_000;
+
+/**
  * Wrapper mínimo de la Storage API de Supabase. Usa `SUPABASE_SERVICE_ROLE_KEY`
  * (solo server-side, mismo patrón que `SupabaseAdminService`).
  *
@@ -44,6 +51,7 @@ export class SupabaseStorageService {
       method: 'POST',
       headers: { ...this.headers(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ expiresIn }),
+      signal: AbortSignal.timeout(SIGN_TIMEOUT_MS),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -65,6 +73,7 @@ export class SupabaseStorageService {
       method: 'POST',
       headers: { ...this.headers(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ expiresIn, paths }),
+      signal: AbortSignal.timeout(SIGN_TIMEOUT_MS),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
