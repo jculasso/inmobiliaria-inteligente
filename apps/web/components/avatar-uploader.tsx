@@ -38,7 +38,7 @@ export function AvatarUploader({ nombre, fotoUrl, onUpload, onRemove, size = 'sm
   }
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex shrink-0 flex-col items-center gap-1">
       <label
         className={`group relative inline-flex cursor-pointer ${subiendo ? 'pointer-events-none opacity-50' : ''}`}
       >

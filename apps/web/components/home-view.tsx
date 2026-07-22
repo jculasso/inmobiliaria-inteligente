@@ -86,10 +86,10 @@ export function HomeView({ sesion }: HomeViewProps) {
         </div>
 
         {sesion && (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2.5 text-sm text-muted">
+          <div className="flex max-w-full flex-wrap items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2.5 text-sm text-muted">
               <Avatar nombre={sesion.nombre} fotoUrl={sesion.fotoUrl} size="md" />
-              {sesion.email}
+              <span className="min-w-0 truncate">{sesion.email}</span>
             </div>
             <LogoutButton />
           </div>

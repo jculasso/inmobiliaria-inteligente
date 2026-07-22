@@ -52,9 +52,9 @@ export default async function TasadorLayout({ children }: { children: ReactNode 
             <h1 className="mt-1 text-2xl font-extrabold text-ink">Tasador de Propiedades</h1>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-muted">{principal.email}</span>
+        <div className="flex max-w-full flex-col items-end gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="min-w-0 truncate text-sm text-muted">{principal.email}</span>
             <Avatar nombre={principal.nombre} fotoUrl={principal.fotoUrl} size="md" />
           </div>
           <LogoutButton />

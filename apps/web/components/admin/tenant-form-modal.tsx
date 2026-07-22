@@ -104,7 +104,7 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
               placeholder="https://…"
-              className={inputClass}
+              className={`${inputClass} min-w-0`}
             />
             {tenant && (
               <AvatarUploader
