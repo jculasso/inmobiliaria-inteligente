@@ -531,7 +531,8 @@ export function TasacionWizard({ tasacion }: Props) {
               setEscenarioRecomendado={setEscenarioRecomendado}
               plazoEstimado={plazoEstimado}
               setPlazoEstimado={setPlazoEstimado}
-              sugerencia={sugerencia}
+              analisis={analisisComparables}
+              superficieTotal={superficieTotalPreview}
             />
           )}
           {seccionActiva === 6 && (
