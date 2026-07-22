@@ -4,6 +4,7 @@ import { EscenarioSchema, PlazoEstimadoSchema, type Escenario, type PlazoEstimad
 import type { AnalisisComparables } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../../lib/format';
+import { ConfianzaBadge } from '../confianza-badge';
 import { Campo, inputClass } from './campo';
 
 const ESCENARIOS = EscenarioSchema.options;
@@ -89,9 +90,7 @@ export function Seccion5Valores({
               <Button type="button" variant="primary" size="sm" onClick={aplicarSugeridos}>
                 Aplicar valores sugeridos
               </Button>
-              <span className="text-[11px] text-muted">
-                Confianza {analisis.confidence.toLowerCase()} ({analisis.confidenceScore}%).
-              </span>
+              <ConfianzaBadge nivel={analisis.confidence} score={analisis.confidenceScore} />
             </div>
           </div>
         ) : (

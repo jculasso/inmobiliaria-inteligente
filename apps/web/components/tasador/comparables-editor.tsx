@@ -15,6 +15,7 @@ import {
 import { valuationSurface, type AnalisisComparables } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
+import { ConfianzaBadge } from './confianza-badge';
 
 const TIPOS = TipoPropiedadSchema.options;
 const FUENTES = FuenteComparableSchema.options;
@@ -199,14 +200,16 @@ export function ComparablesEditor({ comparables, onChange, analisis }: Props) {
 
       {analisis.count > 0 && (
         <div className="rounded-brand border-l-[3px] border-brand-red bg-surface p-4">
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted">Resumen automático</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Resumen automático</p>
+            <ConfianzaBadge nivel={analisis.confidence} score={analisis.confidenceScore} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Stat label="Comparables" valor={String(analisis.count)} />
             <Stat label="Precio mín." valor={fmtUSD(analisis.minPrice)} />
             <Stat label="Precio máx." valor={fmtUSD(analisis.maxPrice)} />
             <Stat label="Mediana USD/m²" valor={fmtUSD(analisis.medianUsdPerM2)} />
             <Stat label="Referencia ponderada" valor={fmtUSD(analisis.weightedUsdPerM2)} />
-            <Stat label="Confianza" valor={`${analisis.confidence} · ${analisis.confidenceScore}%`} />
           </div>
           {analisis.outlierCount > 0 && (
             <p className="mt-2.5 text-[11.5px] text-muted">
