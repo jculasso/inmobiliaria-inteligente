@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { superficieTotal, usdM2 } from '@vacker/domain';
 import type { CambiarEstado, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
@@ -57,6 +57,8 @@ type TasacionResumenRow = Prisma.TasacionGetPayload<{ select: typeof tasacionRes
 /** CRUD de tasaciones: secciones "Datos del informe", "Características", "Análisis comercial", "Valores" y "Estrategia", más comparables. */
 @Injectable()
 export class TasacionesService {
+  private readonly logger = new Logger(TasacionesService.name);
+
   constructor(
     private readonly db: TenantPrismaService,
     private readonly events: DomainEventsService,
@@ -67,12 +69,23 @@ export class TasacionesService {
    * Firma las fotos de un DTO (paths del bucket privado → URLs firmadas de vida
    * corta), en una sola llamada de red. `keyDe` tolera registros legacy que
    * guardaban la URL pública completa.
+   *
+   * NO es crítico para abrir/editar la tasación: si Storage falla o tarda (la
+   * firma es un round-trip extra a Supabase, sensible a la latencia cross-region
+   * con Render), se devuelve la tasación igual —con las miniaturas rotas— en vez
+   * de tumbar toda la pantalla de edición. El warning sí queda en los logs.
    */
   private async firmarFotos<T extends { fotos: { url: string }[] }>(dto: T): Promise<T> {
     if (dto.fotos.length === 0) return dto;
-    const keys = dto.fotos.map((f) => this.storage.keyDe(FOTOS_BUCKET, f.url));
-    const firmadas = await this.storage.signedUrls(FOTOS_BUCKET, keys);
-    dto.fotos = dto.fotos.map((f, i) => ({ ...f, url: firmadas[i] || f.url }));
+    try {
+      const keys = dto.fotos.map((f) => this.storage.keyDe(FOTOS_BUCKET, f.url));
+      const firmadas = await this.storage.signedUrls(FOTOS_BUCKET, keys);
+      dto.fotos = dto.fotos.map((f, i) => ({ ...f, url: firmadas[i] || f.url }));
+    } catch (err) {
+      this.logger.warn(
+        `No se pudieron firmar las fotos de la tasación: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     return dto;
   }
 

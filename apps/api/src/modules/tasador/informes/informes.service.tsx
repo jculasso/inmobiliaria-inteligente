@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import type { TasacionDto } from '@vacker/types';
@@ -12,6 +12,8 @@ import { SupabaseStorageService } from '../../../common/supabase-storage.service
 /** Genera el informe de tasación en PDF y lo sube a Supabase Storage. */
 @Injectable()
 export class InformesService {
+  private readonly logger = new Logger(InformesService.name);
+
   constructor(
     private readonly db: TenantPrismaService,
     private readonly storage: SupabaseStorageService,
@@ -42,11 +44,19 @@ export class InformesService {
 
     // Las fotos viven en un bucket privado: se firman antes de renderizar para
     // que react-pdf pueda bajarlas al armar el PDF (server-side). `logoUrl` es
-    // de un bucket público (baja sensibilidad), no necesita firma.
+    // de un bucket público (baja sensibilidad), no necesita firma. Si el firmado
+    // falla, el PDF se genera igual sin las fotos (react-pdf tolera imágenes que
+    // no cargan) — no vale la pena tumbar todo el informe por eso.
     if (dto.fotos.length > 0) {
-      const keys = dto.fotos.map((f) => this.storage.keyDe('tasador-fotos', f.url));
-      const firmadas = await this.storage.signedUrls('tasador-fotos', keys);
-      dto.fotos = dto.fotos.map((f, i) => ({ ...f, url: firmadas[i] || f.url }));
+      try {
+        const keys = dto.fotos.map((f) => this.storage.keyDe('tasador-fotos', f.url));
+        const firmadas = await this.storage.signedUrls('tasador-fotos', keys);
+        dto.fotos = dto.fotos.map((f, i) => ({ ...f, url: firmadas[i] || f.url }));
+      } catch (err) {
+        this.logger.warn(
+          `No se pudieron firmar las fotos del informe: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     const buffer = await renderToBuffer(
