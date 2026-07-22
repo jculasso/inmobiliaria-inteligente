@@ -143,6 +143,13 @@ function fmtSiNo(v: boolean): string {
   return v ? 'Sí' : 'No';
 }
 
+/** Color del chip de confianza (semáforo): Alta verde · Media ámbar · Baja rojo. */
+function confianzaEstilo(nivel: string): { bg: string; text: string } {
+  if (nivel === 'Alta') return { bg: '#E3F4EA', text: '#1E9E5A' };
+  if (nivel === 'Media') return { bg: '#FBF0DC', text: '#B7791F' };
+  return { bg: '#FBE3E5', text: '#C1121F' };
+}
+
 function fmtAmenities(t: TasacionDto): string {
   if (t.amenities.length === 0) return 'No';
   return t.detalleAmenities ? `Sí — ${t.detalleAmenities}` : 'Sí';
@@ -367,6 +374,20 @@ export function InformeDocument({
                   )}
                 </View>
               ))}
+            </View>
+            <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+              <View
+                style={{
+                  backgroundColor: confianzaEstilo(analisis.confidence).bg,
+                  borderRadius: 4,
+                  paddingVertical: 4,
+                  paddingHorizontal: 9,
+                }}
+              >
+                <Text style={{ fontSize: 9.5, fontWeight: 700, color: confianzaEstilo(analisis.confidence).text }}>
+                  Confianza {analisis.confidence} · {analisis.confidenceScore}%
+                </Text>
+              </View>
             </View>
             <Text style={styles.paragraphMuted}>
               Los inmuebles comparables relevados se ubican dentro de un rango aproximado de{' '}
