@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { EstadoTasacion, RankingCaptacionItem, ResumenTasadorKpi, TasacionDto, TasadorKpiFiltro } from '@vacker/types';
+import type { EstadoTasacion, RankingCaptacionItem, ResumenTasadorKpi, TasacionResumenDto, TasadorKpiFiltro } from '@vacker/types';
 import { EstadoTasacionSchema, ESTADO_TASACION_COLOR } from '@vacker/types';
 import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -9,7 +9,7 @@ import {
   generarInformeReporte,
   getKpisResumenTasador,
   getRankingCaptaciones,
-  listTasaciones,
+  listTasacionesResumen,
 } from '../../lib/tasador-api';
 import { fmtUSD } from '../../lib/format';
 import { detalleEstado } from '../../lib/tasacion-estado';
@@ -37,7 +37,7 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
 
   const [resumen, setResumen] = useState<ResumenTasadorKpi | null>(null);
   const [ranking, setRanking] = useState<RankingCaptacionItem[]>([]);
-  const [tasaciones, setTasaciones] = useState<TasacionDto[]>([]);
+  const [tasaciones, setTasaciones] = useState<TasacionResumenDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
         Promise.all([
           getKpisResumenTasador(accessToken, filtro),
           getRankingCaptaciones(accessToken, filtro),
-          listTasaciones(accessToken, { anio, mes: periodo === 'mensual' ? mes : undefined }),
+          listTasacionesResumen(accessToken, { anio, mes: periodo === 'mensual' ? mes : undefined }),
         ]),
       )
       .then(([r, rk, t]) => {

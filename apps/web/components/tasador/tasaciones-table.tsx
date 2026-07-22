@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { TasacionDto } from '@vacker/types';
+import type { TasacionResumenDto } from '@vacker/types';
 import { Avatar, Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
@@ -12,20 +12,19 @@ import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
 
 interface Props {
-  tasaciones: TasacionDto[];
+  tasaciones: TasacionResumenDto[];
   puedeBorrar: boolean;
 }
 
 export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
-  const [modalEstado, setModalEstado] = useState<TasacionDto | null>(null);
+  const [modalEstado, setModalEstado] = useState<TasacionResumenDto | null>(null);
   const [generandoId, setGenerandoId] = useState<string | null>(null);
   const [errorInforme, setErrorInforme] = useState<string | null>(null);
 
   // Copia local del prop: un cambio de estado se patchea acá sin pedirle a
-  // Next.js que vuelva a correr `listTasaciones()` (pesado — trae comparables,
-  // fotos, análisis y estrategia de cada fila) solo para reflejar un campo.
+  // Next.js que vuelva a correr el listado solo para reflejar un campo.
   const [rows, setRows] = useState(tasaciones);
   useEffect(() => setRows(tasaciones), [tasaciones]);
 
