@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type { TasacionResumenDto } from '@vacker/types';
-import { fmtUSD } from '../../lib/format';
+import { fmtNum, fmtUSD } from '../../lib/format';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
 import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
 
@@ -31,7 +31,7 @@ export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar
       <div>
         <div className="text-sm font-bold text-ink">{t.direccion}</div>
         <div className="mt-0.5 text-xs text-muted">
-          {t.cliente} · {t.tipoPropiedad} · {t.agente.nombre}
+          {t.cliente} · {t.tipoPropiedad} · {fmtNum(t.superficieTotal)} m² · {t.agente.nombre}
         </div>
       </div>
       <div className="text-sm font-bold text-brand-red">{fmtUSD(t.valorRecomendado)}</div>
