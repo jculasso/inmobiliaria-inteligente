@@ -10,10 +10,9 @@ import {
   type MotivoNoCaptada,
   type TasacionDto,
 } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cambiarEstadoTasacion } from '../../lib/tasador-api';
-import { Modal } from '../tablero/modal';
 
 const ESTADOS = EstadoTasacionSchema.options;
 const MOTIVOS = MotivoNoCaptadaSchema.options;

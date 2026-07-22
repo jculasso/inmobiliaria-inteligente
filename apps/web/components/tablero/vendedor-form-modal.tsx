@@ -2,10 +2,9 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import type { VendedorDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createVendedor, updateVendedor } from '../../lib/tablero-api';
-import { Modal } from './modal';
 
 interface Props {
   vendedores: VendedorDto[];

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { EstadoTasacion, RankingCaptacionItem, ResumenTasadorKpi, TasacionDto, TasadorKpiFiltro } from '@vacker/types';
 import { EstadoTasacionSchema, ESTADO_TASACION_COLOR } from '@vacker/types';
-import { Button, Card } from '@vacker/ui';
+import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import {
   generarInformeReporte,
@@ -15,7 +15,6 @@ import { fmtUSD } from '../../lib/format';
 import { detalleEstado } from '../../lib/tasacion-estado';
 import { EstadoDistribucion } from './estado-distribucion';
 import { RankingCaptaciones } from './ranking-captaciones';
-import { KpiCard } from '../tablero/kpi-card';
 
 type Periodo = 'anual' | 'trimestral' | 'mensual';
 

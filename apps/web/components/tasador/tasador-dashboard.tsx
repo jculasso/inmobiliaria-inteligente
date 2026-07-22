@@ -1,23 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AuthPrincipal, RankingCaptacionItem, ResumenTasadorKpi, TasacionResumenDto } from '@vacker/types';
-import { Button, Card } from '@vacker/ui';
+import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import {
-  generarInforme,
-  getKpisMensualTasador,
-  getKpisResumenTasador,
-  getRankingCaptaciones,
-  listTasacionesResumen,
-} from '../../lib/tasador-api';
+import { generarInforme, getKpisResumenTasador, getRankingCaptaciones } from '../../lib/tasador-api';
 import { fmtUSD } from '../../lib/format';
 import { ETIQUETA_ROL, rolPrincipal } from '../../lib/rbac';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { EstadoDistribucion } from './estado-distribucion';
-import { KpiCard } from '../tablero/kpi-card';
 import { RankingCaptacionesCards } from './ranking-captaciones-cards';
 import { TasacionesDrillModal } from './tasaciones-drill-modal';
 import { TendenciaBars, type TendenciaBar } from './tendencia-bars';
@@ -51,51 +44,40 @@ function trimestreDe(fecha: string): number {
   return Math.floor(new Date(fecha).getUTCMonth() / 3);
 }
 
-export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
+/** Datos iniciales resueltos por SSR (ver app/tasador/page.tsx). */
+export interface InicialTasador {
+  kpisMensual: ResumenTasadorKpi[];
+  resumenAnual: ResumenTasadorKpi;
+  rankingAnual: RankingCaptacionItem[];
+  tasaciones: TasacionResumenDto[];
+}
+
+export function TasadorDashboard({
+  principal,
+  inicial,
+}: {
+  principal: AuthPrincipal;
+  inicial: InicialTasador;
+}) {
   const router = useRouter();
   const anio = useMemo(() => new Date().getFullYear(), []);
 
-  // Datos ya agregados en el servidor (1 query cada uno) — reemplaza el
-  // patrón anterior de traer TODO el historial y calcular todo client-side.
-  const [kpisMensual, setKpisMensual] = useState<ResumenTasadorKpi[] | null>(null);
-  const [resumenAnual, setResumenAnual] = useState<ResumenTasadorKpi | null>(null);
-  const [rankingAnual, setRankingAnual] = useState<RankingCaptacionItem[] | null>(null);
+  // Datos ya agregados en el servidor (1 query cada uno) y traídos por SSR —
+  // el componente arranca con datos, sin "Cargando…" ni la cascada
+  // getAccessToken→4 fetches client-side sobre el hop lento hacia la base.
+  const [kpisMensual] = useState<ResumenTasadorKpi[]>(inicial.kpisMensual);
+  const [resumenAnual, setResumenAnual] = useState<ResumenTasadorKpi>(inicial.resumenAnual);
+  const [rankingAnual, setRankingAnual] = useState<RankingCaptacionItem[]>(inicial.rankingAnual);
   // Liviano (sin comparables/fotos/análisis) y acotado al año — alcanza para
   // "últimas tasaciones" y el drill-down de cualquier período/estado/vendedor
   // del año en curso, sin pedir el historial completo del tenant.
-  const [tasaciones, setTasaciones] = useState<TasacionResumenDto[] | null>(null);
+  const [tasaciones, setTasaciones] = useState<TasacionResumenDto[]>(inicial.tasaciones);
 
   const [vista, setVista] = useState<Vista>('mensual');
   const [drill, setDrill] = useState<Drill | null>(null);
   const [modalEstado, setModalEstado] = useState<TasacionResumenDto | null>(null);
   const [generandoId, setGenerandoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  function cargar(): void {
-    getAccessToken()
-      .then((accessToken) =>
-        Promise.all([
-          getKpisMensualTasador(accessToken, anio),
-          getKpisResumenTasador(accessToken, { anio, periodo: 'anual' }),
-          getRankingCaptaciones(accessToken, { anio, periodo: 'anual' }),
-          listTasacionesResumen(accessToken, { anio }),
-        ]),
-      )
-      .then(([mensual, resumen, ranking, resumenTasaciones]) => {
-        setKpisMensual(mensual);
-        setResumenAnual(resumen);
-        setRankingAnual(ranking);
-        setTasaciones(resumenTasaciones);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'No se pudieron cargar las tasaciones.');
-      });
-  }
-
-  useEffect(() => {
-    cargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio]);
 
   /**
    * Un cambio de estado no afecta `kpisMensual` (totales del mes no cambian)
@@ -215,9 +197,7 @@ export function TasadorDashboard({ principal }: { principal: AuthPrincipal }) {
         </p>
       )}
 
-      {resumenAnual === null ? (
-        <p className="py-6 text-sm text-muted">Cargando…</p>
-      ) : total === 0 ? (
+      {total === 0 ? (
         <div className="rounded-brand border border-dashed border-line bg-white p-14 text-center">
           <div className="text-3xl">🏷️</div>
           <h3 className="mt-3 text-base font-bold text-ink">Todavía no hay tasaciones</h3>

@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import type { AgregadoKpi, OperacionFiltro, ResumenKpis } from '@vacker/types';
+import { KpiCard } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
-import { KpiCard } from './kpi-card';
 import { DetalleDrillModal } from './detalle-drill-modal';
 
 interface Drill {

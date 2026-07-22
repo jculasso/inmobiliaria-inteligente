@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import type { OperacionFiltro } from '@vacker/types';
+import { Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { listOperaciones } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
-import { Modal } from './modal';
 
 interface Props {
   titulo: string;
