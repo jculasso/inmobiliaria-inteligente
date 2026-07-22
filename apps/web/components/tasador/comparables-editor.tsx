@@ -1,20 +1,44 @@
 'use client';
 
-import { EstadoInmuebleSchema, type ComparableInput, type EstadoInmueble } from '@vacker/types';
-import { promedioUsdM2, usdM2 } from '@vacker/domain';
+import type { ReactNode } from 'react';
+import {
+  EstadoInmuebleSchema,
+  FuenteComparableSchema,
+  TipoPrecioComparableSchema,
+  TipoPropiedadSchema,
+  type ComparableInput,
+  type EstadoInmueble,
+  type FuenteComparable,
+  type TipoPrecioComparable,
+  type TipoPropiedad,
+} from '@vacker/types';
+import { valuationSurface, type AnalisisComparables } from '@vacker/domain';
 import { Button } from '@vacker/ui';
-import { fmtUSD } from '../../lib/format';
+import { fmtNum, fmtUSD } from '../../lib/format';
 
-const ESTADOS_INMUEBLE = EstadoInmuebleSchema.options;
+const TIPOS = TipoPropiedadSchema.options;
+const FUENTES = FuenteComparableSchema.options;
+const TIPOS_PRECIO = TipoPrecioComparableSchema.options;
+const ESTADOS = EstadoInmuebleSchema.options;
+const TIPOS_CON_TERRENO: TipoPropiedad[] = ['Casa', 'PH', 'Terreno'];
 
 const COMPARABLE_VACIO: ComparableInput = {
   direccion: '',
+  tipoComp: 'Departamento',
   superficie: 0,
+  supCubierta: null,
+  supSemi: null,
+  supDescubierta: null,
+  supTerreno: null,
   precio: 0,
   dormitorios: null,
   banos: null,
   cochera: false,
   estado: null,
+  fuente: 'Publicación',
+  tipoPrecio: 'Publicado',
+  fechaReferencia: null,
+  distanciaKm: null,
   link: '',
   observaciones: '',
 };
@@ -22,31 +46,29 @@ const COMPARABLE_VACIO: ComparableInput = {
 interface Props {
   comparables: ComparableInput[];
   onChange: (comparables: ComparableInput[]) => void;
+  /** Análisis (USD/m² ponderado, similitud por comparable, confianza) calculado en el wizard. */
+  analisis: AnalisisComparables;
 }
 
-/** Editor de comparables de mercado (0, o entre 3 y 6). USD/m² y promedio calculados en vivo. */
-export function ComparablesEditor({ comparables, onChange }: Props) {
-  // Resumen automático (mismo criterio que el prototipo): solo comparables con
-  // precio y superficie cargados.
-  const validos = comparables.filter((c) => c.superficie > 0 && c.precio > 0);
-  const precios = validos.map((c) => c.precio);
-  const resumen = {
-    count: validos.length,
-    minPrecio: precios.length ? Math.min(...precios) : 0,
-    maxPrecio: precios.length ? Math.max(...precios) : 0,
-    avgPrecio: precios.length ? precios.reduce((a, b) => a + b, 0) / precios.length : 0,
-    promedioUsdM2: promedioUsdM2(validos),
-  };
-
+/** Editor de comparables (0, o entre 3 y 6). USD/m², similitud, ponderación y confianza en vivo. */
+export function ComparablesEditor({ comparables, onChange, analisis }: Props) {
   function actualizar(i: number, cambios: Partial<ComparableInput>) {
-    onChange(comparables.map((c, idx) => (idx === i ? { ...c, ...cambios } : c)));
+    onChange(
+      comparables.map((c, idx) => {
+        if (idx !== i) return c;
+        const next = { ...c, ...cambios };
+        // La superficie de valuación se deriva del desglose (cubierta + semi + descubierta×0.3, o terreno según el tipo).
+        next.superficie = valuationSurface(
+          { supCubierta: next.supCubierta, supSemi: next.supSemi, supDescubierta: next.supDescubierta, supTerreno: next.supTerreno },
+          next.tipoComp,
+        );
+        return next;
+      }),
+    );
   }
-
   function agregar() {
-    if (comparables.length >= 6) return;
-    onChange([...comparables, { ...COMPARABLE_VACIO }]);
+    if (comparables.length < 6) onChange([...comparables, { ...COMPARABLE_VACIO }]);
   }
-
   function quitar(i: number) {
     onChange(comparables.filter((_, idx) => idx !== i));
   }
@@ -54,122 +76,171 @@ export function ComparablesEditor({ comparables, onChange }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-wide text-muted">
-          4. Comparables de mercado ({comparables.length}/6)
-        </p>
+        <p className="text-xs font-bold uppercase tracking-wide text-muted">Comparables de mercado ({comparables.length}/6)</p>
         <Button type="button" variant="secondary" size="sm" onClick={agregar} disabled={comparables.length >= 6}>
           ＋ Agregar comparable
         </Button>
       </div>
-
+      <p className="text-xs text-muted">
+        Cargá entre 3 y 6 comparables. Los cierres reales pesan más; los valores atípicos se detectan automáticamente.
+      </p>
       {comparables.length > 0 && comparables.length < 3 && (
         <p className="text-xs text-brand-red">Cargá al menos 3 comparables (o ninguno todavía).</p>
       )}
 
-      {comparables.map((c, i) => (
-        <div key={i} className="flex flex-col gap-2 rounded-brand border border-line p-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted">Comparable {i + 1}</span>
-            <button
-              type="button"
-              onClick={() => quitar(i)}
-              aria-label="Quitar comparable"
-              className="text-xs text-brand-red hover:underline"
-            >
-              Quitar
-            </button>
-          </div>
-          <input
-            value={c.direccion}
-            onChange={(e) => actualizar(i, { direccion: e.target.value })}
-            placeholder="Dirección"
-            className={inputClass}
-          />
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={c.superficie || ''}
-              onChange={(e) => actualizar(i, { superficie: Number(e.target.value) || 0 })}
-              placeholder="Superficie (m²)"
-              className={inputClass}
-            />
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={c.precio || ''}
-              onChange={(e) => actualizar(i, { precio: Number(e.target.value) || 0 })}
-              placeholder="Precio (USD)"
-              className={inputClass}
-            />
-            <div className="flex h-9 items-center rounded-brand bg-surface px-2.5 text-sm text-muted">
-              USD/m²: {c.superficie > 0 ? fmtUSD(usdM2(c)) : '—'}
+      {comparables.map((c, i) => {
+        const entry = analisis.entries.find((e) => e.index === i);
+        const badge = entry ? `${entry.similarity}% similitud${entry.outlier ? ' · atípico' : ''}` : 'Sin datos suficientes';
+        return (
+          <div key={i} className="flex flex-col gap-3 rounded-brand border border-line p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-muted">Comparable {i + 1}</span>
+              <span className="text-xs font-semibold text-brand-red">
+                {entry ? `${fmtUSD(entry.usdM2)} /m² · ${badge}` : 'USD/m² —'}
+              </span>
+              <button type="button" onClick={() => quitar(i)} className="text-xs text-brand-red hover:underline">
+                × Quitar
+              </button>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <input
-              type="number"
-              min={0}
-              value={c.dormitorios ?? ''}
-              onChange={(e) => actualizar(i, { dormitorios: e.target.value ? Number(e.target.value) : null })}
-              placeholder="Dormitorios"
-              className={inputClass}
-            />
-            <input
-              type="number"
-              min={0}
-              value={c.banos ?? ''}
-              onChange={(e) => actualizar(i, { banos: e.target.value ? Number(e.target.value) : null })}
-              placeholder="Baños"
-              className={inputClass}
-            />
-            <label className="flex items-center gap-1.5 text-sm text-ink">
-              <input type="checkbox" checked={c.cochera} onChange={(e) => actualizar(i, { cochera: e.target.checked })} />
-              Cochera
-            </label>
-          </div>
-          <select
-            value={c.estado ?? ''}
-            onChange={(e) => actualizar(i, { estado: (e.target.value || null) as EstadoInmueble | null })}
-            className={inputClass}
-          >
-            <option value="">Estado — seleccionar...</option>
-            {ESTADOS_INMUEBLE.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
-          <input
-            value={c.link ?? ''}
-            onChange={(e) => actualizar(i, { link: e.target.value })}
-            placeholder="Link (opcional)"
-            className={inputClass}
-          />
-          <input
-            value={c.observaciones ?? ''}
-            onChange={(e) => actualizar(i, { observaciones: e.target.value })}
-            placeholder="Observaciones (opcional)"
-            className={inputClass}
-          />
-        </div>
-      ))}
 
-      {resumen.count > 0 && (
+            <Campo label="Link de la publicación">
+              <input value={c.link ?? ''} onChange={(e) => actualizar(i, { link: e.target.value })} placeholder="https://…" className={inputClass} />
+            </Campo>
+            <Campo label="Dirección / Zona">
+              <input value={c.direccion} onChange={(e) => actualizar(i, { direccion: e.target.value })} placeholder="Zona o dirección" className={inputClass} />
+            </Campo>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Campo label="Tipo">
+                <select value={c.tipoComp} onChange={(e) => actualizar(i, { tipoComp: e.target.value as TipoPropiedad })} className={inputClass}>
+                  {TIPOS.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Fuente">
+                <select value={c.fuente} onChange={(e) => actualizar(i, { fuente: e.target.value as FuenteComparable })} className={inputClass}>
+                  {FUENTES.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Tipo de precio">
+                <select value={c.tipoPrecio} onChange={(e) => actualizar(i, { tipoPrecio: e.target.value as TipoPrecioComparable })} className={inputClass}>
+                  {TIPOS_PRECIO.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+              </Campo>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Campo label="Fecha de referencia">
+                <input type="date" value={c.fechaReferencia ?? ''} onChange={(e) => actualizar(i, { fechaReferencia: e.target.value || null })} className={inputClass} />
+              </Campo>
+              <Campo label="Distancia aprox. (km)">
+                <NumInput value={c.distanciaKm} onChange={(v) => actualizar(i, { distanciaKm: v })} placeholder="Ej: 0.8" />
+              </Campo>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Campo label="Cubiertos (m²)">
+                <NumInput value={c.supCubierta} onChange={(v) => actualizar(i, { supCubierta: v })} />
+              </Campo>
+              <Campo label="Semicubiertos (m²)">
+                <NumInput value={c.supSemi} onChange={(v) => actualizar(i, { supSemi: v })} />
+              </Campo>
+              <Campo label="Descubiertos (m²)">
+                <NumInput value={c.supDescubierta} onChange={(v) => actualizar(i, { supDescubierta: v })} />
+              </Campo>
+              {TIPOS_CON_TERRENO.includes(c.tipoComp) ? (
+                <Campo label="Terreno (m²)">
+                  <NumInput value={c.supTerreno} onChange={(v) => actualizar(i, { supTerreno: v })} />
+                </Campo>
+              ) : (
+                <Campo label="m² de valuación">
+                  <input readOnly tabIndex={-1} value={c.superficie > 0 ? fmtNum(c.superficie) : ''} placeholder="—" className={`${inputClass} bg-surface font-semibold text-muted`} />
+                </Campo>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Campo label="Precio (USD)">
+                <NumInput value={c.precio || null} onChange={(v) => actualizar(i, { precio: v ?? 0 })} placeholder="Ej: 120000" />
+              </Campo>
+              <Campo label="Dormitorios">
+                <NumInput value={c.dormitorios} onChange={(v) => actualizar(i, { dormitorios: v })} />
+              </Campo>
+              <Campo label="Baños">
+                <NumInput value={c.banos} onChange={(v) => actualizar(i, { banos: v })} />
+              </Campo>
+              <Campo label="Cochera">
+                <select value={c.cochera ? 'Sí' : 'No'} onChange={(e) => actualizar(i, { cochera: e.target.value === 'Sí' })} className={inputClass}>
+                  <option>No</option>
+                  <option>Sí</option>
+                </select>
+              </Campo>
+            </div>
+
+            <Campo label="Estado">
+              <select value={c.estado ?? ''} onChange={(e) => actualizar(i, { estado: (e.target.value || null) as EstadoInmueble | null })} className={inputClass}>
+                <option value="">Seleccionar…</option>
+                {ESTADOS.map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
+              </select>
+            </Campo>
+            <Campo label="Observaciones">
+              <input value={c.observaciones ?? ''} onChange={(e) => actualizar(i, { observaciones: e.target.value })} placeholder="Ej: reciclado a nuevo, sin cochera…" className={inputClass} />
+            </Campo>
+          </div>
+        );
+      })}
+
+      {analisis.count > 0 && (
         <div className="rounded-brand border-l-[3px] border-brand-red bg-surface p-4">
           <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted">Resumen automático</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <Stat label="Comparables" valor={String(resumen.count)} />
-            <Stat label="Precio mín." valor={fmtUSD(resumen.minPrecio)} />
-            <Stat label="Precio máx." valor={fmtUSD(resumen.maxPrecio)} />
-            <Stat label="Precio promedio" valor={fmtUSD(resumen.avgPrecio)} />
-            <Stat label="USD/m² promedio" valor={fmtUSD(resumen.promedioUsdM2)} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat label="Comparables" valor={String(analisis.count)} />
+            <Stat label="Precio mín." valor={fmtUSD(analisis.minPrice)} />
+            <Stat label="Precio máx." valor={fmtUSD(analisis.maxPrice)} />
+            <Stat label="Mediana USD/m²" valor={fmtUSD(analisis.medianUsdPerM2)} />
+            <Stat label="Referencia ponderada" valor={fmtUSD(analisis.weightedUsdPerM2)} />
+            <Stat label="Confianza" valor={`${analisis.confidence} · ${analisis.confidenceScore}%`} />
           </div>
+          {analisis.outlierCount > 0 && (
+            <p className="mt-2.5 text-[11.5px] text-muted">
+              {analisis.outlierCount} comparable(s) atípico(s) reducido(s) en la ponderación. Dispersión:{' '}
+              {fmtNum(analisis.spreadPct)}%.
+            </p>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Input numérico que mapea '' → null (para campos opcionales). */
+function NumInput({ value, onChange, placeholder }: { value: number | null | undefined; onChange: (v: number | null) => void; placeholder?: string }) {
+  return (
+    <input
+      type="number"
+      min={0}
+      step="0.01"
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+      placeholder={placeholder}
+      className={inputClass}
+    />
+  );
+}
+
+function Campo({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</span>
+      {children}
+    </label>
   );
 }
 

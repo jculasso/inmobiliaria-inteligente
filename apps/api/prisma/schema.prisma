@@ -248,18 +248,27 @@ model Tasacion {
 
 /// Comparable de mercado cargado a mano (1..6 por tasación, validado en Zod).
 model TasacionComparable {
-  id            String  @id @default(uuid()) @db.Uuid
-  tasacionId    String  @map("tasacion_id") @db.Uuid
-  tenantId      String  @map("tenant_id") @db.Uuid
-  direccion     String
-  superficie    Decimal @db.Decimal(10, 2)
-  precio        Decimal @db.Decimal(14, 2) // USD/m² = precio/superficie, calculado (no persistido)
-  dormitorios   Int?
-  banos         Int?
-  cochera       Boolean @default(false)
-  estado        String?
-  link          String?
-  observaciones String?
+  id             String    @id @default(uuid()) @db.Uuid
+  tasacionId     String    @map("tasacion_id") @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  direccion      String
+  tipoComp       String    @default("Departamento") @map("tipo_comp")
+  superficie     Decimal   @db.Decimal(10, 2) // superficie de valuación (cubierta + semi + descubierta×0.3); USD/m² = precio/superficie
+  supCubierta    Decimal?  @map("sup_cubierta") @db.Decimal(10, 2)
+  supSemi        Decimal?  @map("sup_semi") @db.Decimal(10, 2)
+  supDescubierta Decimal?  @map("sup_descubierta") @db.Decimal(10, 2)
+  supTerreno     Decimal?  @map("sup_terreno") @db.Decimal(10, 2)
+  precio         Decimal   @db.Decimal(14, 2)
+  dormitorios    Int?
+  banos          Int?
+  cochera        Boolean   @default(false)
+  estado         String?
+  fuente         String    @default("Publicación")
+  tipoPrecio     String    @default("Publicado") @map("tipo_precio")
+  fechaReferencia DateTime? @map("fecha_referencia") @db.Date
+  distanciaKm    Decimal?  @map("distancia_km") @db.Decimal(8, 2)
+  link           String?
+  observaciones  String?
 
   tasacion Tasacion @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)

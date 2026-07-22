@@ -109,7 +109,18 @@ export function comparableSimilarity(c: ComparableCalc, data: PropiedadCalc, tar
 
 export type NivelConfianza = 'Alta' | 'Media' | 'Baja';
 
+/** Detalle por comparable válido (para el badge de cada tarjeta del editor). */
+export interface AnalisisEntry {
+  /** Índice del comparable en la lista original. */
+  index: number;
+  usdM2: number;
+  similarity: number;
+  outlier: boolean;
+}
+
 export interface AnalisisComparables {
+  /** Solo los comparables válidos (con precio y superficie), con su índice original. */
+  entries: AnalisisEntry[];
   count: number;
   minPrice: number;
   maxPrice: number;
@@ -133,13 +144,13 @@ export function analizarComparables(comparables: ComparableCalc[], propiedad: Pr
   const targetSurface = valuationSurface(propiedad, propiedad.tipoPropiedad);
 
   const entries = comparables
-    .map((c) => {
+    .map((c, index) => {
       const surface = valuationSurface(c, c.tipoComp);
       const price = num(c.precio);
       const usdM2 = surface > 0 && price > 0 ? price / surface : 0;
       const sourceWeight = c.fuente === 'Cierre real' || c.tipoPrecio === 'Cierre' ? 1.25 : c.fuente === 'Colega' ? 1.08 : 1;
       const similarity = comparableSimilarity(c, propiedad, targetSurface);
-      return { c, surface, price, usdM2, similarity, sourceWeight, outlier: false, weight: 0 };
+      return { c, index, surface, price, usdM2, similarity, sourceWeight, outlier: false, weight: 0 };
     })
     .filter((e) => e.price > 0 && e.surface > 0 && e.usdM2 > 0);
 
@@ -167,6 +178,7 @@ export function analizarComparables(comparables: ComparableCalc[], propiedad: Pr
 
   const prices = entries.map((e) => e.price);
   return {
+    entries: entries.map((e) => ({ index: e.index, usdM2: e.usdM2, similarity: e.similarity, outlier: e.outlier })),
     count: entries.length,
     minPrice: prices.length ? Math.min(...prices) : 0,
     maxPrice: prices.length ? Math.max(...prices) : 0,

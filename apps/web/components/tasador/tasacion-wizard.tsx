@@ -37,7 +37,7 @@ import {
   TipoPropiedadSchema,
 } from '@vacker/types';
 import { z } from 'zod';
-import { promedioUsdM2, superficieTotal, valoresSugeridos } from '@vacker/domain';
+import { analizarComparables, superficieTotal, valoresSugeridos, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTasacion, generarInforme, updateTasacion } from '../../lib/tasador-api';
@@ -181,11 +181,27 @@ export function TasacionWizard({ tasacion }: Props) {
     descubierta: Number(supDescubierta) || 0,
   });
 
+  const analisisComparables = useMemo(() => {
+    const propiedad: PropiedadCalc = {
+      tipoPropiedad,
+      supCubierta: Number(supCubierta) || 0,
+      supSemi: Number(supSemicubierta) || 0,
+      supDescubierta: Number(supDescubierta) || 0,
+      supTerreno: Number(supTerreno) || 0,
+      dormitorios: dormitorios ? Number(dormitorios) : null,
+      banos: banos ? Number(banos) : null,
+      estado: estadoInmueble || null,
+      cochera,
+    };
+    const comps: ComparableCalc[] = comparables.map((c) => ({ ...c, cocheraComp: c.cochera ? 'Sí' : 'No' }));
+    return analizarComparables(comps, propiedad);
+  }, [comparables, tipoPropiedad, supCubierta, supSemicubierta, supDescubierta, supTerreno, dormitorios, banos, estadoInmueble, cochera]);
+
+  // La sugerencia usa la referencia PONDERADA (no el promedio simple), como el prototipo.
   const sugerencia = useMemo(() => {
-    const validos = comparables.filter((c) => c.superficie > 0 && c.precio > 0);
-    if (validos.length < 3) return null;
-    return valoresSugeridos(superficieTotalPreview, promedioUsdM2(validos));
-  }, [comparables, superficieTotalPreview]);
+    if (analisisComparables.count < 3) return null;
+    return valoresSugeridos(superficieTotalPreview, analisisComparables.weightedUsdPerM2);
+  }, [analisisComparables, superficieTotalPreview]);
 
   // El input solo mostraba la sugerencia como `placeholder` (texto gris que
   // desaparece al tipear, nunca un valor real): si el usuario no tocaba el
@@ -499,7 +515,7 @@ export function TasacionWizard({ tasacion }: Props) {
             />
           )}
           {seccionActiva === 4 && (
-            <Seccion4Comparables comparables={comparables} setComparables={setComparables} />
+            <Seccion4Comparables comparables={comparables} setComparables={setComparables} analisis={analisisComparables} />
           )}
           {seccionActiva === 5 && (
             <Seccion5Valores
