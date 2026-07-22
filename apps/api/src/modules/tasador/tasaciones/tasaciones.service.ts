@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { superficieTotal, usdM2 } from '@vacker/domain';
-import type { CambiarEstado, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
+import type { CambiarEstado, ComparableInput, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
 import { DomainEventsService } from '../../../common/domain-events.service';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import type { TenantContext } from '../../../prisma/tenant-context';
@@ -176,7 +176,7 @@ export class TasacionesService {
         ...datosCaracteristicas(dto),
         ...datosValoresYComercial(dto),
         ...(dto.comparables !== undefined
-          ? { comparables: { create: dto.comparables.map(({ cochera, ...c }) => ({ ...c, cochera, tenantId: ctx.tenantId })) } }
+          ? { comparables: { create: dto.comparables.map((c) => comparableCreate(c, ctx.tenantId)) } }
           : {}),
       } as Prisma.TasacionUncheckedCreateInput;
       return tx.tasacion.create({ data, select: { id: true } });
@@ -209,7 +209,7 @@ export class TasacionesService {
       if (dto.comparables !== undefined) {
         await tx.tasacionComparable.deleteMany({ where: { tasacionId: id } });
         data.comparables = {
-          create: dto.comparables.map(({ cochera, ...c }) => ({ ...c, cochera, tenantId: actual.tenantId })),
+          create: dto.comparables.map((c) => comparableCreate(c, actual.tenantId)),
         };
       }
 
@@ -398,6 +398,12 @@ function vacioANull(v: string | null): string | null {
   return v === '' ? null : v;
 }
 
+/** Mapea un comparable del input a la forma de creación de Prisma (convierte la fecha ISO → Date). */
+function comparableCreate(c: ComparableInput, tenantId: string) {
+  const { fechaReferencia, ...rest } = c;
+  return { ...rest, fechaReferencia: toDate(fechaReferencia), tenantId };
+}
+
 /** Mapea la fila (Decimal/Date) a la forma JSON de la API. */
 export function toDto(row: TasacionRow) {
   return {
@@ -442,12 +448,21 @@ export function toDto(row: TasacionRow) {
       return {
         id: c.id,
         direccion: c.direccion,
+        tipoComp: c.tipoComp,
         superficie,
+        supCubierta: c.supCubierta == null ? null : decToNum(c.supCubierta),
+        supSemi: c.supSemi == null ? null : decToNum(c.supSemi),
+        supDescubierta: c.supDescubierta == null ? null : decToNum(c.supDescubierta),
+        supTerreno: c.supTerreno == null ? null : decToNum(c.supTerreno),
         precio,
         dormitorios: c.dormitorios,
         banos: c.banos,
         cochera: c.cochera,
         estado: vacioANull(c.estado),
+        fuente: c.fuente,
+        tipoPrecio: c.tipoPrecio,
+        fechaReferencia: fromDate(c.fechaReferencia),
+        distanciaKm: c.distanciaKm == null ? null : decToNum(c.distanciaKm),
         link: c.link,
         observaciones: c.observaciones,
         usdM2: usdM2({ superficie, precio }),
