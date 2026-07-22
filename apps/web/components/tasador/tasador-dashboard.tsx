@@ -105,11 +105,28 @@ export function TasadorDashboard({
 
   async function handleGenerarInforme(id: string) {
     setGenerandoId(id);
+    setError(null);
+    // Se abre la pestaña YA, dentro del gesto del click, para que el navegador
+    // no la bloquee como popup y el usuario tenga feedback inmediato. Muestra
+    // "Generando…" y, cuando el PDF está listo, esa misma pestaña navega al
+    // archivo. (No se puede usar `noopener` acá: necesitamos setear su URL luego.)
+    const win = window.open('', '_blank');
+    if (win) {
+      win.opener = null;
+      win.document.write(
+        '<!doctype html><meta charset="utf-8"><title>Generando informe…</title>' +
+          '<div style="font-family:system-ui,sans-serif;display:flex;height:100vh;margin:0;align-items:center;justify-content:center;text-align:center;color:#1D1D1F">' +
+          '<div><div style="font-size:15px;font-weight:700">Generando informe de tasación…</div>' +
+          '<div style="font-size:13px;color:#6B6B6B;margin-top:6px">Puede tardar unos segundos.</div></div></div>',
+      );
+    }
     try {
       const accessToken = await getAccessToken();
       const { url } = await generarInforme(accessToken, id);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (win) win.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
+      win?.close();
       setError(err instanceof Error ? err.message : 'No se pudo generar el informe.');
     } finally {
       setGenerandoId(null);
@@ -371,9 +388,20 @@ export function TasadorDashboard({
                           type="button"
                           onClick={() => handleGenerarInforme(t.id)}
                           disabled={generandoId === t.id}
-                          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40 disabled:opacity-50"
+                          aria-busy={generandoId === t.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40 disabled:cursor-progress disabled:opacity-70"
                         >
-                          {generandoId === t.id ? '…' : 'Ver'}
+                          {generandoId === t.id ? (
+                            <>
+                              <span
+                                aria-hidden
+                                className="h-3 w-3 animate-spin rounded-full border-2 border-brand-red border-t-transparent"
+                              />
+                              Generando…
+                            </>
+                          ) : (
+                            'Ver'
+                          )}
                         </button>
                       </div>
                     </div>
