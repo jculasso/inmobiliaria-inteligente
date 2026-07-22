@@ -306,7 +306,7 @@ export function Seccion2Caracteristicas(props: Props) {
         ))}
       </div>
 
-      <Campo label="Amenities (separados por coma)">
+      <Campo label="Amenities">
         <input value={amenities} onChange={(e) => setAmenities(e.target.value)} className={inputClass} />
       </Campo>
       <Campo label="Detalle de amenities">
@@ -319,7 +319,7 @@ export function Seccion2Caracteristicas(props: Props) {
       </Campo>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Campo label="Expensas (USD)">
+        <Campo label="Expensas (ARS)">
           <input
             type="number"
             min={0}
