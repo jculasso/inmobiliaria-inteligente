@@ -34,7 +34,14 @@ export default async function Home() {
 
     return (
       <HomeView
-        sesion={{ email: principal.email, roles: principal.roles, volumenAnual, tenant: principal.tenant }}
+        sesion={{
+          email: principal.email,
+          nombre: principal.nombre,
+          fotoUrl: principal.fotoUrl,
+          roles: principal.roles,
+          volumenAnual,
+          tenant: principal.tenant,
+        }}
       />
     );
   } catch (err) {

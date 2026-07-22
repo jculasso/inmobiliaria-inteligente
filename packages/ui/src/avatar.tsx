@@ -4,6 +4,7 @@ import { cn } from './lib/cn';
 const sizeClasses = {
   sm: 'h-8 w-8 text-sm',
   md: 'h-11 w-11 text-base',
+  lg: 'h-16 w-16 text-2xl',
 } as const;
 
 export type AvatarSize = keyof typeof sizeClasses;
@@ -26,7 +27,11 @@ export function Avatar({ nombre, fotoUrl, size = 'sm', className, ...props }: Av
       <img
         src={fotoUrl}
         alt={nombre}
-        className={cn('shrink-0 rounded-full object-cover', sizeClasses[size], className)}
+        className={cn(
+          'shrink-0 rounded-full border border-line object-cover shadow-sm',
+          sizeClasses[size],
+          className,
+        )}
       />
     );
   }

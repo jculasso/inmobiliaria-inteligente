@@ -25,7 +25,7 @@ describe('HomeView · modo invitado (sin sesión)', () => {
 
 describe('HomeView · modo logueado', () => {
   it('muestra el nombre del tenant, el email y el Tablero y el Tasador como Activo', () => {
-    render(<HomeView sesion={{ email: 'demo@vacker.com', roles: ['vendedor'], tenant: tenant() }} />);
+    render(<HomeView sesion={{ email: 'demo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['vendedor'], tenant: tenant() }} />);
     expect(screen.getByRole('heading', { name: /Vacker · Plataforma 2\.0/ })).toBeInTheDocument();
     expect(screen.getByText('demo@vacker.com')).toBeInTheDocument();
     expect(screen.getAllByText('Activo')).toHaveLength(2);
@@ -35,26 +35,26 @@ describe('HomeView · modo logueado', () => {
 
   it('muestra el nombre de la inmobiliaria logueada, no uno hardcodeado', () => {
     render(
-      <HomeView sesion={{ email: 'demo@sanso.com.ar', roles: ['vendedor'], tenant: tenant('enterprise', 'Sanso Propiedades') }} />,
+      <HomeView sesion={{ email: 'demo@sanso.com.ar', nombre: 'Demo', fotoUrl: null, roles: ['vendedor'], tenant: tenant('enterprise', 'Sanso Propiedades') }} />,
     );
     expect(screen.getByRole('heading', { name: /Sanso Propiedades · Plataforma 2\.0/ })).toBeInTheDocument();
   });
 
   it('deshabilita el Tasador si el plan del tenant no lo incluye', () => {
-    render(<HomeView sesion={{ email: 'demo@vacker.com', roles: ['vendedor'], tenant: tenant('basico') }} />);
+    render(<HomeView sesion={{ email: 'demo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['vendedor'], tenant: tenant('basico') }} />);
     const entrar = screen.getAllByRole('link', { name: 'Entrar' });
     expect(entrar.map((a) => a.getAttribute('href'))).toEqual(['/tablero']);
   });
 
   it('deshabilita el Tablero y el Tasador cuando el usuario no tiene alcance de tenant (admin_plataforma)', () => {
-    render(<HomeView sesion={{ email: 'soporte@vacker.com', roles: ['admin_plataforma'], tenant: tenant() }} />);
+    render(<HomeView sesion={{ email: 'soporte@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['admin_plataforma'], tenant: tenant() }} />);
     expect(screen.queryByRole('link', { name: 'Entrar' })).not.toBeInTheDocument();
   });
 
   it('muestra la preview de volumen cuando viene en la sesión', () => {
     render(
       <HomeView
-        sesion={{ email: 'ceo@vacker.com', roles: ['direccion'], volumenAnual: 8452500, tenant: tenant() }}
+        sesion={{ email: 'ceo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['direccion'], volumenAnual: 8452500, tenant: tenant() }}
       />,
     );
     expect(screen.getByText('$8.452.500')).toBeInTheDocument();

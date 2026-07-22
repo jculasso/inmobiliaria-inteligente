@@ -1,6 +1,6 @@
 import type { ModuloKey, PlanTenant, Rol, TenantConfig } from '@vacker/types';
 import { MODULOS_POR_PLAN } from '@vacker/types';
-import type { BadgeVariant } from '@vacker/ui';
+import { Avatar, type BadgeVariant } from '@vacker/ui';
 import { alcanceDeModulo, etiquetaDeAlcance } from '../lib/rbac';
 import { fmtUSD } from '../lib/format';
 import { tenantBrandStyle } from '../lib/tenant-style';
@@ -48,6 +48,8 @@ export interface HomeViewProps {
   /** `null` = modo invitado (sin sesión): todas las cards se ven apagadas. */
   sesion: {
     email: string;
+    nombre: string;
+    fotoUrl: string | null;
     roles: Rol[];
     volumenAnual?: number;
     tenant: { nombre: string; plan: PlanTenant; config: TenantConfig };
@@ -66,15 +68,15 @@ export function HomeView({ sesion }: HomeViewProps) {
     <main className="mx-auto max-w-6xl px-6 py-14 sm:py-16" style={tenantBrandStyle(config)}>
       <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-red to-brand-red-dark shadow-lg shadow-brand-red/20">
-            {config?.logoUrl ? (
-              <img src={config.logoUrl} alt={nombreMarca} className="h-9 w-9 rounded-lg object-contain" />
-            ) : (
-              <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>
+          {config?.logoUrl ? (
+            <Avatar nombre={nombreMarca} fotoUrl={config.logoUrl} size="lg" />
+          ) : (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-red to-brand-red-dark shadow-lg shadow-brand-red/20">
+              <svg viewBox="0 0 100 100" className="h-8 w-8" aria-hidden>
                 <path d="M10 12 H90 V88 L50 66 L10 88 Z" fill="#fff" />
               </svg>
-            )}
-          </div>
+            </div>
+          )}
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-red">
               Inmobiliaria Inteligente
@@ -85,10 +87,8 @@ export function HomeView({ sesion }: HomeViewProps) {
 
         {sesion && (
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-muted">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-red text-xs font-bold text-white">
-                {sesion.email.slice(0, 2).toUpperCase()}
-              </span>
+            <div className="flex items-center gap-2.5 text-sm text-muted">
+              <Avatar nombre={sesion.nombre} fotoUrl={sesion.fotoUrl} size="md" />
               {sesion.email}
             </div>
             <LogoutButton />

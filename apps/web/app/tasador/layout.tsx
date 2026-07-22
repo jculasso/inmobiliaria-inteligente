@@ -39,11 +39,9 @@ export default async function TasadorLayout({ children }: { children: ReactNode 
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10" style={tenantBrandStyle(principal.tenant.config)}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {principal.tenant.config.logoUrl && (
-            <Avatar nombre={principal.tenant.nombre} fotoUrl={principal.tenant.config.logoUrl} size="md" />
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar nombre={principal.tenant.nombre} fotoUrl={principal.tenant.config.logoUrl} size="lg" />
           <div>
             <Link
               href="/"
@@ -55,9 +53,9 @@ export default async function TasadorLayout({ children }: { children: ReactNode 
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-sm text-muted">{principal.email}</span>
-            <Avatar nombre={principal.nombre} fotoUrl={principal.fotoUrl} size="sm" />
+            <Avatar nombre={principal.nombre} fotoUrl={principal.fotoUrl} size="md" />
           </div>
           <LogoutButton />
         </div>
