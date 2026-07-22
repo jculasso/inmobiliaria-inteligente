@@ -4,6 +4,7 @@ import type { EstadoTasacion, RankingCaptacionItem, ResumenTasadorKpi, TasadorKp
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope, type Scope } from '../../tablero/scope.util';
+import { rangoDeFiltro } from '../fecha.util';
 import { agregar, ranking, type ScopeSet, type TasacionCalc } from './kpis.calc';
 
 const tasacionKpiSelect = {
@@ -66,7 +67,7 @@ export class KpisService {
     filtro: TasadorKpiFiltro,
     scope: Scope,
   ): Promise<TasacionKpiRow[]> {
-    const where: Prisma.TasacionWhereInput = { fecha: rangoDeFecha(filtro) };
+    const where: Prisma.TasacionWhereInput = { fecha: rangoDeFiltro(filtro) };
     if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
     return tx.tasacion.findMany({ where, select: tasacionKpiSelect });
   }
@@ -84,26 +85,4 @@ function aplanar(rows: TasacionKpiRow[]): TasacionCalc[] {
     fotoUrl: r.agente.fotoUrl,
     estado: r.estado as EstadoTasacion,
   }));
-}
-
-/**
- * Rango `[inicio, fin)` sobre `fecha` según el período pedido. A diferencia de
- * Tablero (que no tiene endpoint de trimestre y suma 3 meses del lado del
- * cliente), acá el rango se resuelve en el servidor en una sola consulta.
- */
-function rangoDeFecha(filtro: TasadorKpiFiltro): Prisma.DateTimeFilter {
-  const { anio, periodo } = filtro;
-  if (periodo === 'mensual') {
-    const mes = filtro.mes ?? 1;
-    return { gte: new Date(Date.UTC(anio, mes - 1, 1)), lt: new Date(Date.UTC(anio, mes, 1)) };
-  }
-  if (periodo === 'trimestral') {
-    const trimestre = filtro.trimestre ?? 1;
-    const mesInicio = (trimestre - 1) * 3;
-    return {
-      gte: new Date(Date.UTC(anio, mesInicio, 1)),
-      lt: new Date(Date.UTC(anio, mesInicio + 3, 1)),
-    };
-  }
-  return { gte: new Date(Date.UTC(anio, 0, 1)), lt: new Date(Date.UTC(anio + 1, 0, 1)) };
 }

@@ -47,14 +47,18 @@ export class FotosService {
 
     const ext = extensionDe(file.mimetype, file.originalname);
     const path = `${tenantId}/${tasacionId}/${randomUUID()}${ext}`;
-    const fotoUrl = await this.storage.upload(BUCKET, path, file.buffer, file.mimetype);
+    // Bucket privado: se guarda la KEY (no una URL pública). El acceso es
+    // siempre por URL firmada de vida corta.
+    await this.storage.uploadPrivado(BUCKET, path, file.buffer, file.mimetype);
 
-    return this.db.withTenant(async (tx) => {
-      const foto = await tx.tasacionFoto.create({
-        data: { tenantId, tasacionId, url: fotoUrl, orden: ordenSiguiente },
-      });
-      return { id: foto.id, url: foto.url, orden: foto.orden };
-    });
+    const foto = await this.db.withTenant((tx) =>
+      tx.tasacionFoto.create({
+        data: { tenantId, tasacionId, url: path, orden: ordenSiguiente },
+      }),
+    );
+    // Se firma para que el uploader pueda mostrar la foto recién subida.
+    const url = await this.storage.signedUrl(BUCKET, path);
+    return { id: foto.id, url, orden: foto.orden };
   }
 
   async eliminar(tasacionId: string, fotoId: string, ctx: TenantContext): Promise<{ id: string }> {
@@ -67,7 +71,9 @@ export class FotosService {
       if (!foto) throw new NotFoundException('Foto no encontrada.');
 
       await tx.tasacionFoto.delete({ where: { id: fotoId } });
-      const path = foto.url.split(`/${BUCKET}/`)[1];
+      // `foto.url` es una key (subidas nuevas) o una URL pública (legacy);
+      // `keyDe` normaliza ambos casos.
+      const path = this.storage.keyDe(BUCKET, foto.url);
       if (path) await this.storage.remove(BUCKET, path);
       return { id: fotoId };
     });
