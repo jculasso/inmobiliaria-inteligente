@@ -83,9 +83,17 @@ export async function apiFetch<T>(
   const json: unknown = await res.json();
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
-    throw new ApiError(`La respuesta de ${method} ${path} no tiene el formato esperado.`);
+    throw new ApiError(`La respuesta de ${method} ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`);
   }
   return parsed.data;
+}
+
+/** Primer issue de Zod como `[campo: mensaje]` — para no quedar a ciegas ante un drift de datos. */
+function detalleZod(error: { issues: { path: PropertyKey[]; message: string }[] }): string {
+  const issue = error.issues[0];
+  if (!issue) return '';
+  const campo = issue.path.map(String).join('.') || 'root';
+  return ` [${campo}: ${issue.message}]`;
 }
 
 /** Variante de `apiFetch` para subir un archivo (`multipart/form-data`) — sin forzar `Content-Type: json`. */
@@ -120,7 +128,7 @@ export async function apiFetchForm<T>(
   const json: unknown = await res.json();
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
-    throw new ApiError(`La respuesta de POST ${path} no tiene el formato esperado.`);
+    throw new ApiError(`La respuesta de POST ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`);
   }
   return parsed.data;
 }

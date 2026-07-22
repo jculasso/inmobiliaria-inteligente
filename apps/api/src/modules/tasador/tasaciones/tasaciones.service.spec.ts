@@ -5,7 +5,7 @@ import type { DomainEventsService } from '../../../common/domain-events.service'
 import type { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import type { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { TasacionesService } from './tasaciones.service';
+import { TasacionesService, toDto, type TasacionRow } from './tasaciones.service';
 
 const CTX_DIRECCION: TenantContext = { tenantId: 't1', userId: 'admin', roles: ['direccion'] };
 const CTX_VENDEDOR: TenantContext = { tenantId: 't1', userId: 'u1', roles: ['vendedor'] };
@@ -51,6 +51,76 @@ describe('TasacionesService — scope', () => {
     const svc = new TasacionesService(makeDb(tx), makeEvents(), makeStorage());
 
     await expect(svc.getOne('ta1', CTX_DIRECCION)).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('toDto — enums legacy guardados como cadena vacía', () => {
+  it("normaliza '' → null en los enums opcionales (si no, el schema de lectura rechaza la fila y no abre la edición)", () => {
+    const row = {
+      id: 'ta1',
+      codigo: null,
+      agenteId: 'u1',
+      agente: { id: 'u1', nombre: 'Ana', email: 'a@a.com', fotoUrl: null },
+      cliente: 'C',
+      fecha: new Date('2026-01-01'),
+      direccion: 'D',
+      barrio: null,
+      ciudad: null,
+      tipoOperacion: 'venta',
+      tipoPropiedad: 'Departamento',
+      supCubierta: null,
+      supSemicubierta: null,
+      supDescubierta: null,
+      supTerreno: null,
+      superficieTotal: null,
+      dormitorios: null,
+      banos: null,
+      toilette: null,
+      ambientes: null,
+      antiguedad: null,
+      estadoInmueble: '',
+      disposicion: '',
+      orientacion: '',
+      cochera: false,
+      balcon: false,
+      terraza: false,
+      patio: false,
+      lavadero: false,
+      piscina: false,
+      amenities: [],
+      detalleAmenities: null,
+      expensas: null,
+      aptoCredito: '',
+      documentacion: '',
+      comparables: [
+        { id: 'c1', direccion: 'X', superficie: null, precio: null, dormitorios: null, banos: null, cochera: false, estado: '', link: null, observaciones: null },
+      ],
+      fotos: [],
+      analisisComercial: null,
+      valorMinimo: null,
+      valorRecomendado: null,
+      valorAspiracional: null,
+      margenNegociacion: null,
+      escenarioRecomendado: '',
+      plazoEstimado: '',
+      estrategiaComercial: null,
+      estado: 'En proceso',
+      exclusividad: null,
+      motivoNoCaptada: null,
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    };
+
+    const dto = toDto(row as unknown as TasacionRow);
+
+    expect(dto.estadoInmueble).toBeNull();
+    expect(dto.disposicion).toBeNull();
+    expect(dto.orientacion).toBeNull();
+    expect(dto.aptoCredito).toBeNull();
+    expect(dto.documentacion).toBeNull();
+    expect(dto.escenarioRecomendado).toBeNull();
+    expect(dto.plazoEstimado).toBeNull();
+    expect(dto.comparables[0]!.estado).toBeNull();
   });
 });
 
