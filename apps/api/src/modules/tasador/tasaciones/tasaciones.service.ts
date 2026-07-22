@@ -384,6 +384,16 @@ export function toResumenDto(row: TasacionResumenRow) {
   };
 }
 
+/**
+ * '' → null. Algunos enums opcionales quedaron guardados como cadena vacía
+ * ("sin setear"); el schema de lectura los espera como null o un valor válido
+ * del enum, nunca como '' — una fila así tumbaba toda la respuesta por
+ * validación (síntoma: la pantalla de edición no abría). Normalizar acá lo evita.
+ */
+function vacioANull(v: string | null): string | null {
+  return v === '' ? null : v;
+}
+
 /** Mapea la fila (Decimal/Date) a la forma JSON de la API. */
 export function toDto(row: TasacionRow) {
   return {
@@ -408,9 +418,9 @@ export function toDto(row: TasacionRow) {
     toilette: row.toilette,
     ambientes: row.ambientes,
     antiguedad: row.antiguedad,
-    estadoInmueble: row.estadoInmueble,
-    disposicion: row.disposicion,
-    orientacion: row.orientacion,
+    estadoInmueble: vacioANull(row.estadoInmueble),
+    disposicion: vacioANull(row.disposicion),
+    orientacion: vacioANull(row.orientacion),
     cochera: row.cochera,
     balcon: row.balcon,
     terraza: row.terraza,
@@ -420,8 +430,8 @@ export function toDto(row: TasacionRow) {
     amenities: row.amenities,
     detalleAmenities: row.detalleAmenities,
     expensas: row.expensas == null ? null : decToNum(row.expensas),
-    aptoCredito: row.aptoCredito,
-    documentacion: row.documentacion,
+    aptoCredito: vacioANull(row.aptoCredito),
+    documentacion: vacioANull(row.documentacion),
     comparables: row.comparables.map((c) => {
       const superficie = decToNum(c.superficie);
       const precio = decToNum(c.precio);
@@ -433,7 +443,7 @@ export function toDto(row: TasacionRow) {
         dormitorios: c.dormitorios,
         banos: c.banos,
         cochera: c.cochera,
-        estado: c.estado,
+        estado: vacioANull(c.estado),
         link: c.link,
         observaciones: c.observaciones,
         usdM2: usdM2({ superficie, precio }),
@@ -445,8 +455,8 @@ export function toDto(row: TasacionRow) {
     valorRecomendado: row.valorRecomendado == null ? null : decToNum(row.valorRecomendado),
     valorAspiracional: row.valorAspiracional == null ? null : decToNum(row.valorAspiracional),
     margenNegociacion: row.margenNegociacion == null ? null : Number(row.margenNegociacion),
-    escenarioRecomendado: row.escenarioRecomendado,
-    plazoEstimado: row.plazoEstimado,
+    escenarioRecomendado: vacioANull(row.escenarioRecomendado),
+    plazoEstimado: vacioANull(row.plazoEstimado),
     estrategiaComercial: row.estrategiaComercial,
     estado: row.estado,
     exclusividad: row.exclusividad,
