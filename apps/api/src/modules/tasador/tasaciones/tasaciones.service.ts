@@ -3,10 +3,15 @@ import type { Prisma } from '@prisma/client';
 import { superficieTotal, usdM2 } from '@vacker/domain';
 import type { CambiarEstado, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
 import { DomainEventsService } from '../../../common/domain-events.service';
+import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
 import { decToNum, fromDate, toDate } from '../../tablero/tablero.util';
+import { rangoDeAnioMes } from '../fecha.util';
+
+/** Bucket privado de fotos de propiedades — el acceso es siempre por URL firmada. */
+const FOTOS_BUCKET = 'tasador-fotos';
 
 export const tasacionInclude = {
   agente: { select: { id: true, nombre: true, email: true, fotoUrl: true } },
@@ -55,7 +60,21 @@ export class TasacionesService {
   constructor(
     private readonly db: TenantPrismaService,
     private readonly events: DomainEventsService,
+    private readonly storage: SupabaseStorageService,
   ) {}
+
+  /**
+   * Firma las fotos de un DTO (paths del bucket privado → URLs firmadas de vida
+   * corta), en una sola llamada de red. `keyDe` tolera registros legacy que
+   * guardaban la URL pública completa.
+   */
+  private async firmarFotos<T extends { fotos: { url: string }[] }>(dto: T): Promise<T> {
+    if (dto.fotos.length === 0) return dto;
+    const keys = dto.fotos.map((f) => this.storage.keyDe(FOTOS_BUCKET, f.url));
+    const firmadas = await this.storage.signedUrls(FOTOS_BUCKET, keys);
+    dto.fotos = dto.fotos.map((f, i) => ({ ...f, url: firmadas[i] || f.url }));
+    return dto;
+  }
 
   /** Lista tasaciones del tenant, acotadas por el scope del rol y los filtros. */
   async list(filtro: TasacionFiltro, ctx: TenantContext) {
@@ -97,7 +116,7 @@ export class TasacionesService {
     const where: Prisma.TasacionWhereInput = {};
     if (filtro.estado) where.estado = filtro.estado;
 
-    const rango = rangoDeFecha(filtro.anio, filtro.mes);
+    const rango = rangoDeAnioMes(filtro.anio, filtro.mes);
     if (rango) where.fecha = rango;
 
     // Alcance por rol: `agenteId` explícito solo tiene sentido cuando el
@@ -110,14 +129,16 @@ export class TasacionesService {
     return where;
   }
 
-  /** Devuelve una tasación por id (RLS + scope). */
+  /** Devuelve una tasación por id (RLS + scope), con las fotos firmadas. */
   async getOne(id: string, ctx: TenantContext) {
-    return this.db.withTenant(async (tx) => {
+    const dto = await this.db.withTenant(async (tx) => {
       const row = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
       if (!row) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(row, await resolverScope(ctx, tx));
       return toDto(row);
     });
+    // Se firma fuera de la transacción (es una llamada a Storage, no a la base).
+    return this.firmarFotos(dto);
   }
 
   /**
@@ -323,15 +344,6 @@ function datosValoresYComercial(dto: Partial<CreateTasacion>): Record<string, un
     data.estrategiaComercial = (dto.estrategiaComercial ?? null) as Prisma.InputJsonValue;
   }
   return data;
-}
-
-/** Rango `[inicio, fin)` sobre `fecha` para un año completo o un mes puntual. */
-function rangoDeFecha(anio?: number, mes?: number): Prisma.DateTimeFilter | undefined {
-  if (anio == null) return undefined;
-  if (mes != null) {
-    return { gte: new Date(Date.UTC(anio, mes - 1, 1)), lt: new Date(Date.UTC(anio, mes, 1)) };
-  }
-  return { gte: new Date(Date.UTC(anio, 0, 1)), lt: new Date(Date.UTC(anio + 1, 0, 1)) };
 }
 
 /** Rechaza el acceso si la tasación no cae en el alcance del rol. */

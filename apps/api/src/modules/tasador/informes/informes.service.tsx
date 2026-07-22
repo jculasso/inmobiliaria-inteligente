@@ -40,6 +40,15 @@ export class InformesService {
       };
     });
 
+    // Las fotos viven en un bucket privado: se firman antes de renderizar para
+    // que react-pdf pueda bajarlas al armar el PDF (server-side). `logoUrl` es
+    // de un bucket público (baja sensibilidad), no necesita firma.
+    if (dto.fotos.length > 0) {
+      const keys = dto.fotos.map((f) => this.storage.keyDe('tasador-fotos', f.url));
+      const firmadas = await this.storage.signedUrls('tasador-fotos', keys);
+      dto.fotos = dto.fotos.map((f, i) => ({ ...f, url: firmadas[i] || f.url }));
+    }
+
     const buffer = await renderToBuffer(
       <InformeDocument
         tasacion={dto}
@@ -49,12 +58,15 @@ export class InformesService {
         colorPrimarioOscuro={colorPrimarioOscuro}
       />,
     );
-    const url = await this.storage.upload('informes-tasador', `${ctx.tenantId}/${id}.pdf`, buffer, 'application/pdf');
 
+    // Bucket privado: se guarda la key en el registro de auditoría y se
+    // devuelve una URL firmada de vida corta (el front la abre al toque).
+    const pdfPath = `${ctx.tenantId}/${id}.pdf`;
+    await this.storage.uploadPrivado('informes-tasador', pdfPath, buffer, 'application/pdf');
     await this.db.withTenant((tx) =>
-      tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId: id, url } }),
+      tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId: id, url: pdfPath } }),
     );
 
-    return { url };
+    return { url: await this.storage.signedUrl('informes-tasador', pdfPath) };
   }
 }

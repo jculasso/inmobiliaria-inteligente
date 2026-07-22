@@ -8,6 +8,7 @@ import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../../tablero/scope.util';
 import { decToNum } from '../../tablero/tablero.util';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
+import { rangoDeFiltro } from '../fecha.util';
 import { agregar, ranking as rankingDe, type TasacionCalc } from '../kpis/kpis.calc';
 import { ReporteDocument, type ReporteFila } from './reporte.template';
 
@@ -42,7 +43,7 @@ export class ReporteService {
     // se calculan en memoria con las mismas funciones puras de kpis.calc.
     const { filas, resumen, ranking, tenantNombre, logoUrl, colorPrimario } = await this.db.withTenant(async (tx) => {
       const scope = await resolverScope(ctx, tx);
-      const where: Prisma.TasacionWhereInput = { fecha: rangoDeFecha(filtro) };
+      const where: Prisma.TasacionWhereInput = { fecha: rangoDeFiltro(filtro) };
       if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
 
       const [rows, tenant] = await Promise.all([
@@ -95,25 +96,12 @@ export class ReporteService {
       />,
     );
 
+    // Bucket privado: se sube la key y se devuelve una URL firmada de vida
+    // corta (el front la abre al toque). El reporte no embebe fotos, solo KPIs.
     const path = `${ctx.tenantId}/reportes/${slug(periodoLabel)}-${Date.now()}.pdf`;
-    const url = await this.storage.upload('informes-tasador', path, buffer, 'application/pdf');
-    return { url };
+    await this.storage.uploadPrivado('informes-tasador', path, buffer, 'application/pdf');
+    return { url: await this.storage.signedUrl('informes-tasador', path) };
   }
-}
-
-/** Mismo criterio de rango que `kpis.service.ts` (no se toca ese archivo — ver plan §3). */
-function rangoDeFecha(filtro: TasadorKpiFiltro): Prisma.DateTimeFilter {
-  const { anio, periodo } = filtro;
-  if (periodo === 'mensual') {
-    const mes = filtro.mes ?? 1;
-    return { gte: new Date(Date.UTC(anio, mes - 1, 1)), lt: new Date(Date.UTC(anio, mes, 1)) };
-  }
-  if (periodo === 'trimestral') {
-    const trimestre = filtro.trimestre ?? 1;
-    const mesInicio = (trimestre - 1) * 3;
-    return { gte: new Date(Date.UTC(anio, mesInicio, 1)), lt: new Date(Date.UTC(anio, mesInicio + 3, 1)) };
-  }
-  return { gte: new Date(Date.UTC(anio, 0, 1)), lt: new Date(Date.UTC(anio + 1, 0, 1)) };
 }
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
