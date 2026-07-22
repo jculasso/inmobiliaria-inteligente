@@ -6,12 +6,12 @@ import type { AuthPrincipal, RankingCaptacionItem, ResumenTasadorKpi, TasacionRe
 import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarInforme, getKpisResumenTasador, getRankingCaptaciones } from '../../lib/tasador-api';
-import { fmtUSD } from '../../lib/format';
+import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { ETIQUETA_ROL, rolPrincipal } from '../../lib/rbac';
-import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { EstadoDistribucion } from './estado-distribucion';
 import { RankingCaptacionesCards } from './ranking-captaciones-cards';
+import { TasacionFila } from './tasacion-fila';
 import { TasacionesDrillModal } from './tasaciones-drill-modal';
 import { TendenciaBars, type TendenciaBar } from './tendencia-bars';
 
@@ -106,31 +106,11 @@ export function TasadorDashboard({
   async function handleGenerarInforme(id: string) {
     setGenerandoId(id);
     setError(null);
-    // Se abre la pestaña YA, dentro del gesto del click, para que el navegador
-    // no la bloquee como popup y el usuario tenga feedback inmediato. Muestra
-    // "Generando…" y, cuando el PDF está listo, esa misma pestaña navega al
-    // archivo. (No se puede usar `noopener` acá: necesitamos setear su URL luego.)
-    const win = window.open('', '_blank');
-    if (win) {
-      win.opener = null;
-      win.document.write(
-        '<!doctype html><meta charset="utf-8"><title>Generando informe…</title>' +
-          '<div style="font-family:system-ui,sans-serif;display:flex;height:100vh;margin:0;align-items:center;justify-content:center;text-align:center;color:#1D1D1F">' +
-          '<div><div style="font-size:15px;font-weight:700">Generando informe de tasación…</div>' +
-          '<div style="font-size:13px;color:#6B6B6B;margin-top:6px">Puede tardar unos segundos.</div></div></div>',
-      );
-    }
-    try {
-      const accessToken = await getAccessToken();
-      const { url } = await generarInforme(accessToken, id);
-      if (win) win.location.href = url;
-      else window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      win?.close();
-      setError(err instanceof Error ? err.message : 'No se pudo generar el informe.');
-    } finally {
-      setGenerandoId(null);
-    }
+    await abrirPdfEnPestana(async () => generarInforme(await getAccessToken(), id), {
+      titulo: 'Generando informe de tasación',
+      onError: setError,
+    });
+    setGenerandoId(null);
   }
 
   const now = useMemo(() => new Date(), []);
@@ -348,65 +328,15 @@ export function TasadorDashboard({
               {ultimasTasaciones.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted">Sin tasaciones para mostrar.</p>
               ) : (
-                ultimasTasaciones.map((t) => {
-                  const det = detalleEstado(t);
-                  return (
-                    <div
-                      key={t.id}
-                      className="grid grid-cols-1 gap-2 border-t border-surface py-3 first:border-t-0 sm:grid-cols-[2fr_1fr_130px_auto] sm:items-center sm:gap-3.5"
-                    >
-                      <div>
-                        <div className="text-sm font-bold text-ink">{t.direccion}</div>
-                        <div className="mt-0.5 text-xs text-muted">
-                          {t.cliente} · {t.tipoPropiedad} · {t.agente.nombre}
-                        </div>
-                      </div>
-                      <div className="text-sm font-bold text-brand-red">{fmtUSD(t.valorRecomendado)}</div>
-                      <div className="flex flex-col items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setModalEstado(t)}
-                          className={`w-full rounded-full px-2 py-1 text-center text-xs font-bold ${estadoClass(t.estado)}`}
-                        >
-                          {t.estado}
-                        </button>
-                        {det && (
-                          <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${estadoClass(t.estado)}`}>
-                            {det}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/tasador/tasaciones/${t.id}/editar`)}
-                          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleGenerarInforme(t.id)}
-                          disabled={generandoId === t.id}
-                          aria-busy={generandoId === t.id}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40 disabled:cursor-progress disabled:opacity-70"
-                        >
-                          {generandoId === t.id ? (
-                            <>
-                              <span
-                                aria-hidden
-                                className="h-3 w-3 animate-spin rounded-full border-2 border-brand-red border-t-transparent"
-                              />
-                              Generando…
-                            </>
-                          ) : (
-                            'Ver'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                ultimasTasaciones.map((t) => (
+                  <TasacionFila
+                    key={t.id}
+                    tasacion={t}
+                    onEstado={() => setModalEstado(t)}
+                    onVer={() => handleGenerarInforme(t.id)}
+                    generando={generandoId === t.id}
+                  />
+                ))
               )}
             </div>
           </Card>
