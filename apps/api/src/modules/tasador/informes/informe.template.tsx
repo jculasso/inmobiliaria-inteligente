@@ -1,7 +1,7 @@
 import React from 'react';
 import { Document, Image, Link, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
-import { promedioUsdM2 } from '@vacker/domain';
-import type { TasacionDto } from '@vacker/types';
+import { analizarComparables, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
+import type { ComparableDto, TasacionDto } from '@vacker/types';
 
 // Réplica del informe del prototipo (docs/prototipos/tasador_de_propiedades.html,
 // función `renderReporteTasacion`): encabezado con logo + "DOCUMENTO INTERNO" y
@@ -148,6 +148,21 @@ function fmtAmenities(t: TasacionDto): string {
   return t.detalleAmenities ? `Sí — ${t.detalleAmenities}` : 'Sí';
 }
 
+function fmtFechaCorta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** Observación del comparable: fuente · tipo de precio · fecha · nota. */
+function obsComparable(c: ComparableDto): string {
+  return (
+    [c.fuente, c.tipoPrecio, c.fechaReferencia ? fmtFechaCorta(c.fechaReferencia) : null, c.observaciones]
+      .filter(Boolean)
+      .join(' · ') || '—'
+  );
+}
+
 function textoAnalisisComercial(t: TasacionDto): string {
   const a = t.analisisComercial;
   const base = `Se trata de un/a ${t.tipoPropiedad.toLowerCase()} ubicado en ${t.barrio ?? t.direccion}, en estado ${
@@ -191,10 +206,20 @@ export function InformeDocument({
   colorPrimarioOscuro?: string | null;
 }) {
   const t = tasacion;
-  const promedio = promedioUsdM2(t.comparables);
-  const precios = t.comparables.map((c) => c.precio).filter((p): p is number => p != null);
-  const rangoMin = precios.length > 0 ? Math.min(...precios) : null;
-  const rangoMax = precios.length > 0 ? Math.max(...precios) : null;
+  const analisis = analizarComparables(
+    t.comparables.map((c) => ({ ...c, cocheraComp: c.cochera ? 'Sí' : 'No' }) as ComparableCalc),
+    {
+      tipoPropiedad: t.tipoPropiedad,
+      supCubierta: t.supCubierta,
+      supSemi: t.supSemicubierta,
+      supDescubierta: t.supDescubierta,
+      supTerreno: t.supTerreno,
+      dormitorios: t.dormitorios,
+      banos: t.banos,
+      estado: t.estadoInmueble,
+      cochera: t.cochera,
+    } satisfies PropiedadCalc,
+  );
   const red = colorPrimario || '#C1121F';
   const redDark = colorPrimarioOscuro || red;
   const styles = crearEstilos(red, redDark);
@@ -249,6 +274,7 @@ export function InformeDocument({
           <ResumenCard styles={styles} label="PLAZO ESTIMADO" value={t.plazoEstimado ?? '—'} />
         </View>
 
+        <View wrap={false}>
         <Text style={styles.sectionTitle}>CARACTERÍSTICAS DE LA PROPIEDAD</Text>
         <View style={styles.sectionUnderline} />
         <View style={styles.cols}>
@@ -286,6 +312,7 @@ export function InformeDocument({
             <FichaLinea styles={styles} label="Documentación" value={t.documentacion ?? '—'} />
           </View>
         </View>
+        </View>
 
         {t.fotos.length > 0 && (
           <View style={styles.fotos}>
@@ -295,12 +322,14 @@ export function InformeDocument({
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>ANÁLISIS COMERCIAL</Text>
-        <View style={styles.sectionUnderline} />
-        <Text style={styles.paragraph}>{textoAnalisisComercial(t)}</Text>
+        <View wrap={false}>
+          <Text style={styles.sectionTitle}>ANÁLISIS COMERCIAL</Text>
+          <View style={styles.sectionUnderline} />
+          <Text style={styles.paragraph}>{textoAnalisisComercial(t)}</Text>
+        </View>
 
         {t.comparables.length > 0 && (
-          <>
+          <View wrap={false}>
             <Text style={[styles.sectionTitle, { marginTop: 14 }]}>COMPARABLES DE MERCADO</Text>
             <View style={styles.sectionUnderline} />
             <View style={styles.table}>
@@ -324,7 +353,7 @@ export function InformeDocument({
                   <Text style={styles.td}>{fmtSiNo(c.cochera)}</Text>
                   <Text style={styles.td}>{fmtUSD(c.precio)}</Text>
                   <Text style={styles.td}>{fmtUSD(c.usdM2)}</Text>
-                  <Text style={[styles.td, { flex: 2 }]}>{c.observaciones ?? '—'}</Text>
+                  <Text style={[styles.td, { flex: 2 }]}>{obsComparable(c)}</Text>
                   {t.comparables.some((x) => x.link) && (
                     <View style={styles.tdLink}>
                       {c.link ? (
@@ -340,14 +369,16 @@ export function InformeDocument({
               ))}
             </View>
             <Text style={styles.paragraphMuted}>
-              Los inmuebles comparables relevados se ubican dentro de un rango aproximado de {fmtUSD(rangoMin)} a{' '}
-              {fmtUSD(rangoMax)}, con un promedio de USD/m² de {fmtUSD(promedio)}. Estos valores funcionan como
-              referencia de mercado, considerando que los precios publicados pueden diferir de los valores finales
-              de cierre.
+              Los inmuebles comparables relevados se ubican dentro de un rango aproximado de{' '}
+              {fmtUSD(analisis.minPrice)} a {fmtUSD(analisis.maxPrice)}, con una referencia ponderada de{' '}
+              {fmtUSD(analisis.weightedUsdPerM2)} USD/m² y confianza {analisis.confidence.toLowerCase()} (
+              {analisis.confidenceScore}%). Estos valores funcionan como referencia de mercado, considerando que los
+              precios publicados pueden diferir de los valores finales de cierre.
             </Text>
-          </>
+          </View>
         )}
 
+        <View wrap={false}>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTIMACIÓN DE VALOR</Text>
         <View style={styles.sectionUnderline} />
         <View style={styles.valorTable}>
@@ -385,7 +416,9 @@ export function InformeDocument({
         {t.margenNegociacion != null && (
           <Text style={styles.margenTexto}>Margen de negociación estimado: {t.margenNegociacion}%</Text>
         )}
+        </View>
 
+        <View wrap={false}>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTRATEGIA DE COMERCIALIZACIÓN</Text>
         <View style={styles.sectionUnderline} />
         {t.estrategiaComercial && t.estrategiaComercial.estrategia.length > 0 && (
@@ -408,7 +441,9 @@ export function InformeDocument({
             {t.estrategiaComercial.observacionesEstrategia}
           </Text>
         )}
+        </View>
 
+        <View wrap={false}>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>CONCLUSIÓN</Text>
         <View style={styles.sectionUnderline} />
         <Text style={styles.paragraph}>{textoConclusion(t)}</Text>
@@ -417,6 +452,7 @@ export function InformeDocument({
           elaboración. No representa una tasación bancaria, judicial ni fiscal. El valor final de venta puede variar
           según condiciones de negociación, documentación, contexto económico y respuesta del mercado.
         </Text>
+        </View>
 
         <View style={styles.footer}>
           <Text>
