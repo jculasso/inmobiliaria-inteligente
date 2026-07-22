@@ -21,6 +21,22 @@ import type {
   TipoOperacion,
   TipoPropiedad,
 } from '@vacker/types';
+import {
+  AptoCreditoSchema,
+  AspectoSchema,
+  DisposicionSchema,
+  DocumentacionSchema,
+  EscenarioSchema,
+  EstadoInmuebleSchema,
+  EstrategiaAccionSchema,
+  FortalezaSchema,
+  NivelSchema,
+  OrientacionSchema,
+  PerfilCompradorSchema,
+  PlazoEstimadoSchema,
+  TipoPropiedadSchema,
+} from '@vacker/types';
+import { z } from 'zod';
 import { promedioUsdM2, superficieTotal, valoresSugeridos } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -32,6 +48,22 @@ import { Seccion4Comparables } from './wizard/seccion-4-comparables';
 import { Seccion5Valores } from './wizard/seccion-5-valores';
 import { Seccion6Estrategia } from './wizard/seccion-6-estrategia';
 import { SECCIONES, WizardSidebar } from './wizard/wizard-sidebar';
+
+/**
+ * Un valor de enum "legacy" que ya no existe en el schema (p.ej. estadoInmueble
+ * 'Impecable', de una versión vieja del vocabulario) haría que el <select> no lo
+ * encuentre y muestre "Seleccionar…", pero el estado seguiría con el valor viejo
+ * y al guardar la API lo rechazaría con un error técnico. Se sanea al cargar: si
+ * no es una opción válida, arranca vacío (y al guardar se manda null).
+ */
+function opcionValida<T extends string>(schema: z.ZodType<T>, value: unknown): T | '' {
+  const parsed = schema.safeParse(value);
+  return parsed.success ? parsed.data : '';
+}
+/** Igual, para multiselects: descarta los valores que ya no son válidos. */
+function opcionesValidas<T extends string>(schema: z.ZodType<T>, values: readonly string[] | null | undefined): T[] {
+  return (values ?? []).filter((v): v is T => schema.safeParse(v).success);
+}
 
 interface Props {
   tasacion?: TasacionDto;
@@ -68,7 +100,9 @@ export function TasacionWizard({ tasacion }: Props) {
   const [tipoOperacion, setTipoOperacion] = useState<TipoOperacion>(tasacion?.tipoOperacion ?? 'venta');
 
   // Sección 2
-  const [tipoPropiedad, setTipoPropiedad] = useState<TipoPropiedad>(tasacion?.tipoPropiedad ?? 'Departamento');
+  const [tipoPropiedad, setTipoPropiedad] = useState<TipoPropiedad>(
+    opcionValida(TipoPropiedadSchema, tasacion?.tipoPropiedad) || 'Departamento',
+  );
   const [supCubierta, setSupCubierta] = useState(String(tasacion?.supCubierta ?? ''));
   const [supSemicubierta, setSupSemicubierta] = useState(String(tasacion?.supSemicubierta ?? ''));
   const [supDescubierta, setSupDescubierta] = useState(String(tasacion?.supDescubierta ?? ''));
@@ -79,10 +113,10 @@ export function TasacionWizard({ tasacion }: Props) {
   const [ambientes, setAmbientes] = useState(String(tasacion?.ambientes ?? ''));
   const [antiguedad, setAntiguedad] = useState(String(tasacion?.antiguedad ?? ''));
   const [estadoInmueble, setEstadoInmueble] = useState<EstadoInmueble | ''>(
-    (tasacion?.estadoInmueble as EstadoInmueble) ?? '',
+    opcionValida(EstadoInmuebleSchema, tasacion?.estadoInmueble),
   );
-  const [disposicion, setDisposicion] = useState<Disposicion | ''>((tasacion?.disposicion as Disposicion) ?? '');
-  const [orientacion, setOrientacion] = useState<Orientacion | ''>((tasacion?.orientacion as Orientacion) ?? '');
+  const [disposicion, setDisposicion] = useState<Disposicion | ''>(opcionValida(DisposicionSchema, tasacion?.disposicion));
+  const [orientacion, setOrientacion] = useState<Orientacion | ''>(opcionValida(OrientacionSchema, tasacion?.orientacion));
   const [cochera, setCochera] = useState(tasacion?.cochera ?? false);
   const [balcon, setBalcon] = useState(tasacion?.balcon ?? false);
   const [terraza, setTerraza] = useState(tasacion?.terraza ?? false);
@@ -92,19 +126,25 @@ export function TasacionWizard({ tasacion }: Props) {
   const [amenities, setAmenities] = useState(tasacion?.amenities.join(', ') ?? '');
   const [detalleAmenities, setDetalleAmenities] = useState(tasacion?.detalleAmenities ?? '');
   const [expensas, setExpensas] = useState(String(tasacion?.expensas ?? ''));
-  const [aptoCredito, setAptoCredito] = useState<AptoCredito | ''>((tasacion?.aptoCredito as AptoCredito) ?? '');
+  const [aptoCredito, setAptoCredito] = useState<AptoCredito | ''>(opcionValida(AptoCreditoSchema, tasacion?.aptoCredito));
   const [documentacion, setDocumentacion] = useState<Documentacion | ''>(
-    (tasacion?.documentacion as Documentacion) ?? '',
+    opcionValida(DocumentacionSchema, tasacion?.documentacion),
   );
   const [fotos, setFotos] = useState<TasacionFotoDto[]>(tasacion?.fotos ?? []);
 
   // Sección 3
-  const [fortalezas, setFortalezas] = useState<string[]>(tasacion?.analisisComercial?.fortalezas ?? []);
-  const [aspectos, setAspectos] = useState<string[]>(tasacion?.analisisComercial?.aspectos ?? []);
-  const [demanda, setDemanda] = useState<Nivel | ''>(tasacion?.analisisComercial?.demanda ?? '');
-  const [competencia, setCompetencia] = useState<Nivel | ''>(tasacion?.analisisComercial?.competencia ?? '');
+  const [fortalezas, setFortalezas] = useState<string[]>(
+    opcionesValidas(FortalezaSchema, tasacion?.analisisComercial?.fortalezas),
+  );
+  const [aspectos, setAspectos] = useState<string[]>(
+    opcionesValidas(AspectoSchema, tasacion?.analisisComercial?.aspectos),
+  );
+  const [demanda, setDemanda] = useState<Nivel | ''>(opcionValida(NivelSchema, tasacion?.analisisComercial?.demanda));
+  const [competencia, setCompetencia] = useState<Nivel | ''>(
+    opcionValida(NivelSchema, tasacion?.analisisComercial?.competencia),
+  );
   const [perfilComprador, setPerfilComprador] = useState<PerfilComprador | ''>(
-    tasacion?.analisisComercial?.perfilComprador ?? '',
+    opcionValida(PerfilCompradorSchema, tasacion?.analisisComercial?.perfilComprador),
   );
   const [observacionesComerciales, setObservacionesComerciales] = useState(
     tasacion?.analisisComercial?.observacionesComerciales ?? '',
@@ -121,12 +161,16 @@ export function TasacionWizard({ tasacion }: Props) {
   const [valorAspiracional, setValorAspiracional] = useState(String(tasacion?.valorAspiracional ?? ''));
   const [margenNegociacion, setMargenNegociacion] = useState(String(tasacion?.margenNegociacion ?? ''));
   const [escenarioRecomendado, setEscenarioRecomendado] = useState<Escenario | ''>(
-    tasacion?.escenarioRecomendado ?? '',
+    opcionValida(EscenarioSchema, tasacion?.escenarioRecomendado),
   );
-  const [plazoEstimado, setPlazoEstimado] = useState<PlazoEstimado | ''>(tasacion?.plazoEstimado ?? '');
+  const [plazoEstimado, setPlazoEstimado] = useState<PlazoEstimado | ''>(
+    opcionValida(PlazoEstimadoSchema, tasacion?.plazoEstimado),
+  );
 
   // Sección 6
-  const [estrategia, setEstrategia] = useState<string[]>(tasacion?.estrategiaComercial?.estrategia ?? []);
+  const [estrategia, setEstrategia] = useState<string[]>(
+    opcionesValidas(EstrategiaAccionSchema, tasacion?.estrategiaComercial?.estrategia),
+  );
   const [observacionesEstrategia, setObservacionesEstrategia] = useState(
     tasacion?.estrategiaComercial?.observacionesEstrategia ?? '',
   );

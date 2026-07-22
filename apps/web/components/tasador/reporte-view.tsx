@@ -157,10 +157,13 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
         </p>
       )}
 
-      {loading || !resumen ? (
+      {!resumen ? (
         <p className="py-6 text-sm text-muted">Cargando…</p>
       ) : (
-        <>
+        // Se mantienen los datos del período anterior (atenuados) mientras se
+        // recarga el nuevo, en vez de colapsar todo a "Cargando…" y volver a
+        // montar — eso hacía "saltar" el layout al cambiar Anual/Trimestral/Mensual.
+        <div className={`flex flex-col gap-6 transition-opacity ${loading ? 'opacity-50' : ''}`}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <KpiCard label="Tasaciones" value={String(resumen.total)} icon="📄" />
             <KpiCard
@@ -254,7 +257,7 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
           <Card>
             <RankingCaptaciones ranking={ranking} periodoLabel={periodoLabel} />
           </Card>
-        </>
+        </div>
       )}
     </div>
   );
