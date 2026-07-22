@@ -1,5 +1,5 @@
-import type { EstadoTasacion, TasacionDto } from '@vacker/types';
-import { listTasaciones } from '../../../lib/tasador-api';
+import type { EstadoTasacion, TasacionResumenDto } from '@vacker/types';
+import { listTasacionesResumen } from '../../../lib/tasador-api';
 import { requireServerPrincipal } from '../../../lib/server-principal';
 import { puedeBorrarTasaciones } from '../../../lib/rbac';
 import { FiltroAnio } from '../../../components/tablero/filtro-anio';
@@ -19,7 +19,10 @@ export default async function TasacionesPage({
   const estado = params.estado as EstadoTasacion | undefined;
   const agenteId = params.agenteId;
 
-  const tasaciones: TasacionDto[] = await listTasaciones(ctx.accessToken, { anio, estado, agenteId });
+  // Liviano: la tabla de historial no usa comparables/fotos/análisis (solo
+  // fecha, cliente, dirección, tipo, sup. total, agente y estado) — pedir el
+  // DTO completo era traer esos JOINs y JSON por cada fila para descartarlos.
+  const tasaciones: TasacionResumenDto[] = await listTasacionesResumen(ctx.accessToken, { anio, estado, agenteId });
 
   return (
     <div className="flex flex-col gap-4">
