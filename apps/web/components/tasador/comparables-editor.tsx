@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   EstadoInmuebleSchema,
   FuenteComparableSchema,
@@ -67,11 +67,18 @@ export function ComparablesEditor({ comparables, onChange, analisis }: Props) {
       }),
     );
   }
+  // Acordeón: solo el comparable en edición queda expandido; el resto colapsa a
+  // un renglón. Arranca todo colapsado (compacto); al agregar, se abre el nuevo.
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
   function agregar() {
-    if (comparables.length < 6) onChange([...comparables, { ...COMPARABLE_VACIO }]);
+    if (comparables.length >= 6) return;
+    onChange([...comparables, { ...COMPARABLE_VACIO }]);
+    setOpenIndex(comparables.length);
   }
   function quitar(i: number) {
     onChange(comparables.filter((_, idx) => idx !== i));
+    setOpenIndex((prev) => (prev == null ? null : prev === i ? null : prev > i ? prev - 1 : prev));
   }
 
   return (
@@ -92,10 +99,43 @@ export function ComparablesEditor({ comparables, onChange, analisis }: Props) {
       {comparables.map((c, i) => {
         const entry = analisis.entries.find((e) => e.index === i);
         const badge = entry ? `${entry.similarity}% similitud${entry.outlier ? ' · atípico' : ''}` : 'Sin datos suficientes';
+        const resumenFila = entry
+          ? `${fmtUSD(entry.usdM2)}/m² · ${entry.similarity}%${entry.outlier ? ' · atípico' : ''}`
+          : 'USD/m² —';
+
+        // Colapsado: un renglón con dirección + USD/m² + similitud (click para editar).
+        if (openIndex !== i) {
+          return (
+            <div key={i} className="flex items-center gap-2 rounded-brand border border-line px-3 py-2.5">
+              <button
+                type="button"
+                onClick={() => setOpenIndex(i)}
+                className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 text-xs font-semibold text-muted">Comparable {i + 1}</span>
+                  <span className="truncate text-sm text-ink">{c.direccion || 'Sin dirección'}</span>
+                </span>
+                <span className="shrink-0 text-xs font-semibold text-brand-red">{resumenFila}</span>
+              </button>
+              <button type="button" onClick={() => quitar(i)} className="shrink-0 text-xs text-brand-red hover:underline">
+                × Quitar
+              </button>
+            </div>
+          );
+        }
+
+        // Expandido: el formulario completo.
         return (
-          <div key={i} className="flex flex-col gap-3 rounded-brand border border-line p-3">
+          <div key={i} className="flex flex-col gap-3 rounded-brand border border-brand-red/40 bg-brand-red/[0.015] p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-muted">Comparable {i + 1}</span>
+              <button
+                type="button"
+                onClick={() => setOpenIndex(null)}
+                className="text-xs font-semibold text-muted hover:text-ink"
+              >
+                ▴ Comparable {i + 1}
+              </button>
               <span className="text-xs font-semibold text-brand-red">
                 {entry ? `${fmtUSD(entry.usdM2)} /m² · ${badge}` : 'USD/m² —'}
               </span>
