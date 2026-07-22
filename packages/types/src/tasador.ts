@@ -172,18 +172,35 @@ export const EstrategiaComercialSchema = z.object({
 });
 export type EstrategiaComercial = z.infer<typeof EstrategiaComercialSchema>;
 
+/** Origen del dato del comparable (pondera y da confianza en la valuación). */
+export const FuenteComparableSchema = z.enum(['Publicación', 'Cierre real', 'Colega', 'Mapa de cierres', 'Otro']);
+export type FuenteComparable = z.infer<typeof FuenteComparableSchema>;
+
+/** Si el precio del comparable es de publicación o de cierre real. */
+export const TipoPrecioComparableSchema = z.enum(['Publicado', 'Cierre']);
+export type TipoPrecioComparable = z.infer<typeof TipoPrecioComparableSchema>;
+
 /** Comparable de mercado (3..6 por tasación cuando la sección está completa). */
 export const ComparableInputSchema = z.object({
   direccion: z.string().min(1),
+  tipoComp: TipoPropiedadSchema.default('Departamento'),
+  // `superficie` = superficie de valuación (cubierta + semi + descubierta×0.3),
+  // que el editor deriva del desglose. Se conserva como campo propio para las
+  // filas legacy sin desglose y para el cálculo de USD/m².
   superficie: z.number().positive(),
+  supCubierta: z.number().nonnegative().nullish(),
+  supSemi: z.number().nonnegative().nullish(),
+  supDescubierta: z.number().nonnegative().nullish(),
+  supTerreno: z.number().nonnegative().nullish(),
   precio: z.number().positive(),
   dormitorios: z.number().int().nonnegative().nullish(),
   banos: z.number().int().nonnegative().nullish(),
   cochera: z.boolean().default(false),
-  // Nunca hubo un input en el editor de comparables para este campo — no hay
-  // filas persistidas con texto libre que romper, a diferencia de los campos
-  // análogos de la sección 2 (ver TasacionCaracteristicasFields más abajo).
   estado: EstadoInmuebleSchema.nullish(),
+  fuente: FuenteComparableSchema.default('Publicación'),
+  tipoPrecio: TipoPrecioComparableSchema.default('Publicado'),
+  fechaReferencia: IsoDateSchema.nullish(),
+  distanciaKm: z.number().nonnegative().nullish(),
   link: z.string().nullish(),
   observaciones: z.string().nullish(),
 });
@@ -194,11 +211,30 @@ export const ComparableDtoSchema = ComparableInputSchema.extend({
   // Sin `.default()`: acá describe una fila ya persistida, no un input a
   // completar — evita la divergencia Input/Output que confunde la inferencia
   // de `apiFetch<T>` en el resto del código.
+  tipoComp: TipoPropiedadSchema,
   cochera: z.boolean(),
-  /** precio / superficie, calculado — no persistido en la base. */
+  fuente: FuenteComparableSchema,
+  tipoPrecio: TipoPrecioComparableSchema,
+  /** precio / superficie de valuación, calculado — no persistido en la base. */
   usdM2: z.number(),
 });
 export type ComparableDto = z.infer<typeof ComparableDtoSchema>;
+
+/** Resumen del análisis de comparables (referencia ponderada + confianza). */
+export const AnalisisComparablesSchema = z.object({
+  count: z.number().int(),
+  minPrice: z.number(),
+  maxPrice: z.number(),
+  avgPrice: z.number(),
+  avgUsdPerM2: z.number(),
+  medianUsdPerM2: z.number(),
+  weightedUsdPerM2: z.number(),
+  spreadPct: z.number(),
+  outlierCount: z.number().int(),
+  confidence: z.enum(['Alta', 'Media', 'Baja']),
+  confidenceScore: z.number(),
+});
+export type AnalisisComparablesDto = z.infer<typeof AnalisisComparablesSchema>;
 
 export const TasacionFotoDtoSchema = z.object({
   id: z.string().uuid(),
