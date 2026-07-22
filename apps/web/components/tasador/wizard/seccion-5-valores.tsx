@@ -100,7 +100,7 @@ export function Seccion5Valores({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
         <Campo label="Valor mínimo competitivo (USD)">
           <input type="number" min={0} value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} className={inputClass} />
         </Campo>
@@ -137,7 +137,7 @@ export function Seccion5Valores({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
         <Campo label="Margen de negociación estimado (%)">
           <input type="number" min={0} value={margenNegociacion} onChange={(e) => setMargenNegociacion(e.target.value)} className={inputClass} />
         </Campo>
