@@ -85,11 +85,26 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
   async function handleGenerarPdf() {
     setGenerando(true);
     setError(null);
+    // Se abre la pestaña YA, dentro del gesto del click, para que el navegador
+    // no la bloquee como popup y haya feedback inmediato; cuando el PDF está
+    // listo, esa misma pestaña navega al archivo (mismo patrón que el dashboard).
+    const win = window.open('', '_blank');
+    if (win) {
+      win.opener = null;
+      win.document.write(
+        '<!doctype html><meta charset="utf-8"><title>Generando reporte…</title>' +
+          '<div style="font-family:system-ui,sans-serif;display:flex;height:100vh;margin:0;align-items:center;justify-content:center;text-align:center;color:#1D1D1F">' +
+          '<div><div style="font-size:15px;font-weight:700">Generando reporte de tasaciones…</div>' +
+          '<div style="font-size:13px;color:#6B6B6B;margin-top:6px">Puede tardar unos segundos.</div></div></div>',
+      );
+    }
     try {
       const accessToken = await getAccessToken();
       const { url } = await generarInformeReporte(accessToken, filtro);
-      window.open(url, '_blank');
+      if (win) win.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
+      win?.close();
       setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.');
     } finally {
       setGenerando(false);
