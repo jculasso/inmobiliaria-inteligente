@@ -1,4 +1,4 @@
-import { Card } from '@vacker/ui';
+import { Card } from './card';
 
 export type KpiTone = 'default' | 'success' | 'warning' | 'brand';
 

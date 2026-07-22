@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { AgregadoKpi, RankingItem } from '@vacker/types';
-import { Card } from '@vacker/ui';
+import { Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { getAgregadosPorTrimestre, getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
 import { getOrFetch } from '../../lib/kpi-cache';
 import { fmtNum, fmtUSD } from '../../lib/format';
-import { KpiCard } from './kpi-card';
 import { TrimestreChart } from './trimestre-chart';
 import { VendedorTotalesTable } from './vendedor-totales-table';
 

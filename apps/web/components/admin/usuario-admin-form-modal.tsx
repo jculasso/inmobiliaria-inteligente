@@ -2,10 +2,9 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import type { Rol, UsuarioAdminDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createUsuarioAdmin, updateUsuarioAdmin } from '../../lib/admin-api';
-import { Modal } from '../tablero/modal';
 
 const ROLES_DISPONIBLES: { value: Rol; label: string }[] = [
   { value: 'vendedor', label: 'Vendedor' },

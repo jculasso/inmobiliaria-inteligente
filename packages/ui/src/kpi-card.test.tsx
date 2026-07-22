@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { KpiCard } from './kpi-card';
+import { KpiCard } from './index';
 
 describe('KpiCard', () => {
   it('muestra label, valor y sub opcional', () => {

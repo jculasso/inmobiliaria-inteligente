@@ -2,10 +2,9 @@
 
 import { useState, type FormEvent } from 'react';
 import type { UsuarioAdminDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { resetPasswordUsuario } from '../../lib/admin-api';
-import { Modal } from '../tablero/modal';
 
 interface Props {
   tenantId: string;

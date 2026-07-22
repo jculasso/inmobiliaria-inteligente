@@ -1,9 +1,9 @@
 'use client';
 
 import type { TasacionResumenDto } from '@vacker/types';
+import { Modal } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
-import { Modal } from '../tablero/modal';
 
 interface Props {
   titulo: string;

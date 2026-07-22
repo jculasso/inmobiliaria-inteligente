@@ -11,10 +11,9 @@ import type {
   UpdateOperacion,
   VendedorDto,
 } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createOperacion, updateOperacion } from '../../lib/tablero-api';
-import { Modal } from './modal';
 
 const ESTADOS_VENTA: EstadoVenta[] = ['escriturada', 'senada', 'reservada', 'boleto'];
 const ESTADOS_ALQUILER: EstadoAlquiler[] = ['firmado', 'reservado', 'pendiente'];

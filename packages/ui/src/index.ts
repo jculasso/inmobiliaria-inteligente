@@ -7,3 +7,6 @@ export { Badge, BADGE_LABEL } from './badge';
 export type { BadgeProps, BadgeVariant } from './badge';
 export { Avatar } from './avatar';
 export type { AvatarProps, AvatarSize } from './avatar';
+export { Modal } from './modal';
+export { KpiCard } from './kpi-card';
+export type { KpiCardProps, KpiTone } from './kpi-card';
