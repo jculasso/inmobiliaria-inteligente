@@ -3,19 +3,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TasacionResumenDto } from '@vacker/types';
-import { Avatar, Button } from '@vacker/ui';
+import { Button, Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
-import { fmtNum } from '../../lib/format';
-import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
-import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
+import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
+import { TasacionFila } from './tasacion-fila';
 
 interface Props {
   tasaciones: TasacionResumenDto[];
   puedeBorrar: boolean;
 }
 
+/** Historial de tasaciones — mismo estilo de fila que el dashboard, más buscador y gestión (nueva/borrar). */
 export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
@@ -48,18 +48,11 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   async function handleGenerarInforme(id: string) {
     setGenerandoId(id);
     setErrorInforme(null);
-    try {
-      const accessToken = await getAccessToken();
-      const { url } = await generarInforme(accessToken, id);
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      // Antes un error acá quedaba solo en la consola: el botón volvía a su
-      // estado normal (el `finally` ya lo hacía) pero sin ningún aviso, así
-      // que un fallo real se sentía igual que un click que "no hizo nada".
-      setErrorInforme(err instanceof Error ? err.message : 'No se pudo generar el informe.');
-    } finally {
-      setGenerandoId(null);
-    }
+    await abrirPdfEnPestana(async () => generarInforme(await getAccessToken(), id), {
+      titulo: 'Generando informe de tasación',
+      onError: setErrorInforme,
+    });
+    setGenerandoId(null);
   }
 
   return (
@@ -87,83 +80,24 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-brand border border-line bg-white">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-2">Fecha</th>
-              <th className="px-4 py-2">Cliente</th>
-              <th className="px-4 py-2">Dirección</th>
-              <th className="px-4 py-2">Tipo</th>
-              <th className="px-4 py-2">Sup. total</th>
-              <th className="px-4 py-2">Agente</th>
-              <th className="px-4 py-2">Estado</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {filtradas.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-muted">
-                  Sin tasaciones para mostrar.
-                </td>
-              </tr>
-            ) : (
-              filtradas.map((t) => (
-                <tr key={t.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2">{t.fecha}</td>
-                  <td className="px-4 py-2 font-medium text-ink">{t.cliente}</td>
-                  <td className="px-4 py-2">{t.direccion}</td>
-                  <td className="px-4 py-2 text-muted">{t.tipoPropiedad}</td>
-                  <td className="px-4 py-2">{fmtNum(t.superficieTotal)} m²</td>
-                  <td className="px-4 py-2 text-muted">
-                    <div className="flex items-center gap-2">
-                      <Avatar nombre={t.agente.nombre} fotoUrl={t.agente.fotoUrl} size="sm" />
-                      {t.agente.nombre}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <button
-                      type="button"
-                      onClick={() => setModalEstado(t)}
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(t.estado)}`}
-                    >
-                      {t.estado}
-                    </button>
-                    {detalleEstado(t) && <div className="mt-0.5 text-xs text-muted">{detalleEstado(t)}</div>}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/tasador/tasaciones/${t.id}/editar`)}
-                        aria-label="Editar"
-                        className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleGenerarInforme(t.id)}
-                        disabled={generandoId === t.id}
-                        className="text-xs font-medium text-brand-red hover:underline disabled:opacity-50"
-                      >
-                        {generandoId === t.id ? 'Generando…' : 'Informe (PDF)'}
-                      </button>
-                      {puedeBorrar && (
-                        <ConfirmDeleteButton
-                          confirmMessage={`¿Borrar la tasación de ${t.cliente}?`}
-                          onConfirm={() => handleDelete(t.id)}
-                        />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card className="px-5 py-4">
+        <div className="flex flex-col">
+          {filtradas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted">Sin tasaciones para mostrar.</p>
+          ) : (
+            filtradas.map((t) => (
+              <TasacionFila
+                key={t.id}
+                tasacion={t}
+                onEstado={() => setModalEstado(t)}
+                onVer={() => handleGenerarInforme(t.id)}
+                generando={generandoId === t.id}
+                onBorrar={puedeBorrar ? () => handleDelete(t.id) : undefined}
+              />
+            ))
+          )}
+        </div>
+      </Card>
 
       {modalEstado && (
         <CambiarEstadoModal
