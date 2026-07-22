@@ -26,7 +26,17 @@ interface Props {
 
 /** Editor de comparables de mercado (0, o entre 3 y 6). USD/m² y promedio calculados en vivo. */
 export function ComparablesEditor({ comparables, onChange }: Props) {
-  const promedio = promedioUsdM2(comparables.filter((c) => c.superficie > 0 && c.precio > 0));
+  // Resumen automático (mismo criterio que el prototipo): solo comparables con
+  // precio y superficie cargados.
+  const validos = comparables.filter((c) => c.superficie > 0 && c.precio > 0);
+  const precios = validos.map((c) => c.precio);
+  const resumen = {
+    count: validos.length,
+    minPrecio: precios.length ? Math.min(...precios) : 0,
+    maxPrecio: precios.length ? Math.max(...precios) : 0,
+    avgPrecio: precios.length ? precios.reduce((a, b) => a + b, 0) / precios.length : 0,
+    promedioUsdM2: promedioUsdM2(validos),
+  };
 
   function actualizar(i: number, cambios: Partial<ComparableInput>) {
     onChange(comparables.map((c, idx) => (idx === i ? { ...c, ...cambios } : c)));
@@ -147,12 +157,27 @@ export function ComparablesEditor({ comparables, onChange }: Props) {
         </div>
       ))}
 
-      {promedio > 0 && (
-        <div className="rounded-brand bg-surface px-3 py-2 text-sm">
-          <span className="font-medium text-ink">Promedio USD/m²: </span>
-          <span className="font-bold text-brand-red">{fmtUSD(promedio)}</span>
+      {resumen.count > 0 && (
+        <div className="rounded-brand border-l-[3px] border-brand-red bg-surface p-4">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted">Resumen automático</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <Stat label="Comparables" valor={String(resumen.count)} />
+            <Stat label="Precio mín." valor={fmtUSD(resumen.minPrecio)} />
+            <Stat label="Precio máx." valor={fmtUSD(resumen.maxPrecio)} />
+            <Stat label="Precio promedio" valor={fmtUSD(resumen.avgPrecio)} />
+            <Stat label="USD/m² promedio" valor={fmtUSD(resumen.promedioUsdM2)} />
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Stat({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div>
+      <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-0.5 text-sm font-bold text-ink">{valor}</p>
     </div>
   );
 }
