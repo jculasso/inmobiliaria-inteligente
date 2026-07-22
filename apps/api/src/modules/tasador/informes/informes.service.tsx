@@ -70,8 +70,11 @@ export class InformesService {
     );
 
     // Bucket privado: se guarda la key en el registro de auditoría y se
-    // devuelve una URL firmada de vida corta (el front la abre al toque).
-    const pdfPath = `${ctx.tenantId}/${id}.pdf`;
+    // devuelve una URL firmada de vida corta (el front la abre al toque). El
+    // nombre del archivo (última parte de la key) es el que el navegador sugiere
+    // al guardar: "Tasacion {inmobiliaria} - {cliente} - {dirección}".
+    const nombreArchivo = nombrePdf(tenantNombre, dto.cliente, dto.direccion);
+    const pdfPath = `${ctx.tenantId}/${id}/${nombreArchivo}.pdf`;
     await this.storage.uploadPrivado('informes-tasador', pdfPath, buffer, 'application/pdf');
     await this.db.withTenant((tx) =>
       tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId: id, url: pdfPath } }),
@@ -79,4 +82,12 @@ export class InformesService {
 
     return { url: await this.storage.signedUrl('informes-tasador', pdfPath) };
   }
+}
+
+/** Nombre del archivo del PDF, sin caracteres que rompan la key de Storage / la URL. */
+function nombrePdf(inmobiliaria: string, cliente: string, direccion: string): string {
+  return `Tasacion ${inmobiliaria} - ${cliente} - ${direccion}`
+    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
