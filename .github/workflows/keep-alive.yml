@@ -1,12 +1,18 @@
 name: Keep API awake
 
-# Parche mientras la API vive en el free tier de Render (se duerme por
-# inactividad y el primer request después tarda 30-60s+). Pinguea /health
-# cada 10 minutos para que no llegue a dormirse. No reemplaza la migración
-# de infraestructura ya decidida (Lightsail) — es solo un paliativo.
+# Parche mientras la API vive en el free tier de Render (se duerme tras ~15 min
+# de inactividad y el primer request después tarda 30-60s+). Pinguea /health
+# seguido para que no llegue a dormirse.
+#
+# Cada 5 min (antes 10): los cron de GitHub Actions NO son puntuales — bajo
+# carga se atrasan y a veces saltan corridas, así que con 10 min la ventana
+# real entre pings podía superar los 15 min y Render se dormía igual (síntoma:
+# "se pone lento por momentos" al navegar). A 5 min hay más margen. Para algo
+# realmente confiable conviene un uptime monitor externo (ver notas del proyecto).
+# No reemplaza la migración de infraestructura ya decidida (Lightsail).
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 jobs:
