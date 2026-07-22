@@ -1,11 +1,11 @@
 import type { ModuloKey, PlanTenant, Rol, TenantConfig } from '@vacker/types';
 import { MODULOS_POR_PLAN } from '@vacker/types';
 import { Avatar, type BadgeVariant } from '@vacker/ui';
-import { alcanceDeModulo, etiquetaDeAlcance } from '../lib/rbac';
-import { fmtUSD } from '../lib/format';
+import { alcanceDeModulo } from '../lib/rbac';
 import { tenantBrandStyle } from '../lib/tenant-style';
 import { ModuleCard } from './home/module-card';
 import { LoginPanel } from './home/login-panel';
+import { TableroVolumenPreview } from './home/tablero-volumen-preview';
 import { LogoutButton } from './logout-button';
 
 interface Modulo {
@@ -51,7 +51,6 @@ export interface HomeViewProps {
     nombre: string;
     fotoUrl: string | null;
     roles: Rol[];
-    volumenAnual?: number;
     tenant: { nombre: string; plan: PlanTenant; config: TenantConfig };
   } | null;
 }
@@ -106,27 +105,26 @@ export function HomeView({ sesion }: HomeViewProps) {
         {bloqueada && <LoginPanel />}
 
         <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULOS.map((m) => (
-            <ModuleCard
-              key={m.nombre}
-              nombre={m.nombre}
-              descripcion={m.descripcion}
-              icono={m.icono}
-              estado={m.estado}
-              href={m.href}
-              bloqueada={bloqueada}
-              habilitado={m.estado === 'activo' && alcance !== null && modulosDelPlan.includes(m.key)}
-              preview={
-                m.href === '/tablero' && sesion?.volumenAnual !== undefined ? (
-                  <div className="rounded-lg bg-surface px-3 py-2 text-xs">
-                    <span className="font-bold text-ink">{fmtUSD(sesion.volumenAnual)}</span>{' '}
-                    <span className="text-muted">volumen {anio}</span>
-                    {alcance && <span className="ml-1 text-muted">· {etiquetaDeAlcance(alcance)}</span>}
-                  </div>
-                ) : undefined
-              }
-            />
-          ))}
+          {MODULOS.map((m) => {
+            const habilitado = m.estado === 'activo' && alcance !== null && modulosDelPlan.includes(m.key);
+            return (
+              <ModuleCard
+                key={m.nombre}
+                nombre={m.nombre}
+                descripcion={m.descripcion}
+                icono={m.icono}
+                estado={m.estado}
+                href={m.href}
+                bloqueada={bloqueada}
+                habilitado={habilitado}
+                preview={
+                  m.href === '/tablero' && habilitado && alcance ? (
+                    <TableroVolumenPreview anio={anio} alcance={alcance} />
+                  ) : undefined
+                }
+              />
+            );
+          })}
         </section>
       </div>
     </main>

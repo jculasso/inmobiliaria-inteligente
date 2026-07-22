@@ -5,6 +5,9 @@ import { HomeView } from './home-view';
 
 vi.mock('./logout-button', () => ({ LogoutButton: () => <button>Cerrar sesión</button> }));
 vi.mock('./home/login-panel', () => ({ LoginPanel: () => <div>Formulario de login</div> }));
+// El volumen se pide client-side (ver TableroVolumenPreview.test.tsx); acá solo
+// verificamos que la card lo renderice para quien tiene alcance.
+vi.mock('./home/tablero-volumen-preview', () => ({ TableroVolumenPreview: () => <div>preview-volumen</div> }));
 
 function tenant(plan: PlanTenant = 'enterprise', nombre = 'Vacker') {
   return { nombre, plan, config: {} };
@@ -51,13 +54,17 @@ describe('HomeView · modo logueado', () => {
     expect(screen.queryByRole('link', { name: 'Entrar' })).not.toBeInTheDocument();
   });
 
-  it('muestra la preview de volumen cuando viene en la sesión', () => {
+  it('renderiza la preview de volumen del Tablero para un rol con alcance', () => {
     render(
-      <HomeView
-        sesion={{ email: 'ceo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['direccion'], volumenAnual: 8452500, tenant: tenant() }}
-      />,
+      <HomeView sesion={{ email: 'ceo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['direccion'], tenant: tenant() }} />,
     );
-    expect(screen.getByText('$8.452.500')).toBeInTheDocument();
-    expect(screen.getByText(/Total/)).toBeInTheDocument();
+    expect(screen.getByText('preview-volumen')).toBeInTheDocument();
+  });
+
+  it('no renderiza la preview de volumen sin alcance de tenant (admin_plataforma)', () => {
+    render(
+      <HomeView sesion={{ email: 'soporte@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['admin_plataforma'], tenant: tenant() }} />,
+    );
+    expect(screen.queryByText('preview-volumen')).not.toBeInTheDocument();
   });
 });

@@ -1,8 +1,6 @@
 import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../lib/api';
-import { getKpisResumen } from '../lib/tablero-api';
 import { createClient } from '../lib/supabase/server';
-import { alcanceDeModulo } from '../lib/rbac';
 import { HomeView } from '../components/home-view';
 import { LogoutButton } from '../components/logout-button';
 
@@ -18,19 +16,12 @@ export default async function Home() {
   }
 
   try {
-    // getMe y el preview de volumen van en paralelo (antes: uno esperaba al
-    // otro). El preview es opcional y se descarta solo si el usuario termina
-    // sin acceso al Tablero — pedirlo en paralelo cuesta como mucho una
-    // consulta de más que se ignora, pero corta a la mitad la espera típica
-    // (con la latencia cross-region hacia la base, esto se sentía bastante
-    // en el primer render después de loguearse).
-    const [principal, resumen] = await Promise.all([
-      getMe(session.access_token),
-      getKpisResumen(session.access_token, { anio: new Date().getFullYear() }).catch(() => null),
-    ]);
-
-    const volumenAnual =
-      alcanceDeModulo(principal.roles) !== null ? (resumen?.anual.volumen ?? undefined) : undefined;
+    // Solo `getMe` (liviano) bloquea el render de la Home. El volumen anual del
+    // Tablero se pide client-side en `TableroVolumenPreview` — `getKpisResumen`
+    // agrega todo el año y es más pesada, así que antes la Home esperaba ese
+    // cálculo (más notorio por la latencia cross-region). Ahora la Home aparece
+    // al instante y ese stat opcional se completa solo.
+    const principal = await getMe(session.access_token);
 
     return (
       <HomeView
@@ -39,7 +30,6 @@ export default async function Home() {
           nombre: principal.nombre,
           fotoUrl: principal.fotoUrl,
           roles: principal.roles,
-          volumenAnual,
           tenant: principal.tenant,
         }}
       />
