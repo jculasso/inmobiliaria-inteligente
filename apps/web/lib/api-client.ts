@@ -18,15 +18,31 @@ interface ApiFetchOptions {
   searchParams?: Record<string, string | number | undefined>;
 }
 
-/** Formato de error de la API (CLAUDE.md §8): { error: { code, message, details? } }. */
+/**
+ * Formato de error de la API (CLAUDE.md §8): { error: { code, message, details? } }.
+ * `details` viaja tipado como `unknown` a propósito: la validación Zod lo manda
+ * como `{ path, message }[]`, pero errores de Prisma (p. ej. P2002) lo mandan
+ * como `string[]` — no se puede asumir una sola forma.
+ */
 interface ApiErrorBody {
-  error?: { code?: string; message?: string; details?: { path?: string; message: string }[] };
+  error?: { code?: string; message?: string; details?: unknown };
+}
+
+/** Detalle de validación por campo (forma que emite ZodValidationPipe). */
+function esDetalleCampo(x: unknown): x is { path?: string; message: string } {
+  return typeof x === 'object' && x !== null && typeof (x as { message?: unknown }).message === 'string';
 }
 
 /** Arma un mensaje legible a partir del error de la API, priorizando el detalle de validación por campo. */
 function mensajeDeError(errorBody: ApiErrorBody | null, fallback: string): string {
-  const detalle = errorBody?.error?.details?.[0];
-  if (detalle) return detalle.path ? `${detalle.path}: ${detalle.message}` : detalle.message;
+  const detalles = errorBody?.error?.details;
+  const detalle = Array.isArray(detalles) ? detalles[0] : undefined;
+  // Solo usamos el detalle si es un error de validación por campo; para otros
+  // (Prisma manda `details` como string[]) caemos al mensaje genérico en vez
+  // de renderizar `undefined`.
+  if (esDetalleCampo(detalle)) {
+    return detalle.path ? `${detalle.path}: ${detalle.message}` : detalle.message;
+  }
   return errorBody?.error?.message ?? fallback;
 }
 
