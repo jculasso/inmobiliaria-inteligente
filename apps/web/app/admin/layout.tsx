@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <CardTitle>No se pudo cargar la administración</CardTitle>
             <CardDescription>{message} Probá recargar la página.</CardDescription>
           </CardHeader>
-          <LogoutButton />
+          <LogoutButton redirectTo="/admin" />
         </Card>
       </main>
     );
@@ -70,7 +70,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
         <div className="flex flex-col items-end gap-2">
           <span className="text-sm text-muted">{principal.email}</span>
-          <LogoutButton />
+          <LogoutButton redirectTo="/admin" />
         </div>
       </div>
 

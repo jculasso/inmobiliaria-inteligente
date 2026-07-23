@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import { createClient } from '../lib/supabase/client';
 
-export function LogoutButton() {
+/** `redirectTo`: adónde ir tras cerrar sesión. Default `/` (Home). El panel de
+ * admin lo pasa como `/admin` para volver a su propio login (no a la Home). */
+export function LogoutButton({ redirectTo = '/' }: { redirectTo?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -13,7 +15,7 @@ export function LogoutButton() {
     setLoading(true);
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/');
+    router.push(redirectTo);
     router.refresh();
   }
 
