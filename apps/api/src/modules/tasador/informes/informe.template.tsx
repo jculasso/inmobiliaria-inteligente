@@ -1,7 +1,23 @@
+import path from 'node:path';
 import React from 'react';
-import { Document, Image, Link, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Document, Font, Image, Link, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { analizarComparables, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
 import type { ComparableDto, TasacionDto } from '@vacker/types';
+
+// Fuente de marca Vacker (CLAUDE.md §6). Los .ttf se copian a `dist` vía
+// nest-cli.json ("assets"); `__dirname` resuelve tanto en el build (dist) como
+// en los tests (src).
+Font.register({
+  family: 'Montserrat',
+  fonts: [
+    { src: path.join(__dirname, 'fonts', 'Montserrat-Regular.ttf'), fontWeight: 400 },
+    { src: path.join(__dirname, 'fonts', 'Montserrat-Italic.ttf'), fontWeight: 400, fontStyle: 'italic' },
+    { src: path.join(__dirname, 'fonts', 'Montserrat-Bold.ttf'), fontWeight: 700 },
+    { src: path.join(__dirname, 'fonts', 'Montserrat-ExtraBold.ttf'), fontWeight: 800 },
+  ],
+});
+// No cortar palabras con guiones al final de línea (comportamiento por defecto de react-pdf).
+Font.registerHyphenationCallback((word) => [word]);
 
 // Réplica del informe del prototipo (docs/prototipos/tasador_de_propiedades.html,
 // función `renderReporteTasacion`): encabezado con logo + "DOCUMENTO INTERNO" y
@@ -17,7 +33,7 @@ const SURFACE = '#F4F5F7';
 
 function crearEstilos(red: string, redDark: string) {
   return StyleSheet.create({
-    page: { padding: 36, fontSize: 9.5, color: INK, fontFamily: 'Helvetica' },
+    page: { padding: 36, fontSize: 9.5, color: INK, fontFamily: 'Montserrat' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
     logoBox: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     logoImg: { width: 36, height: 36, objectFit: 'contain' },
