@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import type { AuthPrincipal } from '@vacker/types';
 import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
 import { LogoutButton } from '../../components/logout-button';
+import { AdminLogin } from '../../components/admin/admin-login';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -13,14 +13,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Solo redirige a la Home si de verdad no hay sesión. Antes esto se
-  // resolvía con requireServerPrincipal(), que colapsaba "sin sesión" y
-  // "falló /me" (ej. un timeout transitorio hacia el backend) en el mismo
-  // `null` — cualquiera de los dos mandaba silenciosamente a la Home sin
-  // ningún mensaje, lo que se veía como si /admin "no funcionara" estando
-  // logueado. Acá se distingue: sin sesión → Home; sesión pero falló /me →
-  // error visible (mismo criterio que /tablero/layout.tsx).
-  if (!session) redirect('/');
+  // Sin sesión: /admin muestra su PROPIA pantalla de login (no rebota a la
+  // Home; ver middleware.ts, que deja pasar /admin justamente para esto).
+  // Tras loguear, AdminLogin hace router.refresh() y este layout se vuelve a
+  // ejecutar ya con sesión. Se distingue "sin sesión" (login) de "sesión pero
+  // falló /me" (error visible más abajo), como en /tablero/layout.tsx.
+  if (!session) return <AdminLogin />;
 
   let principal: AuthPrincipal;
   try {
