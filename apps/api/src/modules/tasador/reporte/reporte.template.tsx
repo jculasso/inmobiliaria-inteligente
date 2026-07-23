@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { EstadoTasacion, Exclusividad, RankingCaptacionItem, ResumenTasadorKpi } from '@vacker/types';
 import { ESTADO_TASACION_COLOR } from '@vacker/types';
+import { FUENTE_MARCA } from '../informes/fuentes';
 
 // Mirror de `docs/prototipos/tasador_de_propiedades.html`, función `ReporteView`:
 // KPIs del período · distribución por estado · tabla de tasaciones · ranking.
@@ -12,7 +13,7 @@ const LINE = '#E6E6E6';
 
 function crearEstilos(RED: string) {
   return StyleSheet.create({
-  page: { padding: 32, fontSize: 10, color: INK, fontFamily: 'Helvetica' },
+  page: { padding: 32, fontSize: 10, color: INK, fontFamily: FUENTE_MARCA },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   logo: { width: 48, height: 48, objectFit: 'contain' },
   brandName: { fontSize: 14, fontWeight: 700, color: RED },
