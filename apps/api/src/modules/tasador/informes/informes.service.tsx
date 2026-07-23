@@ -84,10 +84,16 @@ export class InformesService {
   }
 }
 
-/** Nombre del archivo del PDF, sin caracteres que rompan la key de Storage / la URL. */
+/**
+ * Nombre del archivo del PDF. Se normaliza a ASCII porque Supabase Storage
+ * rechaza keys con caracteres no-ASCII (acentos, ñ) con "InvalidKey": se sacan
+ * los acentos y se deja solo letras/números/espacio/punto/guion.
+ */
 function nombrePdf(inmobiliaria: string, cliente: string, direccion: string): string {
   return `Tasacion ${inmobiliaria} - ${cliente} - ${direccion}`
-    .replace(/[\\/:*?"<>|]/g, ' ')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-zA-Z0-9 .-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

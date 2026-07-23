@@ -19,18 +19,26 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleSeleccionar(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const seleccionadas = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file) return;
+    // Solo entran las que caben en el máximo (3).
+    const aSubir = seleccionadas.slice(0, MAX_FOTOS - fotos.length);
+    if (aSubir.length === 0) return;
 
     setSubiendo(true);
     setError(null);
     try {
       const accessToken = await getAccessToken();
-      const foto = await subirFotoTasacion(accessToken, tasacionId, file);
-      onChange([...fotos, foto]);
+      // Secuencial: el backend asigna el `orden` según la cantidad actual, así
+      // que subirlas en paralelo les daría el mismo orden a todas.
+      let acumuladas = fotos;
+      for (const file of aSubir) {
+        const foto = await subirFotoTasacion(accessToken, tasacionId, file);
+        acumuladas = [...acumuladas, foto];
+        onChange(acumuladas);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo subir la foto.');
+      setError(err instanceof Error ? err.message : 'No se pudieron subir las fotos.');
     } finally {
       setSubiendo(false);
     }
@@ -58,10 +66,11 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
             fotos.length >= MAX_FOTOS || subiendo ? 'pointer-events-none opacity-50' : ''
           }`}
         >
-          {subiendo ? 'Subiendo…' : '＋ Cargar foto'}
+          {subiendo ? 'Subiendo…' : '＋ Cargar fotos'}
           <input
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             disabled={fotos.length >= MAX_FOTOS || subiendo}
             onChange={handleSeleccionar}
