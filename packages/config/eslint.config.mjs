@@ -17,6 +17,9 @@ export default [
       '**/coverage/**',
       '**/node_modules/**',
       '**/.turbo/**',
+      // Temporales que tsup crea y borra durante el build; si eslint corre en
+      // paralelo puede intentar leer uno ya borrado (ENOENT) y romper el CI.
+      '**/tsup.config.bundled_*.mjs',
     ],
   },
   js.configs.recommended,
