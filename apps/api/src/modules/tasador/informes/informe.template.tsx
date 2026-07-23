@@ -36,7 +36,7 @@ function crearEstilos(red: string, redDark: string) {
     fichaSub: { fontSize: 8.5, color: MUTED, marginTop: 1 },
     divider: { height: 2.5, backgroundColor: red, marginTop: 14, marginBottom: 14 },
     sectionTitle: { fontSize: 11, fontWeight: 800, color: INK, marginBottom: 8, marginTop: 4 },
-    sectionUnderline: { width: 32, height: 2.5, backgroundColor: red, marginBottom: 10, marginTop: -6 },
+    sectionUnderline: { width: '100%', height: 2, backgroundColor: red, marginBottom: 10, marginTop: -4 },
     resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     resumenCard: {
       width: '23.5%',
