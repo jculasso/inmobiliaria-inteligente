@@ -76,11 +76,13 @@ export function HomeView({ sesion }: HomeViewProps) {
               </svg>
             </div>
           )}
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-red">
               Inmobiliaria Inteligente
             </p>
-            <h1 className="text-3xl font-extrabold text-ink">{nombreMarca} · Plataforma 2.0</h1>
+            <h1 className="text-2xl font-extrabold text-ink break-words sm:text-3xl">
+              {nombreMarca} · Plataforma 2.0
+            </h1>
           </div>
         </div>
 

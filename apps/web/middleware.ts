@@ -49,9 +49,14 @@ export async function middleware(request: NextRequest) {
 
   // "/" es pública: el login vive embebido ahí (ver app/page.tsx). El resto
   // de las rutas (p. ej. /tablero/*) exige sesión y redirige a la Home.
-  const isPublicPath = PUBLIC_PATHS.includes(request.nextUrl.pathname);
+  const path = request.nextUrl.pathname;
+  const isPublicPath = PUBLIC_PATHS.includes(path);
+  // /admin tiene su PROPIA pantalla de login (components/admin/admin-login.tsx):
+  // no rebota a la Home. Se deja pasar sin sesión y el layout de /admin decide
+  // (login si no hay sesión, "sin acceso" si el rol no es admin_plataforma).
+  const isAdminPath = path === '/admin' || path.startsWith('/admin/');
 
-  if (!claims && !isPublicPath) {
+  if (!claims && !isPublicPath && !isAdminPath) {
     // Guarda el destino original (ej. /admin) como ?redirect= para que el
     // login embebido en la Home pueda mandar para allá apenas loguees, en
     // vez de dejarte en la Home y que tengas que volver a escribir la URL
