@@ -54,6 +54,9 @@ model Usuario {
   // Foto de perfil (usuarios-avatares en Supabase Storage) — se carga desde
   // /admin, sin restricción de tamaño más allá de la que ya valida el upload.
   fotoUrl    String? @map("foto_url")
+  // Teléfono de contacto del agente — se carga desde /admin y aparece en el
+  // header del informe de tasación (email · teléfono).
+  telefono   String? @map("telefono")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -263,6 +266,7 @@ model TasacionComparable {
   precio         Decimal   @db.Decimal(14, 2)
   dormitorios    Int?
   banos          Int?
+  antiguedad     Int?      // años de antigüedad del comparable (se muestra en el informe)
   cochera        Boolean   @default(false)
   estado         String?
   fuente         String    @default("Publicación")

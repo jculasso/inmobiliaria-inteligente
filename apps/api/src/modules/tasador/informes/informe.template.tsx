@@ -34,6 +34,8 @@ function crearEstilos(red: string, redDark: string) {
     fichaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
     fichaValue: { fontSize: 10, fontWeight: 700, color: INK, marginTop: 2 },
     fichaSub: { fontSize: 8.5, color: MUTED, marginTop: 1 },
+    agenteBox: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    agenteFoto: { width: 42, height: 42, borderRadius: 21, objectFit: 'cover' },
     divider: { height: 2.5, backgroundColor: red, marginTop: 14, marginBottom: 14 },
     sectionTitle: { fontSize: 11, fontWeight: 800, color: INK, marginBottom: 8, marginTop: 4 },
     sectionUnderline: { width: '100%', height: 2, backgroundColor: red, marginBottom: 10, marginTop: -4 },
@@ -309,10 +311,15 @@ export function InformeDocument({
             <Text style={styles.fichaLabel}>CLIENTE</Text>
             <Text style={styles.fichaValue}>{t.cliente}</Text>
           </View>
-          <View>
-            <Text style={styles.fichaLabel}>AGENTE RESPONSABLE</Text>
-            <Text style={styles.fichaValue}>{t.agente.nombre}</Text>
-            <Text style={styles.fichaSub}>{t.agente.email}</Text>
+          <View style={styles.agenteBox}>
+            {t.agente.fotoUrl ? <Image src={t.agente.fotoUrl} style={styles.agenteFoto} /> : null}
+            <View>
+              <Text style={styles.fichaLabel}>AGENTE RESPONSABLE</Text>
+              <Text style={styles.fichaValue}>{t.agente.nombre}</Text>
+              <Text style={styles.fichaSub}>
+                {t.agente.telefono ? `${t.agente.email} · ${t.agente.telefono}` : t.agente.email}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -378,6 +385,7 @@ export function InformeDocument({
                 <Text style={styles.th}>Sup. Tot.</Text>
                 <Text style={styles.th}>Dor.</Text>
                 <Text style={styles.th}>Baños</Text>
+                <Text style={styles.th}>Antig.</Text>
                 <Text style={styles.th}>Coch.</Text>
                 <Text style={styles.th}>Precio</Text>
                 <Text style={styles.th}>USD/m²</Text>
@@ -390,6 +398,7 @@ export function InformeDocument({
                   <Text style={styles.td}>{c.superficie} m²</Text>
                   <Text style={styles.td}>{c.dormitorios ?? '—'}</Text>
                   <Text style={styles.td}>{c.banos ?? '—'}</Text>
+                  <Text style={styles.td}>{c.antiguedad != null ? `${c.antiguedad} a` : '—'}</Text>
                   <Text style={styles.td}>{fmtSiNo(c.cochera)}</Text>
                   <Text style={styles.td}>{fmtUSD(c.precio)}</Text>
                   <Text style={styles.tdRed}>{fmtUSD(c.usdM2)}</Text>

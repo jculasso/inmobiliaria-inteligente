@@ -62,6 +62,7 @@ export class AdminUsuariosService {
           tenantId,
           nombre: dto.nombre,
           email: dto.email,
+          telefono: dto.telefono ?? null,
           estado: 'activo',
           roles: { create: roles.map((rol) => ({ rol, tenantId })) },
         },
@@ -84,6 +85,7 @@ export class AdminUsuariosService {
     const data: Prisma.UsuarioUpdateInput = {};
     if (dto.nombre !== undefined) data.nombre = dto.nombre;
     if (dto.estado !== undefined) data.estado = dto.estado;
+    if (dto.telefono !== undefined) data.telefono = dto.telefono ?? null;
     if (Object.keys(data).length > 0) {
       await this.db.usuario.update({ where: { id }, data });
     }
@@ -199,6 +201,7 @@ function toDto(row: UsuarioAdminRow) {
     email: row.email,
     estado: row.estado,
     fotoUrl: row.fotoUrl,
+    telefono: row.telefono,
     roles: row.roles.map((r) => r.rol),
     tieneAcceso: row.authUserId !== null,
   };

@@ -14,11 +14,17 @@ const LINE = '#E6E6E6';
 function crearEstilos(RED: string) {
   return StyleSheet.create({
   page: { padding: 32, fontSize: 10, color: INK, fontFamily: FUENTE_MARCA },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  logo: { width: 48, height: 48, objectFit: 'contain' },
-  brandName: { fontSize: 14, fontWeight: 700, color: RED },
-  title: { fontSize: 16, fontWeight: 800, marginTop: 8 },
-  subtitle: { fontSize: 10, color: MUTED, marginTop: 2, marginBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logoBox: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logo: { width: 40, height: 40, objectFit: 'contain' },
+  brandName: { fontSize: 13, fontWeight: 700, color: RED },
+  docMeta: { alignItems: 'flex-end' },
+  docMetaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
+  docMetaValue: { fontSize: 8.5, color: MUTED, marginTop: 2 },
+  kicker: { fontSize: 8, fontWeight: 700, color: RED, letterSpacing: 1.5, marginTop: 16 },
+  title: { fontSize: 20, fontWeight: 800, marginTop: 4 },
+  subtitle: { fontSize: 10, color: MUTED, marginTop: 2 },
+  divider: { height: 2.5, backgroundColor: RED, marginTop: 12, marginBottom: 14 },
   sectionTitle: {
     fontSize: 12,
     fontWeight: 700,
@@ -103,18 +109,27 @@ export function ReporteDocument({
   const valorTotal = filas.reduce((s, f) => s + (f.valorRecomendado ?? 0), 0);
   const maxDist = Math.max(...resumen.distribucionEstado.map((d) => d.cantidad), 1);
   const maxRank = Math.max(...ranking.map((r) => r.captadas), 1);
+  const fechaHoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <Document title={`Reporte de tasaciones — ${periodoLabel}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.brandName}>{tenantNombre}</Text>
-          {logoUrl ? <Image src={logoUrl} style={styles.logo} /> : null}
+          <View style={styles.logoBox}>
+            {logoUrl ? <Image src={logoUrl} style={styles.logo} /> : null}
+            <Text style={styles.brandName}>{tenantNombre}</Text>
+          </View>
+          <View style={styles.docMeta}>
+            <Text style={styles.docMetaLabel}>DOCUMENTO INTERNO</Text>
+            <Text style={styles.docMetaValue}>{fechaHoy}</Text>
+          </View>
         </View>
+        <Text style={styles.kicker}>REPORTE DE TASACIONES</Text>
         <Text style={styles.title}>Reporte de Tasaciones</Text>
         <Text style={styles.subtitle}>{periodoLabel}</Text>
+        <View style={styles.divider} />
 
-        <View style={styles.kpiRow}>
+        <View style={styles.kpiRow} wrap={false}>
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>Tasaciones</Text>
             <Text style={styles.kpiValue}>{resumen.total}</Text>
@@ -137,7 +152,7 @@ export function ReporteDocument({
 
         <Text style={styles.sectionTitle}>Distribución por estado</Text>
         {resumen.distribucionEstado.map((d) => (
-          <View key={d.estado} style={styles.distRow}>
+          <View key={d.estado} style={styles.distRow} wrap={false}>
             <View style={[styles.distDot, { backgroundColor: ESTADO_TASACION_COLOR[d.estado] }]} />
             <Text style={styles.distLabel}>{d.estado}</Text>
             <View style={styles.distTrack}>
@@ -169,7 +184,7 @@ export function ReporteDocument({
               <Text style={styles.th}>Valor</Text>
             </View>
             {filas.map((f) => (
-              <View key={f.id} style={styles.tableRow}>
+              <View key={f.id} style={styles.tableRow} wrap={false}>
                 <Text style={styles.td}>{f.fecha}</Text>
                 <Text style={[styles.td, { flex: 2 }]}>
                   {f.direccion}
@@ -189,7 +204,7 @@ export function ReporteDocument({
           <>
             <Text style={styles.sectionTitle}>Ranking de captaciones por vendedor</Text>
             {ranking.map((r, i) => (
-              <View key={r.usuarioId} style={styles.rankRow}>
+              <View key={r.usuarioId} style={styles.rankRow} wrap={false}>
                 <Text style={styles.rankMedal}>{`${i + 1}°`}</Text>
                 <Text style={styles.rankName}>{r.nombre}</Text>
                 <View style={styles.distTrack}>

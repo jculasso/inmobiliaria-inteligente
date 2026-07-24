@@ -29,6 +29,7 @@ const USUARIO = {
   roles: ['vendedor'],
   tieneAcceso: true,
   fotoUrl: null,
+  telefono: null,
 };
 
 afterEach(() => {
