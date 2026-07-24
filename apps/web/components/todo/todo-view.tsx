@@ -161,7 +161,7 @@ export function TodoView() {
       </div>
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-bold capitalize text-ink">{labelRango(vista, fecha)}</h2>
+        <h2 className="text-lg font-bold text-ink">{capFirst(labelRango(vista, fecha))}</h2>
         {googleEmail && (
           <span className="text-xs text-muted">
             {googleEmail} ·{' '}
@@ -210,14 +210,27 @@ function Agenda({ data }: { data: TodoEventosDto | null }) {
 }
 
 function EventoFila({ ev }: { ev: TodoEventoDto }) {
+  const inicio = fmtHora(ev.inicio);
+  const fin = fmtHora(ev.fin);
   const contenido = (
-    <div className="flex items-start gap-3 rounded-brand border border-line bg-white p-3 shadow-sm">
-      <div className="w-16 shrink-0 text-sm font-semibold text-ink">
-        {ev.todoElDia ? <span className="text-muted">Todo el día</span> : fmtHora(ev.inicio)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink">{ev.titulo}</p>
-        {ev.ubicacion && <p className="truncate text-xs text-muted">📍 {ev.ubicacion}</p>}
+    <div className="flex items-stretch overflow-hidden rounded-brand border border-line bg-white shadow-sm">
+      <div className="w-1 shrink-0 bg-brand-red" aria-hidden />
+      <div className="flex flex-1 items-center gap-3 py-2.5 pl-3 pr-3">
+        <div className="w-12 shrink-0 text-right">
+          {ev.todoElDia ? (
+            <span className="text-[11px] font-semibold leading-tight text-muted">Todo el día</span>
+          ) : (
+            <>
+              <div className="text-sm font-bold tabular-nums text-ink">{inicio}</div>
+              {fin && fin !== inicio && <div className="text-xs tabular-nums text-muted">{fin}</div>}
+            </>
+          )}
+        </div>
+        <div className="h-9 w-px shrink-0 bg-line" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-ink">{ev.titulo}</p>
+          {ev.ubicacion && <p className="truncate text-xs text-muted">📍 {ev.ubicacion}</p>}
+        </div>
       </div>
     </div>
   );
@@ -282,7 +295,17 @@ function diaKeyDe(iso: string): string {
 }
 
 function fmtHora(iso: string): string {
-  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+  // 24h (Argentina): "12:00" / "13:30" — más prolijo y sin el "p. m." que corta el layout.
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+function capFirst(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function fmtFecha(dia: string, opts: Intl.DateTimeFormatOptions): string {
