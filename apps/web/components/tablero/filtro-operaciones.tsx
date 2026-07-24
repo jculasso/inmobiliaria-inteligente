@@ -62,7 +62,7 @@ export function FiltroOperaciones({ anio, mes, trimestre }: { anio?: number; mes
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <select aria-label="Año" value={anio ?? ''} onChange={(e) => cambiarAnio(e.target.value)} className={selectClass}>
         <option value="">Todos los años</option>
         {anios.map((a) => (
