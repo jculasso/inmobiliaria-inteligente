@@ -39,8 +39,8 @@ const MODULOS: Modulo[] = [
     nombre: 'To Do List',
     descripcion: 'Agenda por vendedor sincronizada con Google Calendar.',
     icono: '🗓️',
-    estado: 'soon',
-    href: null,
+    estado: 'activo',
+    href: '/todo',
   },
 ];
 

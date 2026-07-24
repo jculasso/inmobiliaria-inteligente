@@ -13,6 +13,17 @@ export const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   // API
   API_PORT: z.coerce.number().int().positive().default(3001),
+  // Google Calendar (módulo To Do List — espejo de solo lectura). Opcionales:
+  // si faltan, la API arranca igual y solo el módulo `todo` avisa que no está
+  // configurado (no queremos que una env var del To Do tumbe todo el backend).
+  GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().url().optional(),
+  // Clave para encriptar los refresh tokens de Google en reposo (AES-256-GCM).
+  // Debe ser idéntica en todos los entornos que compartan la misma base.
+  GOOGLE_TOKEN_ENC_KEY: z.string().min(1).optional(),
+  // Base del frontend, para volver a la web tras el callback de OAuth.
+  WEB_APP_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

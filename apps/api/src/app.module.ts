@@ -10,6 +10,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { TableroModule } from './modules/tablero/tablero.module';
 import { TasadorModule } from './modules/tasador/tasador.module';
+import { TodoModule } from './modules/todo/todo.module';
 import { AdminModule } from './admin/admin.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { AdminModule } from './admin/admin.module';
     UsuariosModule,
     TableroModule,
     TasadorModule,
+    TodoModule,
     AdminModule,
   ],
 })

@@ -27,13 +27,13 @@ describe('HomeView · modo invitado (sin sesión)', () => {
 });
 
 describe('HomeView · modo logueado', () => {
-  it('muestra el nombre del tenant, el email y el Tablero y el Tasador como Activo', () => {
+  it('muestra el nombre del tenant, el email y el Tablero, el Tasador y el To Do como Activo', () => {
     render(<HomeView sesion={{ email: 'demo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['vendedor'], tenant: tenant() }} />);
     expect(screen.getByRole('heading', { name: /Vacker · Plataforma 2\.0/ })).toBeInTheDocument();
     expect(screen.getByText('demo@vacker.com')).toBeInTheDocument();
-    expect(screen.getAllByText('Activo')).toHaveLength(2);
+    expect(screen.getAllByText('Activo')).toHaveLength(3);
     const entrar = screen.getAllByRole('link', { name: 'Entrar' });
-    expect(entrar.map((a) => a.getAttribute('href'))).toEqual(['/tablero', '/tasador']);
+    expect(entrar.map((a) => a.getAttribute('href'))).toEqual(['/tablero', '/tasador', '/todo']);
   });
 
   it('muestra el nombre de la inmobiliaria logueada, no uno hardcodeado', () => {
