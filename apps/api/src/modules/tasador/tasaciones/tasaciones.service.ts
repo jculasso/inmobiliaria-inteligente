@@ -192,6 +192,14 @@ export class TasacionesService {
    */
   async update(id: string, dto: UpdateTasacion, ctx: TenantContext): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
+      // Lock pesimista de la fila: serializa guardados concurrentes sobre la
+      // MISMA tasación. Sin esto, dos ediciones simultáneas (ej. 2 PCs dando el
+      // click final a la vez) DUPLICAN los comparables: bajo Read Committed, el
+      // DELETE del segundo guardado no "ve" los comparables recién creados por
+      // el primero, así que ambos sets sobreviven (x2). Con el lock, el segundo
+      // espera a que el primero commitee y recién ahí borra/recrea → queda 1 set.
+      await tx.$executeRawUnsafe('SELECT id FROM "tasacion" WHERE id = $1 FOR UPDATE', id);
+
       const actual = await tx.tasacion.findUnique({ where: { id }, select: tasacionScopeSelect });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(actual, await resolverScope(ctx, tx));
