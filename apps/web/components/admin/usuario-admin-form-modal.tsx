@@ -25,6 +25,7 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
   const [email, setEmail] = useState(usuario?.email ?? '');
   const [password, setPassword] = useState('');
   const [estado, setEstado] = useState(usuario?.estado ?? 'activo');
+  const [telefono, setTelefono] = useState(usuario?.telefono ?? '');
   const [roles, setRoles] = useState<Rol[]>(usuario?.roles ?? ['vendedor']);
 
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +45,11 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
     setLoading(true);
     try {
       const accessToken = await getAccessToken();
+      const tel = telefono.trim() || null;
       if (usuario) {
-        await updateUsuarioAdmin(accessToken, tenantId, usuario.id, { nombre, estado, roles });
+        await updateUsuarioAdmin(accessToken, tenantId, usuario.id, { nombre, estado, roles, telefono: tel });
       } else {
-        await createUsuarioAdmin(accessToken, tenantId, { nombre, email, password, roles });
+        await createUsuarioAdmin(accessToken, tenantId, { nombre, email, password, roles, telefono: tel });
       }
       onSaved();
     } catch (err) {
@@ -70,6 +72,15 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={!!usuario}
+            className={inputClass}
+          />
+        </Campo>
+        <Campo label="Teléfono (aparece en el informe de tasación)">
+          <input
+            type="tel"
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            placeholder="Ej. 3415023921"
             className={inputClass}
           />
         </Campo>

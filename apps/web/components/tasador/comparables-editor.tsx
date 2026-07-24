@@ -34,6 +34,7 @@ const COMPARABLE_VACIO: ComparableInput = {
   precio: 0,
   dormitorios: null,
   banos: null,
+  antiguedad: null,
   cochera: false,
   estado: null,
   fuente: 'Publicación',
@@ -214,6 +215,9 @@ export function ComparablesEditor({ comparables, onChange, analisis }: Props) {
               </Campo>
               <Campo label="Baños">
                 <NumInput value={c.banos} onChange={(v) => actualizar(i, { banos: v })} />
+              </Campo>
+              <Campo label="Años antigüedad">
+                <NumInput value={c.antiguedad} onChange={(v) => actualizar(i, { antiguedad: v })} />
               </Campo>
               <Campo label="Cochera">
                 <select value={c.cochera ? 'Sí' : 'No'} onChange={(e) => actualizar(i, { cochera: e.target.value === 'Sí' })} className={inputClass}>

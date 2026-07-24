@@ -51,6 +51,7 @@ const usuarioRow = {
   estado: 'activo',
   authUserId: 'auth-1',
   fotoUrl: null,
+  telefono: null,
   roles: [{ rol: 'vendedor' }],
 };
 
@@ -91,6 +92,7 @@ describe('AdminUsuariosService', () => {
         tenantId: TENANT_ID,
         nombre: 'Nueva Vendedora',
         email: 'nuevo@vacker.test',
+        telefono: null,
         estado: 'activo',
         roles: { create: [{ rol: 'vendedor', tenantId: TENANT_ID }] },
       },
@@ -101,6 +103,7 @@ describe('AdminUsuariosService', () => {
       email: 'nuevo@vacker.test',
       estado: 'activo',
       fotoUrl: null,
+      telefono: null,
       roles: ['vendedor'],
       tieneAcceso: true,
     });

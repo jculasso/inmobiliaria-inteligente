@@ -51,6 +51,7 @@ export const UsuarioAdminDtoSchema = z.object({
   /** false para vendedores creados desde el Tablero sin cuenta de Auth todavía. */
   tieneAcceso: z.boolean(),
   fotoUrl: z.string().nullable(),
+  telefono: z.string().nullable(),
 });
 export type UsuarioAdminDto = z.infer<typeof UsuarioAdminDtoSchema>;
 
@@ -59,6 +60,7 @@ export const CreateUsuarioAdminSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Mínimo 8 caracteres.'),
   roles: z.array(RolSchema).min(1),
+  telefono: z.string().nullish(),
 });
 export type CreateUsuarioAdmin = z.infer<typeof CreateUsuarioAdminSchema>;
 
@@ -67,6 +69,7 @@ export const UpdateUsuarioAdminSchema = z
     nombre: z.string().min(1),
     estado: z.enum(['activo', 'inactivo']),
     roles: z.array(RolSchema).min(1),
+    telefono: z.string().nullish(),
   })
   .partial();
 export type UpdateUsuarioAdmin = z.infer<typeof UpdateUsuarioAdminSchema>;

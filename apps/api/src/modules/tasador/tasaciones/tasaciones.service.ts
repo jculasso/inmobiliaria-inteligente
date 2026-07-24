@@ -14,7 +14,7 @@ import { rangoDeAnioMes } from '../fecha.util';
 const FOTOS_BUCKET = 'tasador-fotos';
 
 export const tasacionInclude = {
-  agente: { select: { id: true, nombre: true, email: true, fotoUrl: true } },
+  agente: { select: { id: true, nombre: true, email: true, fotoUrl: true, telefono: true } },
   comparables: true,
   fotos: { orderBy: { orden: 'asc' } },
 } satisfies Prisma.TasacionInclude;
@@ -418,7 +418,13 @@ export function toDto(row: TasacionRow) {
     id: row.id,
     codigo: row.codigo,
     agenteId: row.agenteId,
-    agente: { id: row.agente.id, nombre: row.agente.nombre, email: row.agente.email, fotoUrl: row.agente.fotoUrl },
+    agente: {
+      id: row.agente.id,
+      nombre: row.agente.nombre,
+      email: row.agente.email,
+      fotoUrl: row.agente.fotoUrl,
+      telefono: row.agente.telefono,
+    },
     cliente: row.cliente,
     fecha: fromDate(row.fecha)!,
     direccion: row.direccion,
@@ -465,6 +471,7 @@ export function toDto(row: TasacionRow) {
         precio,
         dormitorios: c.dormitorios,
         banos: c.banos,
+        antiguedad: c.antiguedad,
         cochera: c.cochera,
         estado: vacioANull(c.estado),
         fuente: c.fuente,

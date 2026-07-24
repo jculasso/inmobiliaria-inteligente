@@ -195,6 +195,7 @@ export const ComparableInputSchema = z.object({
   precio: z.number().positive(),
   dormitorios: z.number().int().nonnegative().nullish(),
   banos: z.number().int().nonnegative().nullish(),
+  antiguedad: z.number().int().nonnegative().nullish(), // años de antigüedad del comparable
   cochera: z.boolean().default(false),
   estado: EstadoInmuebleSchema.nullish(),
   fuente: FuenteComparableSchema.default('Publicación'),
@@ -346,6 +347,7 @@ export const TasacionDtoSchema = z.object({
     nombre: z.string(),
     email: z.string().email(),
     fotoUrl: z.string().nullable(),
+    telefono: z.string().nullable(),
   }),
   cliente: z.string(),
   fecha: z.string(),
