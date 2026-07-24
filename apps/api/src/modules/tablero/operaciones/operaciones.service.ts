@@ -31,7 +31,13 @@ export class OperacionesService {
       const where: Prisma.OperacionWhereInput = {};
       if (filtro.tipo) where.tipo = filtro.tipo;
       if (filtro.anio != null) where.anio = filtro.anio;
-      if (filtro.mes != null) where.mes = filtro.mes;
+      if (filtro.mes != null) {
+        where.mes = filtro.mes;
+      } else if (filtro.trimestre != null) {
+        // Trimestre 1..4 → los 3 meses que lo componen (excluyente con mes).
+        const base = (filtro.trimestre - 1) * 3;
+        where.mes = { in: [base + 1, base + 2, base + 3] };
+      }
       if (filtro.estado) where.estado = filtro.estado;
 
       // Alcance por rol: solo operaciones con al menos una punta del conjunto.

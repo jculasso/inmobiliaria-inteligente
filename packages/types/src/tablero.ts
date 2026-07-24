@@ -118,6 +118,8 @@ export type KpiFiltro = z.infer<typeof KpiFiltroSchema>;
 /** Filtro de listado de operaciones (agrega tipo/estado/vendedor, todos opcionales). */
 export const OperacionFiltroSchema = KpiFiltroSchema.extend({
   anio: z.coerce.number().int().min(2000).max(2100).optional(),
+  /** Filtra por trimestre (1..4). Excluyente con `mes`. */
+  trimestre: z.coerce.number().int().min(1).max(4).optional(),
   tipo: TipoOperacionSchema.optional(),
   /** Estado exacto (ej. 'senada', 'escriturada', 'firmado') — usado por el drill-down del dashboard. */
   estado: z.string().optional(),
