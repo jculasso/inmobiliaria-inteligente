@@ -26,6 +26,7 @@ export async function listOperaciones(accessToken: string, filtro: OperacionFilt
     searchParams: {
       anio: filtro.anio,
       mes: filtro.mes,
+      trimestre: filtro.trimestre,
       tipo: filtro.tipo,
       estado: filtro.estado,
       usuarioId: filtro.usuarioId,
