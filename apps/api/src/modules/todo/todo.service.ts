@@ -111,7 +111,19 @@ export class TodoService {
       eventos: crudos.map(mapEvento),
     };
     this.cache.set(cacheKey, { exp: Date.now() + CACHE_TTL_MS, data });
+    // Barrido ocasional de entradas vencidas: el cache es por (usuario, vista,
+    // fecha), así que sin esto acumularía claves indefinidamente (leak lento).
+    // Mismo criterio que el principalCache del auth guard.
+    if (this.cache.size > 200) this.pruneExpired();
     return data;
+  }
+
+  /** Elimina del cache las entradas ya vencidas (evita crecimiento sin techo). */
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [key, val] of this.cache) {
+      if (val.exp <= now) this.cache.delete(key);
+    }
   }
 
   private decodeState(state: string): { tenantId: string; userId: string } {
