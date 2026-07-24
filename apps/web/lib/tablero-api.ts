@@ -30,6 +30,7 @@ export async function listOperaciones(accessToken: string, filtro: OperacionFilt
       tipo: filtro.tipo,
       estado: filtro.estado,
       usuarioId: filtro.usuarioId,
+      soloMio: filtro.soloMio ? 1 : undefined,
     },
   });
 }

@@ -27,7 +27,7 @@ export class OperacionesService {
   /** Lista operaciones del tenant, acotadas por el scope del rol y los filtros. */
   async list(filtro: OperacionFiltro, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
+      const scope = await resolverScope(ctx, tx, filtro.soloMio);
       const where: Prisma.OperacionWhereInput = {};
       if (filtro.tipo) where.tipo = filtro.tipo;
       if (filtro.anio != null) where.anio = filtro.anio;

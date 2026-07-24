@@ -127,7 +127,7 @@ export class TasacionesService {
     ctx: TenantContext,
     tx: Prisma.TransactionClient,
   ): Promise<Prisma.TasacionWhereInput> {
-    const scope = await resolverScope(ctx, tx);
+    const scope = await resolverScope(ctx, tx, filtro.soloMio);
     const where: Prisma.TasacionWhereInput = {};
     if (filtro.estado) where.estado = filtro.estado;
 

@@ -125,6 +125,8 @@ export const OperacionFiltroSchema = KpiFiltroSchema.extend({
   estado: z.string().optional(),
   /** Filtra a las operaciones donde este usuario tiene una punta — drill-down por vendedor. */
   usuarioId: z.string().uuid().optional(),
+  /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propias operaciones. */
+  soloMio: z.coerce.boolean().optional(),
 });
 export type OperacionFiltro = z.infer<typeof OperacionFiltroSchema>;
 

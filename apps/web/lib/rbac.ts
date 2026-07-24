@@ -59,6 +59,15 @@ export function puedeGestionarVendedores(roles: Rol[]): boolean {
   return roles.some((r) => r === 'direccion' || r === 'admin_tenant');
 }
 
+/**
+ * Muestra el toggle "Ver solo lo mío": usuarios cuyo alcance por rol es más
+ * amplio que 'propio' (CEO/dirección, admin del tenant, team leader). Un
+ * vendedor puro ya ve solo lo suyo, así que no lo necesita.
+ */
+export function puedeVerSoloLoMio(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'direccion' || r === 'admin_tenant' || r === 'team_leader');
+}
+
 /** DELETE /tablero/operaciones/:id. */
 export function puedeBorrarOperaciones(roles: Rol[]): boolean {
   return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
