@@ -33,6 +33,7 @@ model Tenant {
   tasacionFotos            TasacionFoto[]
   tasacionEstadoHistorials TasacionEstadoHistorial[]
   informeGenerados         InformeGenerado[]
+  googleCuentas            GoogleCuenta[]
 
   @@map("tenant")
 }
@@ -64,6 +65,7 @@ model Usuario {
   objetivos         Objetivo[]
   tasaciones        Tasacion[]
   historialTasacion TasacionEstadoHistorial[]
+  googleCuenta      GoogleCuenta?
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -328,4 +330,30 @@ model InformeGenerado {
   @@index([tenantId])
   @@index([tasacionId])
   @@map("informe_generado")
+}
+
+// ============================================================================
+// Módulo To Do List — espejo de solo lectura de Google Calendar.
+// Una fila por usuario que conectó su cuenta de Google. El refresh token se
+// guarda ENCRIPTADO (AES-256-GCM), nunca en claro. Cada usuario ve solo su
+// propio calendario (RLS por tenant + filtro por usuario_id en la query).
+// ============================================================================
+
+/// Conexión OAuth de un usuario con Google (para leer su Calendar principal).
+model GoogleCuenta {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  usuarioId       String   @unique @map("usuario_id") @db.Uuid
+  // Refresh token de Google encriptado (AES-256-GCM), formato iv:tag:ciphertext en base64.
+  refreshTokenEnc String   @map("refresh_token_enc")
+  // Email de la cuenta de Google vinculada, para mostrar cuál está conectada.
+  googleEmail     String?  @map("google_email")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("google_cuenta")
 }

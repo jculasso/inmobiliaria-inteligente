@@ -16,9 +16,9 @@ export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 export const MODULO_KEYS = ['tablero', 'tasador', 'todo'] as const;
 export type ModuloKey = (typeof MODULO_KEYS)[number];
 
-/** Qué módulos trae cada plan. `todo` (To Do List) figura en Enterprise aunque el módulo todavía no exista. */
+/** Qué módulos trae cada plan. El To Do List (espejo de Google Calendar) va en profesional y enterprise. */
 export const MODULOS_POR_PLAN: Record<PlanTenant, ModuloKey[]> = {
   basico: ['tablero'],
-  profesional: ['tablero', 'tasador'],
+  profesional: ['tablero', 'tasador', 'todo'],
   enterprise: ['tablero', 'tasador', 'todo'],
 };
