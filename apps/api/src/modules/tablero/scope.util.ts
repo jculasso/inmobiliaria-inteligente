@@ -32,10 +32,13 @@ export function modoDeScope(roles: readonly Rol[]): ScopeMode {
 export async function resolverScope(
   ctx: TenantContext,
   tx: Prisma.TransactionClient,
+  soloMio = false,
 ): Promise<Scope> {
   const mode = modoDeScope(ctx.roles);
+  // "Ver solo lo mío": un CEO/Team Leader elige ver solo sus propias puntas/
+  // tasaciones (seguimiento), sin cambiar su rol real. Un vendedor ya es 'propio'.
+  if (soloMio || mode === 'propio') return { mode: 'propio', usuarioIds: [ctx.userId] };
   if (mode === 'tenant') return { mode, usuarioIds: null };
-  if (mode === 'propio') return { mode, usuarioIds: [ctx.userId] };
 
   const equipo = await tx.usuario.findMany({
     where: { OR: [{ id: ctx.userId }, { liderId: ctx.userId }] },

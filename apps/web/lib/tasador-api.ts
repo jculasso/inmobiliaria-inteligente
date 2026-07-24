@@ -21,6 +21,7 @@ export async function listTasaciones(accessToken: string, filtro: TasacionFiltro
       mes: filtro.mes,
       estado: filtro.estado,
       agenteId: filtro.agenteId,
+      soloMio: filtro.soloMio ? 1 : undefined,
     },
   });
 }
@@ -34,6 +35,7 @@ export async function listTasacionesResumen(accessToken: string, filtro: Tasacio
       mes: filtro.mes,
       estado: filtro.estado,
       agenteId: filtro.agenteId,
+      soloMio: filtro.soloMio ? 1 : undefined,
     },
   });
 }

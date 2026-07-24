@@ -334,6 +334,8 @@ export const TasacionFiltroSchema = z.object({
   mes: z.coerce.number().int().min(1).max(12).optional(),
   estado: EstadoTasacionSchema.optional(),
   agenteId: z.string().uuid().optional(),
+  /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propias tasaciones. */
+  soloMio: z.coerce.boolean().optional(),
 });
 export type TasacionFiltro = z.infer<typeof TasacionFiltroSchema>;
 
