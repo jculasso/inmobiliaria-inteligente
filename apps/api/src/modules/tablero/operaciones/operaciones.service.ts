@@ -13,6 +13,9 @@ import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { resolverScope } from '../scope.util';
 import { decToNum, derivarPeriodo, fromDate, toDate } from '../tablero.util';
 
+/** Techo defensivo de filas por listado (las más recientes). Ver comentario en `list()`. */
+const LIMITE_LISTA = 500;
+
 const operacionInclude = {
   puntas: { include: { usuario: { select: { id: true, nombre: true } } } },
 } satisfies Prisma.OperacionInclude;
@@ -54,6 +57,10 @@ export class OperacionesService {
         where,
         include: operacionInclude,
         orderBy: [{ anio: 'desc' }, { mes: 'desc' }, { codigo: 'asc' }],
+        // Guardrail: trae hasta LIMITE_LISTA (las más recientes). Muy por encima
+        // del volumen actual; evita un escaneo sin techo si los datos crecen.
+        // Cuando alguna lista se acerque a este número, agregar paginación real.
+        take: LIMITE_LISTA,
       });
       return rows.map(toDto);
     });

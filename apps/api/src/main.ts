@@ -3,14 +3,39 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
+/** Orígenes extra permitidos por CORS (coma-separados en la env var CORS_ORIGINS). */
+const CORS_EXTRA = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/** Un origen del browser es propio: dominio de producción, cualquier *.vercel.app
+ * (fallback + previews de PRs), localhost de desarrollo, o algo listado en CORS_ORIGINS. */
+function esOrigenPermitido(origin: string): boolean {
+  if (CORS_EXTRA.includes(origin)) return true;
+  return (
+    origin === 'https://app.inmobiliariainteligente.net' ||
+    /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin) ||
+    /^http:\/\/localhost:\d+$/.test(origin)
+  );
+}
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
-  // CORS abierto al frontend local por ahora; se endurece por entorno más adelante.
-  // `maxAge` le dice al browser que cachee el preflight (OPTIONS) por 24hs —
-  // sin esto, cada request cross-origin (Vercel -> Render) paga DOS viajes de
-  // red (OPTIONS + el método real) en vez de uno, y con Render lento eso duele.
-  app.enableCors({ origin: true, maxAge: 86_400 });
+  // CORS acotado a los orígenes propios (dominio + fallback/previews de Vercel +
+  // local). Antes era `origin: true` (cualquier origen). La auth es por Bearer
+  // token (no cookies), así que esto es defensa en profundidad. `maxAge` cachea
+  // el preflight (OPTIONS) 24hs — sin esto cada request cross-origin paga dos
+  // viajes de red, y con Render lejos de Supabase eso duele.
+  app.enableCors({
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+      // Requests sin Origin (curl, health checks, server-to-server) pasan.
+      if (!origin || esOrigenPermitido(origin)) cb(null, true);
+      else cb(new Error(`Origen no permitido por CORS: ${origin}`), false);
+    },
+    maxAge: 86_400,
+  });
 
   // Formato de error consistente { error: { code, message, details? } }.
   app.useGlobalFilters(new AllExceptionsFilter());

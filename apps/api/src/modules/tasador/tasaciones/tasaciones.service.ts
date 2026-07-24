@@ -13,6 +13,10 @@ import { rangoDeAnioMes } from '../fecha.util';
 /** Bucket privado de fotos de propiedades — el acceso es siempre por URL firmada. */
 const FOTOS_BUCKET = 'tasador-fotos';
 
+/** Techo defensivo de filas por listado (las más recientes). Cuando alguna
+ * lista se acerque a este número, agregar paginación real ("cargar más"). */
+const LIMITE_LISTA = 500;
+
 export const tasacionInclude = {
   agente: { select: { id: true, nombre: true, email: true, fotoUrl: true, telefono: true } },
   comparables: true,
@@ -99,6 +103,7 @@ export class TasacionesService {
         where,
         include: tasacionInclude,
         orderBy: [{ fecha: 'desc' }],
+        take: LIMITE_LISTA,
       });
       return rows.map(toDto);
     });
@@ -116,6 +121,7 @@ export class TasacionesService {
         where,
         select: tasacionResumenSelect,
         orderBy: [{ fecha: 'desc' }],
+        take: LIMITE_LISTA,
       });
       return rows.map(toResumenDto);
     });
