@@ -18,6 +18,17 @@ import { createOperacion, updateOperacion } from '../../lib/tablero-api';
 const ESTADOS_VENTA: EstadoVenta[] = ['escriturada', 'senada', 'reservada', 'boleto'];
 const ESTADOS_ALQUILER: EstadoAlquiler[] = ['firmado', 'reservado', 'pendiente'];
 
+/** Etiquetas legibles para el select de estado (la base guarda el enum en minúsculas). */
+const ESTADO_LABEL: Record<string, string> = {
+  escriturada: 'Escriturada',
+  senada: 'Señada',
+  reservada: 'Reservada',
+  boleto: 'Boleto',
+  firmado: 'Firmado',
+  reservado: 'Reservado',
+  pendiente: 'Pendiente',
+};
+
 function nuevoCodigo(tipo: TipoOperacion): string {
   const prefijo = tipo === 'venta' ? 'OP' : 'ALQ';
   return `${prefijo}-${Date.now().toString().slice(-6)}`;
@@ -42,9 +53,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
   const [comisionAlquiler, setComisionAlquiler] = useState(
     String(tipo === 'alquiler' ? (operacion?.comTotal ?? '') : ''),
   );
-  const [estado, setEstado] = useState(
-    operacion?.estado ?? (tipo === 'venta' ? 'escriturada' : 'firmado'),
-  );
+  const [estado, setEstado] = useState(operacion?.estado ?? (tipo === 'venta' ? 'escriturada' : 'firmado'));
   const [fechaReserva, setFechaReserva] = useState(operacion?.fechaReserva ?? '');
   const [fechaFirma, setFechaFirma] = useState(operacion?.fechaFirma ?? '');
   const [obs, setObs] = useState(operacion?.obs ?? '');
@@ -62,18 +71,10 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 
     const puntas: PuntaInput[] = [];
     if (usuarioIdVend) {
-      puntas.push({
-        lado: 'vendedora',
-        usuarioId: usuarioIdVend,
-        comision: Number(comisionVend) || 0,
-      });
+      puntas.push({ lado: 'vendedora', usuarioId: usuarioIdVend, comision: Number(comisionVend) || 0 });
     }
     if (usuarioIdComp) {
-      puntas.push({
-        lado: 'compradora',
-        usuarioId: usuarioIdComp,
-        comision: Number(comisionComp) || 0,
-      });
+      puntas.push({ lado: 'compradora', usuarioId: usuarioIdComp, comision: Number(comisionComp) || 0 });
     }
 
     if (tipo === 'venta' && puntas.length === 0) {
@@ -129,186 +130,120 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
     }
   }
 
-  const estados = tipo === 'venta' ? ESTADOS_VENTA : ESTADOS_ALQUILER;
+  const esVenta = tipo === 'venta';
+  const estados = esVenta ? ESTADOS_VENTA : ESTADOS_ALQUILER;
+  const comisionTotal = esVenta
+    ? (usuarioIdVend ? Number(comisionVend) || 0 : 0) + (usuarioIdComp ? Number(comisionComp) || 0 : 0)
+    : Number(comisionAlquiler) || 0;
 
   return (
-    <Modal
-      title={`${operacion ? 'Editar' : 'Nueva'} ${tipo === 'venta' ? 'venta' : 'alquiler'}`}
-      onClose={onClose}
-      size="lg"
-    >
-      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Código">
-            <input value={codigo} onChange={(e) => setCodigo(e.target.value)} required className={inputClass} />
-          </Campo>
-          <Campo label="Dirección">
-            <input
-              value={direccion}
-              onChange={(e) => setDireccion(e.target.value)}
-              required
-              className={inputClass}
-            />
-          </Campo>
-        </div>
+    <Modal title={`${operacion ? 'Editar' : 'Nueva'} ${esVenta ? 'venta' : 'alquiler'}`} onClose={onClose} size="lg">
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <Seccion titulo="Datos de la operación" icono={esVenta ? '🏠' : '🔑'}>
+          <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+            <Campo label="Código">
+              <input value={codigo} onChange={(e) => setCodigo(e.target.value)} required className={inputClass} />
+            </Campo>
+            <Campo label="Dirección">
+              <input
+                value={direccion}
+                onChange={(e) => setDireccion(e.target.value)}
+                required
+                placeholder="Calle y número, barrio"
+                className={inputClass}
+              />
+            </Campo>
+          </div>
+        </Seccion>
 
-        {tipo === 'venta' ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Campo label="Precio (USD)">
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={precio}
-                onChange={(e) => setPrecio(e.target.value)}
-                required
-                className={inputClass}
-              />
+        <Seccion titulo="Valor y estado" icono="💵">
+          {esVenta ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Campo label="Precio">
+                <MoneyInput value={precio} onChange={setPrecio} required />
+              </Campo>
+              <Campo label="Estado">
+                <EstadoSelect value={estado} estados={estados} onChange={setEstado} />
+              </Campo>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Campo label="Valor mensual">
+                <MoneyInput value={valorMensual} onChange={setValorMensual} required />
+              </Campo>
+              <Campo label="Comisión">
+                <MoneyInput value={comisionAlquiler} onChange={setComisionAlquiler} />
+              </Campo>
+              <Campo label="Estado">
+                <EstadoSelect value={estado} estados={estados} onChange={setEstado} />
+              </Campo>
+            </div>
+          )}
+        </Seccion>
+
+        <Seccion titulo="Fechas" icono="📅">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo label="Fecha de reserva">
+              <input type="date" value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} className={inputClass} />
             </Campo>
-            <Campo label="Estado">
-              <select
-                value={estado}
-                onChange={(e) => setEstado(e.target.value as EstadoVenta | EstadoAlquiler)}
-                className={inputClass}
-              >
-                {estados.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Campo label="Valor mensual (USD)">
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={valorMensual}
-                onChange={(e) => setValorMensual(e.target.value)}
-                required
-                className={inputClass}
-              />
-            </Campo>
-            <Campo label="Comisión (USD)">
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={comisionAlquiler}
-                onChange={(e) => setComisionAlquiler(e.target.value)}
-                className={inputClass}
-              />
-            </Campo>
-            <Campo label="Estado">
-              <select
-                value={estado}
-                onChange={(e) => setEstado(e.target.value as EstadoVenta | EstadoAlquiler)}
-                className={inputClass}
-              >
-                {estados.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+            <Campo label="Fecha de firma">
+              <input type="date" value={fechaFirma} onChange={(e) => setFechaFirma(e.target.value)} className={inputClass} />
             </Campo>
           </div>
+        </Seccion>
+
+        {esVenta && (
+          <Seccion titulo="Puntas y comisiones" icono="🤝">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <PuntaCard
+                label="Punta vendedora"
+                usuarioId={usuarioIdVend}
+                onUsuarioId={setUsuarioIdVend}
+                comision={comisionVend}
+                onComision={setComisionVend}
+                vendedores={vendedores}
+              />
+              <PuntaCard
+                label="Punta compradora"
+                usuarioId={usuarioIdComp}
+                onUsuarioId={setUsuarioIdComp}
+                comision={comisionComp}
+                onComision={setComisionComp}
+                vendedores={vendedores}
+              />
+            </div>
+          </Seccion>
         )}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Fecha reserva">
-            <input
-              type="date"
-              value={fechaReserva}
-              onChange={(e) => setFechaReserva(e.target.value)}
-              className={inputClass}
-            />
-          </Campo>
-          <Campo label="Fecha firma">
-            <input
-              type="date"
-              value={fechaFirma}
-              onChange={(e) => setFechaFirma(e.target.value)}
-              className={inputClass}
-            />
-          </Campo>
-        </div>
-
-        {tipo === 'venta' && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Campo label="Punta vendedora">
-              <select
-                value={usuarioIdVend}
-                onChange={(e) => setUsuarioIdVend(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">—</option>
-                {vendedores.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.nombre}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-            <Campo label="Comisión vendedora">
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={comisionVend}
-                onChange={(e) => setComisionVend(e.target.value)}
-                disabled={!usuarioIdVend}
-                className={inputClass}
-              />
-            </Campo>
-            <Campo label="Punta compradora">
-              <select
-                value={usuarioIdComp}
-                onChange={(e) => setUsuarioIdComp(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">—</option>
-                {vendedores.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.nombre}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-            <Campo label="Comisión compradora">
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={comisionComp}
-                onChange={(e) => setComisionComp(e.target.value)}
-                disabled={!usuarioIdComp}
-                className={inputClass}
-              />
-            </Campo>
-          </div>
-        )}
-
-        <Campo label="Observaciones">
-          <textarea value={obs} onChange={(e) => setObs(e.target.value)} className={inputClass} rows={2} />
-        </Campo>
+        <Seccion titulo="Observaciones" icono="📝">
+          <textarea
+            value={obs}
+            onChange={(e) => setObs(e.target.value)}
+            rows={2}
+            placeholder="Notas internas (opcional)"
+            className={inputClass}
+          />
+        </Seccion>
 
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red">
             {error}
           </p>
         )}
 
-        <div className="mt-2 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? 'Guardando…' : 'Guardar'}
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+          <p className="text-sm text-muted">
+            Comisión total:{' '}
+            <span className="font-bold text-ink">USD {comisionTotal.toLocaleString('es-AR')}</span>
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary" disabled={loading}>
+              {loading ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </div>
         </div>
       </form>
     </Modal>
@@ -316,7 +251,19 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 }
 
 const inputClass =
-  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
+  'h-10 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
+
+function Seccion({ titulo, icono, children }: { titulo: string; icono: string; children: ReactNode }) {
+  return (
+    <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
+      <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-red">
+        <span aria-hidden>{icono}</span>
+        {titulo}
+      </p>
+      {children}
+    </div>
+  );
+}
 
 function Campo({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -324,5 +271,89 @@ function Campo({ label, children }: { label: string; children: ReactNode }) {
       <span className="font-medium text-ink">{label}</span>
       {children}
     </label>
+  );
+}
+
+/** Input de monto con prefijo "USD" adentro. */
+function MoneyInput({
+  value,
+  onChange,
+  required,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted">
+        USD
+      </span>
+      <input
+        type="number"
+        min={0}
+        step="0.01"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        disabled={disabled}
+        placeholder="0"
+        className={`${inputClass} pl-10`}
+      />
+    </div>
+  );
+}
+
+function EstadoSelect({
+  value,
+  estados,
+  onChange,
+}: {
+  value: string;
+  estados: readonly string[];
+  onChange: (v: EstadoVenta | EstadoAlquiler) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value as EstadoVenta | EstadoAlquiler)} className={inputClass}>
+      {estados.map((s) => (
+        <option key={s} value={s}>
+          {ESTADO_LABEL[s] ?? s}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Sub-tarjeta de una punta (vendedora/compradora): vendedor + su comisión. */
+function PuntaCard({
+  label,
+  usuarioId,
+  onUsuarioId,
+  comision,
+  onComision,
+  vendedores,
+}: {
+  label: string;
+  usuarioId: string;
+  onUsuarioId: (v: string) => void;
+  comision: string;
+  onComision: (v: string) => void;
+  vendedores: VendedorDto[];
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-brand border border-line bg-surface/40 p-3">
+      <p className="text-xs font-semibold text-muted">{label}</p>
+      <select value={usuarioId} onChange={(e) => onUsuarioId(e.target.value)} className={inputClass}>
+        <option value="">Sin asignar</option>
+        {vendedores.map((v) => (
+          <option key={v.id} value={v.id}>
+            {v.nombre}
+          </option>
+        ))}
+      </select>
+      <MoneyInput value={comision} onChange={onComision} disabled={!usuarioId} />
+    </div>
   );
 }
