@@ -137,9 +137,9 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
     : Number(comisionAlquiler) || 0;
 
   return (
-    <Modal title={`${operacion ? 'Editar' : 'Nueva'} ${esVenta ? 'venta' : 'alquiler'}`} onClose={onClose} size="lg">
-      <form className="flex flex-col gap-2.5" onSubmit={handleSubmit}>
-        <Seccion titulo="Datos de la operación" icono={esVenta ? '🏠' : '🔑'}>
+    <Modal title={`${operacion ? 'Editar' : 'Nueva'} ${esVenta ? 'venta' : 'alquiler'}`} onClose={onClose} size="xl">
+      <form className="grid gap-2.5 sm:grid-cols-2" onSubmit={handleSubmit}>
+        <Seccion titulo="Datos de la operación" icono={esVenta ? '🏠' : '🔑'} full>
           <div className="grid gap-2.5 sm:grid-cols-[140px_1fr]">
             <Campo label="Código">
               <input value={codigo} onChange={(e) => setCodigo(e.target.value)} required className={inputClass} />
@@ -193,7 +193,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         </Seccion>
 
         {esVenta && (
-          <Seccion titulo="Puntas y comisiones" icono="🤝">
+          <Seccion titulo="Puntas y comisiones" icono="🤝" full>
             <div className="grid gap-2.5 sm:grid-cols-2">
               <PuntaCard
                 label="Punta vendedora"
@@ -215,7 +215,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
           </Seccion>
         )}
 
-        <Seccion titulo="Observaciones" icono="📝">
+        <Seccion titulo="Observaciones" icono="📝" full>
           <textarea
             value={obs}
             onChange={(e) => setObs(e.target.value)}
@@ -226,12 +226,12 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         </Seccion>
 
         {error && (
-          <p role="alert" className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red">
+          <p role="alert" className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red sm:col-span-2">
             {error}
           </p>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-2">
           <p className="text-sm text-muted">
             Comisión total:{' '}
             <span className="font-bold text-ink">USD {comisionTotal.toLocaleString('es-AR')}</span>
@@ -253,9 +253,9 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 const inputClass =
   'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
 
-function Seccion({ titulo, icono, children }: { titulo: string; icono: string; children: ReactNode }) {
+function Seccion({ titulo, icono, full, children }: { titulo: string; icono: string; full?: boolean; children: ReactNode }) {
   return (
-    <div className="rounded-brand border border-line bg-white px-3 py-2.5">
+    <div className={`rounded-brand border border-line bg-white px-3 py-2.5 ${full ? 'sm:col-span-2' : ''}`}>
       <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-red">
         <span aria-hidden>{icono}</span>
         {titulo}

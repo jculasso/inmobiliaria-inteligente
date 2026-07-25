@@ -85,7 +85,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
               )}
               <th className="px-4 py-2">Comisión</th>
               <th className="px-4 py-2">Estado</th>
-              <th className="px-4 py-2" />
+              <th className="sticky right-0 border-l border-line bg-white px-4 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -120,7 +120,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                         {op.estado}
                       </span>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="sticky right-0 border-l border-line bg-white px-4 py-2">
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
