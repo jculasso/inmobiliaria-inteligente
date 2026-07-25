@@ -19,6 +19,10 @@ suite('Aislamiento entre tenants (RLS)', () => {
   const tenantB = randomUUID();
   const userA = randomUUID();
   const userB = randomUUID();
+  const tasacionA = randomUUID();
+  const tasacionB = randomUUID();
+  const protocoloA = randomUUID();
+  const protocoloB = randomUUID();
 
   // Entra al contexto de un tenant como rol `authenticated` (RLS activa).
   async function enterTenant(tenantId: string, userId: string): Promise<void> {
@@ -71,7 +75,21 @@ suite('Aislamiento entre tenants (RLS)', () => {
        VALUES
          ($1, $3, $5, 'Cliente A', now(), 'Calle Falsa 123', 'venta', 'Casa', 100, now()),
          ($2, $4, $6, 'Cliente B', now(), 'Calle Falsa 456', 'venta', 'Casa', 100, now())`,
-      [randomUUID(), randomUUID(), tenantA, tenantB, userA, userB],
+      [tasacionA, tasacionB, tenantA, tenantB, userA, userB],
+    );
+    // Un protocolo por tenant, con una acción cada uno — el módulo Protocolo
+    // 5 Semanas tiene que quedar aislado igual que el resto.
+    await client.query(
+      `INSERT INTO protocolo (id, tenant_id, tasacion_id, agente_id, fecha_inicio, updated_at)
+       VALUES ($1, $3, $5, $7, now(), now()),
+              ($2, $4, $6, $8, now(), now())`,
+      [protocoloA, protocoloB, tenantA, tenantB, tasacionA, tasacionB, userA, userB],
+    );
+    await client.query(
+      `INSERT INTO protocolo_accion (id, protocolo_id, tenant_id, semana, orden, clave, titulo)
+       VALUES ($1, $3, $5, 1, 0, 'estudio-titulos', 'Acción A'),
+              ($2, $4, $6, 1, 0, 'estudio-titulos', 'Acción B')`,
+      [randomUUID(), randomUUID(), protocoloA, protocoloB, tenantA, tenantB],
     );
   });
 
@@ -139,5 +157,40 @@ suite('Aislamiento entre tenants (RLS)', () => {
       ['hackeado', userB],
     );
     expect(upd.rowCount).toBe(0);
+  });
+
+  it('el aislamiento también aplica al módulo Protocolo (protocolo y sus acciones)', async () => {
+    await enterTenant(tenantA, userA);
+
+    const protocolos = await client.query<{ id: string }>('SELECT id FROM protocolo');
+    expect(protocolos.rows).toHaveLength(1);
+    expect(protocolos.rows[0]?.id).toBe(protocoloA);
+
+    const acciones = await client.query<{ titulo: string }>('SELECT titulo FROM protocolo_accion');
+    expect(acciones.rows).toHaveLength(1);
+    expect(acciones.rows[0]?.titulo).toBe('Acción A');
+
+    // No se puede tocar la ficha del otro tenant ni por id directo.
+    const upd = await client.query('UPDATE protocolo SET estado = $1 WHERE id = $2', [
+      'archivada',
+      protocoloB,
+    ]);
+    expect(upd.rowCount).toBe(0);
+
+    const updAccion = await client.query(
+      'UPDATE protocolo_accion SET estado = $1 WHERE protocolo_id = $2',
+      ['realizada', protocoloB],
+    );
+    expect(updAccion.rowCount).toBe(0);
+  });
+
+  it('no se puede crear un protocolo en el tenant ajeno (WITH CHECK)', async () => {
+    await enterTenant(tenantA, userA);
+    const blocked = await writeIsBlocked(
+      `INSERT INTO protocolo (id, tenant_id, tasacion_id, agente_id, fecha_inicio, updated_at)
+       VALUES ($1, $2, $3, $4, now(), now())`,
+      [randomUUID(), tenantB, tasacionB, userB],
+    );
+    expect(blocked).toBe(true);
   });
 });

@@ -37,6 +37,8 @@ model Tenant {
   tasacionEstadoHistorials TasacionEstadoHistorial[]
   informeGenerados         InformeGenerado[]
   googleCuentas            GoogleCuenta[]
+  protocolos               Protocolo[]
+  protocoloAcciones        ProtocoloAccion[]
 
   @@map("tenant")
 }
@@ -72,6 +74,7 @@ model Usuario {
   tasaciones        Tasacion[]
   historialTasacion TasacionEstadoHistorial[]
   googleCuenta      GoogleCuenta?
+  protocolos        Protocolo[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -246,6 +249,7 @@ model Tasacion {
   fotos       TasacionFoto[]
   historial   TasacionEstadoHistorial[]
   informes    InformeGenerado[]
+  protocolo   Protocolo?
 
   @@unique([tenantId, codigo])
   @@index([tenantId])
@@ -363,4 +367,93 @@ model GoogleCuenta {
 
   @@index([tenantId])
   @@map("google_cuenta")
+}
+
+// ============================================================================
+// Módulo Protocolo 5 Semanas — seguimiento de la comercialización.
+// Ver docs/MODULO_PROTOCOLO_5_SEMANAS.md. La ficha es 1:1 con una tasación
+// Captada: la tasación NO cambia de estado (así no se tocan los KPIs de
+// captación del Tasador); el estado comercial vive acá.
+// ============================================================================
+
+/// Comercialización de una propiedad captada, en 5 semanas.
+model Protocolo {
+  id         String @id @default(uuid()) @db.Uuid
+  tenantId   String @map("tenant_id") @db.Uuid
+  tasacionId String @unique @map("tasacion_id") @db.Uuid
+  /// Responsable — copiado de la tasación al iniciar (define el alcance por rol).
+  agenteId   String @map("agente_id") @db.Uuid
+
+  /// Inicio de la comercialización = día en que se inició el protocolo.
+  fechaInicio DateTime @map("fecha_inicio") @db.Date
+  estado      String   @default("activa") // activa | archivada
+
+  // Datos pedidos al iniciar (sugeridos desde la tasación)
+  precioPublicado         Decimal?  @map("precio_publicado") @db.Decimal(14, 2)
+  moneda                  String    @default("USD")
+  propietarioNombre       String?   @map("propietario_nombre")
+  propietarioTelefono     String?   @map("propietario_telefono")
+  propietarioEmail        String?   @map("propietario_email")
+  vencimientoAutorizacion DateTime? @map("vencimiento_autorizacion") @db.Date
+
+  // Métricas comerciales (alimentan el embudo del informe)
+  consultas            Int @default(0)
+  consultasCalificadas Int @default(0) @map("consultas_calificadas")
+  visitas              Int @default(0)
+  interesadosActivos   Int @default(0) @map("interesados_activos")
+  ofertas              Int @default(0)
+
+  // Análisis de la semana 5
+  devolucionesMercado String? @map("devoluciones_mercado")
+  objeciones          String?
+  recomendacion       String?
+  decisionPropietario String? @map("decision_propietario")
+  proximasAcciones    String? @map("proximas_acciones")
+
+  // Cierre
+  archivadoEn        DateTime? @map("archivado_en") @db.Date
+  motivoArchivo      String?   @map("motivo_archivo") // vendida | retirada | vencida | otro
+  observacionArchivo String?   @map("observacion_archivo")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tasacion Tasacion           @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
+  agente   Usuario            @relation(fields: [agenteId], references: [id], onDelete: Restrict)
+  acciones ProtocoloAccion[]
+
+  @@index([tenantId])
+  @@index([tenantId, agenteId])
+  @@index([tenantId, estado])
+  @@map("protocolo")
+}
+
+/// Una acción del checklist, copiada de la plantilla al iniciar el protocolo.
+/// El título se guarda (no se referencia) para que la ficha quede histórica
+/// aunque la plantilla cambie más adelante.
+model ProtocoloAccion {
+  id          String @id @default(uuid()) @db.Uuid
+  protocoloId String @map("protocolo_id") @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+
+  semana Int
+  orden  Int
+  /// Slug estable de la plantilla (permite comparar entre protocolos).
+  clave  String
+  titulo String
+
+  estado         String    @default("pendiente") // pendiente | en_proceso | realizada | no_corresponde
+  fechaPrevista  DateTime? @map("fecha_prevista") @db.Date
+  fechaRealizada DateTime? @map("fecha_realizada") @db.Date
+  observaciones  String?
+  resultado      String?
+  evidencia      String?
+
+  protocolo Protocolo @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([protocoloId])
+  @@map("protocolo_accion")
 }
