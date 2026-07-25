@@ -38,10 +38,12 @@ describe('UsuarioAdminFormModal', () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 
-  it('en edición el email queda bloqueado y no pide contraseña', () => {
+  it('en edición el email se puede cambiar y avisa que es el de acceso', () => {
     render(<UsuarioAdminFormModal tenantId="t" usuario={USUARIO} onClose={() => {}} onSaved={() => {}} />);
-    expect(screen.getByDisplayValue('ezequiel@vacker.com')).toBeDisabled();
-    expect(screen.queryByText(/Contraseña inicial/)).not.toBeInTheDocument();
+    // Cambiarlo acá cambia con qué mail inicia sesión, no solo el dato visible.
+    expect(screen.getByDisplayValue('ezequiel@vacker.com')).toBeEnabled();
+    expect(screen.getByText(/tiene que entrar con el nuevo/)).toBeInTheDocument();
+    expect(screen.queryByText(/Contraseña temporal/)).not.toBeInTheDocument();
   });
 
   it('en alta sugiere una contraseña temporal al azar y el email es editable', () => {

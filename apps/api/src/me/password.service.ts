@@ -3,6 +3,7 @@ import type { CambiarPassword } from '@vacker/types';
 import type { AuthPrincipal } from '../auth/auth-principal';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseAdminService } from '../admin/supabase-admin.service';
+import { PrincipalCacheService } from '../auth/principal-cache.service';
 
 /**
  * Cambio de la propia contraseña. Usa `PrismaService` directo (sin RLS) porque
@@ -14,6 +15,7 @@ export class PasswordService {
   constructor(
     private readonly db: PrismaService,
     private readonly supabaseAdmin: SupabaseAdminService,
+    private readonly principalCache: PrincipalCacheService,
   ) {}
 
   async cambiar(dto: CambiarPassword, principal: AuthPrincipal): Promise<{ ok: true }> {
@@ -46,6 +48,9 @@ export class PasswordService {
       where: { id: usuario.id },
       data: { debeCambiarPassword: false },
     });
+    // Sin esto, /me seguiría diciendo "debe cambiar la contraseña" hasta que
+    // venza el cache (30s) y la Home rebotaría al usuario de vuelta acá.
+    this.principalCache.invalidarUsuario(usuario.id);
 
     return { ok: true };
   }

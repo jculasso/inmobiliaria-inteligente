@@ -59,7 +59,13 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
       const accessToken = await getAccessToken();
       const tel = telefono.trim() || null;
       if (usuario) {
-        await updateUsuarioAdmin(accessToken, tenantId, usuario.id, { nombre, estado, roles, telefono: tel });
+        await updateUsuarioAdmin(accessToken, tenantId, usuario.id, {
+          nombre,
+          email,
+          estado,
+          roles,
+          telefono: tel,
+        });
       } else {
         await createUsuarioAdmin(accessToken, tenantId, { nombre, email, password, roles, telefono: tel });
       }
@@ -107,14 +113,17 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
           <div className="flex flex-col gap-2.5">
             <Campo
               label="Email"
-              hint={usuario ? 'El email no se puede cambiar.' : 'Con este email inicia sesión.'}
+              hint={
+                usuario
+                  ? 'Es el email con el que inicia sesión: si lo cambiás, tiene que entrar con el nuevo.'
+                  : 'Con este email inicia sesión.'
+              }
             >
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={!!usuario}
                 className={inputClass}
               />
             </Campo>

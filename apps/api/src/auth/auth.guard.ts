@@ -19,14 +19,12 @@ import { TENANT_CTX_KEY, type TenantContext } from '../prisma/tenant-context';
 import { AUTH_PROVIDER, type AuthProvider } from './auth-provider.interface';
 import type { AuthPrincipal } from './auth-principal';
 import { IS_PUBLIC_KEY } from './decorators';
+import { PrincipalCacheService } from './principal-cache.service';
 
 interface RequestWithPrincipal {
   headers: Record<string, string | string[] | undefined>;
   principal?: AuthPrincipal;
 }
-
-/** Cuánto se cachea la resolución tenant+roles de un token ya verificado. */
-const PRINCIPAL_CACHE_TTL_MS = 30_000;
 
 /**
  * Guard global: verifica el token (vía AuthProvider), resuelve el usuario desde
@@ -35,20 +33,12 @@ const PRINCIPAL_CACHE_TTL_MS = 30_000;
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  // Cache en memoria del proceso, keyeada por el JWT literal — una pantalla
-  // suele disparar varias requests casi simultáneas con el mismo token, y
-  // cada una pagaba su propio round trip a la base solo para resolver
-  // tenant+roles. Con Supabase en sa-east-1 y Render sin región cercana, ese
-  // round trip extra por request se siente. TTL corto (30s): un cambio de rol
-  // o baja de acceso tarda como mucho eso en reflejarse, aceptable para esta
-  // escala (equipo chico, no es un sistema de alto riesgo).
-  private readonly principalCache = new Map<string, { principal: AuthPrincipal; expiresAt: number }>();
-
   constructor(
     private readonly reflector: Reflector,
     @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
     private readonly prisma: PrismaService,
     private readonly cls: ClsService,
+    private readonly principalCache: PrincipalCacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -77,9 +67,7 @@ export class AuthGuard implements CanActivate {
 
   private async resolvePrincipal(token: string): Promise<AuthPrincipal> {
     const cached = this.principalCache.get(token);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.principal;
-    }
+    if (cached) return cached;
 
     const identity = await this.authProvider.verifyToken(token);
 
@@ -122,18 +110,8 @@ export class AuthGuard implements CanActivate {
         config: config.success ? config.data : {},
       },
     };
-    this.principalCache.set(token, { principal, expiresAt: Date.now() + PRINCIPAL_CACHE_TTL_MS });
-    // Equipo chico (decenas de usuarios activos, no miles): un barrido
-    // ocasional alcanza para no acumular tokens vencidos indefinidamente.
-    if (this.principalCache.size > 200) this.pruneExpired();
+    this.principalCache.set(token, principal);
     return principal;
-  }
-
-  private pruneExpired(): void {
-    const now = Date.now();
-    for (const [key, value] of this.principalCache) {
-      if (value.expiresAt <= now) this.principalCache.delete(key);
-    }
   }
 
   private extractBearer(req: RequestWithPrincipal): string | null {

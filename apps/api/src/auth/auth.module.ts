@@ -5,17 +5,19 @@ import { SupabaseAuthProvider } from './supabase-auth.provider';
 import { AuthGuard } from './auth.guard';
 import { RolesGuard } from './roles.guard';
 import { ModuloGuard } from './modulo.guard';
+import { PrincipalCacheService } from './principal-cache.service';
 
 @Global()
 @Module({
   providers: [
     { provide: AUTH_PROVIDER, useClass: SupabaseAuthProvider },
+    PrincipalCacheService,
     // Orden importante: AuthGuard primero (arma el principal), después los que
     // lo leen — RolesGuard (rol) y ModuloGuard (módulo habilitado del tenant).
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ModuloGuard },
   ],
-  exports: [AUTH_PROVIDER],
+  exports: [AUTH_PROVIDER, PrincipalCacheService],
 })
 export class AuthModule {}
