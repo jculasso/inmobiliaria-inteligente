@@ -135,16 +135,19 @@ Pantalla con tres grupos — **Captadas** (sin protocolo), **Activas** (protocol
 en curso) y **Archivadas** — con el botón **Archivar** (fecha + motivo +
 observación). Respeta scope por rol y "ver solo lo mío".
 
-## 10. Plan de entrega (un PR por paso, CI verde antes de mergear)
+## 10. Estado de entrega — COMPLETO (2026-07-25)
 
-| # | Alcance | Notas |
+| # | Alcance | PR |
 |---|---|---|
-| 1 | **Licenciamiento por módulos** — types, migración + backfill, guard `@Modulo`, Home, checks en admin | Independiente; habilita el resto |
-| 2 | **Admin lindo** — rediseño de edición de tenant y de usuarios | Mismo tratamiento que el form de operaciones |
-| 3 | **Datos + API del protocolo** — modelo, RLS, iniciar/listar/detalle/acciones/métricas/archivar + test de aislamiento | Núcleo backend |
-| 4 | **Web del protocolo** — captadas + iniciar, dashboard con alertas, detalle de 5 semanas | El grueso de la UI |
-| 5 | **Informe PDF** del propietario | Reusa `fuentes.ts` del tasador |
-| 6 | **Reporte general** + archivar | Cierra el módulo |
+| 1 | Licenciamiento por módulos (4 checks por tenant + guard `@Modulo`) | #44 ✅ |
+| 2 | Rediseño del admin (edición de tenant y de usuarios) | #45 ✅ |
+| 3 | Datos + API del protocolo, RLS y test de aislamiento | #46 ✅ |
+| 4 | Web: dashboard, captadas + iniciar, detalle de 5 semanas | #47 ✅ |
+| 5 | Informe PDF del propietario (4 secciones) | #48 ✅ |
+| 6 | Reporte general de propiedades + archivar | #49 ✅ |
+
+**Pendiente del humano:** habilitar el módulo `protocolo` en cada inmobiliaria
+desde /admin — nace apagado para todas.
 
 ## 11. Supuestos (corregir si no aplica)
 
