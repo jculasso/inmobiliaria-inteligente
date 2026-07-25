@@ -95,4 +95,64 @@ describe('LoginPanel', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/incorrectos/i);
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  describe('recordar el usuario', () => {
+    it('guarda el email después de un login exitoso', async () => {
+      signInWithPassword.mockResolvedValue({ error: null });
+      render(<LoginPanel />);
+
+      await userEvent.type(screen.getByLabelText(/Email/), 'nahuel@vacker.com.ar');
+      await userEvent.type(screen.getByLabelText(/Clave/), 'secreta123');
+      await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+      expect(localStorage.getItem('ultimo-email')).toBe('nahuel@vacker.com.ar');
+    });
+
+    it('no guarda nada si el login falla', async () => {
+      signInWithPassword.mockResolvedValue({ error: { message: 'Invalid' } });
+      render(<LoginPanel />);
+
+      await userEvent.type(screen.getByLabelText(/Email/), 'nahuel@vacker.com.ar');
+      await userEvent.type(screen.getByLabelText(/Clave/), 'malaClave');
+      await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+      expect(localStorage.getItem('ultimo-email')).toBeNull();
+    });
+
+    it('precarga el email guardado y deja el foco en la clave', () => {
+      localStorage.setItem('ultimo-email', 'nahuel@vacker.com.ar');
+      render(<LoginPanel />);
+
+      expect(screen.getByLabelText(/Email/)).toHaveValue('nahuel@vacker.com.ar');
+      // Lo único que queda por escribir es la contraseña.
+      expect(screen.getByLabelText(/Clave/)).toHaveFocus();
+    });
+
+    it('nunca guarda la contraseña', async () => {
+      signInWithPassword.mockResolvedValue({ error: null });
+      render(<LoginPanel />);
+
+      await userEvent.type(screen.getByLabelText(/Email/), 'nahuel@vacker.com.ar');
+      await userEvent.type(screen.getByLabelText(/Clave/), 'secreta123');
+      await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+      const todo = JSON.stringify(Object.entries(localStorage));
+      expect(todo).not.toContain('secreta123');
+    });
+
+    it('"No soy yo" limpia el email recordado', async () => {
+      localStorage.setItem('ultimo-email', 'nahuel@vacker.com.ar');
+      render(<LoginPanel />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'No soy yo' }));
+
+      expect(screen.getByLabelText(/Email/)).toHaveValue('');
+      expect(localStorage.getItem('ultimo-email')).toBeNull();
+    });
+
+    it('sin email guardado no ofrece "No soy yo"', () => {
+      render(<LoginPanel />);
+      expect(screen.queryByRole('button', { name: 'No soy yo' })).not.toBeInTheDocument();
+    });
+  });
 });
