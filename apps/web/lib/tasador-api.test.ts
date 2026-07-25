@@ -128,7 +128,19 @@ describe('tasador-api', () => {
   it('generarInforme hace POST a /tasador/tasaciones/:id/informe y devuelve el PDF', async () => {
     // La API manda los bytes del PDF en la respuesta, no una URL a Storage.
     const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, blob: async () => pdf });
+    // El nombre del archivo viaja en Content-Disposition: sin rescatarlo de
+    // ahí, el PDF se guarda con un identificador al azar.
+    const nombre = 'Tasacion Vacker - Juan Pérez - Córdoba 1234';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => pdf,
+      headers: {
+        get: (h: string) =>
+          h.toLowerCase() === 'content-disposition'
+            ? `inline; filename="Tasacion.pdf"; filename*=UTF-8''${encodeURIComponent(`${nombre}.pdf`)}`
+            : null,
+      },
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await generarInforme('token', TASACION.id);
@@ -136,6 +148,7 @@ describe('tasador-api', () => {
     const [url, options] = fetchMock.mock.calls[0]!;
     expect(String(url)).toBe(`http://localhost:3001/tasador/tasaciones/${TASACION.id}/informe`);
     expect(options.method).toBe('POST');
-    expect(result).toBe(pdf);
+    expect(result.blob).toBe(pdf);
+    expect(result.nombre).toBe(nombre);
   });
 });

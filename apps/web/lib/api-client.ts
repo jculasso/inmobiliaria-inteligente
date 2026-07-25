@@ -133,15 +133,25 @@ export async function apiFetchForm<T>(
   return parsed.data;
 }
 
+/** PDF listo para mostrar: los bytes y el nombre con el que debe guardarse. */
+export interface PdfGenerado {
+  blob: Blob;
+  /** Sin extensión, tal como lo arma la API (ej. "Tasacion Vacker - Juan - Córdoba 1234"). */
+  nombre: string;
+}
+
 /**
  * Variante de `apiFetch` para endpoints que devuelven un PDF. La API manda los
- * bytes en la respuesta (no una URL a Storage), así que se lee como Blob y se
- * abre desde el navegador — sin el viaje extra a Supabase.
+ * bytes en la respuesta (no una URL a Storage), así que se lee como Blob.
+ *
+ * El nombre viaja en `Content-Disposition` y se devuelve aparte: una URL
+ * `blob:` es opaca, así que si no se rescata acá, el archivo termina guardado
+ * con un identificador al azar en vez del nombre del informe.
  */
 export async function apiFetchPdf(
   path: string,
   { accessToken, searchParams }: { accessToken: string; searchParams?: Record<string, string | number | undefined> },
-): Promise<Blob> {
+): Promise<PdfGenerado> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
     throw new ApiError('Falta NEXT_PUBLIC_API_URL en el entorno.');
@@ -165,5 +175,26 @@ export async function apiFetchPdf(
       code: errorBody?.error?.code,
     });
   }
-  return res.blob();
+  return { blob: await res.blob(), nombre: nombreDeDisposition(res.headers.get('content-disposition')) };
+}
+
+/**
+ * Lee el nombre del header `Content-Disposition`. Prioriza `filename*`
+ * (RFC 5987), que es el que lleva acentos y ñ; `filename` es el respaldo ASCII.
+ */
+function nombreDeDisposition(header: string | null): string {
+  const fallback = 'Informe';
+  if (!header) return fallback;
+
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf8?.[1]) {
+    try {
+      return decodeURIComponent(utf8[1]).replace(/\.pdf$/i, '');
+    } catch {
+      // Header mal formado: se sigue con el respaldo de abajo.
+    }
+  }
+
+  const ascii = /filename="([^"]+)"/i.exec(header);
+  return ascii?.[1]?.replace(/\.pdf$/i, '') ?? fallback;
 }

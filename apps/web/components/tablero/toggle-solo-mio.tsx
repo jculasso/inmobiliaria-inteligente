@@ -39,9 +39,14 @@ export function ToggleSoloMio() {
     >
       <input type="checkbox" checked={activo} onChange={toggle} className="accent-brand-red" />
       Ver solo lo mío
-      {isPending && (
-        <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-brand-red" />
-      )}
+      {/* Siempre montado y solo invisible: montarlo al vuelo agregaba ancho a
+          la fila y hacía saltar todo lo que tiene al lado. */}
+      <span
+        aria-hidden
+        className={`h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand-red ${
+          isPending ? '' : 'invisible'
+        }`}
+      />
     </label>
   );
 }
