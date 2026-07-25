@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TodoEventoDto, TodoEventosDto, TodoVista } from '@vacker/types';
+
+/** Callback para abrir el detalle de un evento dentro de la app. */
+type OnSelect = (ev: TodoEventoDto) => void;
 
 // Grilla tipo Google Calendar para el To Do List (día/semana con eje horario y
 // bloques posicionados; mes con grilla clásica). Todo en hora de Argentina.
@@ -12,16 +15,33 @@ const SCROLL_TO_HOUR = 7; // al abrir, arranca ~7:00
 
 export function CalendarioTodo({ vista, fecha, data }: { vista: TodoVista; fecha: string; data: TodoEventosDto | null }) {
   const eventos = data?.eventos ?? [];
-  if (vista === 'mes') return <VistaMes fecha={fecha} eventos={eventos} />;
-  if (vista === 'semana') return <GrillaHoraria dias={diasSemana(fecha)} eventos={eventos} />;
-  return <GrillaHoraria dias={[fecha]} eventos={eventos} />;
+  // El detalle se muestra dentro de la app (no se abre Google Calendar): el
+  // espejo es de solo lectura y, además, el enlace de Google abriría la cuenta
+  // que el navegador tenga logueada, no necesariamente la del calendario.
+  const [sel, setSel] = useState<TodoEventoDto | null>(null);
+
+  const grilla =
+    vista === 'mes' ? (
+      <VistaMes fecha={fecha} eventos={eventos} onSelect={setSel} />
+    ) : vista === 'semana' ? (
+      <GrillaHoraria dias={diasSemana(fecha)} eventos={eventos} onSelect={setSel} />
+    ) : (
+      <GrillaHoraria dias={[fecha]} eventos={eventos} onSelect={setSel} />
+    );
+
+  return (
+    <>
+      {grilla}
+      {sel && <DetalleEvento ev={sel} onClose={() => setSel(null)} />}
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Día / Semana: eje horario a la izquierda + una columna por día con bloques.
 // ---------------------------------------------------------------------------
 
-function GrillaHoraria({ dias, eventos }: { dias: string[]; eventos: TodoEventoDto[] }) {
+function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: TodoEventoDto[]; onSelect: OnSelect }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = SCROLL_TO_HOUR * HOUR_H;
@@ -60,7 +80,7 @@ function GrillaHoraria({ dias, eventos }: { dias: string[]; eventos: TodoEventoD
                 {eventos
                   .filter((e) => e.todoElDia && cubreDia(e, d))
                   .map((e) => (
-                    <BloqueChip key={e.id + d} ev={e} />
+                    <BloqueChip key={e.id + d} ev={e} onSelect={onSelect} />
                   ))}
               </div>
             ))}
@@ -85,7 +105,7 @@ function GrillaHoraria({ dias, eventos }: { dias: string[]; eventos: TodoEventoD
                   <div key={h} className="border-b border-line" style={{ height: HOUR_H }} />
                 ))}
                 {empaquetar(eventos.filter((e) => !e.todoElDia && diaKeyArg(e.inicio) === d)).map((c) => (
-                  <BloqueEvento key={c.ev.id} c={c} />
+                  <BloqueEvento key={c.ev.id} c={c} onSelect={onSelect} />
                 ))}
               </div>
             ))}
@@ -96,11 +116,13 @@ function GrillaHoraria({ dias, eventos }: { dias: string[]; eventos: TodoEventoD
   );
 }
 
-function BloqueEvento({ c }: { c: Colocado }) {
+function BloqueEvento({ c, onSelect }: { c: Colocado; onSelect: OnSelect }) {
   const alto = Math.max(((c.finMin - c.inicioMin) / 60) * HOUR_H - 2, 16);
-  const cuerpo = (
-    <div
-      className="absolute overflow-hidden rounded-md bg-brand-red px-1.5 py-0.5 text-white shadow-sm"
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(c.ev)}
+      className="absolute block overflow-hidden rounded-md bg-brand-red px-1.5 py-0.5 text-left text-white shadow-sm transition-opacity hover:opacity-90"
       style={{
         top: (c.inicioMin / 60) * HOUR_H,
         height: alto,
@@ -110,27 +132,19 @@ function BloqueEvento({ c }: { c: Colocado }) {
     >
       <p className="truncate text-[11px] font-semibold leading-tight">{c.ev.titulo}</p>
       {alto > 26 && <p className="truncate text-[10px] leading-tight opacity-90">{fmtHora(c.ev.inicio)}</p>}
-    </div>
-  );
-  return c.ev.htmlLink ? (
-    <a href={c.ev.htmlLink} target="_blank" rel="noreferrer" className="block transition-opacity hover:opacity-90">
-      {cuerpo}
-    </a>
-  ) : (
-    cuerpo
+    </button>
   );
 }
 
-function BloqueChip({ ev }: { ev: TodoEventoDto }) {
-  const cuerpo = (
-    <div className="truncate rounded bg-brand-red/15 px-1.5 py-0.5 text-[11px] font-semibold text-brand-red-dark">{ev.titulo}</div>
-  );
-  return ev.htmlLink ? (
-    <a href={ev.htmlLink} target="_blank" rel="noreferrer" className="block hover:opacity-80">
-      {cuerpo}
-    </a>
-  ) : (
-    cuerpo
+function BloqueChip({ ev, onSelect }: { ev: TodoEventoDto; onSelect: OnSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(ev)}
+      className="block w-full truncate rounded bg-brand-red/15 px-1.5 py-0.5 text-left text-[11px] font-semibold text-brand-red-dark hover:opacity-80"
+    >
+      {ev.titulo}
+    </button>
   );
 }
 
@@ -138,7 +152,7 @@ function BloqueChip({ ev }: { ev: TodoEventoDto }) {
 // Mes: grilla clásica (semanas x 7 días) con chips de eventos por celda.
 // ---------------------------------------------------------------------------
 
-function VistaMes({ fecha, eventos }: { fecha: string; eventos: TodoEventoDto[] }) {
+function VistaMes({ fecha, eventos, onSelect }: { fecha: string; eventos: TodoEventoDto[]; onSelect: OnSelect }) {
   const primero = `${fecha.slice(0, 7)}-01`;
   const mesNum = fecha.slice(5, 7);
   const inicioGrilla = lunesDeLaSemana(primero);
@@ -179,7 +193,7 @@ function VistaMes({ fecha, eventos }: { fecha: string; eventos: TodoEventoDto[] 
               </div>
               <div className="space-y-0.5">
                 {evs.slice(0, 3).map((e) => (
-                  <ChipMes key={e.id} ev={e} />
+                  <ChipMes key={e.id} ev={e} onSelect={onSelect} />
                 ))}
                 {evs.length > 3 && <div className="px-1 text-[10px] font-semibold text-muted">+{evs.length - 3} más</div>}
               </div>
@@ -191,21 +205,98 @@ function VistaMes({ fecha, eventos }: { fecha: string; eventos: TodoEventoDto[] 
   );
 }
 
-function ChipMes({ ev }: { ev: TodoEventoDto }) {
+function ChipMes({ ev, onSelect }: { ev: TodoEventoDto; onSelect: OnSelect }) {
   const texto = ev.todoElDia ? ev.titulo : `${fmtHora(ev.inicio)} ${ev.titulo}`;
-  const cuerpo = (
-    <div className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] leading-tight hover:bg-surface">
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(ev)}
+      className="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight hover:bg-surface"
+    >
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-red" aria-hidden />
       <span className="truncate text-ink">{texto}</span>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Detalle del evento (dentro de la app, sin abrir Google Calendar).
+// ---------------------------------------------------------------------------
+
+function DetalleEvento({ ev, onClose }: { ev: TodoEventoDto; onClose: () => void }) {
+  // Cerrar con Escape (además del click en el fondo y el botón ✕).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-brand bg-white p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-base font-bold leading-snug text-ink">{ev.titulo}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink"
+          >
+            ✕
+          </button>
+        </div>
+
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+          <span aria-hidden>🕑</span>
+          {rangoFecha(ev)}
+        </p>
+
+        {ev.ubicacion && (
+          <p className="mt-2 flex items-start gap-1.5 text-sm text-ink">
+            <span aria-hidden>📍</span>
+            <span>{ev.ubicacion}</span>
+          </p>
+        )}
+
+        {ev.descripcion && (
+          <p className="mt-3 whitespace-pre-wrap border-t border-line pt-3 text-sm text-ink">{ev.descripcion}</p>
+        )}
+      </div>
     </div>
   );
-  return ev.htmlLink ? (
-    <a href={ev.htmlLink} target="_blank" rel="noreferrer" className="block">
-      {cuerpo}
-    </a>
-  ) : (
-    cuerpo
+}
+
+/** Rango legible de fecha/hora de un evento (hora Argentina). */
+function rangoFecha(ev: TodoEventoDto): string {
+  if (ev.todoElDia) {
+    return `${fmtFechaLarga(ev.inicio.slice(0, 10))} · todo el día`;
+  }
+  const dia = capFirst(fmtFechaLarga(diaKeyArg(ev.inicio)));
+  const desde = fmtHora(ev.inicio);
+  const finMin = minutosDelDia(ev.fin);
+  const iniMin = minutosDelDia(ev.inicio);
+  const hasta = finMin > iniMin && diaKeyArg(ev.fin) === diaKeyArg(ev.inicio) ? ` – ${fmtHora(ev.fin)}` : '';
+  return `${dia} · ${desde}${hasta}`;
+}
+
+function fmtFechaLarga(dia: string): string {
+  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(
+    new Date(`${dia}T12:00:00-03:00`),
   );
+}
+
+function capFirst(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // ---------------------------------------------------------------------------
