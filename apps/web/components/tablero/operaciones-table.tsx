@@ -67,7 +67,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
       </div>
 
       <div className="overflow-x-auto rounded-brand border border-line bg-white">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
               <th className="px-4 py-2">Código</th>
