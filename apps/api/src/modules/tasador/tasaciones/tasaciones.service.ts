@@ -204,7 +204,9 @@ export class TasacionesService {
       // DELETE del segundo guardado no "ve" los comparables recién creados por
       // el primero, así que ambos sets sobreviven (x2). Con el lock, el segundo
       // espera a que el primero commitee y recién ahí borra/recrea → queda 1 set.
-      await tx.$executeRawUnsafe('SELECT id FROM "tasacion" WHERE id = $1 FOR UPDATE', id);
+      // `::uuid` es necesario: sin el cast, Postgres compara la columna uuid con
+      // un parámetro text y falla con "operator does not exist: uuid = text" (P2010).
+      await tx.$executeRawUnsafe('SELECT id FROM "tasacion" WHERE id = $1::uuid FOR UPDATE', id);
 
       const actual = await tx.tasacion.findUnique({ where: { id }, select: tasacionScopeSelect });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
