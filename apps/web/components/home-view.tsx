@@ -46,8 +46,8 @@ const MODULOS: Modulo[] = [
     nombre: 'Protocolo 5 Semanas',
     descripcion: 'Seguimiento de la comercialización e informe para el propietario.',
     icono: '📋',
-    estado: 'dev',
-    href: null,
+    estado: 'activo',
+    href: '/protocolo',
   },
 ];
 

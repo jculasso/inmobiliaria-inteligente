@@ -34,13 +34,38 @@ describe('HomeView · modo invitado (sin sesión)', () => {
 });
 
 describe('HomeView · modo logueado', () => {
-  it('muestra el nombre del tenant, el email y el Tablero, el Tasador y el To Do como Activo', () => {
-    render(<HomeView sesion={{ email: 'demo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['vendedor'], tenant: tenant() }} />);
+  it('muestra el nombre del tenant, el email y los módulos habilitados como Activo', () => {
+    render(
+      <HomeView
+        sesion={{
+          email: 'demo@vacker.com',
+          nombre: 'Demo',
+          fotoUrl: null,
+          roles: ['vendedor'],
+          tenant: tenant({ tasador: true, todo: true, protocolo: true }),
+        }}
+      />,
+    );
     expect(screen.getByRole('heading', { name: /Vacker · Plataforma 2\.0/ })).toBeInTheDocument();
     expect(screen.getByText('demo@vacker.com')).toBeInTheDocument();
-    expect(screen.getAllByText('Activo')).toHaveLength(3);
+    expect(screen.getAllByText('Activo')).toHaveLength(4);
     const entrar = screen.getAllByRole('link', { name: 'Entrar' });
-    expect(entrar.map((a) => a.getAttribute('href'))).toEqual(['/tablero', '/tasador', '/todo']);
+    expect(entrar.map((a) => a.getAttribute('href'))).toEqual([
+      '/tablero',
+      '/tasador',
+      '/todo',
+      '/protocolo',
+    ]);
+  });
+
+  it('el Protocolo queda apagado si la inmobiliaria no lo tiene contratado', () => {
+    render(
+      <HomeView
+        sesion={{ email: 'demo@vacker.com', nombre: 'Demo', fotoUrl: null, roles: ['vendedor'], tenant: tenant() }}
+      />,
+    );
+    const entrar = screen.getAllByRole('link', { name: 'Entrar' });
+    expect(entrar.map((a) => a.getAttribute('href'))).not.toContain('/protocolo');
   });
 
   it('muestra el nombre de la inmobiliaria logueada, no uno hardcodeado', () => {
