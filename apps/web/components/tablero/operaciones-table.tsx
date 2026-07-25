@@ -16,6 +16,17 @@ function estadoClass(estado: string): string {
     : 'bg-brand-red/10 text-brand-red';
 }
 
+/** Etiquetas legibles del estado (la base guarda el enum en minúsculas). */
+const ESTADO_LABEL: Record<string, string> = {
+  escriturada: 'Escriturada',
+  senada: 'Señada',
+  reservada: 'Reservada',
+  boleto: 'Boleto',
+  firmado: 'Firmado',
+  reservado: 'Reservado',
+  pendiente: 'Pendiente',
+};
+
 interface Props {
   tipo: TipoOperacion;
   operaciones: OperacionDto[];
@@ -104,7 +115,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                     <td className="px-4 py-2 text-muted">{op.codigo}</td>
                     <td className="px-4 py-2">{op.fechaFirma ?? '—'}</td>
                     <td className="px-4 py-2">
-                      <span className="block max-w-[200px] truncate" title={op.direccion}>
+                      <span className="block max-w-[150px] truncate" title={op.direccion}>
                         {op.direccion}
                       </span>
                     </td>
@@ -121,7 +132,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                     <td className="px-4 py-2">{fmtUSD(op.comTotal)}</td>
                     <td className="px-4 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(op.estado)}`}>
-                        {op.estado}
+                        {ESTADO_LABEL[op.estado] ?? op.estado}
                       </span>
                     </td>
                     <td className="px-3 py-2">
