@@ -1,4 +1,5 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { ServiceWorker } from '../components/pwa/service-worker';
 import { Montserrat } from 'next/font/google';
 import './globals.css';
 
@@ -15,6 +16,23 @@ export const metadata: Metadata = {
   // instala una sola vez desde una única URL y la usan varios clientes.
   // `apple-touch-icon` ya vale hoy: sin él, quien agregue la web a su pantalla
   // de inicio se lleva una captura de la página en vez del ícono.
+  // Instalable: el manifest declara nombre, íconos y que abra a pantalla
+  // completa. Los archivos quedan fuera del middleware (ver middleware.ts):
+  // el navegador los pide SIN sesión.
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Inmobiliaria',
+    // La barra de estado toma el color de la página, que arriba es blanca.
+    statusBarStyle: 'default',
+  },
+  other: {
+    // Next 15 emite solo `mobile-web-app-capable` (el nombre estándar), pero
+    // iOS 16 y anteriores únicamente entienden el de Apple: sin este meta, al
+    // abrir la app desde la pantalla de inicio aparece con la barra de Safari
+    // en vez de a pantalla completa.
+    'apple-mobile-web-app-capable': 'yes',
+  },
   icons: {
     icon: [
       { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
@@ -24,12 +42,20 @@ export const metadata: Metadata = {
   },
 };
 
+/** Color de la barra del navegador y del sistema al abrir la app instalada. */
+export const viewport: Viewport = {
+  themeColor: '#C1121F',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className={montserrat.variable}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   );
 }

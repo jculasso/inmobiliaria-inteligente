@@ -6,6 +6,7 @@ import { ModuleCard } from './home/module-card';
 import { LoginPanel } from './home/login-panel';
 import { TableroVolumenPreview } from './home/tablero-volumen-preview';
 import { LogoutButton } from './logout-button';
+import { InstalarApp } from './pwa/instalar-app';
 
 interface Modulo {
   key: ModuloKey;
@@ -109,6 +110,13 @@ export function HomeView({ sesion }: HomeViewProps) {
           ? `Centro de operaciones de ${nombreMarca}. Cada usuario ve los módulos habilitados según su rol.`
           : 'Iniciá sesión para desbloquear los módulos de tu inmobiliaria.'}
       </p>
+
+      {/* Solo con sesión: a un invitado no le sirve instalar algo a lo que no puede entrar. */}
+      {sesion && (
+        <div className="mt-4 max-w-md">
+          <InstalarApp />
+        </div>
+      )}
 
       <div className={`mt-5 grid gap-5 ${bloqueada ? 'items-start lg:grid-cols-[360px_1fr]' : ''}`}>
         {bloqueada && <LoginPanel />}

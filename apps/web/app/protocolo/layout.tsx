@@ -7,6 +7,7 @@ import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
 import { tenantBrandStyle } from '../../lib/tenant-style';
 import { LogoutButton } from '../../components/logout-button';
+import { MarcaPlataforma } from '../../components/marca-plataforma';
 import { MenuModulos } from '../../components/menu-modulos';
 import { ProtocoloNav } from '../../components/protocolo/protocolo-nav';
 
@@ -71,12 +72,7 @@ export default async function ProtocoloLayout({ children }: { children: ReactNod
         <div className="flex items-center gap-4">
           <Avatar nombre={principal.tenant.nombre} fotoUrl={principal.tenant.config.logoUrl} size="lg" />
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand-red hover:underline"
-            >
-              ⌂ Inmobiliaria Inteligente
-            </Link>
+            <MarcaPlataforma />
             <div className="mt-1 flex flex-wrap items-center gap-2.5">
               <h1 className="text-xl font-extrabold text-ink sm:text-2xl">Protocolo 5 Semanas</h1>
               <MenuModulos modulos={principal.tenant.modulos} />

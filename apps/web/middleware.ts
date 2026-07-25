@@ -2,7 +2,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseEnv } from './lib/supabase/env';
 
-const PUBLIC_PATHS = ['/'];
+// `/offline` es la pantalla que muestra el service worker cuando no hay red:
+// tiene que ser pública porque se guarda en caché al instalar la app, cuando
+// puede no haber sesión — y porque justamente se muestra sin conexión, que es
+// cuando el chequeo de sesión tampoco podría hacerse.
+const PUBLIC_PATHS = ['/', '/offline'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import type { AuthPrincipal } from '@vacker/types';
 import { Avatar, Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
 import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
 import { tenantBrandStyle } from '../../lib/tenant-style';
 import { LogoutButton } from '../../components/logout-button';
+import { MarcaPlataforma } from '../../components/marca-plataforma';
 import { MenuModulos } from '../../components/menu-modulos';
 import { TasadorNav } from '../../components/tasador/tasador-nav';
 
@@ -50,12 +50,7 @@ export default async function TasadorLayout({ children }: { children: ReactNode 
         <div className="flex items-center gap-4">
           <Avatar nombre={principal.tenant.nombre} fotoUrl={principal.tenant.config.logoUrl} size="lg" />
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand-red hover:underline"
-            >
-              ⌂ Inmobiliaria Inteligente
-            </Link>
+            <MarcaPlataforma />
             <div className="mt-1 flex flex-wrap items-center gap-2.5">
               <h1 className="text-xl font-extrabold text-ink sm:text-2xl">Tasador de Propiedades</h1>
               <MenuModulos modulos={principal.tenant.modulos} />
