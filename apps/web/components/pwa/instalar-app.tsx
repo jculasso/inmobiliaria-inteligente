@@ -26,14 +26,28 @@ function estaInstalada(): boolean {
 }
 
 function esIOS(): boolean {
-  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  const ua = window.navigator.userAgent;
+  // El iPad se presenta como "Macintosh" desde iPadOS 13; lo delata el táctil.
+  return /iphone|ipod|ipad/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
 }
 
 /**
- * Invitación a instalar la app.
+ * Solo teléfonos y tablets. En una notebook la app ya se usa en el navegador y
+ * ofrecerle instalarla no aporta nada: el objetivo de la app instalable es
+ * tenerla a mano en el celular.
+ */
+function esMovil(): boolean {
+  return esIOS() || /android|mobile/i.test(window.navigator.userAgent);
+}
+
+/**
+ * Invitación a instalar la app en el celular.
  *
- * En Android y escritorio el navegador da un instalador nativo, así que
- * alcanza con un botón. En iPhone **no existe**: Apple obliga a hacerlo a mano
+ * Solo en teléfonos y tablets: en una computadora la app ya se usa en el
+ * navegador y el cartel sería ruido.
+ *
+ * En Android el navegador ofrece un instalador nativo, así que alcanza con un
+ * botón. En iPhone **no existe** esa posibilidad: Apple obliga a hacerlo a mano
  * desde Compartir → "Agregar a inicio", y nadie lo descubre solo — por eso ahí
  * se muestran los pasos en vez de un botón que no podría funcionar.
  */
@@ -43,6 +57,7 @@ export function InstalarApp() {
 
   useEffect(() => {
     if (estaInstalada()) return;
+    if (!esMovil()) return;
     if (localStorage.getItem(CLAVE_DESCARTADO) === '1') return;
 
     if (esIOS()) {
@@ -94,27 +109,26 @@ export function InstalarApp() {
         {/* <img> y no next/image: es un PNG propio y fijo, el optimizador no aporta. */}
         <img src="/icons/icon-192.png" alt="" className="h-11 w-11 shrink-0 rounded-xl" />
         <div className="min-w-0">
-          <p className="text-sm font-bold text-ink">Instalá la app en tu celular</p>
+          <p className="text-sm font-bold text-ink">Acceso directo en tu teléfono</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            Agregá Inmobiliaria Inteligente a la pantalla de inicio para abrirla con un toque, a
+            pantalla completa. No ocupa espacio ni descarga nada: es la misma plataforma, y las
+            actualizaciones llegan solas.
+          </p>
 
           {mostrarIOS ? (
-            <p className="mt-1 text-xs leading-relaxed text-muted">
-              Tocá <strong className="text-ink">Compartir</strong> abajo en Safari y elegí{' '}
-              <strong className="text-ink">Agregar a inicio</strong>. Queda con su ícono, como
-              cualquier otra app.
+            <p className="mt-2 rounded-brand bg-surface px-2.5 py-2 text-xs leading-relaxed text-ink">
+              Para agregarla: tocá <strong>Compartir</strong> en la barra de Safari y elegí{' '}
+              <strong>Agregar a inicio</strong>.
             </p>
           ) : (
-            <>
-              <p className="mt-1 text-xs leading-relaxed text-muted">
-                Se abre a pantalla completa y entrás de un toque, sin escribir la dirección.
-              </p>
-              <button
-                type="button"
-                onClick={() => void instalar()}
-                className="mt-2.5 rounded-brand bg-brand-red px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-red-dark"
-              >
-                Instalar
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => void instalar()}
+              className="mt-2.5 rounded-brand bg-brand-red px-3.5 py-1.5 text-sm font-bold text-white hover:bg-brand-red-dark"
+            >
+              Agregar a la pantalla de inicio
+            </button>
           )}
         </div>
       </div>
