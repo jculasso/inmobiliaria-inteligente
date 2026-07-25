@@ -15,6 +15,16 @@ const ROLES_DISPONIBLES: { value: Rol; label: string; descripcion: string }[] = 
   { value: 'admin_tenant', label: 'Admin del tenant', descripcion: 'Administra usuarios y ajustes.' },
 ];
 
+/**
+ * Contraseña temporal sugerida. Sin ambiguos (0/O, 1/l/I) porque se dicta o se
+ * copia a mano, y de todos modos dura hasta el primer ingreso.
+ */
+function passwordAlAzar(): string {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = crypto.getRandomValues(new Uint32Array(12));
+  return Array.from(bytes, (n) => abc[n % abc.length]).join('');
+}
+
 interface Props {
   tenantId: string;
   usuario?: UsuarioAdminDto;
@@ -25,7 +35,7 @@ interface Props {
 export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: Props) {
   const [nombre, setNombre] = useState(usuario?.nombre ?? '');
   const [email, setEmail] = useState(usuario?.email ?? '');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(() => passwordAlAzar());
   const [estado, setEstado] = useState(usuario?.estado ?? 'activo');
   const [telefono, setTelefono] = useState(usuario?.telefono ?? '');
   const [roles, setRoles] = useState<Rol[]>(usuario?.roles ?? ['vendedor']);
@@ -109,15 +119,28 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
               />
             </Campo>
             {!usuario && (
-              <Campo label="Contraseña inicial" hint="Mínimo 8 caracteres. Se la pasás al usuario para el primer ingreso.">
-                <input
-                  type="text"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className={inputClass}
-                />
+              <Campo
+                label="Contraseña temporal"
+                hint="Se la pasás para el primer ingreso; al entrar, el sistema le pide elegir una propia."
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPassword(passwordAlAzar())}
+                    title="Generar otra"
+                    className="h-9 shrink-0 rounded-brand border border-line px-2.5 text-sm hover:bg-surface"
+                  >
+                    🎲
+                  </button>
+                </div>
               </Campo>
             )}
           </div>

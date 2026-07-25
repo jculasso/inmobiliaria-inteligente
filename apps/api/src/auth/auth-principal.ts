@@ -8,5 +8,6 @@ export interface AuthPrincipal {
   fotoUrl: string | null;
   tenantId: string;
   roles: Rol[];
+  debeCambiarPassword: boolean;
   tenant: { nombre: string; plan: PlanTenant; modulos: ModulosTenant; config: TenantConfig };
 }

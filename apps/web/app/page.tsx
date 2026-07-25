@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
+import type { AuthPrincipal } from '@vacker/types';
 import { getMe, MeError } from '../lib/api';
 import { createClient } from '../lib/supabase/server';
 import { HomeView } from '../components/home-view';
@@ -15,25 +17,17 @@ export default async function Home() {
     return <HomeView sesion={null} />;
   }
 
+  // `principal` se resuelve dentro del try, pero el redirect va FUERA: Next
+  // implementa `redirect()` lanzando una excepción, y dentro del try quedaría
+  // a merced de lo que haga el catch.
+  let principal: AuthPrincipal;
   try {
     // Solo `getMe` (liviano) bloquea el render de la Home. El volumen anual del
     // Tablero se pide client-side en `TableroVolumenPreview` — `getKpisResumen`
     // agrega todo el año y es más pesada, así que antes la Home esperaba ese
     // cálculo (más notorio por la latencia cross-region). Ahora la Home aparece
     // al instante y ese stat opcional se completa solo.
-    const principal = await getMe(session.access_token);
-
-    return (
-      <HomeView
-        sesion={{
-          email: principal.email,
-          nombre: principal.nombre,
-          fotoUrl: principal.fotoUrl,
-          roles: principal.roles,
-          tenant: principal.tenant,
-        }}
-      />
-    );
+    principal = await getMe(session.access_token);
   } catch (err) {
     // Solo MeError significa "la API respondió, pero mal" (p. ej. 401 =
     // cuenta sin tenant vinculado) — ahí sí aplica este mensaje. Cualquier
@@ -60,4 +54,20 @@ export default async function Home() {
       </main>
     );
   }
+
+  // Entró con la clave temporal que le dio el implementador: elige la suya
+  // antes de ver nada. Vale también tras un reseteo del admin.
+  if (principal.debeCambiarPassword) redirect('/cambiar-clave');
+
+  return (
+    <HomeView
+      sesion={{
+        email: principal.email,
+        nombre: principal.nombre,
+        fotoUrl: principal.fotoUrl,
+        roles: principal.roles,
+        tenant: principal.tenant,
+      }}
+    />
+  );
 }

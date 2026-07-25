@@ -10,6 +10,8 @@ export const AuthPrincipalSchema = z.object({
   fotoUrl: z.string().nullable(),
   tenantId: z.string().uuid(),
   roles: z.array(RolSchema),
+  /** Clave temporal sin cambiar: la app lo manda a elegir una propia. */
+  debeCambiarPassword: z.boolean(),
   /** Branding + módulos del tenant — resuelto en el mismo query que roles, sin round trip extra. */
   tenant: z.object({
     nombre: z.string(),

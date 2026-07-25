@@ -8,6 +8,7 @@ const PRINCIPAL = {
   fotoUrl: null,
   tenantId: '22222222-2222-2222-2222-222222222222',
   roles: ['direccion'],
+  debeCambiarPassword: false,
   tenant: {
     nombre: 'Vacker',
     plan: 'basico',

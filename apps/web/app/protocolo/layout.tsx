@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { AuthPrincipal } from '@vacker/types';
 import { Avatar, Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
@@ -57,6 +58,11 @@ export default async function ProtocoloLayout({ children }: { children: ReactNod
       </main>
     );
   }
+
+  // Clave temporal sin cambiar: no se entra a ningún módulo hasta elegir una
+  // propia. El chequeo no cuesta un round trip extra — viaja en el perfil que
+  // este layout ya pide.
+  if (principal.debeCambiarPassword) redirect('/cambiar-clave');
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10" style={tenantBrandStyle(principal.tenant.config)}>

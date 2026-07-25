@@ -25,6 +25,7 @@ function principal(roles: Rol[]): AuthPrincipal {
     nombre: 'Usuario Test',
     fotoUrl: null,
     tenantId: 't',
+    debeCambiarPassword: false,
     roles,
     tenant: { nombre: 'Test', plan: 'basico', modulos: MODULOS_DEFAULT, config: {} },
   };

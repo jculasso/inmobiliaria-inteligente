@@ -29,6 +29,7 @@ const USUARIO = {
   estado: 'activo',
   roles: ['vendedor'],
   tieneAcceso: true,
+  debeCambiarPassword: false,
   fotoUrl: null,
   telefono: null,
 };
