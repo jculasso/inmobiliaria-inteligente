@@ -76,7 +76,11 @@ export function AdminLogin() {
                   id="admin-email"
                   type="email"
                   required
+                  name="email"
                   autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-10 rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red"
@@ -92,6 +96,7 @@ export function AdminLogin() {
                     id="admin-password"
                     type={mostrarClave ? 'text' : 'password'}
                     required
+                    name="password"
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import { createClient } from '../../lib/supabase/client';
@@ -14,11 +14,35 @@ function destinoTrasLogin(searchParams: URLSearchParams): string | null {
 }
 
 /** Formulario de login embebido en la Home (ver components/home-view.tsx, modo invitado). */
+/** Último email que inició sesión bien en este dispositivo. Nunca la clave. */
+const CLAVE_ULTIMO_EMAIL = 'ultimo-email';
+
 export function LoginPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
+  const [emailRecordado, setEmailRecordado] = useState(false);
   const [password, setPassword] = useState('');
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  // Se recuerda el último email que entró bien: en el celular escribir la
+  // dirección entera cada vez es la parte más molesta del ingreso. La clave
+  // NO se guarda nunca — de eso se encarga el llavero del teléfono.
+  useEffect(() => {
+    const guardado = localStorage.getItem(CLAVE_ULTIMO_EMAIL);
+    if (!guardado) return;
+    setEmail(guardado);
+    setEmailRecordado(true);
+    // El foco va directo a la clave, que es lo único que queda por escribir.
+    passwordRef.current?.focus();
+  }, []);
+
+  /** "No soy yo": limpia el email recordado y deja el formulario en blanco. */
+  function olvidarEmail() {
+    localStorage.removeItem(CLAVE_ULTIMO_EMAIL);
+    setEmail('');
+    setEmailRecordado(false);
+  }
   const [mostrarClave, setMostrarClave] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,6 +67,7 @@ export function LoginPanel() {
       return;
     }
 
+    localStorage.setItem(CLAVE_ULTIMO_EMAIL, email.trim());
     setSesionIniciada(true);
     const destino = destinoTrasLogin(searchParams);
     if (destino) {
@@ -85,14 +110,29 @@ export function LoginPanel() {
 
       <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-ink">
-            Email
-          </label>
+          <div className="flex items-baseline justify-between gap-2">
+            <label htmlFor="email" className="text-sm font-medium text-ink">
+              Email
+            </label>
+            {emailRecordado && (
+              <button
+                type="button"
+                onClick={olvidarEmail}
+                className="text-xs font-semibold text-muted hover:text-brand-red hover:underline"
+              >
+                No soy yo
+              </button>
+            )}
+          </div>
           <input
             id="email"
+            name="email"
             type="email"
             required
             autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="h-10 rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red"
@@ -105,7 +145,9 @@ export function LoginPanel() {
           </label>
           <div className="relative">
             <input
+              ref={passwordRef}
               id="password"
+              name="password"
               type={mostrarClave ? 'text' : 'password'}
               required
               autoComplete="current-password"
