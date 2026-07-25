@@ -448,6 +448,8 @@ export const TasadorKpiFiltroSchema = z.object({
   periodo: z.enum(['anual', 'trimestral', 'mensual']),
   mes: z.coerce.number().int().min(1).max(12).optional(),
   trimestre: z.coerce.number().int().min(1).max(4).optional(),
+  /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propias tasaciones. */
+  soloMio: z.coerce.boolean().optional(),
 });
 export type TasadorKpiFiltro = z.infer<typeof TasadorKpiFiltroSchema>;
 

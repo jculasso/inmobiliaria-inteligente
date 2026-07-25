@@ -8,7 +8,10 @@ import { ZodValidationPipe } from '../../../common/zod-validation.pipe';
 import { ctxDe } from '../../tablero/tablero.util';
 import { KpisService } from './kpis.service';
 
-const AnioFiltroSchema = z.object({ anio: z.coerce.number().int().min(2000).max(2100) });
+const AnioFiltroSchema = z.object({
+  anio: z.coerce.number().int().min(2000).max(2100),
+  soloMio: z.coerce.boolean().optional(),
+});
 type AnioFiltro = z.infer<typeof AnioFiltroSchema>;
 
 @ApiTags('tasador')
@@ -44,6 +47,6 @@ export class KpisController {
     @Query(new ZodValidationPipe(AnioFiltroSchema)) filtro: AnioFiltro,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.kpis.mensual(filtro.anio, ctxDe(user));
+    return this.kpis.mensual(filtro.anio, ctxDe(user), filtro.soloMio);
   }
 }

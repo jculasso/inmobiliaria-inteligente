@@ -105,22 +105,34 @@ export async function eliminarFotoTasacion(accessToken: string, tasacionId: stri
 export async function getKpisResumenTasador(accessToken: string, filtro: TasadorKpiFiltro) {
   return apiFetch('/tasador/kpis/resumen', ResumenTasadorKpiSchema, {
     accessToken,
-    searchParams: { anio: filtro.anio, periodo: filtro.periodo, mes: filtro.mes, trimestre: filtro.trimestre },
+    searchParams: {
+      anio: filtro.anio,
+      periodo: filtro.periodo,
+      mes: filtro.mes,
+      trimestre: filtro.trimestre,
+      soloMio: filtro.soloMio ? 1 : undefined,
+    },
   });
 }
 
 export async function getRankingCaptaciones(accessToken: string, filtro: TasadorKpiFiltro) {
   return apiFetch('/tasador/kpis/ranking', z.array(RankingCaptacionItemSchema), {
     accessToken,
-    searchParams: { anio: filtro.anio, periodo: filtro.periodo, mes: filtro.mes, trimestre: filtro.trimestre },
+    searchParams: {
+      anio: filtro.anio,
+      periodo: filtro.periodo,
+      mes: filtro.mes,
+      trimestre: filtro.trimestre,
+      soloMio: filtro.soloMio ? 1 : undefined,
+    },
   });
 }
 
 /** Agregados de los 12 meses del año en una sola llamada de red. */
-export async function getKpisMensualTasador(accessToken: string, anio: number) {
+export async function getKpisMensualTasador(accessToken: string, anio: number, soloMio?: boolean) {
   return apiFetch('/tasador/kpis/mensual', z.array(ResumenTasadorKpiSchema), {
     accessToken,
-    searchParams: { anio },
+    searchParams: { anio, soloMio: soloMio ? 1 : undefined },
   });
 }
 
