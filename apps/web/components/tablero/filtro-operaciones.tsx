@@ -63,10 +63,24 @@ export function FiltroOperaciones({ anio, mes, trimestre }: Sel) {
   }
 
   function cambiarGranularidad(g: Granularidad) {
-    if (g === 'anual') aplicar({ anio: sel.anio });
-    else if (g === 'trimestral')
-      aplicar({ anio: sel.anio, trimestre: sel.trimestre ?? Math.ceil((hoy.getMonth() + 1) / 3) });
-    else aplicar({ anio: sel.anio, mes: sel.mes ?? hoy.getMonth() + 1 });
+    if (g === 'anual') {
+      aplicar({ anio: sel.anio });
+      return;
+    }
+    // Un trimestre o un mes no definen un período sin año: con "Todos los años"
+    // el filtro no podía aplicarse y quedaba mostrando todo. Se asume el año en
+    // curso, que es lo que la persona quiere decir al elegir esa granularidad.
+    const anio = sel.anio ?? hoy.getFullYear();
+    if (g === 'trimestral') {
+      aplicar({ anio, trimestre: sel.trimestre ?? Math.ceil((hoy.getMonth() + 1) / 3) });
+    } else {
+      aplicar({ anio, mes: sel.mes ?? hoy.getMonth() + 1 });
+    }
+  }
+
+  /** Volver a "Todos los años" implica volver a anual: no hay mes sin año. */
+  function cambiarAnio(anio?: number) {
+    aplicar(anio == null ? {} : { ...sel, anio });
   }
 
   return (
@@ -74,7 +88,7 @@ export function FiltroOperaciones({ anio, mes, trimestre }: Sel) {
       <select
         aria-label="Año"
         value={sel.anio ?? ''}
-        onChange={(e) => aplicar({ ...sel, anio: e.target.value ? Number(e.target.value) : undefined })}
+        onChange={(e) => cambiarAnio(e.target.value ? Number(e.target.value) : undefined)}
         className={selectClass}
       >
         <option value="">Todos los años</option>
@@ -98,35 +112,39 @@ export function FiltroOperaciones({ anio, mes, trimestre }: Sel) {
         ))}
       </div>
 
-      {granularidad === 'trimestral' && (
-        <div className="inline-flex rounded-brand border border-line bg-white p-0.5">
-          {[1, 2, 3, 4].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => aplicar({ anio: sel.anio, trimestre: t })}
-              className={`${segBtn} ${sel.trimestre === t ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
-            >
-              Q{t}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Ancho reservado: sin esto, cambiar de granularidad agrega o quita un
+          control y empuja toda la fila (el "salto" al clickear). */}
+      <div className="min-w-[176px]">
+        {granularidad === 'trimestral' && (
+          <div className="inline-flex rounded-brand border border-line bg-white p-0.5">
+            {[1, 2, 3, 4].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => aplicar({ anio: sel.anio, trimestre: t })}
+                className={`${segBtn} ${sel.trimestre === t ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
+              >
+                Q{t}
+              </button>
+            ))}
+          </div>
+        )}
 
-      {granularidad === 'mensual' && (
-        <select
-          aria-label="Mes"
-          value={sel.mes ?? 1}
-          onChange={(e) => aplicar({ anio: sel.anio, mes: Number(e.target.value) })}
-          className={selectClass}
-        >
-          {MESES.map((m, i) => (
-            <option key={m} value={i + 1}>
-              {m}
-            </option>
-          ))}
-        </select>
-      )}
+        {granularidad === 'mensual' && (
+          <select
+            aria-label="Mes"
+            value={sel.mes ?? 1}
+            onChange={(e) => aplicar({ anio: sel.anio, mes: Number(e.target.value) })}
+            className={`${selectClass} w-full`}
+          >
+            {MESES.map((m, i) => (
+              <option key={m} value={i + 1}>
+                {m}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {isPending && (
         <span
