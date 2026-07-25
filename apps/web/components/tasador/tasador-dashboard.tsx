@@ -7,7 +7,8 @@ import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarInforme, getKpisResumenTasador, getRankingCaptaciones } from '../../lib/tasador-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { ETIQUETA_ROL, rolPrincipal } from '../../lib/rbac';
+import { ETIQUETA_ROL, puedeVerSoloLoMio, rolPrincipal } from '../../lib/rbac';
+import { ToggleSoloMio } from '../tablero/toggle-solo-mio';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { EstadoDistribucion } from './estado-distribucion';
 import { RankingCaptacionesCards } from './ranking-captaciones-cards';
@@ -55,9 +56,11 @@ export interface InicialTasador {
 export function TasadorDashboard({
   principal,
   inicial,
+  soloMio,
 }: {
   principal: AuthPrincipal;
   inicial: InicialTasador;
+  soloMio?: boolean;
 }) {
   const router = useRouter();
   const anio = useMemo(() => new Date().getFullYear(), []);
@@ -88,8 +91,8 @@ export function TasadorDashboard({
     getAccessToken()
       .then((accessToken) =>
         Promise.all([
-          getKpisResumenTasador(accessToken, { anio, periodo: 'anual' }),
-          getRankingCaptaciones(accessToken, { anio, periodo: 'anual' }),
+          getKpisResumenTasador(accessToken, { anio, periodo: 'anual', soloMio }),
+          getRankingCaptaciones(accessToken, { anio, periodo: 'anual', soloMio }),
         ]),
       )
       .then(([resumen, ranking]) => {
@@ -166,7 +169,8 @@ export function TasadorDashboard({
             tasaciones.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {puedeVerSoloLoMio(principal.roles) && <ToggleSoloMio />}
           <Button variant="primary" onClick={() => router.push('/tasador/tasaciones/nueva')}>
             ＋ Nueva tasación
           </Button>

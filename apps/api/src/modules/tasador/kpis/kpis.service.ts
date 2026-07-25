@@ -24,7 +24,7 @@ export class KpisService {
 
   async resumen(filtro: TasadorKpiFiltro, ctx: TenantContext): Promise<ResumenTasadorKpi> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
+      const scope = await resolverScope(ctx, tx, filtro.soloMio);
       const tasaciones = await this.tasaciones(tx, filtro, scope);
       return agregar(aplanar(tasaciones), toScopeSet(scope));
     });
@@ -32,7 +32,7 @@ export class KpisService {
 
   async ranking(filtro: TasadorKpiFiltro, ctx: TenantContext): Promise<RankingCaptacionItem[]> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
+      const scope = await resolverScope(ctx, tx, filtro.soloMio);
       const tasaciones = await this.tasaciones(tx, filtro, scope);
       return ranking(aplanar(tasaciones), toScopeSet(scope));
     });
@@ -43,9 +43,9 @@ export class KpisService {
    * gráfico de tendencia del dashboard sin pedir `resumen()` 12 veces (mismo
    * patrón que `tablero/kpis/kpis.service.ts` método `mensual`).
    */
-  async mensual(anio: number, ctx: TenantContext): Promise<ResumenTasadorKpi[]> {
+  async mensual(anio: number, ctx: TenantContext, soloMio = false): Promise<ResumenTasadorKpi[]> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
+      const scope = await resolverScope(ctx, tx, soloMio);
       const where: Prisma.TasacionWhereInput = {
         fecha: { gte: new Date(Date.UTC(anio, 0, 1)), lt: new Date(Date.UTC(anio + 1, 0, 1)) },
       };

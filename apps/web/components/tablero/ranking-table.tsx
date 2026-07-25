@@ -30,11 +30,13 @@ const TRIMESTRES = [1, 2, 3, 4];
 interface Props {
   anio: number;
   mesSeleccionado: number;
+  /** "Ver solo lo mío": scopea el ranking al usuario actual. */
+  soloMio?: boolean;
   /** Acumulado anual ya resuelto server-side (mismo dato que pide el scope "Acumulado año" por defecto) — evita repetir esa consulta al montar. */
   inicial?: { agregado: AgregadoKpi; ranking: RankingItem[] };
 }
 
-export function RankingTable({ anio, mesSeleccionado, inicial }: Props) {
+export function RankingTable({ anio, mesSeleccionado, soloMio, inicial }: Props) {
   const [open, setOpen] = useState(true);
   const [scope, setScope] = useState<RankScope>('anio');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
@@ -54,8 +56,8 @@ export function RankingTable({ anio, mesSeleccionado, inicial }: Props) {
     setLoading(true);
     getAccessToken()
       .then((accessToken) =>
-        getOrFetch(`resumen:${anio}:${periodo}:${mesSeleccionado}:${trimestre}`, () =>
-          getResumenPeriodo(accessToken, { anio, periodo, mes: mesSeleccionado, trimestre }),
+        getOrFetch(`resumen:${anio}:${periodo}:${mesSeleccionado}:${trimestre}:${soloMio ? 1 : 0}`, () =>
+          getResumenPeriodo(accessToken, { anio, periodo, mes: mesSeleccionado, trimestre, soloMio }),
         ),
       )
       .then((res) => {
@@ -68,7 +70,7 @@ export function RankingTable({ anio, mesSeleccionado, inicial }: Props) {
       cancelado = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio, scope, trimestre, mesSeleccionado]);
+  }, [anio, scope, trimestre, mesSeleccionado, soloMio]);
 
   return (
     <Card className="p-0">

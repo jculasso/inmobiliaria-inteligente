@@ -40,11 +40,13 @@ function metricas(agg: AgregadoKpi) {
 interface Props {
   anio: number;
   mesSeleccionado: number;
+  /** "Ver solo lo mío": scopea los KPIs al usuario actual. */
+  soloMio?: boolean;
   /** Acumulado anual ya resuelto server-side (mismo dato que pide el tab "Acumulado Anual" por defecto) — evita repetir esa consulta al montar. */
   inicial?: { agregado: AgregadoKpi; ranking: RankingItem[] };
 }
 
-export function ResumenAcumulado({ anio, mesSeleccionado, inicial }: Props) {
+export function ResumenAcumulado({ anio, mesSeleccionado, soloMio, inicial }: Props) {
   const [tab, setTab] = useState<PeriodoResumen>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
   const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(inicial ?? null);
@@ -63,8 +65,8 @@ export function ResumenAcumulado({ anio, mesSeleccionado, inicial }: Props) {
     setLoading(true);
     getAccessToken()
       .then((accessToken) =>
-        getOrFetch(`resumen:${anio}:${tab}:${mesSeleccionado}:${trimestre}`, () =>
-          getResumenPeriodo(accessToken, { anio, periodo: tab, mes: mesSeleccionado, trimestre }),
+        getOrFetch(`resumen:${anio}:${tab}:${mesSeleccionado}:${trimestre}:${soloMio ? 1 : 0}`, () =>
+          getResumenPeriodo(accessToken, { anio, periodo: tab, mes: mesSeleccionado, trimestre, soloMio }),
         ),
       )
       .then((res) => {
@@ -77,20 +79,20 @@ export function ResumenAcumulado({ anio, mesSeleccionado, inicial }: Props) {
       cancelado = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio, tab, mesSeleccionado, trimestre]);
+  }, [anio, tab, mesSeleccionado, trimestre, soloMio]);
 
   useEffect(() => {
     if (tab !== 'trimestral') return;
     let cancelado = false;
     getAccessToken()
-      .then((accessToken) => getAgregadosPorTrimestre(accessToken, anio))
+      .then((accessToken) => getAgregadosPorTrimestre(accessToken, anio, soloMio))
       .then((res) => {
         if (!cancelado) setPorTrimestre(res);
       });
     return () => {
       cancelado = true;
     };
-  }, [anio, tab]);
+  }, [anio, tab, soloMio]);
 
   return (
     <Card className="p-0">
