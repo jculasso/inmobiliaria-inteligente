@@ -7,6 +7,7 @@ import { cn } from '@vacker/ui';
 const TABS = [
   { href: '/protocolo', label: 'Dashboard' },
   { href: '/protocolo/captadas', label: 'Captadas' },
+  { href: '/protocolo/propiedades', label: 'Propiedades' },
 ];
 
 export function ProtocoloNav() {

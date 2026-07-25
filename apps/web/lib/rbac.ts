@@ -77,3 +77,8 @@ export function puedeBorrarOperaciones(roles: Rol[]): boolean {
 export function puedeBorrarTasaciones(roles: Rol[]): boolean {
   return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
 }
+
+/** POST /protocolo/:id/desarchivar — reabrir una propiedad archivada por error. */
+export function puedeReabrirProtocolo(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
+}
