@@ -13,7 +13,7 @@ import {
 } from '@vacker/types';
 import { fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
-import { updateAccion, updateProtocolo } from '../../lib/protocolo-api';
+import { generarInformeProtocolo, updateAccion, updateProtocolo } from '../../lib/protocolo-api';
 import { AlertaItem, BarraAvance, FotoPropiedad, Pill, porcentaje } from './protocolo-ui';
 
 const ESTADOS: EstadoAccion[] = ['pendiente', 'en_proceso', 'realizada', 'no_corresponde'];
@@ -51,7 +51,22 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
   const [p, setP] = useState(inicial);
   const [semana, setSemana] = useState(inicial.semanaActual);
   const [guardando, setGuardando] = useState(false);
+  const [generandoInforme, setGenerandoInforme] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** Genera el PDF y lo abre en otra pestaña (la URL firmada es de vida corta). */
+  async function generarInforme() {
+    setGenerandoInforme(true);
+    setError(null);
+    try {
+      const { url } = await generarInformeProtocolo(await getAccessToken(), p.id);
+      window.open(url, '_blank', 'noopener');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo generar el informe.');
+    } finally {
+      setGenerandoInforme(false);
+    }
+  }
 
   async function guardar(fn: (token: string) => Promise<ProtocoloDto>) {
     setGuardando(true);
@@ -99,13 +114,21 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
             <Pill>{p.agente.nombre}</Pill>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <Link
             href="/protocolo"
             className="rounded-brand border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-surface"
           >
             ← Volver
           </Link>
+          <button
+            type="button"
+            onClick={() => void generarInforme()}
+            disabled={generandoInforme}
+            className="rounded-brand bg-brand-red px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-red-dark disabled:opacity-60"
+          >
+            {generandoInforme ? 'Generando…' : '📄 Informe'}
+          </button>
         </div>
       </div>
 
