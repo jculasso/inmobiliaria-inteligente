@@ -11,6 +11,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { uploadUnArchivo } from '../common/upload';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateTenantSchema,
@@ -56,7 +57,7 @@ export class AdminTenantsController {
   @Roles('admin_plataforma')
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Sube (o reemplaza) el logo de la inmobiliaria (5MB, imagen)' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadUnArchivo))
   subirLogo(@Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: LogoFile | undefined) {
     if (!file) throw new BadRequestException('Falta el archivo.');
     return this.tenants.subirLogo(id, file);

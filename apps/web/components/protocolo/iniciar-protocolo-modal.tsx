@@ -6,7 +6,7 @@ import type { CandidataDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { iniciarProtocolo } from '../../lib/protocolo-api';
-import { Campo, Seccion, inputClass } from '../admin/form-ui';
+import { Campo, Seccion, inputClass } from '../form-ui';
 
 /** Hoy en Argentina (YYYY-MM-DD) — offset fijo -03:00, el país no tiene DST. */
 function hoyArg(): string {

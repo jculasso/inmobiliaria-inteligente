@@ -5,7 +5,7 @@ import type { Rol, UsuarioAdminDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createUsuarioAdmin, updateUsuarioAdmin } from '../../lib/admin-api';
-import { Campo, CheckCard, Seccion, inputClass } from './form-ui';
+import { Campo, CheckCard, Seccion, inputClass } from '../form-ui';
 
 /** Qué ve/puede cada rol — evita tener que recordarlo de memoria al dar de alta. */
 const ROLES_DISPONIBLES: { value: Rol; label: string; descripcion: string }[] = [

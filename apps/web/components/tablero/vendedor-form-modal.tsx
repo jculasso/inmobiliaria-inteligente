@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { VendedorDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createVendedor, updateVendedor } from '../../lib/tablero-api';
+import { fmtUSD } from '../../lib/format';
+import { Campo, MoneyInput, OpcionCard, Seccion, inputClass } from '../form-ui';
 
 interface Props {
   vendedores: VendedorDto[];
@@ -32,6 +34,7 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
   const lideresDisponibles = vendedores.filter(
     (v) => v.roles.includes('team_leader') && v.id !== vendedor?.id,
   );
+  const objetivoMensual = (Number(objComision) || 0) / 12;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -77,70 +80,106 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
   }
 
   return (
-    <Modal title={vendedor ? 'Editar vendedor' : 'Nuevo vendedor'} onClose={onClose}>
-      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <Campo label="Nombre">
-          <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
-        </Campo>
-        <Campo label="Email">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className={inputClass}
-          />
-        </Campo>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Estado">
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value as 'activo' | 'inactivo')}
-              className={inputClass}
+    <Modal title={vendedor ? 'Editar vendedor' : 'Nuevo vendedor'} onClose={onClose} size="xl">
+      <form className="grid gap-2.5 sm:grid-cols-2" onSubmit={handleSubmit}>
+        <Seccion titulo="Datos personales" icono="👤">
+          <div className="flex flex-col gap-2.5">
+            <Campo label="Nombre y apellido">
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
+            </Campo>
+            <Campo
+              label="Email"
+              hint="Es el usuario con el que inicia sesión: si lo cambiás, tiene que entrar con el nuevo."
             >
-              <option value="activo">Activo</option>
-              <option value="inactivo">Inactivo</option>
-            </select>
-          </Campo>
-          <Campo label="Rol">
-            <select
-              value={rol}
-              onChange={(e) => setRol(e.target.value as 'vendedor' | 'team_leader')}
-              className={inputClass}
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className={inputClass}
+              />
+            </Campo>
+            <Campo label="Estado" hint="Un vendedor inactivo deja de aparecer en los listados.">
+              <select
+                value={estado}
+                onChange={(e) => setEstado(e.target.value as 'activo' | 'inactivo')}
+                className={inputClass}
+              >
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </Campo>
+          </div>
+        </Seccion>
+
+        <Seccion titulo="Rol y equipo" icono="🎭">
+          <div className="flex flex-col gap-2.5">
+            <div>
+              <span className="mb-1 block text-sm font-medium text-ink">Rol</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <OpcionCard
+                  seleccionada={rol === 'vendedor'}
+                  onSelect={() => setRol('vendedor')}
+                  titulo="Vendedor"
+                  descripcion="Ve y carga lo suyo."
+                />
+                <OpcionCard
+                  seleccionada={rol === 'team_leader'}
+                  onSelect={() => setRol('team_leader')}
+                  titulo="Team Leader"
+                  descripcion="Ve lo de su equipo."
+                />
+              </div>
+            </div>
+
+            <Campo
+              label="Reporta a"
+              hint={
+                lideresDisponibles.length === 0
+                  ? 'Todavía no hay team leaders cargados.'
+                  : 'Define de quién es el equipo para el alcance por rol.'
+              }
             >
-              <option value="vendedor">Vendedor</option>
-              <option value="team_leader">Team Leader</option>
-            </select>
-          </Campo>
-        </div>
-        <Campo label="Reporta a">
-          <select value={liderId} onChange={(e) => setLiderId(e.target.value)} className={inputClass}>
-            <option value="">—</option>
-            {lideresDisponibles.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nombre}
-              </option>
-            ))}
-          </select>
-        </Campo>
-        <Campo label={`Objetivo de comisión ${anioActual} (USD)`}>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={objComision}
-            onChange={(e) => setObjComision(e.target.value)}
-            className={inputClass}
-          />
-        </Campo>
+              <select
+                value={liderId}
+                onChange={(e) => setLiderId(e.target.value)}
+                disabled={lideresDisponibles.length === 0}
+                className={inputClass}
+              >
+                <option value="">Sin líder asignado</option>
+                {lideresDisponibles.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nombre}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          </div>
+        </Seccion>
+
+        <Seccion titulo={`Objetivo ${anioActual}`} icono="🎯" full>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <Campo label="Comisión objetivo del año">
+              <MoneyInput value={objComision} onChange={setObjComision} />
+            </Campo>
+            <div className="flex flex-col justify-center rounded-brand bg-surface px-3 py-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">
+                Equivale por mes
+              </span>
+              <span className="text-lg font-extrabold text-ink">
+                {objetivoMensual > 0 ? fmtUSD(objetivoMensual) : '—'}
+              </span>
+            </div>
+          </div>
+        </Seccion>
 
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-brand-red sm:col-span-2">
             {error}
           </p>
         )}
 
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
@@ -150,17 +189,5 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
         </div>
       </form>
     </Modal>
-  );
-}
-
-const inputClass =
-  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red';
-
-function Campo({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-ink">{label}</span>
-      {children}
-    </label>
   );
 }

@@ -13,7 +13,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { createTenant, subirLogoTenant, updateTenant } from '../../lib/admin-api';
 import { AvatarUploader } from '../avatar-uploader';
 import { NOMBRE_MODULO } from '../../lib/modulos';
-import { Campo, CheckCard, Seccion, inputClass } from './form-ui';
+import { Campo, CheckCard, Seccion, inputClass } from '../form-ui';
 
 /** Qué hace cada módulo — se muestra bajo el check para no vender a ciegas. */
 const DESCRIPCION_MODULO: Record<string, string> = {

@@ -12,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { uploadUnArchivo } from '../common/upload';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateUsuarioAdminSchema,
@@ -85,7 +86,7 @@ export class AdminUsuariosController {
   @Roles('admin_plataforma')
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Sube (o reemplaza) la foto de perfil de un usuario (5MB, imagen)' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadUnArchivo))
   subirFoto(
     @Param('tenantId', ParseUUIDPipe) tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
