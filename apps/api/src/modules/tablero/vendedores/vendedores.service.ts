@@ -4,6 +4,8 @@ import type { Prisma } from '@prisma/client';
 import { RolAsignableSchema, type CreateVendedor, type ObjetivoInput, type UpdateVendedor } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
+import { SupabaseAdminService } from '../../../admin/supabase-admin.service';
+import { PrincipalCacheService } from '../../../auth/principal-cache.service';
 import { decToNum } from '../tablero.util';
 
 const vendedorInclude = {
@@ -22,7 +24,11 @@ type VendedorRow = Prisma.UsuarioGetPayload<{ include: typeof vendedorInclude }>
  */
 @Injectable()
 export class VendedoresService {
-  constructor(private readonly db: TenantPrismaService) {}
+  constructor(
+    private readonly db: TenantPrismaService,
+    private readonly supabaseAdmin: SupabaseAdminService,
+    private readonly principalCache: PrincipalCacheService,
+  ) {}
 
   /** Lista los usuarios comerciales del tenant con sus roles y objetivos. */
   async list() {
@@ -65,6 +71,14 @@ export class VendedoresService {
       if (!actual) throw new NotFoundException('Usuario no encontrado.');
       if (dto.email !== undefined && dto.email !== actual.email) {
         await this.assertEmailLibre(tx, dto.email, id);
+        // El email también vive en Supabase Auth, que es contra lo que se
+        // valida el login. Sin esto la persona seguía teniendo que entrar con
+        // el anterior, sin ninguna pista de por qué. Va dentro de la
+        // transacción a propósito: si Auth falla, no se guarda acá tampoco.
+        if (actual.authUserId) {
+          await this.supabaseAdmin.setEmail(actual.authUserId, dto.email);
+          this.principalCache.invalidarUsuario(id);
+        }
       }
       if (dto.liderId) {
         if (dto.liderId === id) throw new BadRequestException('Un usuario no puede ser su propio líder.');

@@ -3,7 +3,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { RolAsignableSchema, type CreateVendedor, type UpdateVendedor } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import type { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
+import type { SupabaseAdminService } from '../../../admin/supabase-admin.service';
+import type { PrincipalCacheService } from '../../../auth/principal-cache.service';
 import { VendedoresService } from './vendedores.service';
+
+/** Editar el email acá también lo cambia en Supabase Auth (es el del login). */
+function makeSupabaseAdmin() {
+  return { setEmail: vi.fn() } as unknown as SupabaseAdminService & { setEmail: ReturnType<typeof vi.fn> };
+}
+
+function makeCache() {
+  return { invalidarUsuario: vi.fn() } as unknown as PrincipalCacheService;
+}
 
 const CTX: TenantContext = { tenantId: 't1', userId: 'admin', roles: ['admin_tenant'] };
 
@@ -43,7 +54,7 @@ describe('VendedoresService', () => {
     const tx = makeTx({
       usuario: { findFirst: vi.fn().mockResolvedValue({ id: 'existente' }), findUniqueOrThrow: vi.fn() },
     });
-    const svc = new VendedoresService(makeDb(tx));
+    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache());
 
     await expect(
       svc.create({ nombre: 'X', email: 'ana@vacker.test', estado: 'activo', roles: ['vendedor'] } as unknown as CreateVendedor, CTX),
@@ -53,18 +64,63 @@ describe('VendedoresService', () => {
   it('update: un usuario no puede ser su propio líder', async () => {
     const tx = makeTx();
     tx.usuario.findUnique = vi.fn().mockResolvedValue({ id: 'u1', email: 'ana@vacker.test' });
-    const svc = new VendedoresService(makeDb(tx));
+    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache());
 
     await expect(
       svc.update('u1', { liderId: 'u1' } as unknown as UpdateVendedor, CTX),
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('cambiar el email acá también lo cambia en Supabase Auth (es el del login)', async () => {
+    // Regresión: se editaba solo nuestra tabla, así que la persona seguía
+    // teniendo que entrar con el mail viejo, sin ninguna pista de por qué.
+    const tx = makeTx();
+    tx.usuario.findUnique = vi
+      .fn()
+      .mockResolvedValue({ id: 'u1', email: 'viejo@vacker.com', authUserId: 'auth-1' });
+    tx.usuario.findUniqueOrThrow = vi.fn().mockResolvedValue(vendedorRow);
+    const supabaseAdmin = makeSupabaseAdmin();
+    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache());
+
+    await svc.update('u1', { email: 'nuevo@vacker.com.ar' } as unknown as UpdateVendedor, CTX);
+
+    expect(supabaseAdmin.setEmail).toHaveBeenCalledWith('auth-1', 'nuevo@vacker.com.ar');
+  });
+
+  it('si el vendedor todavía no tiene acceso, no se toca Auth', async () => {
+    const tx = makeTx();
+    tx.usuario.findUnique = vi
+      .fn()
+      .mockResolvedValue({ id: 'u1', email: 'viejo@vacker.com', authUserId: null });
+    tx.usuario.findUniqueOrThrow = vi.fn().mockResolvedValue(vendedorRow);
+    const supabaseAdmin = makeSupabaseAdmin();
+    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache());
+
+    await svc.update('u1', { email: 'nuevo@vacker.com.ar' } as unknown as UpdateVendedor, CTX);
+
+    expect(supabaseAdmin.setEmail).not.toHaveBeenCalled();
+  });
+
+  it('si Auth rechaza el email, no se guarda el cambio en la base', async () => {
+    const tx = makeTx();
+    tx.usuario.findUnique = vi
+      .fn()
+      .mockResolvedValue({ id: 'u1', email: 'viejo@vacker.com', authUserId: 'auth-1' });
+    const supabaseAdmin = makeSupabaseAdmin();
+    supabaseAdmin.setEmail.mockRejectedValue(new BadRequestException('Email ya usado'));
+    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache());
+
+    await expect(
+      svc.update('u1', { email: 'repetido@vacker.com.ar' } as unknown as UpdateVendedor, CTX),
+    ).rejects.toThrow(BadRequestException);
+    expect(tx.usuario.update).not.toHaveBeenCalled();
+  });
+
   it('update de roles NO borra admin_plataforma (solo reemplaza roles asignables)', async () => {
     const tx = makeTx();
     tx.usuario.findUnique = vi.fn().mockResolvedValue({ id: 'u1', email: 'ana@vacker.test' });
     tx.usuario.findUniqueOrThrow = vi.fn().mockResolvedValue(vendedorRow);
-    const svc = new VendedoresService(makeDb(tx));
+    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache());
 
     await svc.update('u1', { roles: ['vendedor'] } as unknown as UpdateVendedor, CTX);
 
