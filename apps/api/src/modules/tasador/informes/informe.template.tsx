@@ -20,9 +20,9 @@ function crearEstilos(red: string, redDark: string) {
   return StyleSheet.create({
     page: { padding: 36, fontSize: 9.5, color: INK, fontFamily: FUENTE_MARCA },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    logoBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    logoImg: { width: 56, height: 56, objectFit: 'contain' },
-    logoFallback: { width: 56, height: 56, borderRadius: 10, backgroundColor: red },
+    logoBox: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    logoImg: { width: 80, height: 80, objectFit: 'contain' },
+    logoFallback: { width: 80, height: 80, borderRadius: 12, backgroundColor: red },
     brandName: { fontSize: 11, fontWeight: 700, color: INK },
     docMeta: { alignItems: 'flex-end' },
     docMetaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
