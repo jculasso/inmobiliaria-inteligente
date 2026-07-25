@@ -71,6 +71,14 @@ export async function archivarProtocolo(accessToken: string, id: string, dto: Ar
   });
 }
 
+/** Genera el informe del propietario y devuelve la URL firmada del PDF. */
+export async function generarInformeProtocolo(accessToken: string, id: string) {
+  return apiFetch(`/protocolo/${id}/informe`, z.object({ url: z.string() }), {
+    accessToken,
+    method: 'POST',
+  });
+}
+
 export async function desarchivarProtocolo(accessToken: string, id: string) {
   return apiFetch(`/protocolo/${id}/desarchivar`, ProtocoloDtoSchema, { accessToken, method: 'POST' });
 }
