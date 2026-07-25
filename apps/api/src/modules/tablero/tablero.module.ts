@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SupabaseAdminService } from '../../admin/supabase-admin.service';
 import { KpisController } from './kpis/kpis.controller';
 import { KpisService } from './kpis/kpis.service';
 import { OperacionesController } from './operaciones/operaciones.controller';
@@ -9,6 +10,6 @@ import { VendedoresService } from './vendedores/vendedores.service';
 /** Módulo Tablero Comercial (Paso 3): operaciones, vendedores y KPIs. */
 @Module({
   controllers: [OperacionesController, VendedoresController, KpisController],
-  providers: [OperacionesService, VendedoresService, KpisService],
+  providers: [SupabaseAdminService, OperacionesService, VendedoresService, KpisService],
 })
 export class TableroModule {}
