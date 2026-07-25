@@ -43,6 +43,24 @@ export class SupabaseAdminService {
     }
   }
 
+  /**
+   * Verifica una contraseña sin cambiar la sesión del usuario: intenta el
+   * grant de password contra Auth y descarta el token que devuelve. Se usa
+   * cuando alguien cambia su clave por voluntad propia, para que una sesión
+   * abierta y ajena no alcance para reemplazarla.
+   */
+  async passwordEsValida(email: string, password: string): Promise<boolean> {
+    const res = await fetch(`${this.baseUrl()}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        apikey: this.config.getOrThrow<string>('SUPABASE_ANON_KEY'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    return res.ok;
+  }
+
   /** Best-effort: si falla el rollback no hay mucho más que hacer, no debe tapar el error original. */
   async deleteUser(authUserId: string): Promise<void> {
     await fetch(`${this.baseUrl()}/auth/v1/admin/users/${authUserId}`, {

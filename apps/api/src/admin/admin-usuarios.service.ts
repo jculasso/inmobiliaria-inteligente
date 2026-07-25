@@ -107,6 +107,9 @@ export class AdminUsuariosService {
       throw new BadRequestException('Este usuario todavía no tiene acceso — activalo primero.');
     }
     await this.supabaseAdmin.setPassword(usuario.authUserId, dto.password);
+    // La clave queda temporal: al entrar, se le pide elegir una propia (mismo
+    // criterio que el alta). Así el admin nunca conoce la contraseña final.
+    await this.db.usuario.update({ where: { id }, data: { debeCambiarPassword: true } });
     return { id, ok: true as const };
   }
 
@@ -124,7 +127,10 @@ export class AdminUsuariosService {
 
     const authUser = await this.supabaseAdmin.createUser(usuario.email, dto.password);
     try {
-      await this.db.usuario.update({ where: { id }, data: { authUserId: authUser.id } });
+      await this.db.usuario.update({
+        where: { id },
+        data: { authUserId: authUser.id, debeCambiarPassword: true },
+      });
     } catch (err) {
       await this.supabaseAdmin.deleteUser(authUser.id);
       throw err;
@@ -204,5 +210,6 @@ function toDto(row: UsuarioAdminRow) {
     telefono: row.telefono,
     roles: row.roles.map((r) => r.rol),
     tieneAcceso: row.authUserId !== null,
+    debeCambiarPassword: row.debeCambiarPassword,
   };
 }

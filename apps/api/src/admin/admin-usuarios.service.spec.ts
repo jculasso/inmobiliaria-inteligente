@@ -191,7 +191,11 @@ describe('AdminUsuariosService', () => {
     const result = await service.activarAcceso(TENANT_ID, 'vendedor-1', { password: 'nuevaClave123' });
 
     expect(supabaseAdmin.createUser).toHaveBeenCalledWith('ezequiel@vacker.com', 'nuevaClave123');
-    expect(update).toHaveBeenCalledWith({ where: { id: 'vendedor-1' }, data: { authUserId: 'auth-1' } });
+    // La clave que pone el admin es temporal: al entrar se le pide una propia.
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'vendedor-1' },
+      data: { authUserId: 'auth-1', debeCambiarPassword: true },
+    });
     expect(result.tieneAcceso).toBe(true);
   });
 

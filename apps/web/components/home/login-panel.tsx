@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import { createClient } from '../../lib/supabase/client';
+import { OlvideClave } from './olvide-clave';
 
 /** Ruta a la que volver tras loguear (ver middleware.ts: ?redirect= es el destino original, ej. /admin, antes de rebotar a la Home). Solo se acepta un path relativo propio, para no habilitar un open redirect. */
 function destinoTrasLogin(searchParams: URLSearchParams): string | null {
@@ -134,6 +135,8 @@ export function LoginPanel() {
           {loading ? 'Ingresando…' : 'Ingresar'}
         </Button>
       </form>
+
+      <OlvideClave />
     </div>
   );
 }

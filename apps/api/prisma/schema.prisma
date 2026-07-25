@@ -62,6 +62,10 @@ model Usuario {
   // Teléfono de contacto del agente — se carga desde /admin y aparece en el
   // header del informe de tasación (email · teléfono).
   telefono   String? @map("telefono")
+  /// El implementador da de alta con una clave temporal: hasta que la persona
+  /// elija la suya, la app la manda a /cambiar-clave. Se vuelve a marcar cuando
+  /// un admin resetea la contraseña (misma situación que el primer ingreso).
+  debeCambiarPassword Boolean @default(true) @map("debe_cambiar_password")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

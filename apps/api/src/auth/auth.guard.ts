@@ -114,6 +114,7 @@ export class AuthGuard implements CanActivate {
       fotoUrl: usuario.fotoUrl,
       tenantId: usuario.tenantId,
       roles: usuario.roles.map((r) => r.rol as Rol),
+      debeCambiarPassword: usuario.debeCambiarPassword,
       tenant: {
         nombre: usuario.tenant.nombre,
         plan: plan.success ? plan.data : 'basico',

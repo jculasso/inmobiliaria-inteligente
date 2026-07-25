@@ -55,6 +55,8 @@ export const UsuarioAdminDtoSchema = z.object({
   tieneAcceso: z.boolean(),
   fotoUrl: z.string().nullable(),
   telefono: z.string().nullable(),
+  /** true = todavía usa la clave temporal que le dio el implementador. */
+  debeCambiarPassword: z.boolean(),
 });
 export type UsuarioAdminDto = z.infer<typeof UsuarioAdminDtoSchema>;
 
@@ -66,6 +68,14 @@ export const CreateUsuarioAdminSchema = z.object({
   telefono: z.string().nullish(),
 });
 export type CreateUsuarioAdmin = z.infer<typeof CreateUsuarioAdminSchema>;
+
+/** Cambio de la propia contraseña (POST /me/password). */
+export const CambiarPasswordSchema = z.object({
+  /** No se exige en el cambio obligatorio: la sesión recién creada ya lo prueba. */
+  passwordActual: z.string().optional(),
+  passwordNueva: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
+});
+export type CambiarPassword = z.infer<typeof CambiarPasswordSchema>;
 
 export const UpdateUsuarioAdminSchema = z
   .object({

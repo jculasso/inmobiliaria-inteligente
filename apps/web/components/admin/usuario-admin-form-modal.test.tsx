@@ -12,6 +12,7 @@ const USUARIO: UsuarioAdminDto = {
   estado: 'activo',
   roles: ['vendedor'],
   tieneAcceso: true,
+  debeCambiarPassword: false,
   fotoUrl: null,
 };
 
@@ -43,9 +44,23 @@ describe('UsuarioAdminFormModal', () => {
     expect(screen.queryByText(/Contraseña inicial/)).not.toBeInTheDocument();
   });
 
-  it('en alta pide contraseña y el email es editable', () => {
+  it('en alta sugiere una contraseña temporal al azar y el email es editable', () => {
     render(<UsuarioAdminFormModal tenantId="t" onClose={() => {}} onSaved={() => {}} />);
-    expect(screen.getByText(/Contraseña inicial/)).toBeInTheDocument();
+
+    expect(screen.getByText(/Contraseña temporal/)).toBeInTheDocument();
+    const sugerida = (screen.getByRole('textbox', { name: /Contraseña temporal/ }) as HTMLInputElement).value;
+    expect(sugerida).toMatch(/^[A-Za-z2-9]{12}$/);
     expect(screen.getByRole('textbox', { name: /Email/ })).toBeEnabled();
+  });
+
+  it('el dado genera una contraseña distinta', async () => {
+    const user = userEvent.setup();
+    render(<UsuarioAdminFormModal tenantId="t" onClose={() => {}} onSaved={() => {}} />);
+
+    const campo = screen.getByRole('textbox', { name: /Contraseña temporal/ });
+    const previa = (campo as HTMLInputElement).value;
+    await user.click(screen.getByTitle('Generar otra'));
+
+    expect((campo as HTMLInputElement).value).not.toBe(previa);
   });
 });

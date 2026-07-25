@@ -25,6 +25,7 @@ function principal(modulos: Partial<ModulosTenant>): AuthPrincipal {
     nombre: 'Usuario Test',
     fotoUrl: null,
     tenantId: 't',
+    debeCambiarPassword: false,
     roles: ['vendedor'],
     tenant: {
       nombre: 'Test',
