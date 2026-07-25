@@ -45,7 +45,10 @@ export class GoogleService {
       response_type: 'code',
       scope: SCOPE,
       access_type: 'offline', // pedir refresh token
-      prompt: 'consent', // forzar que Google devuelva refresh token
+      // `select_account`: obliga a elegir la cuenta de Google, aunque el
+      // navegador ya tenga una logueada — evita vincular por error la casilla
+      // equivocada. `consent`: fuerza que Google devuelva el refresh token.
+      prompt: 'select_account consent',
       include_granted_scopes: 'true',
       state,
     });
