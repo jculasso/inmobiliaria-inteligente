@@ -62,6 +62,8 @@ function crearEstilos(red: string, redDark: string) {
       marginTop: 14,
     },
     portadaPie: { flexDirection: 'row', gap: 32, marginTop: 18 },
+    agenteBox: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    agenteFoto: { width: 42, height: 42, borderRadius: 21, objectFit: 'cover' },
     fichaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
     fichaValue: { fontSize: 10, fontWeight: 700, color: INK, marginTop: 2 },
     fichaSub: { fontSize: 8.5, color: MUTED, marginTop: 1 },
@@ -239,12 +241,15 @@ export function InformeProtocoloDocument({
             <Text style={styles.fichaValue}>{p.propietarioNombre ?? 'Propietario'}</Text>
             {p.propietarioTelefono && <Text style={styles.fichaSub}>{p.propietarioTelefono}</Text>}
           </View>
-          <View>
-            <Text style={styles.fichaLabel}>ASESOR RESPONSABLE</Text>
-            <Text style={styles.fichaValue}>{p.agente.nombre}</Text>
-            <Text style={styles.fichaSub}>
-              {p.agente.telefono ? `${p.agente.email} · ${p.agente.telefono}` : p.agente.email}
-            </Text>
+          <View style={styles.agenteBox}>
+            {p.agente.fotoUrl ? <Image src={p.agente.fotoUrl} style={styles.agenteFoto} /> : null}
+            <View>
+              <Text style={styles.fichaLabel}>ASESOR RESPONSABLE</Text>
+              <Text style={styles.fichaValue}>{p.agente.nombre}</Text>
+              <Text style={styles.fichaSub}>
+                {p.agente.telefono ? `${p.agente.email} · ${p.agente.telefono}` : p.agente.email}
+              </Text>
+            </View>
           </View>
           <View>
             <Text style={styles.fichaLabel}>PERÍODO</Text>

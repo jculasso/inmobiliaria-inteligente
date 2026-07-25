@@ -71,24 +71,24 @@ export function HomeView({ sesion }: HomeViewProps) {
   const nombreMarca = sesion ? (config?.nombreCorto ?? sesion.tenant.nombre) : 'Inmobiliaria Inteligente';
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-14 sm:py-16" style={tenantBrandStyle(config)}>
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-4">
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8" style={tenantBrandStyle(config)}>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
           {config?.logoUrl ? (
             <Avatar nombre={nombreMarca} fotoUrl={config.logoUrl} size="lg" />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-red to-brand-red-dark shadow-lg shadow-brand-red/20">
-              <svg viewBox="0 0 100 100" className="h-8 w-8" aria-hidden>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-red to-brand-red-dark shadow-lg shadow-brand-red/20 sm:h-14 sm:w-14">
+              <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>
                 <path d="M10 12 H90 V88 L50 66 L10 88 Z" fill="#fff" />
               </svg>
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-red">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-red sm:text-xs">
               Inmobiliaria Inteligente
             </p>
-            <h1 className="text-2xl font-extrabold text-ink break-words sm:text-3xl">
-              {nombreMarca} · Plataforma 2.0
+            <h1 className="text-xl font-extrabold leading-tight text-ink break-words sm:text-2xl">
+              {nombreMarca}
             </h1>
           </div>
         </div>
@@ -104,18 +104,21 @@ export function HomeView({ sesion }: HomeViewProps) {
         )}
       </header>
 
-      <p className="mt-4 max-w-2xl text-muted">
+      <p className="mt-3 max-w-2xl text-sm text-muted">
         {sesion
           ? `Centro de operaciones de ${nombreMarca}. Cada usuario ve los módulos habilitados según su rol.`
           : 'Iniciá sesión para desbloquear los módulos de tu inmobiliaria.'}
       </p>
 
-      <div className={`mt-10 grid gap-6 ${bloqueada ? 'items-start lg:grid-cols-[360px_1fr]' : ''}`}>
+      <div className={`mt-5 grid gap-5 ${bloqueada ? 'items-start lg:grid-cols-[360px_1fr]' : ''}`}>
         {bloqueada && <LoginPanel />}
 
-        <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Con sesión, los 4 módulos entran en una fila en desktop: la Home es
+            un menú, no debería obligar a scrollear para ver un módulo. */}
+        <section className={`grid gap-4 sm:grid-cols-2 ${bloqueada ? 'xl:grid-cols-2' : 'lg:grid-cols-4'}`}>
           {MODULOS.map((m) => {
-            const habilitado = m.estado === 'activo' && alcance !== null && modulos?.[m.key] === true;
+            const licenciado = bloqueada || modulos?.[m.key] === true;
+            const habilitado = m.estado === 'activo' && alcance !== null && licenciado;
             return (
               <ModuleCard
                 key={m.nombre}
@@ -126,6 +129,7 @@ export function HomeView({ sesion }: HomeViewProps) {
                 href={m.href}
                 bloqueada={bloqueada}
                 habilitado={habilitado}
+                licenciado={licenciado}
                 preview={
                   m.href === '/tablero' && habilitado && alcance ? (
                     <TableroVolumenPreview anio={anio} alcance={alcance} />
