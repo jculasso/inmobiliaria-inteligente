@@ -75,8 +75,11 @@ export function InstalarApp() {
 
   if (!prompt && !mostrarIOS) return null;
 
+  // Banner FIJO, no inline: se decide recién en el efecto (después del primer
+  // pintado), así que insertado en el flujo empujaba las tarjetas hacia abajo
+  // apenas cargaba la página.
   return (
-    <div className="relative overflow-hidden rounded-brand border border-line bg-white p-4 shadow-sm">
+    <div className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-md overflow-hidden rounded-brand border border-line bg-white p-4 shadow-lg sm:inset-x-auto sm:left-4">
       <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-brand-red" />
       <button
         type="button"

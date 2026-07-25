@@ -41,6 +41,7 @@ import { analizarComparables, superficieTotal, valoresSugeridos, type Comparable
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTasacion, generarInforme, updateTasacion } from '../../lib/tasador-api';
+import { abrirPdfEnPestana, abrirPestanaEnEspera } from '../../lib/abrir-pdf';
 import { Seccion1Datos } from './wizard/seccion-1-datos';
 import { Seccion2Caracteristicas } from './wizard/seccion-2-caracteristicas';
 import { Seccion3Analisis } from './wizard/seccion-3-analisis';
@@ -400,21 +401,22 @@ export function TasacionWizard({ tasacion }: Props) {
   }
 
   async function handleGenerarInforme() {
+    // La pestaña se abre ANTES de guardar: para cuando termina el guardado, el
+    // navegador ya no considera que la acción viene del click y la bloquearía.
+    const ventana = abrirPestanaEnEspera('Generando el informe');
     const ok = await guardarTodo();
-    if (!ok || !tasacionId) return;
-    setGenerandoInforme(true);
-    try {
-      const accessToken = await getAccessToken();
-      const blob = await generarInforme(accessToken, tasacionId);
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      router.push('/tasador/tasaciones');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo generar el informe.');
-    } finally {
-      setGenerandoInforme(false);
+    if (!ok || !tasacionId) {
+      ventana?.close();
+      return;
     }
+    setGenerandoInforme(true);
+    await abrirPdfEnPestana(async () => generarInforme(await getAccessToken(), tasacionId), {
+      titulo: 'Generando el informe',
+      onError: setError,
+      ventana,
+    });
+    setGenerandoInforme(false);
+    router.push('/tasador/tasaciones');
   }
 
   async function handleFinalizar() {

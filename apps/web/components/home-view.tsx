@@ -111,12 +111,9 @@ export function HomeView({ sesion }: HomeViewProps) {
           : 'Iniciá sesión para desbloquear los módulos de tu inmobiliaria.'}
       </p>
 
-      {/* Solo con sesión: a un invitado no le sirve instalar algo a lo que no puede entrar. */}
-      {sesion && (
-        <div className="mt-4 max-w-md">
-          <InstalarApp />
-        </div>
-      )}
+      {/* Solo con sesión: a un invitado no le sirve instalar algo a lo que no
+          puede entrar. Se posiciona solo (banner fijo), sin ocupar lugar. */}
+      {sesion && <InstalarApp />}
 
       <div className={`mt-5 grid gap-5 ${bloqueada ? 'items-start lg:grid-cols-[360px_1fr]' : ''}`}>
         {bloqueada && <LoginPanel />}

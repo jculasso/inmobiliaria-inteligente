@@ -14,6 +14,7 @@ import {
 import { fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarInformeProtocolo, updateAccion, updateProtocolo } from '../../lib/protocolo-api';
+import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { AlertaItem, BarraAvance, FotoPropiedad, Pill, porcentaje } from './protocolo-ui';
 
 const ESTADOS: EstadoAccion[] = ['pendiente', 'en_proceso', 'realizada', 'no_corresponde'];
@@ -61,20 +62,18 @@ export function DetalleProtocolo({
   const [generandoInforme, setGenerandoInforme] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Genera el PDF y lo abre en otra pestaña (la URL firmada es de vida corta). */
+  /**
+   * Genera el PDF y lo abre en otra pestaña. Va por `abrirPdfEnPestana` para
+   * que la pestaña se abra dentro del click: abrirla después de esperar la
+   * respuesta hacía que el navegador la bloqueara como popup.
+   */
   async function generarInforme() {
     setGenerandoInforme(true);
-    setError(null);
-    try {
-      const blob = await generarInformeProtocolo(await getAccessToken(), p.id);
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener');
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo generar el informe.');
-    } finally {
-      setGenerandoInforme(false);
-    }
+    await abrirPdfEnPestana(async () => generarInformeProtocolo(await getAccessToken(), p.id), {
+      titulo: 'Generando el informe',
+      onError: setError,
+    });
+    setGenerandoInforme(false);
   }
 
   /**

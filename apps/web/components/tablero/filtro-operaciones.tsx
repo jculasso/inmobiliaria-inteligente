@@ -146,12 +146,14 @@ export function FiltroOperaciones({ anio, mes, trimestre }: Sel) {
         )}
       </div>
 
-      {isPending && (
-        <span
-          aria-label="Actualizando"
-          className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-brand-red"
-        />
-      )}
+      {/* Siempre montado y solo invisible: al aparecer empujaba toda la fila. */}
+      <span
+        aria-label="Actualizando"
+        role="status"
+        className={`h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand-red ${
+          isPending ? '' : 'invisible'
+        }`}
+      />
     </div>
   );
 }
