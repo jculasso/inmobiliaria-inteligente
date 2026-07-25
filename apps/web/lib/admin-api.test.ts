@@ -16,6 +16,7 @@ const TENANT = {
   nombre: 'Vacker',
   slug: 'vacker',
   plan: 'basico',
+  modulos: { tablero: true, tasador: false, todo: false, protocolo: false },
   estado: 'activo',
   config: {},
   createdAt: '2026-01-01T00:00:00.000Z',

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MODULOS_POR_PLAN, type TenantDto } from '@vacker/types';
+import { modulosHabilitados, type TenantDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { NOMBRE_MODULO } from '../../lib/modulos';
 import { TenantFormModal } from './tenant-form-modal';
@@ -47,7 +47,7 @@ export function TenantsTable({ tenants }: { tenants: TenantDto[] }) {
                   <td className="px-4 py-2 text-muted">{t.slug}</td>
                   <td className="px-4 py-2 capitalize text-muted">{t.plan}</td>
                   <td className="px-4 py-2 text-xs text-muted">
-                    {MODULOS_POR_PLAN[t.plan].map((m) => NOMBRE_MODULO[m]).join(', ')}
+                    {modulosHabilitados(t.modulos).map((m) => NOMBRE_MODULO[m]).join(', ') || '—'}
                   </td>
                   <td className="px-4 py-2">
                     <span

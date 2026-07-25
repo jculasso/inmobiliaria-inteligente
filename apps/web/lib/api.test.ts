@@ -8,7 +8,12 @@ const PRINCIPAL = {
   fotoUrl: null,
   tenantId: '22222222-2222-2222-2222-222222222222',
   roles: ['direccion'],
-  tenant: { nombre: 'Vacker', plan: 'basico', config: {} },
+  tenant: {
+    nombre: 'Vacker',
+    plan: 'basico',
+    modulos: { tablero: true, tasador: false, todo: false, protocolo: false },
+    config: {},
+  },
 };
 
 afterEach(() => {

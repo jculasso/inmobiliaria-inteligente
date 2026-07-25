@@ -17,7 +17,10 @@ model Tenant {
   id        String   @id @default(uuid()) @db.Uuid
   nombre    String
   slug      String   @unique
-  plan      String   @default("basico") // basico | profesional | enterprise
+  plan      String   @default("basico") // etiqueta comercial: basico | profesional | enterprise
+  // Módulos habilitados ("prendido / pagado"), fuente de verdad de permisos —
+  // ModulosTenantSchema. El plan quedó como rótulo, sin efecto en accesos.
+  modulos   Json     @default("{\"tablero\": true, \"tasador\": false, \"todo\": false, \"protocolo\": false}")
   estado    String   @default("activo") // activo | suspendido
   config    Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { MODULOS_POR_PLAN, type PlanTenant, type TenantDto } from '@vacker/types';
+import {
+  MODULOS_DEFAULT,
+  MODULO_KEYS,
+  type ModulosTenant,
+  type PlanTenant,
+  type TenantDto,
+} from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTenant, subirLogoTenant, updateTenant } from '../../lib/admin-api';
@@ -19,6 +25,7 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
   const [slug, setSlug] = useState(tenant?.slug ?? '');
   const [plan, setPlan] = useState<PlanTenant>(tenant?.plan ?? 'basico');
   const [estado, setEstado] = useState(tenant?.estado ?? 'activo');
+  const [modulos, setModulos] = useState<ModulosTenant>(tenant?.modulos ?? MODULOS_DEFAULT);
   const [logoUrl, setLogoUrl] = useState(tenant?.config.logoUrl ?? '');
   const [colorPrimario, setColorPrimario] = useState(tenant?.config.colorPrimario ?? '');
   const [colorPrimarioOscuro, setColorPrimarioOscuro] = useState(tenant?.config.colorPrimarioOscuro ?? '');
@@ -40,9 +47,9 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
         nombreCorto: nombreCorto || null,
       };
       if (tenant) {
-        await updateTenant(accessToken, tenant.id, { nombre, slug, plan, estado, config });
+        await updateTenant(accessToken, tenant.id, { nombre, slug, plan, modulos, estado, config });
       } else {
-        await createTenant(accessToken, { nombre, slug, plan, config });
+        await createTenant(accessToken, { nombre, slug, plan, modulos, config });
       }
       onSaved();
     } catch (err) {
@@ -89,9 +96,27 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
             </Campo>
           )}
         </div>
-        <p className="text-xs text-muted">
-          Módulos incluidos: {MODULOS_POR_PLAN[plan].map((m) => NOMBRE_MODULO[m]).join(', ')}
-        </p>
+        <fieldset className="rounded-brand border border-line p-3">
+          <legend className="px-1 text-xs font-bold uppercase tracking-wide text-muted">
+            Módulos habilitados
+          </legend>
+          <p className="mb-2 text-xs text-muted">
+            Definen a qué accede la inmobiliaria. El plan es solo una etiqueta comercial.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {MODULO_KEYS.map((key) => (
+              <label key={key} className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={modulos[key]}
+                  onChange={(e) => setModulos((m) => ({ ...m, [key]: e.target.checked }))}
+                  className="h-4 w-4 accent-brand-red"
+                />
+                {NOMBRE_MODULO[key]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         <p className="mt-1 text-xs font-bold uppercase tracking-wide text-muted">
           Branding (imagen de marca de la inmobiliaria)

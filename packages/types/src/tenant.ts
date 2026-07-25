@@ -13,11 +13,45 @@ export const TenantConfigSchema = z.object({
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 
-export const MODULO_KEYS = ['tablero', 'tasador', 'todo'] as const;
+export const MODULO_KEYS = ['tablero', 'tasador', 'todo', 'protocolo'] as const;
 export type ModuloKey = (typeof MODULO_KEYS)[number];
 
-/** Qué módulos trae cada plan. El To Do List (espejo de Google Calendar) va en profesional y enterprise. */
-export const MODULOS_POR_PLAN: Record<PlanTenant, ModuloKey[]> = {
+/**
+ * Módulos habilitados de un tenant. Cada uno se prende/apaga por separado desde
+ * el admin ("habilitado / pagado"): es la fuente de verdad de qué ve cada
+ * inmobiliaria. `plan` quedó como etiqueta comercial, sin efecto en permisos.
+ *
+ * Las 4 claves son obligatorias: la columna tiene default en la base y la
+ * migración las backfillea. Al sumar un módulo nuevo va su propia migración
+ * agregando la clave a las filas existentes (como hizo `protocolo`).
+ */
+export const ModulosTenantSchema = z.object({
+  tablero: z.boolean(),
+  tasador: z.boolean(),
+  todo: z.boolean(),
+  protocolo: z.boolean(),
+});
+export type ModulosTenant = z.infer<typeof ModulosTenantSchema>;
+
+/** Módulos con los que se da de alta un tenant nuevo si no se indica otra cosa. */
+export const MODULOS_DEFAULT: ModulosTenant = {
+  tablero: true,
+  tasador: false,
+  todo: false,
+  protocolo: false,
+};
+
+/** Lista de claves habilitadas, para iterar (la Home arma las tarjetas con esto). */
+export function modulosHabilitados(modulos: ModulosTenant): ModuloKey[] {
+  return MODULO_KEYS.filter((k) => modulos[k]);
+}
+
+/**
+ * Backfill de tenants existentes: qué módulos correspondían a cada plan antes
+ * de que el licenciamiento pasara a checks independientes. Se usa una sola vez
+ * en la migración; no decide permisos en runtime.
+ */
+export const MODULOS_POR_PLAN_LEGACY: Record<PlanTenant, ModuloKey[]> = {
   basico: ['tablero'],
   profesional: ['tablero', 'tasador', 'todo'],
   enterprise: ['tablero', 'tasador', 'todo'],
