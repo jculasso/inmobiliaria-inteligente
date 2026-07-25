@@ -214,13 +214,45 @@ describe('calcularAlertas', () => {
   });
 });
 
+describe('a qué semana lleva cada alerta', () => {
+  const base = {
+    estado: 'activa' as const,
+    fechaInicio: INICIO,
+    vencimientoAutorizacion: null,
+    actualizadoEn: null,
+    acciones: [] as AccionCalc[],
+    consultas: 5,
+    visitas: 2,
+  };
+
+  it('el atraso apunta a la semana más vieja sin cerrar', () => {
+    const alertas = calcularAlertas(
+      {
+        ...base,
+        acciones: [
+          accion({ semana: 3, fechaPrevista: '2026-07-21' }),
+          accion({ semana: 1, fechaPrevista: '2026-07-07' }),
+        ],
+      },
+      '2026-07-25',
+    );
+    const atraso = alertas.find((a) => a.titulo.includes('atrasadas'));
+    expect(atraso?.semana).toBe(1);
+  });
+
+  it('lo que no se resuelve en una semana puntual no apunta a ninguna', () => {
+    const alertas = calcularAlertas({ ...base, vencimientoAutorizacion: '2026-07-28' }, '2026-07-25');
+    expect(alertas.find((a) => a.titulo === 'Autorización por vencer')?.semana).toBeNull();
+  });
+});
+
 describe('prioridad', () => {
   it('el rojo manda sobre el ámbar y el verde', () => {
     expect(
       prioridad([
-        { nivel: 'verde', titulo: '', detalle: '' },
-        { nivel: 'ambar', titulo: '', detalle: '' },
-        { nivel: 'roja', titulo: '', detalle: '' },
+        { nivel: 'verde', titulo: '', detalle: '', semana: null },
+        { nivel: 'ambar', titulo: '', detalle: '', semana: null },
+        { nivel: 'roja', titulo: '', detalle: '', semana: null },
       ]),
     ).toBe('roja');
   });

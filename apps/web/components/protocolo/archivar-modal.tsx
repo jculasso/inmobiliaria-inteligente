@@ -17,9 +17,14 @@ function hoyArg(): string {
 /** Cierra la comercialización de una propiedad, dejando registrado por qué. */
 export function ArchivarModal({
   protocolo,
+  onArchivada,
+  onGuardando,
   onClose,
 }: {
   protocolo: ProtocoloResumenDto;
+  /** Se avisa apenas se confirma, para mover la fila de solapa al instante. */
+  onArchivada: (motivo: MotivoArchivo, fecha: string) => void;
+  onGuardando: (v: boolean) => void;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -33,17 +38,24 @@ export function ArchivarModal({
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    // La fila se mueve y el modal se cierra ya; el guardado sigue en segundo
+    // plano con el cartel de "Guardando…" a la vista.
+    onArchivada(motivo, fecha);
+    onGuardando(true);
     try {
       await archivarProtocolo(await getAccessToken(), protocolo.id, {
         motivo,
         fecha,
         observacion: observacion.trim() || null,
       });
-      onClose();
-      router.refresh();
     } catch (err) {
+      // El refresh de abajo devuelve la fila a su lugar si el guardado falló.
       setError(err instanceof Error ? err.message : 'No se pudo archivar la propiedad.');
       setLoading(false);
+    } finally {
+      onGuardando(false);
+      router.refresh();
     }
   }
 

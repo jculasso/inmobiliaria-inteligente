@@ -111,10 +111,13 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
 
   const atrasadas = d.acciones.filter((a) => estaAtrasada(a, hoy));
   if (atrasadas.length > 0) {
+    // Se apunta a la semana más vieja con atraso: es por donde hay que empezar.
+    const primera = Math.min(...atrasadas.map((a) => a.semana));
     alertas.push({
       nivel: 'roja',
       titulo: atrasadas.length === 1 ? '1 acción atrasada' : `${atrasadas.length} acciones atrasadas`,
       detalle: 'Vencieron sin cerrarse. Revisá la semana correspondiente.',
+      semana: primera,
     });
   }
 
@@ -126,6 +129,7 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
       nivel: 'ambar',
       titulo: vencenHoy.length === 1 ? '1 acción vence hoy' : `${vencenHoy.length} acciones vencen hoy`,
       detalle: 'Cerralas hoy para no arrastrar atraso a la semana siguiente.',
+      semana: Math.min(...vencenHoy.map((a) => a.semana)),
     });
   }
 
@@ -136,12 +140,14 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
         nivel: 'roja',
         titulo: 'Autorización vencida',
         detalle: `Venció el ${d.vencimientoAutorizacion}. Hay que renovarla con el propietario.`,
+        semana: null,
       });
     } else if (restan <= 10) {
       alertas.push({
         nivel: 'ambar',
         titulo: 'Autorización por vencer',
         detalle: `Vence el ${d.vencimientoAutorizacion} (${restan} ${restan === 1 ? 'día' : 'días'}).`,
+        semana: null,
       });
     }
   }
@@ -155,6 +161,7 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
         nivel: 'ambar',
         titulo: 'Semana anterior incompleta',
         detalle: `Quedan ${pendientesPrevias.length} acciones sin cerrar antes de la semana ${semana}.`,
+        semana: Math.min(...pendientesPrevias.map((a) => a.semana)),
       });
     }
   }
@@ -166,6 +173,7 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
         nivel: 'ambar',
         titulo: 'Sin actividad reciente',
         detalle: `Pasaron ${inactividad} días desde la última actualización.`,
+        semana: null,
       });
     }
   }
@@ -175,6 +183,7 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
       nivel: 'ambar',
       titulo: 'Resultados comerciales sin cargar',
       detalle: 'Completá consultas y visitas: son los datos que alimentan el informe del propietario.',
+      semana: null,
     });
   }
 
@@ -183,6 +192,7 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
       nivel: 'verde',
       titulo: 'Protocolo listo para cierre',
       detalle: 'Corresponde emitir el informe final y acordar la próxima estrategia.',
+      semana: TOTAL_SEMANAS,
     });
   }
 

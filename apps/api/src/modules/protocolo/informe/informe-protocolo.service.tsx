@@ -3,7 +3,6 @@ import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import { ProtocolosService } from '../protocolos.service';
 import { InformeProtocoloDocument } from './informe-protocolo.template';
 
@@ -14,11 +13,10 @@ export class InformeProtocoloService {
 
   constructor(
     private readonly db: TenantPrismaService,
-    private readonly storage: SupabaseStorageService,
     private readonly protocolos: ProtocolosService,
   ) {}
 
-  async generar(id: string, ctx: TenantContext): Promise<{ url: string }> {
+  async generar(id: string, ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     // `getOne` ya valida alcance por rol y devuelve la foto firmada, que es lo
     // que react-pdf necesita para poder bajarla al armar el PDF (bucket privado).
     const [protocolo, marca] = await Promise.all([
@@ -49,13 +47,10 @@ export class InformeProtocoloService {
       />,
     );
 
-    // Bucket privado + URL firmada de vida corta, igual que el informe de
-    // tasación. El nombre del archivo es el que sugiere el navegador al guardar.
-    const nombreArchivo = nombrePdf(marca.nombre, protocolo.propiedad.direccion);
-    const pdfPath = `${ctx.tenantId}/${id}/${nombreArchivo}.pdf`;
-    await this.storage.uploadPrivado('informes-tasador', pdfPath, buffer, 'application/pdf');
-
-    return { url: await this.storage.signedUrl('informes-tasador', pdfPath) };
+    // El PDF viaja en la respuesta. Este informe se regenera con un click y
+    // siempre refleja el estado del momento, así que no se archiva: subirlo a
+    // Storage y firmarlo solo agregaba dos viajes a Supabase antes de mostrarlo.
+    return { buffer, nombreArchivo: nombrePdf(marca.nombre, protocolo.propiedad.direccion) };
   }
 }
 

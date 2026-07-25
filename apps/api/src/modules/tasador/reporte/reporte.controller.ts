@@ -1,4 +1,5 @@
 import { Controller, Post, Query } from '@nestjs/common';
+import { pdfResponse } from '../../../common/pdf-response';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TasadorKpiFiltroSchema, type TasadorKpiFiltro } from '@vacker/types';
 import { CurrentUser, Roles } from '../../../auth/decorators';
@@ -15,11 +16,12 @@ export class ReporteController {
 
   @Post('informe')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
-  @ApiOperation({ summary: 'Genera el reporte de tasaciones del período en PDF y devuelve su URL' })
-  generar(
+  @ApiOperation({ summary: 'Genera el reporte de tasaciones del período y devuelve el PDF' })
+  async generar(
     @Query(new ZodValidationPipe(TasadorKpiFiltroSchema)) filtro: TasadorKpiFiltro,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.reporte.generar(filtro, ctxDe(user));
+    const { buffer, nombreArchivo } = await this.reporte.generar(filtro, ctxDe(user));
+    return pdfResponse(buffer, nombreArchivo);
   }
 }

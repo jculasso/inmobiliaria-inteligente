@@ -1,4 +1,5 @@
 import { Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { pdfResponse } from '../../../common/pdf-response';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, Modulo, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
@@ -14,8 +15,9 @@ export class InformeProtocoloController {
 
   @Post(':id/informe')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
-  @ApiOperation({ summary: 'Genera el informe de comercialización en PDF y devuelve su URL' })
-  generar(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
-    return this.informes.generar(id, ctxDe(user));
+  @ApiOperation({ summary: 'Genera el informe de comercialización y devuelve el PDF' })
+  async generar(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
+    const { buffer, nombreArchivo } = await this.informes.generar(id, ctxDe(user));
+    return pdfResponse(buffer, nombreArchivo);
   }
 }

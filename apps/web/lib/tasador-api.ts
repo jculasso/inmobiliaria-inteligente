@@ -11,7 +11,7 @@ import {
   type TasadorKpiFiltro,
   type UpdateTasacion,
 } from '@vacker/types';
-import { apiFetch, apiFetchForm } from './api-client';
+import { apiFetch, apiFetchPdf, apiFetchForm } from './api-client';
 
 export async function listTasaciones(accessToken: string, filtro: TasacionFiltro) {
   return apiFetch('/tasador/tasaciones', z.array(TasacionDtoSchema), {
@@ -82,11 +82,9 @@ export async function deleteTasacion(accessToken: string, id: string) {
   });
 }
 
+/** Devuelve el PDF del informe (la API lo manda en la respuesta, no una URL). */
 export async function generarInforme(accessToken: string, id: string) {
-  return apiFetch(`/tasador/tasaciones/${id}/informe`, z.object({ url: z.string() }), {
-    accessToken,
-    method: 'POST',
-  });
+  return apiFetchPdf(`/tasador/tasaciones/${id}/informe`, { accessToken });
 }
 
 export async function subirFotoTasacion(accessToken: string, tasacionId: string, file: File) {
@@ -139,9 +137,8 @@ export async function getKpisMensualTasador(accessToken: string, anio: number, s
 // --- Reporte de tasaciones (período) ---
 
 export async function generarInformeReporte(accessToken: string, filtro: TasadorKpiFiltro) {
-  return apiFetch('/tasador/reporte/informe', z.object({ url: z.string() }), {
+  return apiFetchPdf('/tasador/reporte/informe', {
     accessToken,
-    method: 'POST',
     searchParams: { anio: filtro.anio, periodo: filtro.periodo, mes: filtro.mes, trimestre: filtro.trimestre },
   });
 }

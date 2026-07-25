@@ -34,7 +34,7 @@ export class ReporteService {
     private readonly storage: SupabaseStorageService,
   ) {}
 
-  async generar(filtro: TasadorKpiFiltro, ctx: TenantContext): Promise<{ url: string }> {
+  async generar(filtro: TasadorKpiFiltro, ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     // Antes: resumen() y ranking() traían las tasaciones del período cada uno
     // en su propia transacción, y esta función las volvía a traer una
     // tercera vez con otro `select` para armar la tabla — 3 round trips
@@ -96,11 +96,10 @@ export class ReporteService {
       />,
     );
 
-    // Bucket privado: se sube la key y se devuelve una URL firmada de vida
-    // corta (el front la abre al toque). El reporte no embebe fotos, solo KPIs.
-    const path = `${ctx.tenantId}/reportes/${slug(periodoLabel)}-${Date.now()}.pdf`;
-    await this.storage.uploadPrivado('informes-tasador', path, buffer, 'application/pdf');
-    return { url: await this.storage.signedUrl('informes-tasador', path) };
+    // El PDF viaja en la respuesta: este reporte no se archiva (se regenera
+    // con un click y siempre refleja el período pedido), así que subirlo a
+    // Storage solo agregaba dos viajes a Supabase antes de mostrarlo.
+    return { buffer, nombreArchivo: `Reporte de tasaciones - ${slug(periodoLabel)}` };
   }
 }
 

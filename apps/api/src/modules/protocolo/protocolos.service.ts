@@ -16,6 +16,7 @@ import { SupabaseStorageService } from '../../common/supabase-storage.service';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { resolverScope } from '../tablero/scope.util';
+import { rangoDeAnioMesTrimestre } from '../tasador/fecha.util';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import {
   avance,
@@ -190,12 +191,8 @@ export class ProtocolosService {
       const where: Prisma.ProtocoloWhereInput = {};
       if (filtro.estado) where.estado = filtro.estado;
       if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
-      if (filtro.anio) {
-        where.fechaInicio = {
-          gte: new Date(Date.UTC(filtro.anio, 0, 1)),
-          lt: new Date(Date.UTC(filtro.anio + 1, 0, 1)),
-        };
-      }
+      const rango = rangoDeAnioMesTrimestre(filtro.anio, filtro.mes, filtro.trimestre);
+      if (rango) where.fechaInicio = rango;
       return tx.protocolo.findMany({
         where,
         orderBy: { fechaInicio: 'desc' },
@@ -224,7 +221,8 @@ export class ProtocolosService {
   /** Actualiza cabecera, métricas comerciales y análisis de la semana 5. */
   async update(id: string, dto: UpdateProtocolo, ctx: TenantContext): Promise<ProtocoloDto> {
     const row = await this.db.withTenant(async (tx) => {
-      await this.exigirAcceso(id, tx, ctx);
+      const actual = await this.exigirAcceso(id, tx, ctx);
+      this.exigirVersion(actual.updatedAt, dto.version);
 
       const data: Prisma.ProtocoloUpdateInput = {};
       if (dto.precioPublicado !== undefined) data.precioPublicado = dto.precioPublicado;
@@ -265,7 +263,11 @@ export class ProtocolosService {
       // regiones distintas) y esto se dispara con cada tilde del checklist.
       const accion = await tx.protocoloAccion.findUnique({
         where: { id: accionId },
-        select: { protocoloId: true, fechaRealizada: true, protocolo: { select: { agenteId: true } } },
+        select: {
+          protocoloId: true,
+          fechaRealizada: true,
+          protocolo: { select: { agenteId: true, updatedAt: true } },
+        },
       });
       if (!accion || accion.protocoloId !== id) {
         throw new NotFoundException('Acción no encontrada.');
@@ -274,6 +276,7 @@ export class ProtocolosService {
       if (scope.usuarioIds !== null && !scope.usuarioIds.includes(accion.protocolo.agenteId)) {
         throw new NotFoundException('Protocolo no encontrado.');
       }
+      this.exigirVersion(accion.protocolo.updatedAt, dto.version);
 
       const data: Prisma.ProtocoloAccionUpdateInput = {};
       if (dto.estado !== undefined) data.estado = dto.estado;
@@ -375,6 +378,21 @@ export class ProtocolosService {
   }
 
   /**
+   * Rechaza el guardado si otra persona (u otra pestaña) modificó la ficha
+   * después de que este cliente la cargó. Sin esto el último en guardar pisaba
+   * al anterior en silencio — el caso feo son los contadores, que viajan como
+   * valor absoluto y podían retroceder sin que nadie se enterara.
+   */
+  private exigirVersion(actual: Date, version: string | undefined): void {
+    if (!version) return;
+    if (actual.toISOString() !== version) {
+      throw new ConflictException(
+        'Otra persona actualizó esta propiedad mientras la editabas. Refrescá para ver los cambios y volvé a aplicar el tuyo.',
+      );
+    }
+  }
+
+  /**
    * Verifica que el protocolo exista y esté dentro del alcance del rol.
    * Devuelve el estado actual para las validaciones que lo necesiten.
    */
@@ -382,14 +400,17 @@ export class ProtocolosService {
     id: string,
     tx: Prisma.TransactionClient,
     ctx: TenantContext,
-  ): Promise<{ estado: string }> {
+  ): Promise<{ estado: string; updatedAt: Date }> {
     const scope = await resolverScope(ctx, tx);
-    const p = await tx.protocolo.findUnique({ where: { id }, select: { agenteId: true, estado: true } });
+    const p = await tx.protocolo.findUnique({
+      where: { id },
+      select: { agenteId: true, estado: true, updatedAt: true },
+    });
     if (!p) throw new NotFoundException('Protocolo no encontrado.');
     if (scope.usuarioIds !== null && !scope.usuarioIds.includes(p.agenteId)) {
       throw new NotFoundException('Protocolo no encontrado.');
     }
-    return { estado: p.estado };
+    return { estado: p.estado, updatedAt: p.updatedAt };
   }
 
   /**
@@ -457,6 +478,7 @@ function toResumen(row: ProtocoloRow): ProtocoloResumenDto {
 
   return {
     id: row.id,
+    version: row.updatedAt.toISOString(),
     estado: row.estado as ProtocoloResumenDto['estado'],
     fechaInicio,
     semanaActual: semanaActual(fechaInicio, hoy),

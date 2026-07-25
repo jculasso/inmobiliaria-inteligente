@@ -19,7 +19,7 @@ export class InformesService {
     private readonly storage: SupabaseStorageService,
   ) {}
 
-  async generar(id: string, ctx: TenantContext): Promise<{ url: string }> {
+  async generar(id: string, ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     const { dto, tenantNombre, logoUrl, colorPrimario, colorPrimarioOscuro } = await this.db.withTenant(async (tx) => {
       // La fila y el tenant no dependen uno del otro — pedirlos en paralelo
       // ahorra un round trip completo (relevante: Render/Supabase están en
@@ -69,18 +69,37 @@ export class InformesService {
       />,
     );
 
-    // Bucket privado: se guarda la key en el registro de auditoría y se
-    // devuelve una URL firmada de vida corta (el front la abre al toque). El
-    // nombre del archivo (última parte de la key) es el que el navegador sugiere
-    // al guardar: "Tasacion {inmobiliaria} - {cliente} - {dirección}".
+    // El nombre es el que el navegador sugiere al guardar:
+    // "Tasacion {inmobiliaria} - {cliente} - {dirección}".
     const nombreArchivo = nombrePdf(tenantNombre, dto.cliente, dto.direccion);
-    const pdfPath = `${ctx.tenantId}/${id}/${nombreArchivo}.pdf`;
-    await this.storage.uploadPrivado('informes-tasador', pdfPath, buffer, 'application/pdf');
-    await this.db.withTenant((tx) =>
-      tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId: id, url: pdfPath } }),
-    );
 
-    return { url: await this.storage.signedUrl('informes-tasador', pdfPath) };
+    // La copia en Storage y el registro de auditoría NO bloquean la respuesta:
+    // el usuario ya tiene su PDF. Antes eran tres viajes en serie a Supabase
+    // (subir, registrar, firmar) que se esperaban mirando una pestaña vacía.
+    void this.archivarCopia(id, ctx, buffer, nombreArchivo);
+
+    return { buffer, nombreArchivo };
+  }
+
+  /** Guarda una copia del informe y lo registra. Best-effort: si falla, se loguea. */
+  private async archivarCopia(
+    tasacionId: string,
+    ctx: TenantContext,
+    buffer: Buffer,
+    nombreArchivo: string,
+  ): Promise<void> {
+    const pdfPath = `${ctx.tenantId}/${tasacionId}/${nombreArchivo}.pdf`;
+    try {
+      await this.storage.uploadPrivado('informes-tasador', pdfPath, buffer, 'application/pdf');
+      await this.db.withTenant(
+        (tx) => tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId, url: pdfPath } }),
+        ctx,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo archivar la copia del informe ${tasacionId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 }
 

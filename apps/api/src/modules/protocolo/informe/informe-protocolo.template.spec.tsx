@@ -7,6 +7,7 @@ import { InformeProtocoloDocument } from './informe-protocolo.template';
 function protocolo(over: Partial<ProtocoloDto> = {}): ProtocoloDto {
   return {
     id: '11111111-1111-1111-1111-111111111111',
+    version: '2026-07-15T10:00:00.000Z',
     estado: 'activa',
     fechaInicio: '2026-07-01',
     semanaActual: 3,

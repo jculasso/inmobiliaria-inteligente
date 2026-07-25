@@ -10,7 +10,7 @@ import {
   type UpdateAccion,
   type UpdateProtocolo,
 } from '@vacker/types';
-import { apiFetch } from './api-client';
+import { apiFetch, apiFetchPdf } from './api-client';
 
 /** Tasaciones captadas que todavía no arrancaron el protocolo. */
 export async function listCaptadas(accessToken: string, soloMio = false) {
@@ -33,6 +33,8 @@ export async function listProtocolos(accessToken: string, filtro: ProtocoloFiltr
     searchParams: {
       estado: filtro.estado,
       anio: filtro.anio,
+      mes: filtro.mes,
+      trimestre: filtro.trimestre,
       soloMio: filtro.soloMio ? '1' : undefined,
     },
   });
@@ -71,12 +73,9 @@ export async function archivarProtocolo(accessToken: string, id: string, dto: Ar
   });
 }
 
-/** Genera el informe del propietario y devuelve la URL firmada del PDF. */
+/** Genera el informe del propietario y devuelve el PDF. */
 export async function generarInformeProtocolo(accessToken: string, id: string) {
-  return apiFetch(`/protocolo/${id}/informe`, z.object({ url: z.string() }), {
-    accessToken,
-    method: 'POST',
-  });
+  return apiFetchPdf(`/protocolo/${id}/informe`, { accessToken });
 }
 
 export async function desarchivarProtocolo(accessToken: string, id: string) {

@@ -107,6 +107,8 @@ export const AlertaProtocoloSchema = z.object({
   nivel: NivelAlertaSchema,
   titulo: z.string(),
   detalle: z.string(),
+  /** Semana a la que conviene ir para resolverla (null = no aplica a una sola). */
+  semana: z.number().int().nullable(),
 });
 export type AlertaProtocolo = z.infer<typeof AlertaProtocoloSchema>;
 
@@ -149,6 +151,12 @@ const PropiedadProtocoloSchema = z.object({
 
 export const ProtocoloResumenDtoSchema = z.object({
   id: z.string().uuid(),
+  /**
+   * Versión de la ficha (ISO de `updatedAt`). El cliente la devuelve al
+   * guardar: si en la base hay una más nueva, alguien más editó mientras tanto
+   * y el cambio se rechaza en vez de pisarlo.
+   */
+  version: z.string(),
   estado: EstadoProtocoloSchema,
   fechaInicio: IsoDateSchema,
   /** Semana en curso (1..5), calculada desde la fecha de inicio. */
@@ -221,6 +229,8 @@ export type IniciarProtocolo = z.infer<typeof IniciarProtocoloSchema>;
 
 export const UpdateProtocoloSchema = z
   .object({
+    /** Versión que tenía el cliente. Si no viene, no se controla el conflicto. */
+    version: z.string(),
     precioPublicado: MontoSchema.nullable(),
     moneda: z.string(),
     propietarioNombre: z.string().trim().max(160).nullable(),
@@ -243,6 +253,7 @@ export type UpdateProtocolo = z.infer<typeof UpdateProtocoloSchema>;
 
 export const UpdateAccionSchema = z
   .object({
+    version: z.string(),
     estado: EstadoAccionSchema,
     fechaPrevista: IsoDateSchema.nullable(),
     fechaRealizada: IsoDateSchema.nullable(),
@@ -264,7 +275,10 @@ export type ArchivarProtocolo = z.infer<typeof ArchivarProtocoloSchema>;
 export const ProtocoloFiltroSchema = z.object({
   estado: EstadoProtocoloSchema.optional(),
   soloMio: z.coerce.boolean().optional(),
+  // Mismo control de período que Ventas: año + Anual / Trimestral / Mensual.
   anio: z.coerce.number().int().optional(),
+  mes: z.coerce.number().int().min(1).max(12).optional(),
+  trimestre: z.coerce.number().int().min(1).max(4).optional(),
 });
 export type ProtocoloFiltro = z.infer<typeof ProtocoloFiltroSchema>;
 

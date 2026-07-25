@@ -8,7 +8,7 @@
  * interpolar en el HTML de la pestaña placeholder.
  */
 export async function abrirPdfEnPestana(
-  generar: () => Promise<{ url: string }>,
+  generar: () => Promise<Blob>,
   opts: { titulo: string; onError: (mensaje: string) => void },
 ): Promise<void> {
   const win = window.open('', '_blank');
@@ -22,9 +22,13 @@ export async function abrirPdfEnPestana(
     );
   }
   try {
-    const { url } = await generar();
+    const blob = await generar();
+    // La API devuelve los bytes del PDF; se abre desde memoria, sin pasar por
+    // Storage. El objectURL se libera cuando la pestaña ya lo cargó.
+    const url = URL.createObjectURL(blob);
     if (win) win.location.href = url;
     else window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (err) {
     win?.close();
     opts.onError(err instanceof Error ? err.message : 'No se pudo generar el PDF.');

@@ -7,6 +7,7 @@ import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
 import { tenantBrandStyle } from '../../lib/tenant-style';
 import { LogoutButton } from '../../components/logout-button';
+import { MenuModulos } from '../../components/menu-modulos';
 import { ProtocoloNav } from '../../components/protocolo/protocolo-nav';
 
 export default async function ProtocoloLayout({ children }: { children: ReactNode }) {
@@ -76,7 +77,10 @@ export default async function ProtocoloLayout({ children }: { children: ReactNod
             >
               ⌂ Inmobiliaria Inteligente
             </Link>
-            <h1 className="mt-1 text-2xl font-extrabold text-ink">Protocolo 5 Semanas</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2.5">
+              <h1 className="text-xl font-extrabold text-ink sm:text-2xl">Protocolo 5 Semanas</h1>
+              <MenuModulos modulos={principal.tenant.modulos} />
+            </div>
           </div>
         </div>
         <div className="flex max-w-full flex-col items-end gap-2">
