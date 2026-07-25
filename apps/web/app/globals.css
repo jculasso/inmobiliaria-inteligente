@@ -6,6 +6,14 @@
    las utilidades que usan. */
 @source '../../../packages/ui/src';
 
+/* Reserva SIEMPRE el ancho de la barra de scroll. Sin esto, pasar de una
+   pantalla larga (con barra) a una corta (sin barra) cambia el ancho útil unos
+   15px y todo el contenido centrado se corre de golpe: es el "baile" que se
+   nota al navegar entre módulos. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--color-surface);
   color: var(--color-ink);
