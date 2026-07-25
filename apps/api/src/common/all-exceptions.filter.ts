@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Response } from 'express';
+import { UPLOAD_MAX_BYTES } from './upload';
 
 const STATUS_CODE: Record<number, string> = {
   400: 'bad_request',
@@ -15,6 +16,7 @@ const STATUS_CODE: Record<number, string> = {
   403: 'forbidden',
   404: 'not_found',
   409: 'conflict',
+  413: 'payload_too_large',
   422: 'unprocessable_entity',
   500: 'internal_error',
   503: 'service_unavailable',
@@ -23,6 +25,13 @@ const STATUS_CODE: Record<number, string> = {
 /** Estructura de error consistente de la API (CLAUDE.md §8). */
 interface ApiError {
   error: { code: string; message: string; details?: unknown };
+}
+
+/** Error de Multer al superarse `UPLOAD_MAX_BYTES`. */
+function esArchivoDemasiadoGrande(e: unknown): boolean {
+  return (
+    typeof e === 'object' && e !== null && (e as { code?: string }).code === 'LIMIT_FILE_SIZE'
+  );
 }
 
 @Catch()
@@ -75,6 +84,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         status = HttpStatus.BAD_REQUEST;
         message = 'La operación no se pudo completar por una restricción de datos.';
       }
+    } else if (esArchivoDemasiadoGrande(exception)) {
+      // Multer corta la subida al pasarse del tope (ver common/upload.ts). Sin
+      // este caso el usuario recibía un 500 genérico en vez de saber que el
+      // archivo pesa de más.
+      status = HttpStatus.PAYLOAD_TOO_LARGE;
+      message = `El archivo supera el máximo permitido (${UPLOAD_MAX_BYTES / 1024 / 1024} MB).`;
     } else if (
       exception instanceof Prisma.PrismaClientUnknownRequestError &&
       exception.message.includes('numeric field overflow')

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-// Piezas compartidas por los formularios del panel de admin (tenants y
-// usuarios), con el mismo tratamiento visual que el form de operaciones:
+// Piezas compartidas por los formularios de toda la app (admin, protocolo,
+// vendedores), con el mismo tratamiento visual que el form de operaciones:
 // secciones en tarjetas, título con ícono y campos en grilla.
 
 export const inputClass =
@@ -78,5 +78,61 @@ export function CheckCard({
         {descripcion && <span className="block text-xs leading-snug text-muted">{descripcion}</span>}
       </span>
     </label>
+  );
+}
+
+/** Input de monto con el prefijo de moneda adentro, como en el form de operaciones. */
+export function MoneyInput({
+  value,
+  onChange,
+  moneda = 'USD',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  moneda?: string;
+}) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted">
+        {moneda}
+      </span>
+      <input
+        type="number"
+        min={0}
+        step="0.01"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`${inputClass} pl-11 text-right font-semibold`}
+      />
+    </div>
+  );
+}
+
+/** Opción excluyente con descripción — para elegir entre pocos valores. */
+export function OpcionCard({
+  seleccionada,
+  onSelect,
+  titulo,
+  descripcion,
+}: {
+  seleccionada: boolean;
+  onSelect: () => void;
+  titulo: string;
+  descripcion?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={seleccionada}
+      className={`flex flex-col items-start rounded-brand border px-2.5 py-2 text-left transition-colors ${
+        seleccionada ? 'border-brand-red bg-brand-red/5' : 'border-line hover:bg-surface'
+      }`}
+    >
+      <span className={`text-sm font-medium ${seleccionada ? 'text-brand-red-dark' : 'text-ink'}`}>
+        {titulo}
+      </span>
+      {descripcion && <span className="text-xs leading-snug text-muted">{descripcion}</span>}
+    </button>
   );
 }

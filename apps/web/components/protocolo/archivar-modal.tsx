@@ -6,7 +6,7 @@ import { MOTIVO_ARCHIVO_LABEL, type MotivoArchivo, type ProtocoloResumenDto } fr
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { archivarProtocolo } from '../../lib/protocolo-api';
-import { Campo, inputClass } from '../admin/form-ui';
+import { Campo, inputClass } from '../form-ui';
 
 const MOTIVOS: MotivoArchivo[] = ['vendida', 'retirada', 'vencida', 'otro'];
 

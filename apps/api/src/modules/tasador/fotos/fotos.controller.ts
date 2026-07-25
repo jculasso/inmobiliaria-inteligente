@@ -9,6 +9,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { uploadUnArchivo } from '../../../common/upload';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
@@ -25,7 +26,7 @@ export class FotosController {
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Sube una foto de la propiedad (máx. 3 por tasación, 5MB, imagen)' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadUnArchivo))
   subir(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile() file: FotoFile | undefined,
