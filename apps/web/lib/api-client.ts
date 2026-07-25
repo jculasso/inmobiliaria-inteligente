@@ -132,3 +132,38 @@ export async function apiFetchForm<T>(
   }
   return parsed.data;
 }
+
+/**
+ * Variante de `apiFetch` para endpoints que devuelven un PDF. La API manda los
+ * bytes en la respuesta (no una URL a Storage), así que se lee como Blob y se
+ * abre desde el navegador — sin el viaje extra a Supabase.
+ */
+export async function apiFetchPdf(
+  path: string,
+  { accessToken, searchParams }: { accessToken: string; searchParams?: Record<string, string | number | undefined> },
+): Promise<Blob> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new ApiError('Falta NEXT_PUBLIC_API_URL en el entorno.');
+  }
+
+  const url = new URL(`${apiUrl}${path}`);
+  for (const [key, value] of Object.entries(searchParams ?? {})) {
+    if (value !== undefined) url.searchParams.set(key, String(value));
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
+    throw new ApiError(mensajeDeError(errorBody, `No se pudo generar el PDF (${res.status}).`), {
+      status: res.status,
+      code: errorBody?.error?.code,
+    });
+  }
+  return res.blob();
+}

@@ -73,7 +73,14 @@ export function PanelAlertas({ alertas }: { alertas: AlertaConPropiedad[] }) {
       {abierto && !sinAlertas && (
         <div className="flex flex-col gap-2 border-t border-line p-3">
           {alertas.map((a, i) => (
-            <Link key={`${a.protocoloId}-${i}`} href={`/protocolo/${a.protocoloId}`}>
+            <Link
+              key={`${a.protocoloId}-${i}`}
+              href={
+                a.semana != null
+                  ? `/protocolo/${a.protocoloId}?semana=${a.semana}`
+                  : `/protocolo/${a.protocoloId}`
+              }
+            >
               <AlertaItem alerta={{ ...a, titulo: `${a.direccion} · ${a.titulo}` }} />
             </Link>
           ))}

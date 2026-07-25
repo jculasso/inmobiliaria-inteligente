@@ -40,3 +40,21 @@ export function rangoDeAnioMes(anio?: number, mes?: number): Prisma.DateTimeFilt
   if (mes != null) return rangoMes(anio, mes);
   return rangoAnio(anio);
 }
+
+/**
+ * Rango del filtro Anual / Trimestral / Mensual que usa el listado (el mismo
+ * control que Ventas). `undefined` = todos los años.
+ */
+export function rangoDeAnioMesTrimestre(
+  anio?: number,
+  mes?: number,
+  trimestre?: number,
+): Prisma.DateTimeFilter | undefined {
+  if (anio == null) return undefined;
+  if (mes != null) return rangoMes(anio, mes);
+  if (trimestre != null) {
+    const mesInicio = (trimestre - 1) * 3;
+    return { gte: new Date(Date.UTC(anio, mesInicio, 1)), lt: new Date(Date.UTC(anio, mesInicio + 3, 1)) };
+  }
+  return rangoAnio(anio);
+}

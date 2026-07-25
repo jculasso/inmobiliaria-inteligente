@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   MOTIVO_ARCHIVO_LABEL,
@@ -24,8 +24,8 @@ type Grupo = 'captadas' | 'activas' | 'archivadas';
  */
 export function ReporteGeneral({
   captadas,
-  activas,
-  archivadas,
+  activas: activasIniciales,
+  archivadas: archivadasIniciales,
   puedeReabrir,
 }: {
   captadas: CandidataDto[];
@@ -35,7 +35,30 @@ export function ReporteGeneral({
 }) {
   const [grupo, setGrupo] = useState<Grupo>('activas');
   const [archivando, setArchivando] = useState<ProtocoloResumenDto | null>(null);
+  const [guardando, setGuardando] = useState(false);
   const router = useRouter();
+
+  // Copia local para mover la fila de solapa al instante. El server refresca
+  // después y vuelve a mandar la verdad; sin esto la propiedad se quedaba en
+  // "En comercialización" hasta que terminara el round-trip.
+  const [activas, setActivas] = useState(activasIniciales);
+  const [archivadas, setArchivadas] = useState(archivadasIniciales);
+  useEffect(() => {
+    setActivas(activasIniciales);
+    setArchivadas(archivadasIniciales);
+  }, [activasIniciales, archivadasIniciales]);
+
+  /** Mueve la propiedad de una solapa a la otra sin esperar al server. */
+  function moverLocal(p: ProtocoloResumenDto, a: 'archivada' | 'activa') {
+    const movida = { ...p, estado: a };
+    if (a === 'archivada') {
+      setActivas((prev) => prev.filter((x) => x.id !== p.id));
+      setArchivadas((prev) => [movida, ...prev]);
+    } else {
+      setArchivadas((prev) => prev.filter((x) => x.id !== p.id));
+      setActivas((prev) => [movida, ...prev]);
+    }
+  }
 
   const solapas: { key: Grupo; label: string; cantidad: number }[] = [
     { key: 'captadas', label: 'Captadas', cantidad: captadas.length },
@@ -43,9 +66,15 @@ export function ReporteGeneral({
     { key: 'archivadas', label: 'Archivadas', cantidad: archivadas.length },
   ];
 
-  async function reabrir(id: string) {
-    await desarchivarProtocolo(await getAccessToken(), id);
-    router.refresh();
+  async function reabrir(p: ProtocoloResumenDto) {
+    moverLocal(p, 'activa');
+    setGuardando(true);
+    try {
+      await desarchivarProtocolo(await getAccessToken(), p.id);
+    } finally {
+      setGuardando(false);
+      router.refresh();
+    }
   }
 
   return (
@@ -139,7 +168,7 @@ export function ReporteGeneral({
                 {puedeReabrir && (
                   <button
                     type="button"
-                    onClick={() => void reabrir(p.id)}
+                    onClick={() => void reabrir(p)}
                     className="text-sm font-semibold text-muted hover:text-ink hover:underline"
                   >
                     Reabrir
@@ -151,7 +180,27 @@ export function ReporteGeneral({
         />
       )}
 
-      {archivando && <ArchivarModal protocolo={archivando} onClose={() => setArchivando(null)} />}
+      {archivando && (
+        <ArchivarModal
+          protocolo={archivando}
+          onArchivada={(motivo, fecha) => {
+            moverLocal({ ...archivando, motivoArchivo: motivo, archivadoEn: fecha }, 'archivada');
+            setArchivando(null);
+          }}
+          onGuardando={setGuardando}
+          onClose={() => setArchivando(null)}
+        />
+      )}
+
+      {guardando && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink/90 px-3.5 py-2 text-xs font-semibold text-white shadow-lg"
+        >
+          <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          Guardando…
+        </div>
+      )}
     </div>
   );
 }

@@ -1,16 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CandidataDto, ProtocoloResumenDto } from '@vacker/types';
 import { ReporteGeneral } from './reporte-general';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
+vi.mock('../../lib/supabase/client', () => ({ getAccessToken: () => Promise.resolve('token') }));
+
+const archivarProtocolo = vi.fn();
+vi.mock('../../lib/protocolo-api', () => ({
+  archivarProtocolo: (...args: unknown[]) => archivarProtocolo(...args),
+  desarchivarProtocolo: vi.fn(),
+}));
 
 const AGENTE = { id: 'u1', nombre: 'Ana Gómez', email: 'ana@vacker.com', telefono: null, fotoUrl: null };
 
 function protocolo(over: Partial<ProtocoloResumenDto> = {}): ProtocoloResumenDto {
   return {
     id: 'p1',
+    version: '2026-07-15T10:00:00.000Z',
     estado: 'activa',
     fechaInicio: '2026-07-01',
     semanaActual: 3,
@@ -120,6 +128,23 @@ describe('ReporteGeneral', () => {
     renderReporte({ puedeReabrir: true });
     await user.click(screen.getByRole('button', { name: /Archivadas · 1/ }));
     expect(screen.getByRole('button', { name: 'Reabrir' })).toBeInTheDocument();
+  });
+
+  it('al archivar, la propiedad cambia de solapa al instante y avisa que guarda', async () => {
+    const user = userEvent.setup();
+    // La API nunca resuelve: si la UI la esperara, la fila no se movería.
+    archivarProtocolo.mockReturnValue(new Promise(() => {}));
+    renderReporte({ archivadas: [] });
+
+    await user.click(screen.getByRole('button', { name: 'Archivar' }));
+    // Confirmar dentro del modal (el de la tabla queda detrás).
+    const dialogo = screen.getByRole('dialog');
+    await user.click(within(dialogo).getByRole('button', { name: 'Archivar' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Guardando…');
+    // Salió de "En comercialización" y entró en "Archivadas", sin esperar al server.
+    expect(screen.getByRole('button', { name: /En comercialización · 0/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Archivadas · 1/ })).toBeInTheDocument();
   });
 
   it('muestra un vacío explicativo cuando no hay filas en el grupo', async () => {

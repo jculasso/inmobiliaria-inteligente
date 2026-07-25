@@ -16,6 +16,7 @@ vi.mock('../../lib/protocolo-api', () => ({
 
 const BASE: ProtocoloDto = {
   id: 'p1',
+  version: '2026-07-15T10:00:00.000Z',
   estado: 'activa',
   fechaInicio: '2026-07-01',
   semanaActual: 1,

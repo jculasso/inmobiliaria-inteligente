@@ -135,7 +135,7 @@ describe('ProtocolosService — acciones', () => {
     const tx = makeTx();
     tx.protocoloAccion.findUnique = vi
       .fn()
-      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1' } });
+      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1', updatedAt: new Date() } });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
@@ -148,7 +148,7 @@ describe('ProtocolosService — acciones', () => {
     const tx = makeTx();
     tx.protocoloAccion.findUnique = vi
       .fn()
-      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1' } });
+      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1', updatedAt: new Date() } });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
@@ -162,7 +162,7 @@ describe('ProtocolosService — acciones', () => {
     const tx = makeTx();
     tx.protocoloAccion.findUnique = vi
       .fn()
-      .mockResolvedValue({ protocoloId: 'OTRO', fechaRealizada: null, protocolo: { agenteId: 'u1' } });
+      .mockResolvedValue({ protocoloId: 'OTRO', fechaRealizada: null, protocolo: { agenteId: 'u1', updatedAt: new Date() } });
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
     await expect(svc.updateAccion('p1', 'a1', { estado: 'realizada' }, CTX_VENDEDOR)).rejects.toThrow(
@@ -171,10 +171,69 @@ describe('ProtocolosService — acciones', () => {
   });
 });
 
+describe('ProtocolosService — edición simultánea', () => {
+  const VERSION = new Date('2026-07-15T10:00:00.000Z');
+
+  it('rechaza el cambio si otra persona editó la ficha mientras tanto', async () => {
+    const tx = makeTx();
+    tx.protocolo.findUnique = vi
+      .fn()
+      .mockResolvedValue({ agenteId: 'u1', estado: 'activa', updatedAt: VERSION });
+    const svc = new ProtocolosService(makeDb(tx), makeStorage());
+
+    // El cliente venía con una versión vieja: alguien guardó en el medio.
+    await expect(
+      svc.update('p1', { consultas: 21, version: '2026-07-15T09:00:00.000Z' }, CTX_VENDEDOR),
+    ).rejects.toThrow(ConflictException);
+    expect(tx.protocolo.update).not.toHaveBeenCalled();
+  });
+
+  it('deja pasar el cambio cuando la versión coincide', async () => {
+    const tx = makeTx();
+    tx.protocolo.findUnique = vi
+      .fn()
+      .mockResolvedValue({ agenteId: 'u1', estado: 'activa', updatedAt: VERSION });
+    tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
+    const svc = new ProtocolosService(makeDb(tx), makeStorage());
+
+    await svc.update('p1', { consultas: 24, version: VERSION.toISOString() }, CTX_VENDEDOR);
+
+    expect(tx.protocolo.update).toHaveBeenCalled();
+  });
+
+  it('también protege el checklist', async () => {
+    const tx = makeTx();
+    tx.protocoloAccion.findUnique = vi.fn().mockResolvedValue({
+      protocoloId: 'p1',
+      fechaRealizada: null,
+      protocolo: { agenteId: 'u1', updatedAt: VERSION },
+    });
+    const svc = new ProtocolosService(makeDb(tx), makeStorage());
+
+    await expect(
+      svc.updateAccion('p1', 'a1', { estado: 'realizada', version: '2026-01-01T00:00:00.000Z' }, CTX_VENDEDOR),
+    ).rejects.toThrow(ConflictException);
+    expect(tx.protocoloAccion.update).not.toHaveBeenCalled();
+  });
+
+  it('sin versión no se controla (compatibilidad hacia atrás)', async () => {
+    const tx = makeTx();
+    tx.protocolo.findUnique = vi
+      .fn()
+      .mockResolvedValue({ agenteId: 'u1', estado: 'activa', updatedAt: VERSION });
+    tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
+    const svc = new ProtocolosService(makeDb(tx), makeStorage());
+
+    await svc.update('p1', { consultas: 24 }, CTX_VENDEDOR);
+
+    expect(tx.protocolo.update).toHaveBeenCalled();
+  });
+});
+
 describe('ProtocolosService — archivar', () => {
   it('no deja archivar dos veces', async () => {
     const tx = makeTx();
-    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'archivada' });
+    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'archivada', updatedAt: new Date() });
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
     await expect(svc.archivar('p1', { motivo: 'vendida' }, CTX_VENDEDOR)).rejects.toThrow(ConflictException);
@@ -182,7 +241,7 @@ describe('ProtocolosService — archivar', () => {
 
   it('guarda motivo y fecha de archivo', async () => {
     const tx = makeTx();
-    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'activa' });
+    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'activa', updatedAt: new Date() });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo({ estado: 'archivada' }));
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 

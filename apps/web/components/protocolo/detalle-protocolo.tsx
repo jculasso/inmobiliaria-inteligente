@@ -47,9 +47,16 @@ const ANALISIS = [
  * reemplaza el estado local, así los cálculos derivados (avance, semana,
  * alertas) llegan siempre del servidor y no se recalculan acá.
  */
-export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
+export function DetalleProtocolo({
+  inicial,
+  semanaInicial,
+}: {
+  inicial: ProtocoloDto;
+  semanaInicial?: number;
+}) {
   const [p, setP] = useState(inicial);
-  const [semana, setSemana] = useState(inicial.semanaActual);
+  // `semanaInicial` viene del link de una alerta; si no, se abre en la semana en curso.
+  const [semana, setSemana] = useState(semanaInicial ?? inicial.semanaActual);
   const [guardando, setGuardando] = useState(false);
   const [generandoInforme, setGenerandoInforme] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +66,10 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
     setGenerandoInforme(true);
     setError(null);
     try {
-      const { url } = await generarInformeProtocolo(await getAccessToken(), p.id);
+      const blob = await generarInformeProtocolo(await getAccessToken(), p.id);
+      const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el informe.');
     } finally {
@@ -93,19 +102,21 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
     }
   }
 
+  // `version` viaja en cada guardado: si otra persona tocó la ficha mientras
+  // tanto, la API rechaza el cambio en vez de pisarlo.
   const cambiarAccion = (accionId: string, campos: Parameters<typeof updateAccion>[3]) =>
     guardar(
       (prev) => ({
         ...prev,
         acciones: prev.acciones.map((a) => (a.id === accionId ? { ...a, ...campos } : a)),
       }),
-      (t) => updateAccion(t, p.id, accionId, campos),
+      (t) => updateAccion(t, p.id, accionId, { ...campos, version: p.version }),
     );
 
   const cambiarFicha = (campos: Parameters<typeof updateProtocolo>[2]) =>
     guardar(
       (prev) => ({ ...prev, ...campos, embudo: { ...prev.embudo, ...campos } }),
-      (t) => updateProtocolo(t, p.id, campos),
+      (t) => updateProtocolo(t, p.id, { ...campos, version: p.version }),
     );
 
   const deLaSemana = p.acciones.filter((a) => a.semana === semana);
@@ -156,9 +167,15 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
 
       {p.alertas.length > 0 && (
         <div className="flex flex-col gap-2">
-          {p.alertas.map((a, i) => (
-            <AlertaItem key={i} alerta={a} />
-          ))}
+          {p.alertas.map((a, i) =>
+            a.semana != null ? (
+              <button key={i} type="button" onClick={() => setSemana(a.semana!)} className="text-left">
+                <AlertaItem alerta={a} />
+              </button>
+            ) : (
+              <AlertaItem key={i} alerta={a} />
+            ),
+          )}
         </div>
       )}
 

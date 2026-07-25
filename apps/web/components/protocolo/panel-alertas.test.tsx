@@ -8,6 +8,7 @@ const ALERTAS: AlertaConPropiedad[] = [
     nivel: 'roja',
     titulo: '3 acciones atrasadas',
     detalle: 'Vencieron sin cerrarse.',
+    semana: 2,
     protocoloId: 'p1',
     direccion: 'Córdoba 1234',
   },
@@ -15,6 +16,7 @@ const ALERTAS: AlertaConPropiedad[] = [
     nivel: 'ambar',
     titulo: 'Autorización por vencer',
     detalle: 'Vence el 2026-08-01 (7 días).',
+    semana: null,
     protocoloId: 'p2',
     direccion: 'Mitre 500',
   },
@@ -22,6 +24,7 @@ const ALERTAS: AlertaConPropiedad[] = [
     nivel: 'ambar',
     titulo: 'Sin actividad reciente',
     detalle: 'Pasaron 9 días.',
+    semana: null,
     protocoloId: 'p2',
     direccion: 'Mitre 500',
   },
@@ -58,7 +61,8 @@ describe('PanelAlertas', () => {
     await user.click(screen.getByRole('button'));
 
     const link = screen.getByRole('link', { name: /Córdoba 1234 · 3 acciones atrasadas/ });
-    expect(link).toHaveAttribute('href', '/protocolo/p1');
+    // Lleva directo a la semana donde está el problema.
+    expect(link).toHaveAttribute('href', '/protocolo/p1?semana=2');
   });
 
   it('usa singular con una sola alerta', () => {

@@ -405,8 +405,10 @@ export function TasacionWizard({ tasacion }: Props) {
     setGenerandoInforme(true);
     try {
       const accessToken = await getAccessToken();
-      const { url } = await generarInforme(accessToken, tasacionId);
+      const blob = await generarInforme(accessToken, tasacionId);
+      const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
       router.push('/tasador/tasaciones');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el informe.');
