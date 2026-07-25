@@ -249,7 +249,7 @@ export class ProtocolosService {
       return tx.protocolo.update({ where: { id }, data, include: protocoloInclude });
     }, ctx);
 
-    return this.firmarPortada(toDto(row));
+    return toDto(row);
   }
 
   /** Actualiza una acción del checklist. */
@@ -260,14 +260,19 @@ export class ProtocolosService {
     ctx: TenantContext,
   ): Promise<ProtocoloDto> {
     const row = await this.db.withTenant(async (tx) => {
-      await this.exigirAcceso(id, tx, ctx);
-
+      // El acceso y la pertenencia de la acción se validan en una sola lectura:
+      // cada round trip extra a la base pesa (Render y Supabase están en
+      // regiones distintas) y esto se dispara con cada tilde del checklist.
       const accion = await tx.protocoloAccion.findUnique({
         where: { id: accionId },
-        select: { id: true, protocoloId: true, fechaRealizada: true },
+        select: { protocoloId: true, fechaRealizada: true, protocolo: { select: { agenteId: true } } },
       });
       if (!accion || accion.protocoloId !== id) {
         throw new NotFoundException('Acción no encontrada.');
+      }
+      const scope = await resolverScope(ctx, tx);
+      if (scope.usuarioIds !== null && !scope.usuarioIds.includes(accion.protocolo.agenteId)) {
+        throw new NotFoundException('Protocolo no encontrado.');
       }
 
       const data: Prisma.ProtocoloAccionUpdateInput = {};
@@ -293,7 +298,7 @@ export class ProtocolosService {
       });
     }, ctx);
 
-    return this.firmarPortada(toDto(row));
+    return toDto(row);
   }
 
   /** Archiva la propiedad (vendida, retirada, autorización vencida u otro motivo). */
@@ -315,7 +320,7 @@ export class ProtocolosService {
       });
     }, ctx);
 
-    return this.firmarPortada(toDto(row));
+    return toDto(row);
   }
 
   /** Reabre una propiedad archivada por error. */
@@ -329,7 +334,7 @@ export class ProtocolosService {
       });
     }, ctx);
 
-    return this.firmarPortada(toDto(row));
+    return toDto(row);
   }
 
   /** KPIs de cabecera del dashboard del módulo. */
@@ -412,6 +417,12 @@ export class ProtocolosService {
     return items;
   }
 
+  /**
+   * Solo se firma en las LECTURAS (iniciar, getOne, list). En las mutaciones se
+   * devuelve la key cruda: firmar es un round trip extra a Storage por cada
+   * cambio del checklist, y el cliente ya tiene la URL firmada de la lectura
+   * inicial (la conserva al mergear la respuesta).
+   */
   private async firmarPortada<T extends { propiedad: { fotoUrl: string | null } }>(dto: T): Promise<T> {
     const [firmado] = await this.firmarPortadas([dto]);
     return firmado ?? dto;

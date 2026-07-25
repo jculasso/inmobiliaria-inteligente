@@ -46,7 +46,7 @@ describe('HomeView · modo logueado', () => {
         }}
       />,
     );
-    expect(screen.getByRole('heading', { name: /Vacker · Plataforma 2\.0/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Vacker' })).toBeInTheDocument();
     expect(screen.getByText('demo@vacker.com')).toBeInTheDocument();
     expect(screen.getAllByText('Activo')).toHaveLength(4);
     const entrar = screen.getAllByRole('link', { name: 'Entrar' });
@@ -56,6 +56,25 @@ describe('HomeView · modo logueado', () => {
       '/todo',
       '/protocolo',
     ]);
+  });
+
+  it('un módulo no contratado se muestra "No incluido", no "Activo"', () => {
+    // Regresión: el badge reflejaba la madurez del módulo, así que una
+    // inmobiliaria sin el Protocolo lo veía igual de verde que los contratados.
+    render(
+      <HomeView
+        sesion={{
+          email: 'demo@sanso.com.ar',
+          nombre: 'Demo',
+          fotoUrl: null,
+          roles: ['vendedor'],
+          tenant: tenant({ tasador: true, todo: true, protocolo: false }),
+        }}
+      />,
+    );
+    expect(screen.getAllByText('Activo')).toHaveLength(3);
+    expect(screen.getByText('No incluido')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'No contratado' })).toBeDisabled();
   });
 
   it('el Protocolo queda apagado si la inmobiliaria no lo tiene contratado', () => {
@@ -72,7 +91,7 @@ describe('HomeView · modo logueado', () => {
     render(
       <HomeView sesion={{ email: 'demo@sanso.com.ar', nombre: 'Demo', fotoUrl: null, roles: ['vendedor'], tenant: tenant({}, 'Sanso Propiedades') }} />,
     );
-    expect(screen.getByRole('heading', { name: /Sanso Propiedades · Plataforma 2\.0/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sanso Propiedades' })).toBeInTheDocument();
   });
 
   it('deshabilita el Tasador y el To Do si el tenant no los tiene habilitados', () => {

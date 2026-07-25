@@ -68,12 +68,25 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
     }
   }
 
-  async function guardar(fn: (token: string) => Promise<ProtocoloDto>) {
+  /**
+   * Guarda con UI optimista: `local` se aplica al instante y recién después se
+   * llama a la API. Con Render y Supabase en regiones distintas, esperar la
+   * respuesta para pintar el cambio hacía sentir la pantalla trabada.
+   *
+   * La respuesta del server reemplaza el estado (trae los derivados: avance,
+   * semana, alertas) pero se conserva la foto ya firmada, porque las mutaciones
+   * devuelven la key cruda para ahorrarse el round trip a Storage.
+   */
+  async function guardar(local: (prev: ProtocoloDto) => ProtocoloDto, fn: (token: string) => Promise<ProtocoloDto>) {
+    const previo = p;
+    setP(local);
     setGuardando(true);
     setError(null);
     try {
-      setP(await fn(await getAccessToken()));
+      const fresco = await fn(await getAccessToken());
+      setP({ ...fresco, propiedad: { ...fresco.propiedad, fotoUrl: previo.propiedad.fotoUrl } });
     } catch (err) {
+      setP(previo); // revierte: el cambio no llegó a la base
       setError(err instanceof Error ? err.message : 'No se pudo guardar el cambio.');
     } finally {
       setGuardando(false);
@@ -81,10 +94,19 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
   }
 
   const cambiarAccion = (accionId: string, campos: Parameters<typeof updateAccion>[3]) =>
-    guardar((t) => updateAccion(t, p.id, accionId, campos));
+    guardar(
+      (prev) => ({
+        ...prev,
+        acciones: prev.acciones.map((a) => (a.id === accionId ? { ...a, ...campos } : a)),
+      }),
+      (t) => updateAccion(t, p.id, accionId, campos),
+    );
 
   const cambiarFicha = (campos: Parameters<typeof updateProtocolo>[2]) =>
-    guardar((t) => updateProtocolo(t, p.id, campos));
+    guardar(
+      (prev) => ({ ...prev, ...campos, embudo: { ...prev.embudo, ...campos } }),
+      (t) => updateProtocolo(t, p.id, campos),
+    );
 
   const deLaSemana = p.acciones.filter((a) => a.semana === semana);
   const archivada = p.estado === 'archivada';
@@ -99,7 +121,7 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
           className="h-32 w-full shrink-0 rounded-brand sm:h-24 sm:w-32"
         />
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-extrabold leading-tight text-ink">{p.propiedad.direccion}</h2>
+          <h2 className="text-lg font-extrabold leading-tight text-ink sm:text-xl">{p.propiedad.direccion}</h2>
           <p className="text-sm text-muted">
             {p.propiedad.tipoPropiedad} ·{' '}
             {p.precioPublicado != null ? fmtUSD(p.precioPublicado) : 'Precio no informado'} · Propietario:{' '}
@@ -114,10 +136,10 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
             <Pill>{p.agente.nombre}</Pill>
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="flex shrink-0 gap-2">
           <Link
             href="/protocolo"
-            className="rounded-brand border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-surface"
+            className="flex-1 rounded-brand border border-line px-3 py-2 text-center text-sm font-semibold text-ink hover:bg-surface sm:flex-none"
           >
             ← Volver
           </Link>
@@ -125,7 +147,7 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
             type="button"
             onClick={() => void generarInforme()}
             disabled={generandoInforme}
-            className="rounded-brand bg-brand-red px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-red-dark disabled:opacity-60"
+            className="flex-1 rounded-brand bg-brand-red px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-red-dark disabled:opacity-60 sm:flex-none"
           >
             {generandoInforme ? 'Generando…' : '📄 Informe'}
           </button>
@@ -144,6 +166,18 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
         <p role="alert" className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red">
           {error}
         </p>
+      )}
+
+      {/* Aviso flotante: los cambios se ven al instante, así que sin esto no
+          habría señal de que todavía se están guardando. */}
+      {guardando && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink/90 px-3.5 py-2 text-xs font-semibold text-white shadow-lg"
+        >
+          <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          Guardando…
+        </div>
       )}
 
       {/* Resultados comerciales */}
@@ -175,7 +209,7 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
                   const valor = Math.max(0, Number(e.target.value) || 0);
                   if (valor !== p.embudo[m.key]) void cambiarFicha({ [m.key]: valor });
                 }}
-                className="w-full border-0 bg-transparent p-0 text-2xl font-extrabold text-ink outline-none disabled:text-muted"
+                className="w-full border-0 bg-transparent p-0 text-xl font-extrabold text-ink outline-none disabled:text-muted sm:text-2xl"
               />
             </label>
           ))}
@@ -223,7 +257,7 @@ export function DetalleProtocolo({ inicial }: { inicial: ProtocoloDto }) {
             <AccionFila
               key={a.id}
               accion={a}
-              deshabilitada={archivada || guardando}
+              deshabilitada={archivada}
               onCambio={(campos) => void cambiarAccion(a.id, campos)}
             />
           ))}
@@ -289,7 +323,7 @@ function AccionFila({
           )}
         </p>
 
-        <label className="sm:w-40">
+        <label className="flex-1 sm:w-40 sm:flex-none">
           <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-wide text-muted">
             Estado
           </span>
@@ -307,7 +341,7 @@ function AccionFila({
           </select>
         </label>
 
-        <label className="sm:w-36">
+        <label className="flex-1 sm:w-36 sm:flex-none">
           <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-wide text-muted">
             Realizada
           </span>

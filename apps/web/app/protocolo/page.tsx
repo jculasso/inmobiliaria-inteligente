@@ -6,7 +6,8 @@ import { fmtNum } from '../../lib/format';
 import { getProtocoloKpis, listProtocolos } from '../../lib/protocolo-api';
 import { ToggleSoloMio } from '../../components/tablero/toggle-solo-mio';
 import { PropiedadCard } from '../../components/protocolo/propiedad-card';
-import { AlertaItem, porcentaje } from '../../components/protocolo/protocolo-ui';
+import { porcentaje } from '../../components/protocolo/protocolo-ui';
+import { PanelAlertas } from '../../components/protocolo/panel-alertas';
 
 export default async function ProtocoloDashboardPage({
   searchParams,
@@ -25,14 +26,13 @@ export default async function ProtocoloDashboardPage({
   // Las alertas se muestran juntas y ordenadas por urgencia: es la pantalla
   // desde la que se decide qué atender primero.
   const alertas = activas
-    .flatMap((p) => p.alertas.map((a) => ({ ...a, propiedad: p })))
-    .sort((a, b) => nivelOrden(a.nivel) - nivelOrden(b.nivel))
-    .slice(0, 8);
+    .flatMap((p) => p.alertas.map((a) => ({ ...a, protocoloId: p.id, direccion: p.propiedad.direccion })))
+    .sort((a, b) => nivelOrden(a.nivel) - nivelOrden(b.nivel));
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-ink">Panel de comercialización</h2>
+        <h2 className="text-base font-bold text-ink sm:text-lg">Panel de comercialización</h2>
         {puedeVerSoloLoMio(ctx.principal.roles) && <ToggleSoloMio />}
       </div>
 
@@ -54,31 +54,7 @@ export default async function ProtocoloDashboardPage({
         />
       </div>
 
-      <section className="flex flex-col gap-2 rounded-brand border border-line bg-white p-4">
-        <div>
-          <h3 className="text-sm font-bold text-ink">Alertas y próximos pasos</h3>
-          <p className="text-xs text-muted">Prioridades calculadas según fechas y acciones pendientes.</p>
-        </div>
-        <div className="flex flex-col gap-2">
-          {alertas.length === 0 ? (
-            <AlertaItem
-              alerta={{
-                nivel: 'verde',
-                titulo: 'Todo al día',
-                detalle: 'No hay alertas pendientes en las propiedades activas.',
-              }}
-            />
-          ) : (
-            alertas.map((a, i) => (
-              <Link key={`${a.propiedad.id}-${i}`} href={`/protocolo/${a.propiedad.id}`}>
-                <AlertaItem
-                  alerta={{ ...a, titulo: `${a.propiedad.propiedad.direccion} · ${a.titulo}` }}
-                />
-              </Link>
-            ))
-          )}
-        </div>
-      </section>
+      <PanelAlertas alertas={alertas} />
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

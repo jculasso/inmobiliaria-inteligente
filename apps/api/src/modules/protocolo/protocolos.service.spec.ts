@@ -133,10 +133,9 @@ describe('ProtocolosService — acceso por rol', () => {
 describe('ProtocolosService — acciones', () => {
   it('al marcar realizada sin fecha, completa con hoy', async () => {
     const tx = makeTx();
-    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'activa' });
     tx.protocoloAccion.findUnique = vi
       .fn()
-      .mockResolvedValue({ id: 'a1', protocoloId: 'p1', fechaRealizada: null });
+      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1' } });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
@@ -147,10 +146,9 @@ describe('ProtocolosService — acciones', () => {
 
   it('no pisa la fecha si el usuario mandó una', async () => {
     const tx = makeTx();
-    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'activa' });
     tx.protocoloAccion.findUnique = vi
       .fn()
-      .mockResolvedValue({ id: 'a1', protocoloId: 'p1', fechaRealizada: null });
+      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1' } });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
@@ -162,10 +160,9 @@ describe('ProtocolosService — acciones', () => {
 
   it('rechaza una acción que es de otro protocolo', async () => {
     const tx = makeTx();
-    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'activa' });
     tx.protocoloAccion.findUnique = vi
       .fn()
-      .mockResolvedValue({ id: 'a1', protocoloId: 'OTRO', fechaRealizada: null });
+      .mockResolvedValue({ protocoloId: 'OTRO', fechaRealizada: null, protocolo: { agenteId: 'u1' } });
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
     await expect(svc.updateAccion('p1', 'a1', { estado: 'realizada' }, CTX_VENDEDOR)).rejects.toThrow(
