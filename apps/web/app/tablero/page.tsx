@@ -43,7 +43,7 @@ export default async function TableroDashboardPage({
         </div>
       </div>
 
-      <DashboardKpis resumen={resumen} anio={anio} mes={mes} />
+      <DashboardKpis resumen={resumen} anio={anio} mes={mes} soloMio={soloMio} />
 
       <section className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">📊 Resumen acumulado</p>
