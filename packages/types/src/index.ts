@@ -28,3 +28,6 @@ export * from './tasador';
 
 // Contratos del módulo To Do List (espejo de Google Calendar).
 export * from './todo';
+
+// Contratos del módulo Protocolo 5 Semanas (comercialización de una captación).
+export * from './protocolo';
