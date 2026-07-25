@@ -70,5 +70,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Los archivos estáticos quedan FUERA del middleware. Sin esta exclusión,
+  // pedir /icons/... sin sesión devolvía un redirect al login en vez del
+  // archivo: el favicon no cargaba para quien no había entrado, y al sumar la
+  // PWA habría pasado lo mismo con el manifest y el service worker — que se
+  // piden sin sesión, así que la app directamente no se habría podido instalar.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icons/|manifest\\.webmanifest|sw\\.js).*)',
+  ],
 };
