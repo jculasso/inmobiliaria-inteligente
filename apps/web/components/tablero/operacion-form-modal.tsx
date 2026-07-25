@@ -138,9 +138,9 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 
   return (
     <Modal title={`${operacion ? 'Editar' : 'Nueva'} ${esVenta ? 'venta' : 'alquiler'}`} onClose={onClose} size="lg">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-2.5" onSubmit={handleSubmit}>
         <Seccion titulo="Datos de la operación" icono={esVenta ? '🏠' : '🔑'}>
-          <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+          <div className="grid gap-2.5 sm:grid-cols-[140px_1fr]">
             <Campo label="Código">
               <input value={codigo} onChange={(e) => setCodigo(e.target.value)} required className={inputClass} />
             </Campo>
@@ -158,7 +158,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 
         <Seccion titulo="Valor y estado" icono="💵">
           {esVenta ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <Campo label="Precio">
                 <MoneyInput value={precio} onChange={setPrecio} required />
               </Campo>
@@ -167,7 +167,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
               </Campo>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-2.5 sm:grid-cols-3">
               <Campo label="Valor mensual">
                 <MoneyInput value={valorMensual} onChange={setValorMensual} required />
               </Campo>
@@ -182,7 +182,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         </Seccion>
 
         <Seccion titulo="Fechas" icono="📅">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             <Campo label="Fecha de reserva">
               <input type="date" value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} className={inputClass} />
             </Campo>
@@ -194,7 +194,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 
         {esVenta && (
           <Seccion titulo="Puntas y comisiones" icono="🤝">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <PuntaCard
                 label="Punta vendedora"
                 usuarioId={usuarioIdVend}
@@ -251,12 +251,12 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 }
 
 const inputClass =
-  'h-10 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
+  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
 
 function Seccion({ titulo, icono, children }: { titulo: string; icono: string; children: ReactNode }) {
   return (
-    <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
-      <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-red">
+    <div className="rounded-brand border border-line bg-white px-3 py-2.5">
+      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-red">
         <span aria-hidden>{icono}</span>
         {titulo}
       </p>
@@ -343,7 +343,7 @@ function PuntaCard({
   vendedores: VendedorDto[];
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-brand border border-line bg-surface/40 p-3">
+    <div className="flex flex-col gap-1.5 rounded-brand border border-line bg-surface/40 p-2.5">
       <p className="text-xs font-semibold text-muted">{label}</p>
       <select value={usuarioId} onChange={(e) => onUsuarioId(e.target.value)} className={inputClass}>
         <option value="">Sin asignar</option>

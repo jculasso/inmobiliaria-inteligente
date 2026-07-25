@@ -169,7 +169,9 @@ export function ReporteDocument({
           </View>
         ))}
 
-        <Text style={styles.sectionTitle}>Tasaciones del período ({filas.length})</Text>
+        <Text style={styles.sectionTitle} break>
+          Tasaciones del período ({filas.length})
+        </Text>
         {filas.length === 0 ? (
           <Text style={{ color: MUTED, fontSize: 10 }}>Sin tasaciones para este período.</Text>
         ) : (
@@ -202,7 +204,9 @@ export function ReporteDocument({
 
         {ranking.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Ranking de captaciones por vendedor</Text>
+            <Text style={styles.sectionTitle} break>
+              Ranking de captaciones por vendedor
+            </Text>
             {ranking.map((r, i) => (
               <View key={r.usuarioId} style={styles.rankRow} wrap={false}>
                 <Text style={styles.rankMedal}>{`${i + 1}°`}</Text>
