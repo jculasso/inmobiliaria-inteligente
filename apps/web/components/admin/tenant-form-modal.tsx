@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
   MODULOS_DEFAULT,
   MODULO_KEYS,
@@ -13,6 +13,15 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { createTenant, subirLogoTenant, updateTenant } from '../../lib/admin-api';
 import { AvatarUploader } from '../avatar-uploader';
 import { NOMBRE_MODULO } from '../../lib/modulos';
+import { Campo, CheckCard, Seccion, inputClass } from './form-ui';
+
+/** Qué hace cada módulo — se muestra bajo el check para no vender a ciegas. */
+const DESCRIPCION_MODULO: Record<string, string> = {
+  tablero: 'KPIs, ranking y objetivos.',
+  tasador: 'Valuación e informes.',
+  todo: 'Agenda con Google Calendar.',
+  protocolo: 'Comercialización en 5 semanas.',
+};
 
 interface Props {
   tenant?: TenantDto;
@@ -33,6 +42,8 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const cantidadModulos = MODULO_KEYS.filter((k) => modulos[k]).length;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,140 +71,139 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
   }
 
   return (
-    <Modal title={tenant ? 'Editar inmobiliaria' : 'Nueva inmobiliaria'} onClose={onClose}>
-      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <Campo label="Nombre">
-          <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
-        </Campo>
-        <Campo label="Slug (identificador único, ej. vacker)">
-          <input
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase())}
-            required
-            pattern="[a-z0-9-]+"
-            title="Solo minúsculas, números y guiones"
-            className={inputClass}
-          />
-        </Campo>
-        <div className="grid grid-cols-2 gap-3">
-          <Campo label="Plan">
-            <select value={plan} onChange={(e) => setPlan(e.target.value as PlanTenant)} className={inputClass}>
-              <option value="basico">Básico</option>
-              <option value="profesional">Profesional</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
-          </Campo>
-          {tenant && (
-            <Campo label="Estado">
-              <select
-                value={estado}
-                onChange={(e) => setEstado(e.target.value as 'activo' | 'suspendido')}
-                className={inputClass}
-              >
-                <option value="activo">Activo</option>
-                <option value="suspendido">Suspendido</option>
-              </select>
+    <Modal title={tenant ? 'Editar inmobiliaria' : 'Nueva inmobiliaria'} onClose={onClose} size="xl">
+      <form className="grid gap-2.5 sm:grid-cols-2" onSubmit={handleSubmit}>
+        <Seccion titulo="Datos de la inmobiliaria" icono="🏢">
+          <div className="flex flex-col gap-2.5">
+            <Campo label="Nombre">
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
             </Campo>
-          )}
-        </div>
-        <fieldset className="rounded-brand border border-line p-3">
-          <legend className="px-1 text-xs font-bold uppercase tracking-wide text-muted">
-            Módulos habilitados
-          </legend>
-          <p className="mb-2 text-xs text-muted">
-            Definen a qué accede la inmobiliaria. El plan es solo una etiqueta comercial.
+            <Campo label="Slug" hint="Identificador único en minúsculas, ej. vacker.">
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                required
+                pattern="[a-z0-9-]+"
+                title="Solo minúsculas, números y guiones"
+                className={inputClass}
+              />
+            </Campo>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Campo label="Plan" hint="Solo etiqueta comercial.">
+                <select value={plan} onChange={(e) => setPlan(e.target.value as PlanTenant)} className={inputClass}>
+                  <option value="basico">Básico</option>
+                  <option value="profesional">Profesional</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </Campo>
+              {tenant && (
+                <Campo label="Estado">
+                  <select
+                    value={estado}
+                    onChange={(e) => setEstado(e.target.value as 'activo' | 'suspendido')}
+                    className={inputClass}
+                  >
+                    <option value="activo">Activo</option>
+                    <option value="suspendido">Suspendido</option>
+                  </select>
+                </Campo>
+              )}
+            </div>
+          </div>
+        </Seccion>
+
+        <Seccion titulo={`Módulos habilitados · ${cantidadModulos} de ${MODULO_KEYS.length}`} icono="🔑">
+          <p className="mb-2 text-xs leading-snug text-muted">
+            Definen a qué accede la inmobiliaria. Lo que está apagado no se ve ni se puede usar.
           </p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-1.5">
             {MODULO_KEYS.map((key) => (
-              <label key={key} className="flex items-center gap-2 text-sm text-ink">
-                <input
-                  type="checkbox"
-                  checked={modulos[key]}
-                  onChange={(e) => setModulos((m) => ({ ...m, [key]: e.target.checked }))}
-                  className="h-4 w-4 accent-brand-red"
-                />
-                {NOMBRE_MODULO[key]}
-              </label>
+              <CheckCard
+                key={key}
+                checked={modulos[key]}
+                onChange={(v) => setModulos((m) => ({ ...m, [key]: v }))}
+                titulo={NOMBRE_MODULO[key]}
+                descripcion={DESCRIPCION_MODULO[key]}
+              />
             ))}
           </div>
-        </fieldset>
+        </Seccion>
 
-        <p className="mt-1 text-xs font-bold uppercase tracking-wide text-muted">
-          Branding (imagen de marca de la inmobiliaria)
-        </p>
-        <Campo label="URL del logo">
-          <div className="flex items-center gap-2">
-            <input
-              type="url"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://…"
-              className={`${inputClass} min-w-0`}
-            />
-            {tenant && (
-              <AvatarUploader
-                nombre={nombre || tenant.nombre}
-                fotoUrl={logoUrl || null}
-                size="md"
-                onUpload={async (file) => {
-                  const accessToken = await getAccessToken();
-                  const actualizado = await subirLogoTenant(accessToken, tenant.id, file);
-                  setLogoUrl(actualizado.config.logoUrl ?? '');
-                }}
+        <Seccion titulo="Imagen de marca" icono="🎨" full>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <Campo label="Logo">
+              <div className="flex items-center gap-2">
+                <input
+                  type="url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://…"
+                  className={`${inputClass} min-w-0`}
+                />
+                {tenant && (
+                  <AvatarUploader
+                    nombre={nombre || tenant.nombre}
+                    fotoUrl={logoUrl || null}
+                    size="md"
+                    onUpload={async (file) => {
+                      const accessToken = await getAccessToken();
+                      const actualizado = await subirLogoTenant(accessToken, tenant.id, file);
+                      setLogoUrl(actualizado.config.logoUrl ?? '');
+                    }}
+                  />
+                )}
+              </div>
+            </Campo>
+            <Campo label="Nombre corto" hint="Se usa en el título de la Home.">
+              <input
+                value={nombreCorto}
+                onChange={(e) => setNombreCorto(e.target.value)}
+                placeholder={nombre || 'Ej. Vacker'}
+                className={inputClass}
               />
-            )}
+            </Campo>
+            <Campo label="Color primario">
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={colorPrimario || '#c1121f'}
+                  onChange={(e) => setColorPrimario(e.target.value)}
+                  className="h-9 w-9 shrink-0 rounded-brand border border-line"
+                />
+                <input
+                  value={colorPrimario}
+                  onChange={(e) => setColorPrimario(e.target.value)}
+                  placeholder="#c1121f"
+                  className={inputClass}
+                />
+              </div>
+            </Campo>
+            <Campo label="Color primario oscuro">
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={colorPrimarioOscuro || '#8f0d18'}
+                  onChange={(e) => setColorPrimarioOscuro(e.target.value)}
+                  className="h-9 w-9 shrink-0 rounded-brand border border-line"
+                />
+                <input
+                  value={colorPrimarioOscuro}
+                  onChange={(e) => setColorPrimarioOscuro(e.target.value)}
+                  placeholder="#8f0d18"
+                  className={inputClass}
+                />
+              </div>
+            </Campo>
           </div>
-        </Campo>
-        <Campo label="Nombre corto (para el título de la Home)">
-          <input
-            value={nombreCorto}
-            onChange={(e) => setNombreCorto(e.target.value)}
-            placeholder={nombre || 'Ej. Vacker'}
-            className={inputClass}
-          />
-        </Campo>
-        <div className="grid grid-cols-2 gap-3">
-          <Campo label="Color primario">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={colorPrimario || '#c1121f'}
-                onChange={(e) => setColorPrimario(e.target.value)}
-                className="h-9 w-9 shrink-0 rounded-brand border border-line"
-              />
-              <input
-                value={colorPrimario}
-                onChange={(e) => setColorPrimario(e.target.value)}
-                placeholder="#c1121f"
-                className={inputClass}
-              />
-            </div>
-          </Campo>
-          <Campo label="Color primario oscuro">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={colorPrimarioOscuro || '#8f0d18'}
-                onChange={(e) => setColorPrimarioOscuro(e.target.value)}
-                className="h-9 w-9 shrink-0 rounded-brand border border-line"
-              />
-              <input
-                value={colorPrimarioOscuro}
-                onChange={(e) => setColorPrimarioOscuro(e.target.value)}
-                placeholder="#8f0d18"
-                className={inputClass}
-              />
-            </div>
-          </Campo>
-        </div>
+        </Seccion>
 
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-brand-red sm:col-span-2">
             {error}
           </p>
         )}
 
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
@@ -203,17 +213,5 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
         </div>
       </form>
     </Modal>
-  );
-}
-
-const inputClass =
-  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
-
-function Campo({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-ink">{label}</span>
-      {children}
-    </label>
   );
 }

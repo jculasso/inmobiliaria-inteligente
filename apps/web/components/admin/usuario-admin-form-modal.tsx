@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { Rol, UsuarioAdminDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createUsuarioAdmin, updateUsuarioAdmin } from '../../lib/admin-api';
+import { Campo, CheckCard, Seccion, inputClass } from './form-ui';
 
-const ROLES_DISPONIBLES: { value: Rol; label: string }[] = [
-  { value: 'vendedor', label: 'Vendedor' },
-  { value: 'team_leader', label: 'Team Leader' },
-  { value: 'direccion', label: 'Dirección (CEO)' },
-  { value: 'admin_tenant', label: 'Admin del tenant' },
+/** Qué ve/puede cada rol — evita tener que recordarlo de memoria al dar de alta. */
+const ROLES_DISPONIBLES: { value: Rol; label: string; descripcion: string }[] = [
+  { value: 'vendedor', label: 'Vendedor', descripcion: 'Ve y carga lo suyo.' },
+  { value: 'team_leader', label: 'Team Leader', descripcion: 'Ve lo suyo y lo de su equipo.' },
+  { value: 'direccion', label: 'Dirección (CEO)', descripcion: 'Ve toda la inmobiliaria.' },
+  { value: 'admin_tenant', label: 'Admin del tenant', descripcion: 'Administra usuarios y ajustes.' },
 ];
 
 interface Props {
@@ -60,73 +62,91 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
   }
 
   return (
-    <Modal title={usuario ? 'Editar usuario' : 'Nuevo usuario'} onClose={onClose}>
-      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <Campo label="Nombre">
-          <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
-        </Campo>
-        <Campo label="Email">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={!!usuario}
-            className={inputClass}
-          />
-        </Campo>
-        <Campo label="Teléfono (aparece en el informe de tasación)">
-          <input
-            type="tel"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            placeholder="Ej. 3415023921"
-            className={inputClass}
-          />
-        </Campo>
-        {!usuario && (
-          <Campo label="Contraseña inicial (mínimo 8 caracteres)">
-            <input
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className={inputClass}
-            />
-          </Campo>
-        )}
-        {usuario && (
-          <Campo label="Estado">
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value as 'activo' | 'inactivo')}
-              className={inputClass}
+    <Modal title={usuario ? 'Editar usuario' : 'Nuevo usuario'} onClose={onClose} size="xl">
+      <form className="grid gap-2.5 sm:grid-cols-2" onSubmit={handleSubmit}>
+        <Seccion titulo="Datos personales" icono="👤">
+          <div className="flex flex-col gap-2.5">
+            <Campo label="Nombre y apellido">
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
+            </Campo>
+            <Campo label="Teléfono" hint="Aparece en el informe de tasación.">
+              <input
+                type="tel"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                placeholder="Ej. 3415023921"
+                className={inputClass}
+              />
+            </Campo>
+            {usuario && (
+              <Campo label="Estado" hint="Un usuario inactivo no puede entrar.">
+                <select
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value as 'activo' | 'inactivo')}
+                  className={inputClass}
+                >
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </Campo>
+            )}
+          </div>
+        </Seccion>
+
+        <Seccion titulo="Acceso" icono="🔒">
+          <div className="flex flex-col gap-2.5">
+            <Campo
+              label="Email"
+              hint={usuario ? 'El email no se puede cambiar.' : 'Con este email inicia sesión.'}
             >
-              <option value="activo">Activo</option>
-              <option value="inactivo">Inactivo</option>
-            </select>
-          </Campo>
-        )}
-        <div>
-          <span className="text-sm font-medium text-ink">Roles</span>
-          <div className="mt-1.5 flex flex-wrap gap-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={!!usuario}
+                className={inputClass}
+              />
+            </Campo>
+            {!usuario && (
+              <Campo label="Contraseña inicial" hint="Mínimo 8 caracteres. Se la pasás al usuario para el primer ingreso.">
+                <input
+                  type="text"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className={inputClass}
+                />
+              </Campo>
+            )}
+          </div>
+        </Seccion>
+
+        <Seccion titulo="Roles" icono="🎭" full>
+          <p className="mb-2 text-xs leading-snug text-muted">
+            Definen qué información ve. Se puede combinar más de uno.
+          </p>
+          <div className="grid gap-1.5 sm:grid-cols-2">
             {ROLES_DISPONIBLES.map((r) => (
-              <label key={r.value} className="flex items-center gap-1.5 text-sm text-ink">
-                <input type="checkbox" checked={roles.includes(r.value)} onChange={() => toggleRol(r.value)} />
-                {r.label}
-              </label>
+              <CheckCard
+                key={r.value}
+                checked={roles.includes(r.value)}
+                onChange={() => toggleRol(r.value)}
+                titulo={r.label}
+                descripcion={r.descripcion}
+              />
             ))}
           </div>
-        </div>
+        </Seccion>
 
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-brand-red sm:col-span-2">
             {error}
           </p>
         )}
 
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
@@ -136,17 +156,5 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
         </div>
       </form>
     </Modal>
-  );
-}
-
-const inputClass =
-  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
-
-function Campo({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-ink">{label}</span>
-      {children}
-    </label>
   );
 }
