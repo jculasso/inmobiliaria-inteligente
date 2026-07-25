@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { CreateTenant, TenantConfig, UpdateTenant } from '@vacker/types';
+import { MODULOS_DEFAULT, type CreateTenant, type TenantConfig, type UpdateTenant } from '@vacker/types';
 import { SupabaseStorageService } from '../common/supabase-storage.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -41,6 +41,7 @@ export class AdminTenantsService {
         nombre: dto.nombre,
         slug: dto.slug,
         plan: dto.plan,
+        modulos: (dto.modulos ?? MODULOS_DEFAULT) as Prisma.InputJsonValue,
         config: (dto.config ?? {}) as Prisma.InputJsonValue,
       },
     });
@@ -61,6 +62,9 @@ export class AdminTenantsService {
     if (dto.nombre !== undefined) data.nombre = dto.nombre;
     if (dto.slug !== undefined) data.slug = dto.slug;
     if (dto.plan !== undefined) data.plan = dto.plan;
+    // Los módulos se reemplazan enteros: el form manda siempre los 4 checks,
+    // y un merge dejaría prendido lo que el admin acaba de apagar.
+    if (dto.modulos !== undefined) data.modulos = dto.modulos as Prisma.InputJsonValue;
     if (dto.estado !== undefined) data.estado = dto.estado;
     if (dto.config !== undefined) {
       // Merge, no reemplazo — así el form de admin puede mandar solo el

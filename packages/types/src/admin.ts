@@ -2,7 +2,7 @@
 // accesos). Solo lo usa el rol `admin_plataforma` (cross-tenant).
 import { z } from 'zod';
 import { RolSchema } from './rol';
-import { PlanTenantSchema, TenantConfigSchema } from './tenant';
+import { ModulosTenantSchema, PlanTenantSchema, TenantConfigSchema } from './tenant';
 
 export { PlanTenantSchema };
 export type { PlanTenant } from './tenant';
@@ -17,6 +17,7 @@ export const TenantDtoSchema = z.object({
   nombre: z.string(),
   slug: z.string(),
   plan: PlanTenantSchema,
+  modulos: ModulosTenantSchema,
   estado: z.enum(['activo', 'suspendido']),
   config: TenantConfigSchema,
   createdAt: z.string(),
@@ -27,6 +28,7 @@ export const CreateTenantSchema = z.object({
   nombre: z.string().trim().min(1),
   slug: SlugSchema,
   plan: PlanTenantSchema.default('basico'),
+  modulos: ModulosTenantSchema.optional(),
   config: TenantConfigSchema.optional(),
 });
 export type CreateTenant = z.infer<typeof CreateTenantSchema>;
@@ -36,6 +38,7 @@ export const UpdateTenantSchema = z
     nombre: z.string().trim().min(1),
     slug: SlugSchema,
     plan: PlanTenantSchema,
+    modulos: ModulosTenantSchema,
     estado: z.enum(['activo', 'suspendido']),
     config: TenantConfigSchema,
   })

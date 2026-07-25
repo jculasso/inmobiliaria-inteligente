@@ -1,5 +1,4 @@
-import type { ModuloKey, PlanTenant, Rol, TenantConfig } from '@vacker/types';
-import { MODULOS_POR_PLAN } from '@vacker/types';
+import type { ModuloKey, ModulosTenant, PlanTenant, Rol, TenantConfig } from '@vacker/types';
 import { Avatar, type BadgeVariant } from '@vacker/ui';
 import { alcanceDeModulo } from '../lib/rbac';
 import { tenantBrandStyle } from '../lib/tenant-style';
@@ -42,6 +41,14 @@ const MODULOS: Modulo[] = [
     estado: 'activo',
     href: '/todo',
   },
+  {
+    key: 'protocolo',
+    nombre: 'Protocolo 5 Semanas',
+    descripcion: 'Seguimiento de la comercialización e informe para el propietario.',
+    icono: '📋',
+    estado: 'dev',
+    href: null,
+  },
 ];
 
 export interface HomeViewProps {
@@ -51,7 +58,7 @@ export interface HomeViewProps {
     nombre: string;
     fotoUrl: string | null;
     roles: Rol[];
-    tenant: { nombre: string; plan: PlanTenant; config: TenantConfig };
+    tenant: { nombre: string; plan: PlanTenant; modulos: ModulosTenant; config: TenantConfig };
   } | null;
 }
 
@@ -60,7 +67,7 @@ export function HomeView({ sesion }: HomeViewProps) {
   const alcance = sesion ? alcanceDeModulo(sesion.roles) : null;
   const anio = new Date().getFullYear();
   const config = sesion?.tenant.config;
-  const modulosDelPlan = sesion ? MODULOS_POR_PLAN[sesion.tenant.plan] : [];
+  const modulos = sesion?.tenant.modulos;
   const nombreMarca = sesion ? (config?.nombreCorto ?? sesion.tenant.nombre) : 'Inmobiliaria Inteligente';
 
   return (
@@ -108,7 +115,7 @@ export function HomeView({ sesion }: HomeViewProps) {
 
         <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {MODULOS.map((m) => {
-            const habilitado = m.estado === 'activo' && alcance !== null && modulosDelPlan.includes(m.key);
+            const habilitado = m.estado === 'activo' && alcance !== null && modulos?.[m.key] === true;
             return (
               <ModuleCard
                 key={m.nombre}

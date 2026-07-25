@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { MODULOS_DEFAULT } from '@vacker/types';
 import type { SupabaseStorageService } from '../common/supabase-storage.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import { AdminTenantsService } from './admin-tenants.service';
@@ -49,7 +50,7 @@ describe('AdminTenantsService', () => {
     const result = await service.create({ nombre: 'Otra', slug: 'otra', plan: 'basico' });
 
     expect(create).toHaveBeenCalledWith({
-      data: { nombre: 'Otra', slug: 'otra', plan: 'basico', config: {} },
+      data: { nombre: 'Otra', slug: 'otra', plan: 'basico', modulos: MODULOS_DEFAULT, config: {} },
     });
     expect(result.slug).toBe('otra');
   });

@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClsService } from 'nestjs-cls';
-import { PlanTenantSchema, TenantConfigSchema, type Rol } from '@vacker/types';
+import {
+  MODULOS_DEFAULT,
+  ModulosTenantSchema,
+  PlanTenantSchema,
+  TenantConfigSchema,
+  type Rol,
+} from '@vacker/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { TENANT_CTX_KEY, type TenantContext } from '../prisma/tenant-context';
 import { AUTH_PROVIDER, type AuthProvider } from './auth-provider.interface';
@@ -83,7 +89,10 @@ export class AuthGuard implements CanActivate {
     // el Tablero antes de "activarles" el acceso.
     const usuario = await this.prisma.usuario.findUnique({
       where: { authUserId: identity.userId },
-      include: { roles: true, tenant: { select: { nombre: true, plan: true, config: true } } },
+      include: {
+        roles: true,
+        tenant: { select: { nombre: true, plan: true, modulos: true, config: true } },
+      },
     });
     if (!usuario || usuario.estado !== 'activo') {
       throw new UnauthorizedException('Usuario no habilitado en la plataforma.');
@@ -94,6 +103,9 @@ export class AuthGuard implements CanActivate {
     // queremos que eso tumbe el login de nadie: fallback a defaults seguros.
     const plan = PlanTenantSchema.safeParse(usuario.tenant.plan);
     const config = TenantConfigSchema.safeParse(usuario.tenant.config);
+    // Mismo criterio defensivo: si `modulos` quedara con una forma inesperada,
+    // se cae al piso (solo Tablero) en vez de tumbar el login.
+    const modulos = ModulosTenantSchema.safeParse(usuario.tenant.modulos);
 
     const principal: AuthPrincipal = {
       userId: usuario.id,
@@ -105,6 +117,7 @@ export class AuthGuard implements CanActivate {
       tenant: {
         nombre: usuario.tenant.nombre,
         plan: plan.success ? plan.data : 'basico',
+        modulos: modulos.success ? modulos.data : MODULOS_DEFAULT,
         config: config.success ? config.data : {},
       },
     };

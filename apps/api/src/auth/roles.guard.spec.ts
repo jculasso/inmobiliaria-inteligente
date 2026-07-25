@@ -2,7 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
-import type { Rol } from '@vacker/types';
+import { MODULOS_DEFAULT, type Rol } from '@vacker/types';
 import { RolesGuard } from './roles.guard';
 import type { AuthPrincipal } from './auth-principal';
 
@@ -26,7 +26,7 @@ function principal(roles: Rol[]): AuthPrincipal {
     fotoUrl: null,
     tenantId: 't',
     roles,
-    tenant: { nombre: 'Test', plan: 'basico', config: {} },
+    tenant: { nombre: 'Test', plan: 'basico', modulos: MODULOS_DEFAULT, config: {} },
   };
 }
 
