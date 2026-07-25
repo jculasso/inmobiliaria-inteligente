@@ -85,7 +85,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
               )}
               <th className="px-4 py-2">Comisión</th>
               <th className="px-4 py-2">Estado</th>
-              <th className="sticky right-0 border-l border-line bg-white px-4 py-2" />
+              <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -103,7 +103,11 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                   <tr key={op.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-2 text-muted">{op.codigo}</td>
                     <td className="px-4 py-2">{op.fechaFirma ?? '—'}</td>
-                    <td className="px-4 py-2">{op.direccion}</td>
+                    <td className="px-4 py-2">
+                      <span className="block max-w-[200px] truncate" title={op.direccion}>
+                        {op.direccion}
+                      </span>
+                    </td>
                     {tipo === 'venta' ? (
                       <>
                         <td className="px-4 py-2">{fmtUSD(op.precio)}</td>
@@ -120,7 +124,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                         {op.estado}
                       </span>
                     </td>
-                    <td className="sticky right-0 border-l border-line bg-white px-4 py-2">
+                    <td className="px-3 py-2">
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
