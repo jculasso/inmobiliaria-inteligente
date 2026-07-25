@@ -4,6 +4,7 @@ import type { CreateUsuarioAdmin, ResetPassword, UpdateUsuarioAdmin } from '@vac
 import { SupabaseStorageService } from '../common/supabase-storage.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseAdminService } from './supabase-admin.service';
+import { PrincipalCacheService } from '../auth/principal-cache.service';
 
 const usuarioAdminInclude = {
   roles: { select: { rol: true } },
@@ -32,6 +33,7 @@ export class AdminUsuariosService {
     private readonly db: PrismaService,
     private readonly supabaseAdmin: SupabaseAdminService,
     private readonly storage: SupabaseStorageService,
+    private readonly principalCache: PrincipalCacheService,
   ) {}
 
   async list(tenantId: string) {
@@ -80,9 +82,30 @@ export class AdminUsuariosService {
   }
 
   async update(tenantId: string, id: string, dto: UpdateUsuarioAdmin) {
-    await this.assertUsuarioDeTenant(tenantId, id);
+    const usuario = await this.assertUsuarioDeTenant(tenantId, id);
 
     const data: Prisma.UsuarioUpdateInput = {};
+
+    // El email vive en dos lados: acá y en Supabase Auth (que es contra lo que
+    // se loguea). Se cambia PRIMERO en Auth: si eso falla, no queremos quedar
+    // con un mail en nuestra tabla que no sirve para entrar.
+    if (dto.email !== undefined && dto.email !== usuario.email) {
+      const repetido = await this.db.usuario.findFirst({
+        where: { tenantId, email: dto.email, NOT: { id } },
+        select: { id: true },
+      });
+      if (repetido) {
+        throw new BadRequestException(`Ya hay otro usuario con el email "${dto.email}".`);
+      }
+      if (!usuario.authUserId) {
+        throw new BadRequestException('Este usuario todavía no tiene acceso — activalo primero.');
+      }
+      await this.supabaseAdmin.setEmail(usuario.authUserId, dto.email);
+      data.email = dto.email;
+      // El principal cacheado trae el email viejo.
+      this.principalCache.invalidarUsuario(id);
+    }
+
     if (dto.nombre !== undefined) data.nombre = dto.nombre;
     if (dto.estado !== undefined) data.estado = dto.estado;
     if (dto.telefono !== undefined) data.telefono = dto.telefono ?? null;
@@ -110,6 +133,7 @@ export class AdminUsuariosService {
     // La clave queda temporal: al entrar, se le pide elegir una propia (mismo
     // criterio que el alta). Así el admin nunca conoce la contraseña final.
     await this.db.usuario.update({ where: { id }, data: { debeCambiarPassword: true } });
+    this.principalCache.invalidarUsuario(id);
     return { id, ok: true as const };
   }
 

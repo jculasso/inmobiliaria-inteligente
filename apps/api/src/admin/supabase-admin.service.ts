@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 interface SupabaseAuthUser {
@@ -30,6 +30,24 @@ export class SupabaseAdminService {
       throw new InternalServerErrorException(await this.mensajeError(res, 'crear el usuario'));
     }
     return (await res.json()) as SupabaseAuthUser;
+  }
+
+  /**
+   * Cambia el email de acceso. Va por la Admin API y no por SQL directo a
+   * `auth.users`: Supabase guarda el mail también en `auth.identities`, y
+   * tocar una sola de las dos tablas deja la cuenta sin poder iniciar sesión.
+   */
+  async setEmail(authUserId: string, email: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl()}/auth/v1/admin/users/${authUserId}`, {
+      method: 'PUT',
+      headers: this.headers(),
+      // `email_confirm` evita que quede pendiente de confirmación por correo
+      // (que hoy no está configurado) y lo dejaría sin poder entrar.
+      body: JSON.stringify({ email, email_confirm: true }),
+    });
+    if (!res.ok) {
+      throw new BadRequestException(await this.mensajeError(res, 'cambiar el email'));
+    }
   }
 
   async setPassword(authUserId: string, password: string): Promise<void> {

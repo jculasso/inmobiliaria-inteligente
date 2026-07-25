@@ -79,6 +79,8 @@ export type CambiarPassword = z.infer<typeof CambiarPasswordSchema>;
 
 export const UpdateUsuarioAdminSchema = z
   .object({
+    /** Cambia el email de acceso (también en Supabase Auth, no solo acá). */
+    email: z.string().trim().email(),
     nombre: z.string().min(1),
     estado: z.enum(['activo', 'inactivo']),
     roles: z.array(RolSchema).min(1),

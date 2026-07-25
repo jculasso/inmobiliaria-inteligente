@@ -4,6 +4,7 @@ import { MODULOS_DEFAULT } from '@vacker/types';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SupabaseAdminService } from '../admin/supabase-admin.service';
 import type { AuthPrincipal } from '../auth/auth-principal';
+import type { PrincipalCacheService } from '../auth/principal-cache.service';
 import { PasswordService } from './password.service';
 
 const PRINCIPAL: AuthPrincipal = {
@@ -25,6 +26,13 @@ function makeDb(usuario: Record<string, unknown> | null) {
   };
 }
 
+/** Cache del principal: se invalida al cambiar la clave, para que /me no quede viejo. */
+function makeCache() {
+  return { invalidarUsuario: vi.fn() } as unknown as PrincipalCacheService & {
+    invalidarUsuario: ReturnType<typeof vi.fn>;
+  };
+}
+
 function makeSupabase(passwordValida = true) {
   return {
     setPassword: vi.fn(),
@@ -42,7 +50,8 @@ describe('PasswordService', () => {
   it('en el cambio obligatorio no pide la contraseña actual', async () => {
     const { db, update } = makeDb(FORZADO);
     const supabase = makeSupabase();
-    const svc = new PasswordService(db, supabase);
+    const cache = makeCache();
+    const svc = new PasswordService(db, supabase, cache);
 
     await svc.cambiar({ passwordNueva: 'claveNueva1' }, PRINCIPAL);
 
@@ -55,7 +64,8 @@ describe('PasswordService', () => {
   it('en un cambio voluntario exige la contraseña actual', async () => {
     const { db } = makeDb(NORMAL);
     const supabase = makeSupabase();
-    const svc = new PasswordService(db, supabase);
+    const cache = makeCache();
+    const svc = new PasswordService(db, supabase, cache);
 
     await expect(svc.cambiar({ passwordNueva: 'claveNueva1' }, PRINCIPAL)).rejects.toThrow(
       BadRequestException,
@@ -66,7 +76,8 @@ describe('PasswordService', () => {
   it('rechaza si la contraseña actual es incorrecta', async () => {
     const { db } = makeDb(NORMAL);
     const supabase = makeSupabase(false);
-    const svc = new PasswordService(db, supabase);
+    const cache = makeCache();
+    const svc = new PasswordService(db, supabase, cache);
 
     await expect(
       svc.cambiar({ passwordActual: 'malaClave', passwordNueva: 'claveNueva1' }, PRINCIPAL),
@@ -76,7 +87,7 @@ describe('PasswordService', () => {
 
   it('no deja repetir la misma contraseña', async () => {
     const { db } = makeDb(NORMAL);
-    const svc = new PasswordService(db, makeSupabase());
+    const svc = new PasswordService(db, makeSupabase(), makeCache());
 
     await expect(
       svc.cambiar({ passwordActual: 'laMisma123', passwordNueva: 'laMisma123' }, PRINCIPAL),
@@ -86,7 +97,8 @@ describe('PasswordService', () => {
   it('acepta el cambio voluntario con la contraseña actual correcta', async () => {
     const { db, update } = makeDb(NORMAL);
     const supabase = makeSupabase();
-    const svc = new PasswordService(db, supabase);
+    const cache = makeCache();
+    const svc = new PasswordService(db, supabase, cache);
 
     await svc.cambiar({ passwordActual: 'actual123', passwordNueva: 'nueva4567' }, PRINCIPAL);
 
@@ -94,9 +106,22 @@ describe('PasswordService', () => {
     expect(update).toHaveBeenCalled();
   });
 
+  it('invalida el perfil cacheado: sin esto la Home rebota de vuelta a /cambiar-clave', async () => {
+    // Regresión: el guard cachea el principal 30s. Tras cambiar la clave, /me
+    // seguía diciendo "debe cambiarla" y el usuario quedaba trabado en la
+    // pantalla, sin poder entrar.
+    const { db } = makeDb(FORZADO);
+    const cache = makeCache();
+    const svc = new PasswordService(db, makeSupabase(), cache);
+
+    await svc.cambiar({ passwordNueva: 'claveNueva1' }, PRINCIPAL);
+
+    expect(cache.invalidarUsuario).toHaveBeenCalledWith('u1');
+  });
+
   it('falla si el usuario todavía no tiene acceso configurado', async () => {
     const { db } = makeDb({ ...FORZADO, authUserId: null });
-    const svc = new PasswordService(db, makeSupabase());
+    const svc = new PasswordService(db, makeSupabase(), makeCache());
 
     await expect(svc.cambiar({ passwordNueva: 'claveNueva1' }, PRINCIPAL)).rejects.toThrow(
       NotFoundException,
