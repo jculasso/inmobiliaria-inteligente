@@ -7,26 +7,10 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteOperacion } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
+import { estadoClass, estadoLabel } from '../../lib/operacion-estado';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmDeleteButton } from './confirm-delete-button';
 import { OperacionFormModal } from './operacion-form-modal';
-
-function estadoClass(estado: string): string {
-  return estado === 'escriturada' || estado === 'firmado'
-    ? 'bg-success/10 text-success'
-    : 'bg-brand-red/10 text-brand-red';
-}
-
-/** Etiquetas legibles del estado (la base guarda el enum en minúsculas). */
-const ESTADO_LABEL: Record<string, string> = {
-  escriturada: 'Escriturada',
-  senada: 'Señada',
-  reservada: 'Reservada',
-  boleto: 'Boleto',
-  firmado: 'Firmado',
-  reservado: 'Reservado',
-  pendiente: 'Pendiente',
-};
 
 interface Props {
   tipo: TipoOperacion;
@@ -98,7 +82,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                     <span
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${estadoClass(op.estado)}`}
                     >
-                      {ESTADO_LABEL[op.estado] ?? op.estado}
+                      {estadoLabel(op.estado)}
                     </span>
                   </div>
 
@@ -192,7 +176,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                     <td className="px-4 py-2">{fmtUSD(op.comTotal)}</td>
                     <td className="px-4 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(op.estado)}`}>
-                        {ESTADO_LABEL[op.estado] ?? op.estado}
+                        {estadoLabel(op.estado)}
                       </span>
                     </td>
                     <td className="px-3 py-2">

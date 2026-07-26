@@ -6,6 +6,7 @@ import { Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { listOperaciones } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
+import { estadoBadgeClass, estadoLabel } from '../../lib/operacion-estado';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 
 interface Props {
@@ -70,9 +71,14 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
                 const comp = op.puntas.find((p) => p.lado === 'compradora');
                 return (
                   <Tarjeta key={op.id}>
-                    <div className="text-sm font-bold text-ink">{op.direccion}</div>
-                    <div className="mt-0.5 text-[11px] text-muted">
-                      {op.codigo} · Firma {op.fechaFirma ?? '—'} · {op.estado}
+                    <div className="flex items-start gap-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-bold text-ink">{op.direccion}</span>
+                        <span className="mt-0.5 block text-[11px] text-muted">
+                          {op.codigo} · Firma {op.fechaFirma ?? '—'}
+                        </span>
+                      </span>
+                      <span className={`shrink-0 ${estadoBadgeClass(op.estado)}`}>{estadoLabel(op.estado)}</span>
                     </div>
                     <CamposTarjeta>
                       <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>
@@ -102,16 +108,16 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
       {operaciones && !loading && (
         <div className="hidden max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line sm:block">
           <table className="w-full min-w-[720px] text-sm">
-            <thead className="sticky top-0 z-10 bg-white">
-              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                <th className="px-3 py-2">Código</th>
-                <th className="px-3 py-2">Firma</th>
-                <th className="px-3 py-2">Dirección</th>
-                <th className="px-3 py-2">{esVenta ? 'Precio' : 'Valor/mes'}</th>
-                {esVenta && <th className="px-3 py-2">Vendedora</th>}
-                {esVenta && <th className="px-3 py-2">Compradora</th>}
-                <th className="px-3 py-2">Comisión</th>
-                <th className="px-3 py-2">Estado</th>
+            <thead className="sticky top-0 z-10 bg-surface">
+              <tr className="border-b border-line text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
+                <th className="px-3 py-2.5">Código</th>
+                <th className="px-3 py-2.5">Firma</th>
+                <th className="px-3 py-2.5">Dirección</th>
+                <th className="px-3 py-2.5 text-right">{esVenta ? 'Precio' : 'Valor/mes'}</th>
+                {esVenta && <th className="px-3 py-2.5">Vendedora</th>}
+                {esVenta && <th className="px-3 py-2.5">Compradora</th>}
+                <th className="px-3 py-2.5 text-right">Comisión</th>
+                <th className="px-3 py-2.5">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -126,31 +132,35 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
                   const vend = op.puntas.find((p) => p.lado === 'vendedora');
                   const comp = op.puntas.find((p) => p.lado === 'compradora');
                   return (
-                    <tr key={op.id} className="border-b border-line last:border-0">
-                      <td className="px-3 py-2 text-muted">{op.codigo}</td>
-                      <td className="px-3 py-2">{op.fechaFirma ?? '—'}</td>
-                      <td className="px-3 py-2">{op.direccion}</td>
-                      <td className="px-3 py-2">{fmtUSD(op.precio ?? op.valorMensual ?? 0)}</td>
-                      {esVenta && <td className="px-3 py-2">{vend?.nombre ?? '—'}</td>}
-                      {esVenta && <td className="px-3 py-2">{comp?.nombre ?? '—'}</td>}
-                      <td className="px-3 py-2">{fmtUSD(op.comTotal)}</td>
-                      <td className="px-3 py-2">{op.estado}</td>
+                    <tr key={op.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                      <td className="px-3 py-2.5 text-xs text-muted">{op.codigo}</td>
+                      <td className="px-3 py-2.5 tabular-nums text-muted">{op.fechaFirma ?? '—'}</td>
+                      <td className="px-3 py-2.5 font-semibold text-ink">{op.direccion}</td>
+                      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">
+                        {fmtUSD(op.precio ?? op.valorMensual ?? 0)}
+                      </td>
+                      {esVenta && <td className="px-3 py-2.5">{vend?.nombre ?? '—'}</td>}
+                      {esVenta && <td className="px-3 py-2.5">{comp?.nombre ?? '—'}</td>}
+                      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">{fmtUSD(op.comTotal)}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={estadoBadgeClass(op.estado)}>{estadoLabel(op.estado)}</span>
+                      </td>
                     </tr>
                   );
                 })
               )}
             </tbody>
             {operaciones.length > 0 && (
-              <tfoot className="sticky bottom-0 bg-white">
-                <tr className="border-t-2 border-line font-bold text-ink">
-                  <td className="px-3 py-2" colSpan={esVenta ? 3 : 2}>
+              <tfoot className="sticky bottom-0 bg-surface">
+                <tr className="border-t-2 border-line text-ink">
+                  <td className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider" colSpan={esVenta ? 3 : 2}>
                     Total ({operaciones.length})
                   </td>
-                  <td className="px-3 py-2">{fmtUSD(sumPrecio)}</td>
-                  {esVenta && <td className="px-3 py-2" />}
-                  {esVenta && <td className="px-3 py-2" />}
-                  <td className="px-3 py-2">{fmtUSD(sumComision)}</td>
-                  <td className="px-3 py-2" />
+                  <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(sumPrecio)}</td>
+                  {esVenta && <td className="px-3 py-3" />}
+                  {esVenta && <td className="px-3 py-3" />}
+                  <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(sumComision)}</td>
+                  <td className="px-3 py-3" />
                 </tr>
               </tfoot>
             )}
