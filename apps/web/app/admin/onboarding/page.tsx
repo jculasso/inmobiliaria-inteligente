@@ -1,4 +1,5 @@
 import { Aviso, DocHeader, Paso, Seccion, Tarjeta } from '../../../components/admin/doc-ui';
+import { FlujoTasacionProtocolo } from '../../../components/admin/flujo-tasacion-protocolo';
 
 export const metadata = { title: 'Onboarding · Administración' };
 
@@ -50,6 +51,15 @@ export default function OnboardingPage() {
         <Paso n={3} titulo="Recién ahí, el recorrido de los módulos">
           <p>Con el porqué ya instalado, el cómo se entiende en diez minutos.</p>
         </Paso>
+      </Seccion>
+
+      <Seccion titulo="Cómo se conectan el Tasador y el Protocolo">
+        <p className="max-w-3xl text-sm leading-relaxed text-muted">
+          Es la pregunta que aparece sola: “¿y esto con lo otro cómo se conecta?”. Mostrá este recorrido
+          antes de entrar en cada módulo — con el camino claro, lo demás se entiende en la mitad de
+          tiempo.
+        </p>
+        <FlujoTasacionProtocolo />
       </Seccion>
 
       <Seccion titulo="Qué decir de cada módulo">

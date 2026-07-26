@@ -40,11 +40,11 @@ export default function GuiaPage() {
         <Paso n={3} titulo="Activar el acceso">
           <p>
             Crear el usuario <strong>no le da acceso todavía</strong>: queda con la marca “Sin acceso”.
-            Tocá <strong>Activar acceso</strong> y el sistema genera una clave temporal al azar.
+            Tocá <strong>Activar acceso</strong> y escribí vos la contraseña temporal.
           </p>
           <p>
-            Pasale esa clave a la persona. La primera vez que entre, la plataforma le va a exigir elegir
-            una propia; hasta que lo haga no puede usar ningún módulo.
+            El detalle está en la sección de abajo: conviene leerla antes de activar a quince personas
+            seguidas.
           </p>
         </Paso>
 
@@ -54,6 +54,64 @@ export default function GuiaPage() {
             seguimiento del año queda vacío y el tablero pierde la mitad de su sentido.
           </p>
         </Paso>
+      </Seccion>
+
+      <Seccion titulo="Contraseñas: cómo funciona hoy">
+        <Aviso tono="atencion" titulo="La contraseña temporal la escribís vos, no la genera el sistema">
+          <p>
+            Tanto al <strong>activar acceso</strong> como al <strong>restablecer</strong>, el panel te pide
+            que escribas la contraseña. Mínimo <strong>8 caracteres</strong>. El campo se muestra en texto
+            visible a propósito, para que puedas leerla o dictarla sin equivocarte.
+          </p>
+          <p>
+            <strong>No uses la misma para todo el equipo.</strong> Si activás quince personas con la misma
+            clave, cualquiera que la conozca entra como cualquier otro hasta que cada uno la cambie — y
+            alguno va a tardar días.
+          </p>
+        </Aviso>
+
+        <Tarjeta titulo="Qué pasa después, automáticamente">
+          <p>
+            Al activar o restablecer, el usuario queda marcado como <strong>“debe cambiar la contraseña”</strong>.
+            La próxima vez que entre, la plataforma lo lleva a elegir una propia y{' '}
+            <strong>no lo deja usar ningún módulo hasta que lo haga</strong>. No es un cartel que se pueda
+            saltear.
+          </p>
+          <p>
+            Una vez que eligió la suya, vos ya no la sabés ni la podés ver. Si la olvida, la única salida
+            desde el panel es <strong>Restablecer contraseña</strong>, que arranca el circuito de nuevo.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="“¿Olvidaste tu contraseña?” de la pantalla de ingreso">
+          <p>
+            Ese enlace existe, pero hoy <strong>no manda ningún correo</strong>: le explica a la persona que
+            tiene que pedirle el restablecimiento a quien administra la plataforma. Es a propósito, no es
+            un error.
+          </p>
+          <p>
+            El recupero por correo <strong>está construido y apagado</strong>. Para encenderlo hacen falta
+            dos cosas: configurar el envío de correo en Supabase y prender la variable{' '}
+            <code className="rounded bg-surface px-1 py-0.5 text-[11px]">NEXT_PUBLIC_RECUPERO_POR_EMAIL</code>.
+            Sin lo primero, prender lo segundo deja a la gente esperando un correo que nunca llega.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Cómo conviene manejarlo en la práctica">
+          <p>
+            <strong>Una contraseña distinta por persona</strong>, aunque sea sencilla — se va a usar una
+            sola vez.
+          </p>
+          <p>
+            <strong>Activá el acceso con la persona presente</strong>, o justo antes de la reunión de
+            onboarding. Que entre y elija la suya en el momento; así no queda una clave temporal dando
+            vueltas por semanas.
+          </p>
+          <p>
+            <strong>Mandala por un canal directo</strong> y no en un grupo. Con que la persona la cambie en
+            el primer ingreso, deja de servirle a nadie.
+          </p>
+        </Tarjeta>
       </Seccion>
 
       <Seccion titulo="Los cuatro roles">
@@ -101,9 +159,12 @@ export default function GuiaPage() {
 
         <Tarjeta titulo="“No puedo entrar con mi clave”">
           <p>
-            Si nunca entró, fijate que el usuario no figure <strong>Sin acceso</strong>. Si ya había
-            entrado, usá <strong>Restablecer contraseña</strong>: genera una nueva temporal y vuelve a
-            pedirle que elija la suya.
+            Si <strong>nunca entró</strong>, fijate que el usuario no figure “Sin acceso”: sin activarlo no
+            existe la cuenta todavía.
+          </p>
+          <p>
+            Si <strong>ya había entrado</strong>, usá <strong>Restablecer contraseña</strong>: escribís una
+            nueva temporal y el sistema vuelve a exigirle que elija la suya al ingresar.
           </p>
         </Tarjeta>
 
