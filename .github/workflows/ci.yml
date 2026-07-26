@@ -39,3 +39,63 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  e2e:
+    name: End to end
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @vacker/api exec prisma generate
+
+      # Valores de mentira a propósito: estos tests NO se loguean ni tocan la
+      # base, solo verifican lo que se sirve sin sesión. Así el CI no necesita
+      # ningún secreto y, sobre todo, no puede tocar los datos de producción —
+      # que hoy viven en un plan sin backups automáticos.
+      - name: Variables de entorno de prueba
+        run: |
+          cat > .env <<'EOF'
+          DATABASE_URL=postgresql://u:p@localhost:5432/x
+          DIRECT_URL=postgresql://u:p@localhost:5432/x
+          SUPABASE_URL=https://ejemplo.supabase.co
+          SUPABASE_ANON_KEY=clave-de-mentira
+          SUPABASE_SERVICE_ROLE_KEY=clave-de-mentira
+          API_PORT=3001
+          NEXT_PUBLIC_API_URL=http://localhost:3001
+          NEXT_PUBLIC_SUPABASE_URL=https://ejemplo.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=clave-de-mentira
+          WEB_APP_URL=http://localhost:3210
+          EOF
+
+      - name: Build web
+        run: pnpm --filter @vacker/web build
+
+      # WebKit además de Chromium: el "baile" era un comportamiento propio de
+      # Safari, así que probarlo solo en Chrome no habría servido de nada.
+      - name: Instalar navegadores
+        run: pnpm --filter @vacker/web exec playwright install --with-deps chromium webkit
+
+      - name: End to end
+        run: pnpm --filter @vacker/web test:e2e
+
+      - name: Guardar el reporte si algo falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
