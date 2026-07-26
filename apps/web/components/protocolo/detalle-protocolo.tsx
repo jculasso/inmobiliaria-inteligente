@@ -238,7 +238,7 @@ export function DetalleProtocolo({
       </section>
 
       {/* Semanas */}
-      <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1">
+      <div className="flex gap-1.5 pb-1 sm:gap-2">
         {SEMANAS.map((n) => {
           const acciones = p.acciones.filter((a) => a.semana === n && a.estado !== 'no_corresponde');
           const hechas = acciones.filter((a) => a.estado === 'realizada').length;
@@ -248,7 +248,7 @@ export function DetalleProtocolo({
               key={n}
               type="button"
               onClick={() => setSemana(n)}
-              className={`shrink-0 rounded-brand border px-3.5 py-2 text-sm font-bold transition-colors ${
+              className={`min-w-0 flex-1 truncate rounded-brand border px-1 py-2 text-center text-[11px] font-bold transition-colors sm:flex-none sm:px-3.5 sm:text-sm ${
                 semana === n
                   ? 'border-ink bg-ink text-white'
                   : completa
@@ -256,7 +256,10 @@ export function DetalleProtocolo({
                     : 'border-line text-muted hover:bg-surface'
               }`}
             >
-              Semana {n} · {acciones.length === 0 ? '—' : `${Math.round((hechas / acciones.length) * 100)}%`}
+              {/* En el celular cinco solapas no entran con la palabra completa. */}
+              <span className="sm:hidden">S{n}</span>
+              <span className="hidden sm:inline">Semana {n}</span>{' '}
+              · {acciones.length === 0 ? '—' : `${Math.round((hechas / acciones.length) * 100)}%`}
             </button>
           );
         })}

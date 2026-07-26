@@ -44,11 +44,47 @@ export function TrimestreChart({
 
   const linePoints = datos.map((d, i) => `${xFor(i) + barWidth / 2},${yCom(d.comision)}`).join(' ');
 
+  // El scroller queda solo para pantalla ancha: si el gráfico no entra en una
+  // tablet angosta, se desliza ahí y no en el celular.
   return (
-    <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white p-4">
+    <div className="rounded-brand border border-line bg-white p-4 sm:overflow-x-auto sm:overscroll-x-contain">
+      {/* En el celular el gráfico no entra: a 360px se salía 226px y había que
+          deslizarlo de costado. Las mismas cuatro barras, acostadas, entran
+          enteras y se leen sin mover nada. */}
+      <ul aria-label="Volumen y comisión por trimestre" className="flex flex-col gap-2 sm:hidden">
+        {datos.map((d, i) => {
+          const activo = seleccionado === i + 1;
+          return (
+            <li key={i}>
+              <button
+                type="button"
+                onClick={() => onSelect(i + 1)}
+                className={`w-full rounded-lg border px-2.5 py-2 text-left ${
+                  activo ? 'border-brand-red/40 bg-brand-red/5' : 'border-line bg-white'
+                }`}
+              >
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className={`text-xs font-extrabold ${activo ? 'text-brand-red' : 'text-ink'}`}>
+                    {`Q${i + 1}`}
+                  </span>
+                  <span className="text-xs font-bold text-ink">{`$${fmtK(d.volumen)}`}</span>
+                </span>
+                <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface">
+                  <span
+                    className="block h-full rounded-full bg-brand-red"
+                    style={{ width: `${(d.volumen / volMax) * 100}%` }}
+                  />
+                </span>
+                <span className="mt-1 block text-[11px] text-success">{`Comisión $${fmtK(d.comision)}`}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
       <svg
         viewBox={`0 0 ${width} ${height + 26}`}
-        className="w-full min-w-[520px]"
+        className="hidden w-full min-w-[520px] sm:block"
         role="img"
         aria-label="Volumen y comisión por trimestre"
       >
