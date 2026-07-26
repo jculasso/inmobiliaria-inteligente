@@ -129,22 +129,22 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
         <table className="w-full text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-2">Código</th>
-              <th className="px-4 py-2">Firma</th>
-              <th className="px-4 py-2">Dirección</th>
+              <th className="px-3 py-2">Código</th>
+              <th className="px-3 py-2">Firma</th>
+              <th className="px-3 py-2">Dirección</th>
               {tipo === 'venta' ? (
                 <>
-                  <th className="px-4 py-2">Precio</th>
-                  <th className="px-4 py-2">Ptas</th>
-                  <th className="px-4 py-2">Vendedora</th>
-                  <th className="px-4 py-2">Compradora</th>
+                  <th className="px-3 py-2">Precio</th>
+                  <th className="px-3 py-2">Ptas</th>
+                  <th className="px-3 py-2">Vendedora</th>
+                  <th className="px-3 py-2">Compradora</th>
                 </>
               ) : (
-                <th className="px-4 py-2">Valor/mes</th>
+                <th className="px-3 py-2">Valor/mes</th>
               )}
-              <th className="px-4 py-2">Comisión</th>
-              <th className="px-4 py-2">Estado</th>
-              <th className="px-3 py-2" />
+              <th className="px-3 py-2">Comisión</th>
+              <th className="px-3 py-2">Estado</th>
+              <th className="sticky right-0 bg-white px-3 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -160,30 +160,30 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                 const comp = op.puntas.find((p) => p.lado === 'compradora');
                 return (
                   <tr key={op.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2 text-muted">{op.codigo}</td>
-                    <td className="px-4 py-2">{op.fechaFirma ?? '—'}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-2 text-muted">{op.codigo}</td>
+                    <td className="px-3 py-2">{op.fechaFirma ?? '—'}</td>
+                    <td className="px-3 py-2">
                       <span className="block max-w-[150px] truncate" title={op.direccion}>
                         {op.direccion}
                       </span>
                     </td>
                     {tipo === 'venta' ? (
                       <>
-                        <td className="px-4 py-2">{fmtUSD(op.precio)}</td>
-                        <td className="px-4 py-2">{op.cantPuntas}</td>
-                        <td className="px-4 py-2">{vend?.nombre ?? '—'}</td>
-                        <td className="px-4 py-2">{comp?.nombre ?? '—'}</td>
+                        <td className="px-3 py-2">{fmtUSD(op.precio)}</td>
+                        <td className="px-3 py-2">{op.cantPuntas}</td>
+                        <td className="px-3 py-2">{vend?.nombre ?? '—'}</td>
+                        <td className="px-3 py-2">{comp?.nombre ?? '—'}</td>
                       </>
                     ) : (
-                      <td className="px-4 py-2">{fmtUSD(op.valorMensual)}</td>
+                      <td className="px-3 py-2">{fmtUSD(op.valorMensual)}</td>
                     )}
-                    <td className="px-4 py-2">{fmtUSD(op.comTotal)}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-2">{fmtUSD(op.comTotal)}</td>
+                    <td className="px-3 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(op.estado)}`}>
                         {estadoLabel(op.estado)}
                       </span>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="sticky right-0 border-l border-line bg-white px-3 py-2">
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
