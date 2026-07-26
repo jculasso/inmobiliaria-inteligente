@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TodoEventoDto, TodoEventosDto, TodoVista } from '@vacker/types';
 
 /** Callback para abrir el detalle de un evento dentro de la app. */
@@ -43,9 +43,22 @@ export function CalendarioTodo({ vista, fecha, data }: { vista: TodoVista; fecha
 
 function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: TodoEventoDto[]; onSelect: OnSelect }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Dibujar las 24 horas obliga a scrollear un montón para llegar a cualquier
+  // lado, y de madrugada nunca hay nada. Se muestra la franja útil (6 a 22) y
+  // se estira solo si ese día hay algo fuera de ella: así se acorta el scroll
+  // sin esconder jamás un evento.
+  const { desde, hasta } = useMemo(() => rangoHorario(eventos), [eventos]);
+  const horas = useMemo(
+    () => Array.from({ length: hasta - desde + 1 }, (_, i) => desde + i),
+    [desde, hasta],
+  );
+
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = SCROLL_TO_HOUR * HOUR_H;
-  }, []);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = Math.max(0, (SCROLL_TO_HOUR - desde) * HOUR_H);
+    }
+  }, [desde]);
 
   const hoy = hoyArg();
   const soloDia = dias.length === 1;
@@ -88,11 +101,11 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
         )}
 
         {/* Grilla horaria scrolleable */}
-        <div ref={scrollRef} className="max-h-[62vh] overflow-y-auto">
+        <div ref={scrollRef} className="max-h-[62vh] overflow-y-auto overflow-x-hidden">
           <div className="flex">
             {/* Eje de horas */}
             <div className="w-14 shrink-0">
-              {HORAS.map((h) => (
+              {horas.map((h) => (
                 <div key={h} className="relative border-b border-line" style={{ height: HOUR_H }}>
                   <span className="absolute -top-2 right-2 text-[10px] text-muted">{h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}</span>
                 </div>
@@ -101,11 +114,11 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
             {/* Columnas de días */}
             {dias.map((d) => (
               <div key={d} className="relative flex-1 border-l border-line">
-                {HORAS.map((h) => (
+                {horas.map((h) => (
                   <div key={h} className="border-b border-line" style={{ height: HOUR_H }} />
                 ))}
                 {empaquetar(eventos.filter((e) => !e.todoElDia && diaKeyArg(e.inicio) === d)).map((c) => (
-                  <BloqueEvento key={c.ev.id} c={c} onSelect={onSelect} />
+                  <BloqueEvento key={c.ev.id} c={c} desde={desde} onSelect={onSelect} />
                 ))}
               </div>
             ))}
@@ -116,7 +129,7 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
   );
 }
 
-function BloqueEvento({ c, onSelect }: { c: Colocado; onSelect: OnSelect }) {
+function BloqueEvento({ c, desde, onSelect }: { c: Colocado; desde: number; onSelect: OnSelect }) {
   const alto = Math.max(((c.finMin - c.inicioMin) / 60) * HOUR_H - 2, 16);
   return (
     <button
@@ -124,7 +137,7 @@ function BloqueEvento({ c, onSelect }: { c: Colocado; onSelect: OnSelect }) {
       onClick={() => onSelect(c.ev)}
       className="absolute block overflow-hidden rounded-md bg-brand-red px-1.5 py-0.5 text-left text-white shadow-sm transition-opacity hover:opacity-90"
       style={{
-        top: (c.inicioMin / 60) * HOUR_H,
+        top: ((c.inicioMin - desde * 60) / 60) * HOUR_H,
         height: alto,
         left: `calc(${(c.lane / c.lanes) * 100}% + 2px)`,
         width: `calc(${100 / c.lanes}% - 4px)`,
@@ -361,7 +374,30 @@ function empaquetar(eventos: TodoEventoDto[]): Colocado[] {
 // Helpers de fecha/hora (Argentina, offset fijo -03:00).
 // ---------------------------------------------------------------------------
 
-const HORAS = Array.from({ length: 24 }, (_, i) => i);
+/** Franja horaria que se dibuja por defecto: el resto del día casi nunca tiene nada. */
+const HORA_DESDE = 6;
+const HORA_HASTA = 22;
+
+/**
+ * Rango de horas a dibujar. Arranca en la franja útil y se estira solo lo
+ * necesario para que ningún evento quede fuera de la grilla — un evento a las
+ * 5 de la mañana tiene que verse igual, aunque sea raro.
+ */
+function rangoHorario(eventos: TodoEventoDto[]): { desde: number; hasta: number } {
+  let desde = HORA_DESDE;
+  let hasta = HORA_HASTA;
+
+  for (const ev of eventos) {
+    if (ev.todoElDia) continue;
+    const inicio = Math.floor(minutosDelDia(ev.inicio) / 60);
+    // El fin se redondea hacia arriba: si termina 22:30, la hora 22 tiene que estar.
+    const fin = Math.ceil(minutosDelDia(ev.fin) / 60);
+    if (Number.isFinite(inicio)) desde = Math.min(desde, inicio);
+    if (Number.isFinite(fin)) hasta = Math.max(hasta, Math.min(23, fin));
+  }
+
+  return { desde: Math.max(0, desde), hasta: Math.max(desde, hasta) };
+}
 const DIAS_SEMANA = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
 function hoyArg(): string {

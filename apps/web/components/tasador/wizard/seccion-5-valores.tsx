@@ -114,9 +114,30 @@ export function Seccion5Valores({
 
       {/* Vista previa del rango */}
       {(min || rec || asp) > 0 && (
-        <div className="rounded-brand bg-surface p-5">
+        <div className="rounded-brand bg-surface p-4 sm:p-5">
           <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider text-muted">Vista previa del rango</p>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+
+          {/* En el celular los tres valores no entran en una fila: sumaban casi
+              600px de ancho mínimo y el panel terminaba arrastrándose de
+              costado. Apilados se leen mejor y el recomendado sigue mandando. */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            <div className="rounded-lg bg-white px-3 py-2.5 text-center">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-brand-red">Recomendado</div>
+              <div className="text-2xl font-extrabold text-brand-red">{fmtUSD(rec)}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <div className="text-[11px] text-muted">Mínimo</div>
+                <div className="truncate text-base font-bold text-ink">{fmtUSD(min)}</div>
+              </div>
+              <div className="min-w-0 text-right">
+                <div className="text-[11px] text-muted">Aspiracional</div>
+                <div className="truncate text-base font-bold text-ink">{fmtUSD(asp)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden flex-wrap items-center justify-between gap-4 sm:flex">
             <div>
               <div className="text-[11px] text-muted">Mínimo</div>
               <div className="text-lg font-bold text-ink">{fmtUSD(min)}</div>

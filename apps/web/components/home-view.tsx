@@ -105,11 +105,14 @@ export function HomeView({ sesion }: HomeViewProps) {
         )}
       </header>
 
-      <p className="mt-3 max-w-2xl text-sm text-muted">
-        {sesion
-          ? `Centro de operaciones de ${nombreMarca}. Cada usuario ve los módulos habilitados según su rol.`
-          : 'Iniciá sesión para desbloquear los módulos de tu inmobiliaria.'}
-      </p>
+      {/* Con sesión no va ningún texto: quien ya entró ve sus módulos abajo y
+          no necesita que le expliquen dónde está. La bajada queda solo para
+          quien todavía no se logueó. */}
+      {!sesion && (
+        <p className="mt-3 max-w-2xl text-sm text-muted">
+          Iniciá sesión para desbloquear los módulos de tu inmobiliaria.
+        </p>
+      )}
 
       {/* Solo con sesión: a un invitado no le sirve instalar algo a lo que no
           puede entrar. Se posiciona solo (banner fijo), sin ocupar lugar. */}

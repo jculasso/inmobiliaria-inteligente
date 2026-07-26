@@ -62,7 +62,7 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
       )}
 
       {operaciones && !loading && (
-        <div className="max-h-[65vh] overflow-y-auto rounded-brand border border-line sm:hidden">
+        <div className="max-h-[65vh] overflow-y-auto overflow-x-hidden rounded-brand border border-line sm:hidden">
           {operaciones.length === 0 ? (
             <p className="px-3 py-6 text-center text-muted">Sin operaciones para mostrar.</p>
           ) : (

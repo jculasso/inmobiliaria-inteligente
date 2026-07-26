@@ -44,7 +44,7 @@ export function Modal({
             ×
           </button>
         </div>
-        <div className="overflow-y-auto p-6">{children}</div>
+        <div className="overflow-y-auto overflow-x-hidden p-6">{children}</div>
       </div>
     </div>
   );
