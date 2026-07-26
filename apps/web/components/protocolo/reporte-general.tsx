@@ -80,13 +80,13 @@ export function ReporteGeneral({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 overflow-x-auto overscroll-x-contain">
+      <div className="flex gap-2">
         {solapas.map((s) => (
           <button
             key={s.key}
             type="button"
             onClick={() => setGrupo(s.key)}
-            className={`shrink-0 rounded-brand border px-3.5 py-2 text-sm font-bold transition-colors ${
+            className={`min-w-0 flex-1 truncate rounded-brand border px-2 py-2 text-center text-xs font-bold transition-colors sm:flex-none sm:px-3.5 sm:text-sm ${
               grupo === s.key
                 ? 'border-ink bg-ink text-white'
                 : 'border-line text-muted hover:bg-surface'
