@@ -59,7 +59,7 @@ export function VendedoresTable({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-brand border border-line bg-white">
+      <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">

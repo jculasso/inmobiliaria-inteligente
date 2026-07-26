@@ -7,6 +7,7 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteOperacion } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmDeleteButton } from './confirm-delete-button';
 import { OperacionFormModal } from './operacion-form-modal';
 
@@ -77,7 +78,66 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-brand border border-line bg-white">
+      <div className="rounded-brand border border-line bg-white sm:hidden">
+        {filtradas.length === 0 ? (
+          <p className="px-4 py-6 text-center text-muted">Sin operaciones para mostrar.</p>
+        ) : (
+          <ListaTarjetas etiqueta="Operaciones">
+            {filtradas.map((op) => {
+              const vend = op.puntas.find((p) => p.lado === 'vendedora');
+              const comp = op.puntas.find((p) => p.lado === 'compradora');
+              return (
+                <Tarjeta key={op.id}>
+                  <div className="flex items-start gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-ink">{op.direccion}</span>
+                      <span className="mt-0.5 block text-[11px] text-muted">
+                        {op.codigo} · Firma {op.fechaFirma ?? '—'}
+                      </span>
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${estadoClass(op.estado)}`}
+                    >
+                      {ESTADO_LABEL[op.estado] ?? op.estado}
+                    </span>
+                  </div>
+
+                  <CamposTarjeta>
+                    <CampoTarjeta etiqueta={tipo === 'venta' ? 'Precio' : 'Valor/mes'}>
+                      {fmtUSD(tipo === 'venta' ? op.precio : op.valorMensual)}
+                    </CampoTarjeta>
+                    <CampoTarjeta etiqueta="Comisión">{fmtUSD(op.comTotal)}</CampoTarjeta>
+                    {tipo === 'venta' && (
+                      <>
+                        <CampoTarjeta etiqueta="Vendedora">{vend?.nombre ?? '—'}</CampoTarjeta>
+                        <CampoTarjeta etiqueta="Compradora">{comp?.nombre ?? '—'}</CampoTarjeta>
+                      </>
+                    )}
+                  </CamposTarjeta>
+
+                  <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setModal(op)}
+                      className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                    >
+                      ✏️ Editar
+                    </button>
+                    {puedeBorrar && (
+                      <ConfirmDeleteButton
+                        confirmMessage={`¿Borrar la operación ${op.codigo}?`}
+                        onConfirm={() => handleDelete(op.id)}
+                      />
+                    )}
+                  </div>
+                </Tarjeta>
+              );
+            })}
+          </ListaTarjetas>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
         <table className="w-full text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { OperacionDto } from '@vacker/types';
 import { OperacionesTable } from './operaciones-table';
@@ -54,18 +54,33 @@ const OPERACIONES: OperacionDto[] = [
   },
 ];
 
+// El componente dibuja las mismas operaciones dos veces: tabla en pantalla
+// ancha y tarjetas en el celular (cuál se ve lo decide el CSS, que jsdom no
+// aplica). Los tests dicen explícitamente qué vista miran.
+const enLaTabla = () => within(screen.getByRole('table'));
+const enLasTarjetas = () => within(screen.getByRole('list', { name: 'Operaciones' }));
+
 describe('OperacionesTable', () => {
   it('muestra las operaciones y el contador', () => {
     render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
-    expect(screen.getByText('Av. Siempre Viva 742')).toBeInTheDocument();
-    expect(screen.getByText('Calle Falsa 123')).toBeInTheDocument();
+    expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
+    expect(enLaTabla().getByText('Calle Falsa 123')).toBeInTheDocument();
     expect(screen.getByText('2 de 2 operaciones')).toBeInTheDocument();
+  });
+
+  it('en el celular cada operación es una tarjeta, sin tabla que deslizar', () => {
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+    expect(enLasTarjetas().getAllByRole('listitem')).toHaveLength(2);
+    expect(enLasTarjetas().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
+    // El precio y la comisión se ven de una: antes había que deslizar a ciegas.
+    expect(enLasTarjetas().getByText('$100.000')).toBeInTheDocument();
+    expect(enLasTarjetas().getByText('$3.000')).toBeInTheDocument();
   });
 
   it('filtra por texto de búsqueda', async () => {
     render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
     await userEvent.type(screen.getByPlaceholderText(/Buscar/), 'Ana');
-    expect(screen.getByText('Av. Siempre Viva 742')).toBeInTheDocument();
+    expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(screen.queryByText('Calle Falsa 123')).not.toBeInTheDocument();
   });
 

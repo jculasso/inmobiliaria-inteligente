@@ -52,7 +52,7 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
   const hayAllDay = dias.some((d) => eventos.some((e) => cubreDia(e, d) && e.todoElDia));
 
   return (
-    <div className="overflow-x-auto rounded-brand border border-line bg-white">
+    <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
       <div className={soloDia ? '' : 'min-w-[640px]'}>
         {/* Encabezado de días */}
         <div className="flex border-b border-line">

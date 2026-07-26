@@ -198,7 +198,7 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
           </div>
 
           <Card className="p-0">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overscroll-x-contain">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">

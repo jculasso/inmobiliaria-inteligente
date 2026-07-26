@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { RankingItem } from '@vacker/types';
 import { Avatar } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, TablaAncha, Tarjeta } from '../tabla-movil';
 import { DetalleDrillModal } from './detalle-drill-modal';
 
 const MEDALLAS = ['🥇', '🥈', '🥉'];
@@ -29,8 +30,45 @@ export function VendedorTotalesTable({ items, anio }: { items: RankingItem[]; an
   const ticketTotal = totales.puntas > 0 ? totales.volumen / totales.puntas : 0;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <>
+      <ListaTarjetas etiqueta="Totales por vendedor">
+        {ordenado.map((item, i) => (
+          <Tarjeta
+            key={item.usuarioId}
+            destacada={i === 0}
+            onClick={() => setDrill(item)}
+            titulo={`Ver operaciones de ${item.nombre}`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-6 shrink-0 text-center text-sm font-extrabold text-muted">
+                {MEDALLAS[i] ?? i + 1}
+              </span>
+              <Avatar nombre={item.nombre} fotoUrl={item.fotoUrl} size="sm" />
+              <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{item.nombre}</span>
+              <span className="shrink-0 text-xs font-bold text-muted">{Math.round(item.peso * 100)}%</span>
+            </div>
+            <CamposTarjeta>
+              <CampoTarjeta etiqueta="Volumen">{fmtUSD(item.volumen)}</CampoTarjeta>
+              <CampoTarjeta etiqueta="Puntas">{fmtNum(item.puntas)}</CampoTarjeta>
+              <CampoTarjeta etiqueta="Comisión">{fmtUSD(item.comision)}</CampoTarjeta>
+              <CampoTarjeta etiqueta="Ticket prom.">{fmtUSD(item.ticketPromedio)}</CampoTarjeta>
+            </CamposTarjeta>
+          </Tarjeta>
+        ))}
+
+        <li className="mt-1 rounded-xl border-2 border-line bg-surface px-3 py-2.5">
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">Total general</span>
+          <CamposTarjeta>
+            <CampoTarjeta etiqueta="Volumen">{fmtUSD(totales.volumen)}</CampoTarjeta>
+            <CampoTarjeta etiqueta="Puntas">{fmtNum(totales.puntas)}</CampoTarjeta>
+            <CampoTarjeta etiqueta="Comisión">{fmtUSD(totales.comision)}</CampoTarjeta>
+            <CampoTarjeta etiqueta="Ticket prom.">{fmtUSD(ticketTotal)}</CampoTarjeta>
+          </CamposTarjeta>
+        </li>
+      </ListaTarjetas>
+
+      <TablaAncha>
+        <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-muted">
             <th className="px-5 py-2">#</th>
@@ -87,6 +125,7 @@ export function VendedorTotalesTable({ items, anio }: { items: RankingItem[]; an
           </tr>
         </tfoot>
       </table>
+      </TablaAncha>
 
       {drill && (
         <DetalleDrillModal
@@ -96,6 +135,6 @@ export function VendedorTotalesTable({ items, anio }: { items: RankingItem[]; an
           onClose={() => setDrill(null)}
         />
       )}
-    </div>
+    </>
   );
 }

@@ -23,7 +23,7 @@ export function TableroNav({ roles }: { roles: Rol[] }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 overflow-x-auto border-b border-line">
+    <nav className="flex gap-1 overflow-x-auto overscroll-x-contain border-b border-line">
       {TABS.filter((tab) => !tab.requiere || tab.requiere(roles)).map((tab) => {
         const activo = pathname === tab.href;
         return (

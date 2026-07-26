@@ -34,7 +34,7 @@ export function WizardSidebar({ activa, onCambiar, error }: Props) {
       </div>
 
       {/* En mobile/tablet es un stepper horizontal con scroll; desde lg: pasa a lista vertical (no entra el sidebar fijo en una pantalla angosta). */}
-      <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+      <nav className="-mx-1 flex gap-1 overflow-x-auto overscroll-x-contain px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
         {SECCIONES.map((s) => (
           <button
             key={s.id}

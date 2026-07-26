@@ -18,4 +18,12 @@ body {
   background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* Red de seguridad: la PÁGINA nunca se desplaza de costado. Si mañana un
+     elemento se pasa de ancho, se recorta en vez de dejar que toda la app se
+     arrastre bajo el dedo. Se usa `clip` y no `hidden` a propósito: `hidden`
+     convierte al body en contenedor de scroll y rompe los encabezados
+     `sticky`. Los paneles que sí deben deslizarse (tablas anchas en desktop,
+     calendario, gráficos) lo hacen dentro suyo, con `overscroll-x-contain`
+     para no propagar el gesto. */
+  overflow-x: clip;
 }
