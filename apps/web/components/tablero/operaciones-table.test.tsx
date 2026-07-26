@@ -11,8 +11,9 @@ vi.mock('next/navigation', () => ({
 vi.mock('../../lib/supabase/client', () => ({
   getAccessToken: vi.fn().mockResolvedValue('token'),
 }));
+const deleteOperacion = vi.fn().mockResolvedValue({ id: '1' });
 vi.mock('../../lib/tablero-api', () => ({
-  deleteOperacion: vi.fn().mockResolvedValue({ id: '1' }),
+  deleteOperacion: (...args: unknown[]) => deleteOperacion(...args),
 }));
 
 const OPERACIONES: OperacionDto[] = [
@@ -86,6 +87,33 @@ describe('OperacionesTable', () => {
 
   it('oculta el botón de borrar cuando puedeBorrar es false', () => {
     render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={false} />);
-    expect(screen.queryByLabelText('Borrar')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Borrar/ })).not.toBeInTheDocument();
+  });
+
+  it('antes de borrar muestra qué operación es, para no equivocarse', async () => {
+    // El implementador va a depurar ventas reales y el borrado es definitivo:
+    // tiene que poder confirmar que está mirando la operación correcta.
+    const user = userEvent.setup();
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+
+    await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
+
+    const dialogo = screen.getByRole('dialog');
+    expect(within(dialogo).getByText('Borrar venta')).toBeInTheDocument();
+    expect(within(dialogo).getByText('OP-1001')).toBeInTheDocument();
+    expect(within(dialogo).getByText('Av. Siempre Viva 742')).toBeInTheDocument();
+    expect(within(dialogo).getByText('$100.000')).toBeInTheDocument();
+    expect(within(dialogo).getByText('Ana')).toBeInTheDocument();
+  });
+
+  it('borra recién cuando se confirma en el modal', async () => {
+    const user = userEvent.setup();
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+
+    await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
+    expect(deleteOperacion).not.toHaveBeenCalled();
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Sí, borrar' }));
+    expect(deleteOperacion).toHaveBeenCalledWith('token', '1');
   });
 });
