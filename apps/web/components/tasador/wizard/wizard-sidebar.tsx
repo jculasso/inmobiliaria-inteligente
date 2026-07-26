@@ -33,14 +33,19 @@ export function WizardSidebar({ activa, onCambiar, error }: Props) {
         </div>
       </div>
 
-      {/* En mobile/tablet es un stepper horizontal con scroll; desde lg: pasa a lista vertical (no entra el sidebar fijo en una pantalla angosta). */}
-      <nav className="-mx-1 flex gap-1 overflow-x-auto overscroll-x-contain px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+      {/* Desde lg: es una lista vertical con los nombres. En pantalla angosta
+          los seis nombres no entran de ninguna manera (antes se deslizaba de
+          costado, y eso arrastraba todo el formulario), así que quedan solo
+          los números y el nombre del paso actual va debajo. */}
+      <nav className="flex gap-1 lg:flex-col">
         {SECCIONES.map((s) => (
           <button
             key={s.id}
             type="button"
             onClick={() => onCambiar(s.id)}
-            className={`flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-brand px-3 py-2.5 text-left text-sm transition-colors ${
+            aria-label={s.nombre}
+            aria-current={activa === s.id ? 'step' : undefined}
+            className={`flex flex-1 items-center justify-center gap-2.5 rounded-brand px-1 py-2.5 text-sm transition-colors lg:flex-none lg:justify-start lg:px-3 lg:text-left ${
               activa === s.id ? 'bg-brand-red/10 font-semibold text-brand-red' : 'text-ink hover:bg-surface'
             }`}
           >
@@ -51,10 +56,14 @@ export function WizardSidebar({ activa, onCambiar, error }: Props) {
             >
               {s.id}
             </span>
-            {s.nombre}
+            <span className="hidden whitespace-nowrap lg:inline">{s.nombre}</span>
           </button>
         ))}
       </nav>
+
+      <p className="-mt-2 text-sm font-bold text-ink lg:hidden">
+        {SECCIONES.find((s) => s.id === activa)?.nombre}
+      </p>
 
       {error && (
         <div role="alert" className="rounded-brand border border-brand-red/30 bg-brand-red/5 p-3 text-xs text-brand-red">
