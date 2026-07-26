@@ -76,16 +76,39 @@ function protocolo(over: Partial<ProtocoloDto> = {}): ProtocoloDto {
 }
 
 describe('InformeProtocoloDocument', () => {
-  it('genera un PDF con al menos las 4 secciones', async () => {
+  /** Cuenta páginas del PDF, para verificar dónde caen los cortes. */
+  function paginas(buffer: Buffer): number {
+    return buffer.toString('latin1').match(/\/Type\s*\/Page[^s]/g)?.length ?? 0;
+  }
+
+  it('cada sección grande arranca en su propia página', async () => {
     const buffer = await renderToBuffer(
       <InformeProtocoloDocument protocolo={protocolo()} tenantNombre="Vacker" />,
     );
-    expect(buffer.length).toBeGreaterThan(1000);
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
-    // Portada, resumen, trabajo realizado y conclusiones. "Trabajo realizado"
-    // puede desbordar a una página extra si hay muchas acciones: por eso ≥ 4.
-    const paginas = buffer.toString('latin1').match(/\/Type\s*\/Page[^s]/g)?.length ?? 0;
-    expect(paginas).toBeGreaterThanOrEqual(4);
+    // Resumen + acciones realizadas + conclusiones = 3 como piso; las acciones
+    // pueden ocupar más de una página cuando el protocolo está avanzado.
+    expect(paginas(buffer)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('una ficha recién iniciada entra en pocas páginas, sin hojas casi vacías', async () => {
+    // Sin acciones hechas ni análisis, el informe no debería inflarse: los
+    // saltos de página están puestos entre secciones, no porque sí.
+    const recien = protocolo({
+      avance: 0,
+      semanaActual: 1,
+      devolucionesMercado: null,
+      objeciones: null,
+      recomendacion: null,
+      decisionPropietario: null,
+      proximasAcciones: null,
+      acciones: [],
+    });
+
+    const buffer = await renderToBuffer(
+      <InformeProtocoloDocument protocolo={recien} tenantNombre="Vacker" />,
+    );
+    expect(paginas(buffer)).toBe(3);
   });
 
   it('no falla con una ficha recién iniciada (sin métricas ni análisis)', async () => {
