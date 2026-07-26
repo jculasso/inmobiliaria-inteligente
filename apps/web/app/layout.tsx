@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ServiceWorker } from '../components/pwa/service-worker';
+import { DebugDesborde } from '../components/debug-desborde';
 import { Montserrat } from 'next/font/google';
 import './globals.css';
 
@@ -55,6 +56,10 @@ export default function RootLayout({
       <body>
         {children}
         <ServiceWorker />
+        {/* Apagado salvo que se entre con `?debug=1`. Sirve para encontrar qué
+            elemento causa el arrastre lateral en un teléfono real, que es lo
+            único que no se puede medir desde afuera. */}
+        <DebugDesborde />
       </body>
     </html>
   );
