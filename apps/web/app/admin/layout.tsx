@@ -6,6 +6,7 @@ import { getMe, MeError } from '../../lib/api';
 import { createClient } from '../../lib/supabase/server';
 import { LogoutButton } from '../../components/logout-button';
 import { AdminLogin } from '../../components/admin/admin-login';
+import { AdminNav } from '../../components/admin/admin-nav';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -72,6 +73,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <span className="text-sm text-muted">{principal.email}</span>
           <LogoutButton redirectTo="/admin" />
         </div>
+      </div>
+
+      <div className="mt-6">
+        <AdminNav />
       </div>
 
       <div className="mt-6">{children}</div>
