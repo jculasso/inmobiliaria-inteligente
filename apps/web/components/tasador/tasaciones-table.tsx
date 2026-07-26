@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { TasacionResumenDto } from '@vacker/types';
+import { recortarAlLimite, type TasacionResumenDto } from '@vacker/types';
 import { Button, Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
+import { AvisoListaRecortada } from '../aviso-lista-recortada';
 import { TasacionFila } from './tasacion-fila';
 
 interface Props {
@@ -27,17 +28,19 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
   // Next.js que vuelva a correr el listado solo para reflejar un campo.
   const [rows, setRows] = useState(tasaciones);
   useEffect(() => setRows(tasaciones), [tasaciones]);
+  // La API pide una fila de más que el tope: si vino, quedó algo afuera.
+  const { visibles, hayMas } = recortarAlLimite(rows);
 
   const filtradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
+    if (!q) return visibles;
+    return visibles.filter(
       (t) =>
         t.cliente.toLowerCase().includes(q) ||
         t.direccion.toLowerCase().includes(q) ||
         t.agente.nombre.toLowerCase().includes(q),
     );
-  }, [rows, busqueda]);
+  }, [visibles, busqueda]);
 
   async function handleDelete(id: string) {
     const accessToken = await getAccessToken();
@@ -73,6 +76,8 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
           </Button>
         </div>
       </div>
+
+      {hayMas && <AvisoListaRecortada que="tasaciones" />}
 
       {errorInforme && (
         <p role="alert" className="text-sm font-medium text-brand-red">

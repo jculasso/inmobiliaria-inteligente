@@ -11,6 +11,7 @@ import {
   type ProtocoloResumenDto,
   type UpdateAccion,
   type UpdateProtocolo,
+  LIMITE_LISTA_CON_SONDA,
 } from '@vacker/types';
 import { SupabaseStorageService } from '../../common/supabase-storage.service';
 import type { TenantContext } from '../../prisma/tenant-context';
@@ -34,7 +35,6 @@ import {
 const FOTOS_BUCKET = 'tasador-fotos';
 
 /** Techo defensivo de filas por listado, igual que en Tasador/Tablero. */
-const LIMITE_LISTA = 500;
 
 /** Solo las tasaciones captadas entran al protocolo. */
 const ESTADO_CAPTADA = 'Captada';
@@ -84,7 +84,7 @@ export class ProtocolosService {
           ...(scope.usuarioIds !== null ? { agenteId: { in: scope.usuarioIds } } : {}),
         },
         orderBy: { fecha: 'desc' },
-        take: LIMITE_LISTA,
+        take: LIMITE_LISTA_CON_SONDA,
         select: {
           id: true,
           codigo: true,
@@ -196,7 +196,7 @@ export class ProtocolosService {
       return tx.protocolo.findMany({
         where,
         orderBy: { fechaInicio: 'desc' },
-        take: LIMITE_LISTA,
+        take: LIMITE_LISTA_CON_SONDA,
         include: protocoloInclude,
       });
     }, ctx);
@@ -349,7 +349,7 @@ export class ProtocolosService {
       const [protocolos, captadasSinIniciar] = await Promise.all([
         tx.protocolo.findMany({
           where: porAgente,
-          take: LIMITE_LISTA,
+          take: LIMITE_LISTA_CON_SONDA,
           include: { acciones: { select: { semana: true, estado: true, fechaPrevista: true } } },
         }),
         tx.tasacion.count({

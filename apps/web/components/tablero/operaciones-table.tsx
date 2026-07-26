@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { OperacionDto, TipoOperacion, VendedorDto } from '@vacker/types';
+import { recortarAlLimite, type OperacionDto, type TipoOperacion, type VendedorDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteOperacion } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
 import { estadoClass, estadoLabel } from '../../lib/operacion-estado';
+import { AvisoListaRecortada } from '../aviso-lista-recortada';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { OperacionFormModal } from './operacion-form-modal';
@@ -19,8 +20,10 @@ interface Props {
   puedeBorrar: boolean;
 }
 
-export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }: Props) {
+export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, puedeBorrar }: Props) {
   const router = useRouter();
+  // La API pide una fila de más que el tope: si vino, es que quedó algo afuera.
+  const { visibles: operaciones, hayMas } = recortarAlLimite(recibidas);
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState<'create' | OperacionDto | null>(null);
   const [aBorrar, setABorrar] = useState<OperacionDto | null>(null);
@@ -46,6 +49,8 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
 
   return (
     <div className="flex flex-col gap-3">
+      {hayMas && <AvisoListaRecortada que={tipo === 'venta' ? 'ventas' : 'alquileres'} />}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input
           value={busqueda}
