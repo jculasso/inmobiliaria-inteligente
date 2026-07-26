@@ -18,6 +18,29 @@ html {
   overflow-x: clip;
 }
 
+/* LA CAUSA DEL "BAILE".
+ *
+ * iOS Safari agranda la pantalla solo cuando enfocás un campo con letra menor
+ * a 16px. Al agrandar, la ventana visible se achica y la página entera se
+ * puede arrastrar de costado — eso es lo que se sentía como que la app baila,
+ * y por eso pasaba en TODOS los módulos.
+ *
+ * Medido en un iPhone 14 Pro Max con el modo diagnóstico: layout de 430px
+ * contra 377px visibles. El factor, 430/377 = 1,14, es exactamente 16/14: el
+ * tamaño al que iOS quería llevar nuestros campos de `text-sm`.
+ *
+ * Con 16px iOS no agranda nada. Va con `!important` porque tiene que ganarle a
+ * las utilidades de Tailwind (`text-sm`), que son más específicas; y solo hasta
+ * 640px, para no tocar el diseño en pantallas grandes.
+ */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 body {
   background: var(--color-surface);
   color: var(--color-ink);
