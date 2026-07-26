@@ -33,3 +33,7 @@ pnpm-debug.log*
 
 # Claude Code — settings personales/locales (launch.json sí se comparte)
 .claude/settings.local.json
+
+# Playwright
+playwright-report/
+test-results/
