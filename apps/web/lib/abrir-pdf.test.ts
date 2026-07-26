@@ -13,16 +13,23 @@ beforeAll(() => {
  * era que se usaban los de la página que abría la pestaña, y el navegador
  * entonces no reconocía el click como gesto del usuario.
  */
-function pestanaFalsa({ puedeCompartir = true }: { puedeCompartir?: boolean } = {}) {
+function pestanaFalsa({
+  puedeCompartir = true,
+  sePuedeCerrar = true,
+}: { puedeCompartir?: boolean; sePuedeCerrar?: boolean } = {}) {
   const handlers = new Map<string, () => void>();
   const descargaDisparada = vi.fn();
   const share = vi.fn().mockResolvedValue(undefined);
+  const timers: Array<() => void> = [];
+
+  const registrar = (id: string) => ({
+    hidden: true,
+    addEventListener: (_e: string, fn: () => void) => handlers.set(id, fn),
+  });
 
   const elementos: Record<string, unknown> = {
-    compartir: {
-      hidden: true,
-      addEventListener: (_e: string, fn: () => void) => handlers.set('compartir', fn),
-    },
+    compartir: registrar('compartir'),
+    volver: registrar('volver'),
     descargar: { dispatchEvent: descargaDisparada },
   };
 
@@ -38,8 +45,13 @@ function pestanaFalsa({ puedeCompartir = true }: { puedeCompartir?: boolean } = 
       share,
     },
     File: globalThis.File,
-    close: vi.fn(),
-  } as unknown as Window;
+    location: { href: 'about:blank' },
+    closed: false,
+    close: vi.fn(() => {
+      if (sePuedeCerrar) (win as { closed: boolean }).closed = true;
+    }),
+    setTimeout: (fn: () => void) => timers.push(fn),
+  } as unknown as Window & { closed: boolean; location: { href: string } };
 
   return {
     win,
@@ -47,6 +59,11 @@ function pestanaFalsa({ puedeCompartir = true }: { puedeCompartir?: boolean } = 
     descargaDisparada,
     botonCompartir: elementos.compartir as { hidden: boolean },
     clickEnviar: () => handlers.get('compartir')?.(),
+    clickVolver: () => {
+      handlers.get('volver')?.();
+      // La pestaña cerrada se lleva sus timers puestos.
+      if (!win.closed) timers.forEach((fn) => fn());
+    },
     html: () => (win.document.write as unknown as { mock: { calls: string[][] } }).mock.calls.map((c) => c[0]).join(''),
   };
 }
@@ -121,6 +138,25 @@ describe('abrirPdfEnPestana', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(p.descargaDisparada).toHaveBeenCalled();
+  });
+
+  it('la pestaña siempre tiene salida: "Volver" la cierra', async () => {
+    // Regresión: instalada como app no hay barra del navegador, así que sin
+    // este botón el PDF era un callejón sin salida y había que cerrar la app.
+    const p = pestanaFalsa();
+    await abrirPdfEnPestana(pdf, { titulo: 'Generando', onError: vi.fn(), ventana: p.win });
+    p.clickVolver();
+
+    expect(p.win.close).toHaveBeenCalled();
+    expect(p.win.closed).toBe(true);
+  });
+
+  it('si el sistema no deja cerrar la pestaña, vuelve a la pantalla anterior', async () => {
+    const p = pestanaFalsa({ sePuedeCerrar: false });
+    await abrirPdfEnPestana(pdf, { titulo: 'Generando', onError: vi.fn(), ventana: p.win });
+    p.clickVolver();
+
+    expect(p.win.location.href).toBe(window.location.href);
   });
 
   it('avisa del error si el PDF no se pudo generar', async () => {
