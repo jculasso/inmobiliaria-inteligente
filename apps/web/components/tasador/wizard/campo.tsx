@@ -11,33 +11,9 @@ import type { ReactNode } from 'react';
  * que el contenido, los seis pasos se leían como una lista plana.
  */
 
-export const inputClass =
-  'h-10 w-full rounded-brand border border-line bg-white px-3 text-sm text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-brand-red focus:ring-2 focus:ring-brand-red/15 disabled:bg-surface disabled:text-muted';
-
-export function Campo({
-  label,
-  children,
-  requerido = false,
-  ayuda,
-}: {
-  label: string;
-  children: ReactNode;
-  /** Marca el campo como obligatorio con un asterisco rojo. */
-  requerido?: boolean;
-  /** Aclaración breve debajo del campo (unidades, de dónde sale el dato…). */
-  ayuda?: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">
-        {label}
-        {requerido && <span className="ml-0.5 text-brand-red">*</span>}
-      </span>
-      {children}
-      {ayuda && <span className="text-[11px] leading-snug text-muted">{ayuda}</span>}
-    </label>
-  );
-}
+// El campo es el mismo de toda la app; acá solo viven las piezas propias del
+// wizard (encabezado de paso y bloque).
+export { Campo, inputClass, textareaClass } from '../../form-ui';
 
 /**
  * Encabezado de paso: número en un círculo rojo + título, con la bajada debajo.

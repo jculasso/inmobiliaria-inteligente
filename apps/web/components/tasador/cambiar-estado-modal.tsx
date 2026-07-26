@@ -13,6 +13,7 @@ import {
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cambiarEstadoTasacion } from '../../lib/tasador-api';
+import { Campo, inputClass } from '../form-ui';
 
 const ESTADOS = EstadoTasacionSchema.options;
 const MOTIVOS = MotivoNoCaptadaSchema.options;
@@ -86,12 +87,11 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
   return (
     <Modal title={`Cambiar estado — ${tasacion.cliente}`} onClose={onClose}>
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink">Estado</span>
+        <Campo label="Estado">
           <select
             value={estado}
             onChange={(e) => setEstado(e.target.value as EstadoTasacion)}
-            className="h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red"
+            className={inputClass}
           >
             {ESTADOS.map((e) => (
               <option key={e} value={e}>
@@ -99,11 +99,11 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
               </option>
             ))}
           </select>
-        </label>
+        </Campo>
 
         {estado === 'Captada' && (
           <div className="flex flex-col gap-2 rounded-brand border border-line p-3">
-            <span className="text-sm font-medium text-ink">Exclusividad</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Exclusividad</span>
             <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="radio"
@@ -129,12 +129,11 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
         )}
 
         {estado === 'No captada' && (
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-ink">Motivo</span>
+          <Campo label="Motivo">
             <select
               value={motivoNoCaptada}
               onChange={(e) => setMotivoNoCaptada(e.target.value as MotivoNoCaptada)}
-              className="h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red"
+              className={inputClass}
             >
               <option value="">Seleccioná un motivo…</option>
               {MOTIVOS.map((m) => (
@@ -143,7 +142,7 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
                 </option>
               ))}
             </select>
-          </label>
+          </Campo>
         )}
 
         {error && (
