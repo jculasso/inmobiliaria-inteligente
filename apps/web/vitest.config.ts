@@ -7,6 +7,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
-    include: ['{app,lib,components}/**/*.test.{ts,tsx}'],
+    // El segundo patrón toma los tests que viven en la raíz — hoy el del
+    // matcher del middleware, que es justamente donde no queremos sorpresas.
+    include: ['{app,lib,components}/**/*.test.{ts,tsx}', '*.test.{ts,tsx}'],
   },
 });
