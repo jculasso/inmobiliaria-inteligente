@@ -47,12 +47,32 @@ export async function abrirPdfEnPestana(
   html,body{margin:0;height:100%;font-family:system-ui,-apple-system,sans-serif;background:#F4F5F7}
   header{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#fff;border-bottom:1px solid #E6E6E6}
   h1{flex:1;min-width:0;margin:0;font-size:13px;font-weight:700;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  a{flex:none;background:#C1121F;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 14px;border-radius:10px}
+  .btn{flex:none;background:#C1121F;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 14px;border-radius:10px;border:0;cursor:pointer;font-family:inherit}
+  .btn.sec{background:#fff;color:#1D1D1F;border:1px solid #E6E6E6}
   iframe{display:block;width:100%;height:calc(100% - 49px);border:0}
 </style>
-<header><h1>${esc(archivo)}</h1><a href="${url}" download="${esc(archivo)}">Descargar</a></header>
+<header>
+  <h1>${esc(archivo)}</h1>
+  <button type="button" id="compartir" class="btn" hidden>Enviar</button>
+  <a class="btn sec" href="${url}" download="${esc(archivo)}">Descargar</a>
+</header>
 <iframe src="${url}" title="${esc(nombre)}"></iframe>`);
     win.document.close();
+
+    // "Enviar" usa el compartir nativo del sistema con el ARCHIVO. Es lo que
+    // se quiere para mandárselo al cliente: sin esto, compartir desde el
+    // navegador adjunta además la dirección interna del PDF (un `blob:...`
+    // larguísimo que no le sirve a nadie del otro lado).
+    const boton = win.document.getElementById('compartir') as HTMLButtonElement | null;
+    const archivoParaCompartir = new File([blob], archivo, { type: 'application/pdf' });
+    if (boton && navigator.canShare?.({ files: [archivoParaCompartir] })) {
+      boton.hidden = false;
+      boton.addEventListener('click', () => {
+        void navigator.share({ files: [archivoParaCompartir], title: nombre }).catch(() => {
+          // Si se cancela el menú de compartir no hay nada que hacer.
+        });
+      });
+    }
   } catch (err) {
     win?.close();
     opts.onError(err instanceof Error ? err.message : 'No se pudo generar el PDF.');
