@@ -205,18 +205,33 @@ export default function InversionPage() {
       </Seccion>
 
       <Seccion titulo="Lo que no se arregla con dinero">
-        <Aviso tono="atencion" titulo="Presupuestar medio día de trabajo, aparte de la infraestructura">
+        <p className="max-w-3xl text-sm leading-relaxed text-muted">
+          Dos cosas que no dependen de qué plan se pague, sino de horas de trabajo. Ninguna de las dos
+          urge hoy.
+        </p>
+
+        <Aviso tono="ok" titulo="Paginación · lo grave ya está resuelto">
           <p>
-            <strong>Paginación real.</strong> Las listas siguen cortando en 500 registros. Lo grave era
-            que <em>no avisaba</em> —alguien con más operaciones veía 500 y no se enteraba—, y{' '}
-            <strong>eso ya está resuelto</strong>: ahora la pantalla lo dice y explica cómo filtrar para
-            ver el resto. Falta poder recorrer todo sin filtrar, pero dejó de ser un problema de datos
-            incompletos para pasar a ser uno de comodidad.
+            Las listas siguen mostrando hasta 500 registros. Lo peligroso no era el tope, era que{' '}
+            <strong>no avisaba</strong>: alguien con más operaciones veía 500 y no se enteraba.
           </p>
           <p>
-            <strong>KPIs calculados en la base.</strong> Hoy el tablero trae todas las operaciones del año
-            y las suma en memoria, y varias pantallas repiten esa consulta. Con la base al lado duele
-            menos, pero sigue siendo lo que más va a costar cuando crezca el volumen.
+            Ahora la pantalla lo dice y explica cómo filtrar para ver el resto, así que{' '}
+            <strong>dejó de ser un problema de datos incompletos</strong>. Falta poder recorrer todo sin
+            filtrar — eso ya es comodidad, no integridad.
+          </p>
+        </Aviso>
+
+        <Aviso tono="atencion" titulo="KPIs calculados en la base · pendiente, medio día de trabajo">
+          <p>
+            Hoy el tablero trae todas las operaciones del año y las suma en memoria, y varias pantallas
+            repiten esa consulta.
+          </p>
+          <p>
+            Con la base al lado duele menos, pero sigue siendo lo que más va a costar cuando crezca el
+            volumen. <strong>No conviene tocarlo cerca de una salida a producción</strong>: es el cálculo
+            del ranking, los objetivos y las comisiones, y si un número sale distinto nadie va a pensar
+            que hubo un cambio técnico.
           </p>
         </Aviso>
       </Seccion>
