@@ -4,6 +4,7 @@ import type { TasacionResumenDto } from '@vacker/types';
 import { Modal } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 
 interface Props {
   titulo: string;
@@ -25,7 +26,46 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
     <Modal title={titulo} onClose={onClose} size="xl">
       {subtitulo && <p className="-mt-2 mb-3 text-xs text-muted">{subtitulo}</p>}
 
-      <div className="max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line">
+      <div className="max-h-[65vh] overflow-y-auto rounded-brand border border-line sm:hidden">
+        {tasaciones.length === 0 ? (
+          <p className="px-3 py-6 text-center text-muted">Sin tasaciones para mostrar.</p>
+        ) : (
+          <ListaTarjetas etiqueta="Tasaciones del detalle">
+            {tasaciones.map((t) => {
+              const det = detalleEstado(t);
+              return (
+                <Tarjeta key={t.id}>
+                  <div className="flex items-start gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-ink">{t.direccion}</span>
+                      <span className="mt-0.5 block text-[11px] text-muted">{t.cliente}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}>
+                        {t.estado}
+                      </span>
+                      {det && <span className="mt-0.5 block text-[10px] text-muted">{det}</span>}
+                    </span>
+                  </div>
+                  <CamposTarjeta>
+                    <CampoTarjeta etiqueta="Tipo">{t.tipoPropiedad}</CampoTarjeta>
+                    <CampoTarjeta etiqueta="Agente">{t.agente.nombre}</CampoTarjeta>
+                    <CampoTarjeta etiqueta="Valor recomendado">{fmtUSD(t.valorRecomendado)}</CampoTarjeta>
+                  </CamposTarjeta>
+                </Tarjeta>
+              );
+            })}
+            <li className="mt-1 rounded-xl border-2 border-line bg-surface px-3 py-2.5">
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">
+                Total ({tasaciones.length})
+              </span>
+              <span className="mt-1 block text-sm font-bold text-ink">{fmtUSD(total)}</span>
+            </li>
+          </ListaTarjetas>
+        )}
+      </div>
+
+      <div className="hidden max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line sm:block">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">

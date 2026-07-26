@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { UsuarioAdminDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Avatar, Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { eliminarFotoUsuario, subirFotoUsuario } from '../../lib/admin-api';
 import { AvatarUploader } from '../avatar-uploader';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { UsuarioAdminFormModal } from './usuario-admin-form-modal';
 import { ResetPasswordModal } from './reset-password-modal';
 import { ActivarAccesoModal } from './activar-acceso-modal';
@@ -40,7 +41,58 @@ export function UsuariosAdminTable({
         </Button>
       </div>
 
-      <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
+      <div className="rounded-brand border border-line bg-white sm:hidden">
+        {usuarios.length === 0 ? (
+          <p className="px-4 py-6 text-center text-muted">Todavía no hay usuarios en esta inmobiliaria.</p>
+        ) : (
+          <ListaTarjetas etiqueta="Usuarios">
+            {usuarios.map((u) => (
+              <Tarjeta key={u.id}>
+                <div className="flex items-center gap-2">
+                  <Avatar nombre={u.nombre} fotoUrl={u.fotoUrl} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-ink">{u.nombre}</span>
+                    <span className="block truncate text-[11px] text-muted">{u.email}</span>
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      u.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-surface text-muted'
+                    }`}
+                  >
+                    {u.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+
+                <CamposTarjeta>
+                  <CampoTarjeta etiqueta="Roles">
+                    {u.roles.map((r) => ETIQUETA_ROL[r] ?? r).join(', ')}
+                  </CampoTarjeta>
+                  <CampoTarjeta etiqueta="Acceso">{u.tieneAcceso ? 'Con acceso' : 'Sin acceso'}</CampoTarjeta>
+                </CamposTarjeta>
+
+                <div className="mt-2 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModal(u)}
+                    className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                  >
+                    ✏️ Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => (u.tieneAcceso ? setResetModal(u) : setActivarModal(u))}
+                    className="text-xs font-semibold text-brand-red hover:underline"
+                  >
+                    {u.tieneAcceso ? 'Restablecer contraseña' : 'Activar acceso'}
+                  </button>
+                </div>
+              </Tarjeta>
+            ))}
+          </ListaTarjetas>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">

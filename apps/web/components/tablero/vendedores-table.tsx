@@ -7,6 +7,7 @@ import { Avatar, Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { desactivarVendedor, updateVendedor } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { VendedorFormModal } from './vendedor-form-modal';
 
 export function VendedoresTable({
@@ -59,7 +60,62 @@ export function VendedoresTable({
         )}
       </div>
 
-      <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
+      <div className="rounded-brand border border-line bg-white sm:hidden">
+        {filtrados.length === 0 ? (
+          <p className="px-4 py-6 text-center text-muted">Sin vendedores para mostrar.</p>
+        ) : (
+          <ListaTarjetas etiqueta="Vendedores">
+            {filtrados.map((v) => {
+              const objetivo = v.objetivos.find((o) => o.anio === anioActual);
+              return (
+                <Tarjeta key={v.id}>
+                  <div className="flex items-center gap-2">
+                    <Avatar nombre={v.nombre} fotoUrl={v.fotoUrl} size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{v.nombre}</span>
+                    <button
+                      type="button"
+                      disabled={!puedeGestionar || loadingId === v.id}
+                      onClick={() => toggleEstado(v)}
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                        v.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-surface text-muted'
+                      }`}
+                    >
+                      {v.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                    </button>
+                  </div>
+
+                  <CamposTarjeta>
+                    <CampoTarjeta etiqueta="Rol / equipo">
+                      {v.roles.includes('team_leader')
+                        ? '👔 Líder'
+                        : v.lider
+                          ? `→ ${v.lider.nombre}`
+                          : 'Vendedor'}
+                    </CampoTarjeta>
+                    <CampoTarjeta etiqueta={`Obj. comisión ${anioActual}`}>
+                      {fmtUSD(objetivo?.objComision ?? 0)}
+                    </CampoTarjeta>
+                  </CamposTarjeta>
+
+                  {puedeGestionar && (
+                    <div className="mt-2 flex justify-end border-t border-line pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setModal(v)}
+                        className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                      >
+                        ✏️ Editar
+                      </button>
+                    </div>
+                  )}
+                </Tarjeta>
+              );
+            })}
+          </ListaTarjetas>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
