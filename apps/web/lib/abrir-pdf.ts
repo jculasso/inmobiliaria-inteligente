@@ -50,8 +50,12 @@ export async function abrirPdfEnPestana(
   .btn{flex:none;background:#C1121F;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 14px;border-radius:10px;border:0;cursor:pointer;font-family:inherit}
   .btn.sec{background:#fff;color:#1D1D1F;border:1px solid #E6E6E6}
   iframe{display:block;width:100%;height:calc(100% - 49px);border:0}
+  /* En el celular no entran los tres botones más el nombre: recortado a
+     "Protoc…" no aporta nada, y el informe ya se ve abajo. */
+  @media (max-width:560px){ h1{display:none} #volver{margin-right:auto} }
 </style>
 <header>
+  <button type="button" id="volver" class="btn sec">← Volver</button>
   <h1>${esc(archivo)}</h1>
   <button type="button" id="compartir" class="btn" hidden>Enviar</button>
   <a id="descargar" class="btn sec" href="${url}" download="${esc(archivo)}">Descargar</a>
@@ -64,6 +68,7 @@ export async function abrirPdfEnPestana(
     // adjunta además la dirección interna del PDF (un `blob:...` larguísimo
     // que del otro lado no sirve para nada).
     prepararEnviar(win, blob, archivo, nombre);
+    prepararVolver(win, window.location.href);
   } catch (err) {
     win?.close();
     opts.onError(err instanceof Error ? err.message : 'No se pudo generar el PDF.');
@@ -109,6 +114,30 @@ function prepararEnviar(win: Window, blob: Blob, archivo: string, titulo: string
         new MouseEvent('click', { bubbles: true }),
       );
     });
+  });
+}
+
+/**
+ * Conecta el botón "Volver" de la pestaña.
+ *
+ * Es imprescindible cuando la plataforma está instalada como app: ahí no hay
+ * barra del navegador, así que sin este botón la pestaña del PDF es un
+ * callejón sin salida y hay que cerrar la app entera para volver.
+ *
+ * Se intenta cerrar la pestaña (se puede, porque la abrimos nosotros); si el
+ * sistema no lo permite, se vuelve a la pantalla desde donde se generó el PDF
+ * para que el usuario nunca quede encerrado.
+ */
+function prepararVolver(win: Window, volverA: string): void {
+  const boton = win.document.getElementById('volver');
+  if (!boton) return;
+
+  boton.addEventListener('click', () => {
+    win.close();
+    // El timer vive en la pestaña: si se cerró bien, nunca llega a dispararse.
+    win.setTimeout(() => {
+      if (!win.closed) win.location.href = volverA;
+    }, 200);
   });
 }
 
