@@ -102,14 +102,15 @@ export default function GuiaPage() {
           </p>
         </Tarjeta>
 
-        <Aviso tono="atencion" titulo="Ojo: las listas muestran hasta 500 registros">
+        <Aviso tono="atencion" titulo="Las listas muestran hasta 500 registros, y te avisan">
           <p>
-            Si el contador de arriba dice exactamente <strong>500 de 500</strong>, es muy probable que haya
-            más y no los estés viendo. Ese tope no avisa.
+            Si hay más de 500, arriba de la lista aparece un cartel:{' '}
+            <em>“Se están mostrando 500 ventas, y hay más”</em>. Mientras no aparezca, lo que ves es
+            todo — podés auditar recorriendo la lista con tranquilidad.
           </p>
           <p>
-            Con menos de 500 podés auditar recorriendo la lista con tranquilidad. Con más, el conteo que
-            veas no es el total real.
+            Si aparece, <strong>filtrá por año o por período</strong> hasta que el resultado baje de 500 y
+            revisá por tramos. No hay forma de ver más de 500 juntos todavía.
           </p>
         </Aviso>
 
