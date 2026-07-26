@@ -207,9 +207,11 @@ export default function InversionPage() {
       <Seccion titulo="Lo que no se arregla con dinero">
         <Aviso tono="atencion" titulo="Presupuestar medio día de trabajo, aparte de la infraestructura">
           <p>
-            <strong>Paginación real.</strong> Las listas cortan en 500 registros sin avisar. Una
-            inmobiliaria con más operaciones ve 500 y no se entera. No es lentitud: es alguien decidiendo
-            con datos incompletos. Si se carga histórico, pega el primer día.
+            <strong>Paginación real.</strong> Las listas siguen cortando en 500 registros. Lo grave era
+            que <em>no avisaba</em> —alguien con más operaciones veía 500 y no se enteraba—, y{' '}
+            <strong>eso ya está resuelto</strong>: ahora la pantalla lo dice y explica cómo filtrar para
+            ver el resto. Falta poder recorrer todo sin filtrar, pero dejó de ser un problema de datos
+            incompletos para pasar a ser uno de comodidad.
           </p>
           <p>
             <strong>KPIs calculados en la base.</strong> Hoy el tablero trae todas las operaciones del año
