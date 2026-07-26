@@ -79,7 +79,12 @@ export const config = {
   // archivo: el favicon no cargaba para quien no había entrado, y al sumar la
   // PWA habría pasado lo mismo con el manifest y el service worker — que se
   // piden sin sesión, así que la app directamente no se habría podido instalar.
+  //
+  // El flyer comercial es el caso más obvio de todos: se lo mandamos a dueños
+  // de inmobiliarias que NO tienen cuenta. Si pide sesión, el prospecto abre el
+  // link y se encuentra con un login — que es la peor primera impresión posible
+  // para un material de venta.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icons/|manifest\\.webmanifest|sw\\.js).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icons/|manifest\\.webmanifest|sw\\.js|flyer-comercial\\.pdf).*)',
   ],
 };
