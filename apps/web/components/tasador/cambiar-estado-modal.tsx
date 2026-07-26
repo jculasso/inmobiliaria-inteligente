@@ -27,7 +27,7 @@ export interface EstadoPatch {
 
 interface Props {
   /** Alcanza con los campos de estado — acepta tanto `TasacionDto` completo como `TasacionResumenDto`. */
-  tasacion: Pick<TasacionDto, 'id' | 'cliente' | 'estado' | 'exclusividad' | 'motivoNoCaptada'>;
+  tasacion: Pick<TasacionDto, 'id' | 'direccion' | 'cliente' | 'estado' | 'exclusividad' | 'motivoNoCaptada'>;
   onClose: () => void;
   onSaved: (patch: EstadoPatch) => void;
 }
@@ -84,8 +84,11 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
     }
   }
 
+  // El título es la DIRECCIÓN: es lo que identifica la tasación cuando hay
+  // varias del mismo cliente, o el mismo agente en todas. El cliente pasa a la
+  // bajada, que para eso está.
   return (
-    <Modal title={`Cambiar estado — ${tasacion.cliente}`} onClose={onClose}>
+    <Modal title={`Cambiar estado — ${tasacion.direccion}`} subtitle={tasacion.cliente} onClose={onClose}>
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <Campo label="Estado">
           <select

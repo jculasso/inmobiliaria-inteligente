@@ -1,10 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TasacionResumenDto } from '@vacker/types';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
-import { ConfirmDeleteButton } from '../tablero/confirm-delete-button';
+import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 
 interface Props {
   tasacion: TasacionResumenDto;
@@ -25,6 +26,7 @@ interface Props {
 export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar }: Props) {
   const router = useRouter();
   const det = detalleEstado(t);
+  const [aBorrar, setABorrar] = useState(false);
 
   return (
     <div className="grid grid-cols-1 gap-2 border-t border-surface py-3 first:border-t-0 sm:grid-cols-[2fr_1fr_130px_auto] sm:items-center sm:gap-3.5">
@@ -75,9 +77,34 @@ export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar
           )}
         </button>
         {onBorrar && (
-          <ConfirmDeleteButton confirmMessage={`¿Borrar la tasación de ${t.cliente}?`} onConfirm={onBorrar} />
+          <button
+            type="button"
+            onClick={() => setABorrar(true)}
+            title="Borrar esta tasación"
+            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-brand-red hover:border-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
+          >
+            Borrar
+          </button>
         )}
       </div>
+
+      {aBorrar && onBorrar && (
+        <ConfirmarBorradoModal
+          titulo="Borrar tasación"
+          descripcion="Se elimina la tasación con sus comparables, fotos e informes. Los KPIs del Tasador se recalculan sin ella."
+          detalle={
+            <>
+              <DatoBorrado etiqueta="Dirección">{t.direccion}</DatoBorrado>
+              <DatoBorrado etiqueta="Cliente">{t.cliente}</DatoBorrado>
+              <DatoBorrado etiqueta="Agente">{t.agente.nombre}</DatoBorrado>
+              <DatoBorrado etiqueta="Valor recomendado">{fmtUSD(t.valorRecomendado)}</DatoBorrado>
+              <DatoBorrado etiqueta="Estado">{t.estado}</DatoBorrado>
+            </>
+          }
+          onConfirm={onBorrar}
+          onClose={() => setABorrar(false)}
+        />
+      )}
     </div>
   );
 }

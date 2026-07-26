@@ -9,7 +9,7 @@ import { deleteOperacion } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
 import { estadoClass, estadoLabel } from '../../lib/operacion-estado';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
-import { ConfirmDeleteButton } from './confirm-delete-button';
+import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { OperacionFormModal } from './operacion-form-modal';
 
 interface Props {
@@ -23,6 +23,7 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState<'create' | OperacionDto | null>(null);
+  const [aBorrar, setABorrar] = useState<OperacionDto | null>(null);
 
   const filtradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -108,10 +109,13 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                       ✏️ Editar
                     </button>
                     {puedeBorrar && (
-                      <ConfirmDeleteButton
-                        confirmMessage={`¿Borrar la operación ${op.codigo}?`}
-                        onConfirm={() => handleDelete(op.id)}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setABorrar(op)}
+                        className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5"
+                      >
+                        🗑️ Borrar
+                      </button>
                     )}
                   </div>
                 </Tarjeta>
@@ -190,10 +194,14 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
                           ✏️
                         </button>
                         {puedeBorrar && (
-                          <ConfirmDeleteButton
-                            confirmMessage={`¿Borrar la operación ${op.codigo}?`}
-                            onConfirm={() => handleDelete(op.id)}
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setABorrar(op)}
+                            title="Borrar esta operación"
+                            className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5"
+                          >
+                            Borrar
+                          </button>
                         )}
                       </div>
                     </td>
@@ -215,6 +223,35 @@ export function OperacionesTable({ tipo, operaciones, vendedores, puedeBorrar }:
             setModal(null);
             router.refresh();
           }}
+        />
+      )}
+
+      {aBorrar && (
+        <ConfirmarBorradoModal
+          titulo={tipo === 'venta' ? 'Borrar venta' : 'Borrar alquiler'}
+          descripcion={
+            tipo === 'venta'
+              ? 'La venta y sus puntas se eliminan de la base. Los KPIs, el ranking y los objetivos se recalculan sin ella.'
+              : 'El alquiler se elimina de la base. Los KPIs del período se recalculan sin él.'
+          }
+          detalle={
+            <>
+              <DatoBorrado etiqueta="Código">{aBorrar.codigo}</DatoBorrado>
+              <DatoBorrado etiqueta="Dirección">{aBorrar.direccion}</DatoBorrado>
+              <DatoBorrado etiqueta={tipo === 'venta' ? 'Precio' : 'Valor/mes'}>
+                {fmtUSD(tipo === 'venta' ? aBorrar.precio : aBorrar.valorMensual)}
+              </DatoBorrado>
+              <DatoBorrado etiqueta="Comisión">{fmtUSD(aBorrar.comTotal)}</DatoBorrado>
+              <DatoBorrado etiqueta="Estado">{estadoLabel(aBorrar.estado)}</DatoBorrado>
+              {aBorrar.puntas.length > 0 && (
+                <DatoBorrado etiqueta="Puntas">
+                  {aBorrar.puntas.map((p) => p.nombre).join(' · ')}
+                </DatoBorrado>
+              )}
+            </>
+          }
+          onConfirm={() => handleDelete(aBorrar.id)}
+          onClose={() => setABorrar(null)}
         />
       )}
     </div>
