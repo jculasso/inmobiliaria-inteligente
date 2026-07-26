@@ -54,29 +54,62 @@ export async function abrirPdfEnPestana(
 <header>
   <h1>${esc(archivo)}</h1>
   <button type="button" id="compartir" class="btn" hidden>Enviar</button>
-  <a class="btn sec" href="${url}" download="${esc(archivo)}">Descargar</a>
+  <a id="descargar" class="btn sec" href="${url}" download="${esc(archivo)}">Descargar</a>
 </header>
 <iframe src="${url}" title="${esc(nombre)}"></iframe>`);
     win.document.close();
 
-    // "Enviar" usa el compartir nativo del sistema con el ARCHIVO. Es lo que
-    // se quiere para mandárselo al cliente: sin esto, compartir desde el
-    // navegador adjunta además la dirección interna del PDF (un `blob:...`
-    // larguísimo que no le sirve a nadie del otro lado).
-    const boton = win.document.getElementById('compartir') as HTMLButtonElement | null;
-    const archivoParaCompartir = new File([blob], archivo, { type: 'application/pdf' });
-    if (boton && navigator.canShare?.({ files: [archivoParaCompartir] })) {
-      boton.hidden = false;
-      boton.addEventListener('click', () => {
-        void navigator.share({ files: [archivoParaCompartir], title: nombre }).catch(() => {
-          // Si se cancela el menú de compartir no hay nada que hacer.
-        });
-      });
-    }
+    // "Enviar" abre el menú de compartir del sistema con el ARCHIVO. Es lo que
+    // se quiere para mandárselo al cliente: compartir desde el navegador
+    // adjunta además la dirección interna del PDF (un `blob:...` larguísimo
+    // que del otro lado no sirve para nada).
+    prepararEnviar(win, blob, archivo, nombre);
   } catch (err) {
     win?.close();
     opts.onError(err instanceof Error ? err.message : 'No se pudo generar el PDF.');
   }
+}
+
+/**
+ * Conecta el botón "Enviar" de la pestaña con el menú de compartir del sistema.
+ *
+ * Todo se hace con el `navigator` y el `File` de LA PESTAÑA, no los de la
+ * página que la abrió. El navegador exige que compartir salga de un gesto del
+ * usuario en ESE documento: al usar el `navigator` de la página original, el
+ * click de la pestaña no contaba como gesto y en el iPhone el botón no hacía
+ * absolutamente nada.
+ *
+ * Si el sistema no puede compartir archivos (o algo falla), se cae a la
+ * descarga en vez de dejar un botón muerto.
+ */
+function prepararEnviar(win: Window, blob: Blob, archivo: string, titulo: string): void {
+  const boton = win.document.getElementById('compartir') as HTMLButtonElement | null;
+  if (!boton) return;
+
+  // Constructores de la pestaña: un File creado en otro documento puede ser
+  // rechazado al compartir.
+  const w = win as Window & { File: typeof File };
+  let archivoCompartible: File;
+  try {
+    archivoCompartible = new w.File([blob], archivo, { type: 'application/pdf' });
+  } catch {
+    return; // Sin File no hay nada que compartir; queda solo "Descargar".
+  }
+
+  const nav = win.navigator;
+  if (!nav.canShare?.({ files: [archivoCompartible] })) return;
+
+  boton.hidden = false;
+  boton.addEventListener('click', () => {
+    nav.share({ files: [archivoCompartible], title: titulo }).catch((err: unknown) => {
+      // Cancelar el menú no es un error: no hay que hacer nada.
+      if (err instanceof Error && err.name === 'AbortError') return;
+      // Cualquier otra falla no puede dejar al usuario sin salida: se descarga.
+      win.document.getElementById('descargar')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+  });
 }
 
 /**
