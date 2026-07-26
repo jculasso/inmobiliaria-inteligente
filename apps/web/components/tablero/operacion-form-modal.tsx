@@ -14,6 +14,7 @@ import type {
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createOperacion, updateOperacion } from '../../lib/tablero-api';
+import { Campo, inputClass } from '../form-ui';
 
 const ESTADOS_VENTA: EstadoVenta[] = ['escriturada', 'senada', 'reservada', 'boleto'];
 const ESTADOS_ALQUILER: EstadoAlquiler[] = ['firmado', 'reservado', 'pendiente'];
@@ -250,8 +251,6 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
   );
 }
 
-const inputClass =
-  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
 
 function Seccion({ titulo, icono, full, children }: { titulo: string; icono: string; full?: boolean; children: ReactNode }) {
   return (
@@ -262,15 +261,6 @@ function Seccion({ titulo, icono, full, children }: { titulo: string; icono: str
       </p>
       {children}
     </div>
-  );
-}
-
-function Campo({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-ink">{label}</span>
-      {children}
-    </label>
   );
 }
 

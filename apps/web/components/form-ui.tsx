@@ -1,11 +1,21 @@
 import type { ReactNode } from 'react';
 
-// Piezas compartidas por los formularios de toda la app (admin, protocolo,
-// vendedores), con el mismo tratamiento visual que el form de operaciones:
-// secciones en tarjetas, título con ícono y campos en grilla.
+// Piezas compartidas por TODOS los formularios de la app: admin, protocolo,
+// vendedores, alta de operación, comparables y el wizard de tasación.
+//
+// Es la única definición a propósito. Llegó a haber cuatro copias de `Campo`
+// conviviendo, así que la misma app tenía distinto aspecto de formulario según
+// por dónde entraras.
+//
+// Etiqueta chica en mayúscula y bold arriba, dato en tamaño normal debajo: la
+// jerarquía deja escanear un formulario largo de un vistazo. Campos de 40px
+// porque 36 quedaba corto para el dedo.
 
 export const inputClass =
-  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface disabled:text-muted';
+  'h-10 w-full rounded-brand border border-line bg-white px-3 text-sm text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-brand-red focus:ring-2 focus:ring-brand-red/15 disabled:bg-surface disabled:text-muted';
+
+export const textareaClass =
+  'min-h-[84px] w-full rounded-brand border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-brand-red focus:ring-2 focus:ring-brand-red/15 disabled:bg-surface disabled:text-muted';
 
 /** Tarjeta con título — agrupa campos relacionados dentro del modal. */
 export function Seccion({
@@ -35,16 +45,22 @@ export function Campo({
   label,
   hint,
   children,
+  requerido = false,
 }: {
   label: string;
   hint?: string;
   children: ReactNode;
+  /** Marca el campo como obligatorio con un asterisco rojo. */
+  requerido?: boolean;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-ink">{label}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">
+        {label}
+        {requerido && <span className="ml-0.5 text-brand-red">*</span>}
+      </span>
       {children}
-      {hint && <span className="text-xs leading-snug text-muted">{hint}</span>}
+      {hint && <span className="text-[11px] leading-snug text-muted">{hint}</span>}
     </label>
   );
 }

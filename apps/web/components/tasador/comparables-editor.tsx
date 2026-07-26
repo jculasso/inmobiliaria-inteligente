@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import {
   EstadoInmuebleSchema,
   FuenteComparableSchema,
@@ -16,6 +16,7 @@ import { valuationSurface, type AnalisisComparables } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { ConfianzaBadge } from './confianza-badge';
+import { Campo, inputClass } from '../form-ui';
 
 const TIPOS = TipoPropiedadSchema.options;
 const FUENTES = FuenteComparableSchema.options;
@@ -282,15 +283,6 @@ function NumInput({ value, onChange, placeholder }: { value: number | null | und
   );
 }
 
-function Campo({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</span>
-      {children}
-    </label>
-  );
-}
-
 /**
  * Dato del resumen. La etiqueta ocupa el alto sobrante y el valor se apoya
  * abajo, así todos los valores de la fila quedan alineados aunque una etiqueta
@@ -307,5 +299,3 @@ function Stat({ label, valor }: { label: string; valor: string }) {
   );
 }
 
-const inputClass =
-  'h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red';
