@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { LIMITE_LISTA_CON_SONDA } from '@vacker/types';
 import { superficieTotal, usdM2 } from '@vacker/domain';
 import type { CambiarEstado, ComparableInput, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
 import { DomainEventsService } from '../../../common/domain-events.service';
@@ -12,10 +13,6 @@ import { rangoDeAnioMes } from '../fecha.util';
 
 /** Bucket privado de fotos de propiedades — el acceso es siempre por URL firmada. */
 const FOTOS_BUCKET = 'tasador-fotos';
-
-/** Techo defensivo de filas por listado (las más recientes). Cuando alguna
- * lista se acerque a este número, agregar paginación real ("cargar más"). */
-const LIMITE_LISTA = 500;
 
 export const tasacionInclude = {
   agente: { select: { id: true, nombre: true, email: true, fotoUrl: true, telefono: true } },
@@ -103,7 +100,7 @@ export class TasacionesService {
         where,
         include: tasacionInclude,
         orderBy: [{ fecha: 'desc' }],
-        take: LIMITE_LISTA,
+        take: LIMITE_LISTA_CON_SONDA,
       });
       return rows.map(toDto);
     });
@@ -121,7 +118,7 @@ export class TasacionesService {
         where,
         select: tasacionResumenSelect,
         orderBy: [{ fecha: 'desc' }],
-        take: LIMITE_LISTA,
+        take: LIMITE_LISTA_CON_SONDA,
       });
       return rows.map(toResumenDto);
     });

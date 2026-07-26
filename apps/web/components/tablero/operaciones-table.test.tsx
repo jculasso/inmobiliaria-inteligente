@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { OperacionDto } from '@vacker/types';
+import { LIMITE_LISTA, LIMITE_LISTA_CON_SONDA, type OperacionDto } from '@vacker/types';
 import { OperacionesTable } from './operaciones-table';
 
 const refresh = vi.fn();
@@ -104,6 +104,26 @@ describe('OperacionesTable', () => {
     expect(within(dialogo).getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(within(dialogo).getByText('$100.000')).toBeInTheDocument();
     expect(within(dialogo).getByText('Ana')).toBeInTheDocument();
+  });
+
+  it('avisa cuando la lista quedó recortada, en vez de mostrar 500 en silencio', () => {
+    // El tope existía desde siempre pero era MUDO: alguien con 1.240
+    // operaciones veía 500 y decidía con datos incompletos sin enterarse.
+    const muchas = Array.from({ length: LIMITE_LISTA_CON_SONDA }, (_, i) => ({
+      ...OPERACIONES[0]!,
+      id: `op-${i}`,
+      codigo: `OP-${i}`,
+    }));
+    render(<OperacionesTable tipo="venta" operaciones={muchas} vendedores={[]} puedeBorrar={false} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(`Se están mostrando ${LIMITE_LISTA} ventas, y hay más`);
+    // Y se muestra el tope exacto, no la fila de sonda.
+    expect(enLaTabla().getAllByRole('row')).toHaveLength(LIMITE_LISTA + 1); // + encabezado
+  });
+
+  it('con pocas operaciones no avisa nada', () => {
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={false} />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('borra recién cuando se confirma en el modal', async () => {

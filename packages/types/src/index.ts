@@ -11,6 +11,9 @@
 // tablero.ts y auth.ts puedan importarlo sin depender circularmente de este index.
 export * from './rol';
 
+// Tope de los listados y cómo detectar que quedó algo afuera.
+export * from './limites';
+
 // Contratos del módulo Tablero Comercial (Paso 3).
 export * from './tablero';
 
