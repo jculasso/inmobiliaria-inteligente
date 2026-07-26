@@ -17,7 +17,7 @@ import {
 } from '@vacker/types';
 import { fmtNum } from '../../../lib/format';
 import { FotosUploader } from '../fotos-uploader';
-import { Campo, inputClass } from './campo';
+import { Campo, PasoHeader, inputClass } from './campo';
 
 const TIPOS_PROPIEDAD = TipoPropiedadSchema.options;
 const ESTADOS_INMUEBLE = EstadoInmuebleSchema.options;
@@ -139,7 +139,7 @@ export function Seccion2Caracteristicas(props: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-base font-bold text-ink">2. Características del inmueble</h2>
+      <PasoHeader numero={2} titulo="Características del inmueble" bajada="Superficies, ambientes y estado de conservación." />
       <Campo label="Tipo de propiedad">
         <select
           value={tipoPropiedad}

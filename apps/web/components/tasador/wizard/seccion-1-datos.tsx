@@ -1,7 +1,7 @@
 'use client';
 
 import type { TipoOperacion } from '@vacker/types';
-import { Campo, inputClass } from './campo';
+import { Campo, PasoHeader, inputClass } from './campo';
 
 interface Props {
   cliente: string;
@@ -34,12 +34,12 @@ export function Seccion1Datos({
 }: Props) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-base font-bold text-ink">1. Datos del informe</h2>
-      <Campo label="Cliente">
+      <PasoHeader numero={1} titulo="Datos del informe" bajada="Quién pide la tasación y dónde está la propiedad." />
+      <Campo label="Cliente" requerido>
         <input value={cliente} onChange={(e) => setCliente(e.target.value)} required className={inputClass} />
       </Campo>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Campo label="Fecha">
+        <Campo label="Fecha" requerido>
           <input
             type="date"
             value={fecha}
@@ -59,7 +59,7 @@ export function Seccion1Datos({
           </select>
         </Campo>
       </div>
-      <Campo label="Dirección">
+      <Campo label="Dirección" requerido>
         <input value={direccion} onChange={(e) => setDireccion(e.target.value)} required className={inputClass} />
       </Campo>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
