@@ -65,14 +65,14 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
 
       <div className="hidden max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line sm:block">
         <table className="w-full min-w-[720px] text-sm">
-          <thead className="sticky top-0 z-10 bg-white">
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-3 py-2">Dirección</th>
-              <th className="px-3 py-2">Cliente</th>
-              <th className="px-3 py-2">Tipo</th>
-              <th className="px-3 py-2">Agente</th>
-              <th className="px-3 py-2">Valor recomendado</th>
-              <th className="px-3 py-2">Estado</th>
+          <thead className="sticky top-0 z-10 bg-surface">
+            <tr className="border-b border-line text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
+              <th className="px-3 py-2.5">Dirección</th>
+              <th className="px-3 py-2.5">Cliente</th>
+              <th className="px-3 py-2.5">Tipo</th>
+              <th className="px-3 py-2.5">Agente</th>
+              <th className="px-3 py-2.5 text-right">Valor recomendado</th>
+              <th className="px-3 py-2.5">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -86,14 +86,16 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
               tasaciones.map((t) => {
                 const det = detalleEstado(t);
                 return (
-                  <tr key={t.id} className="border-b border-line last:border-0">
-                    <td className="px-3 py-2">{t.direccion}</td>
-                    <td className="px-3 py-2 text-muted">{t.cliente}</td>
-                    <td className="px-3 py-2">{t.tipoPropiedad}</td>
-                    <td className="px-3 py-2">{t.agente.nombre}</td>
-                    <td className="px-3 py-2">{fmtUSD(t.valorRecomendado)}</td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${estadoClass(t.estado)}`}>
+                  <tr key={t.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                    <td className="px-3 py-2.5 font-semibold text-ink">{t.direccion}</td>
+                    <td className="px-3 py-2.5 text-muted">{t.cliente}</td>
+                    <td className="px-3 py-2.5">{t.tipoPropiedad}</td>
+                    <td className="px-3 py-2.5">{t.agente.nombre}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">
+                      {fmtUSD(t.valorRecomendado)}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}>
                         {t.estado}
                       </span>
                       {det && <div className="mt-0.5 text-[11px] text-muted">{det}</div>}
@@ -104,13 +106,13 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
             )}
           </tbody>
           {tasaciones.length > 0 && (
-            <tfoot className="sticky bottom-0 bg-white">
-              <tr className="border-t-2 border-line font-bold text-ink">
-                <td className="px-3 py-2" colSpan={4}>
+            <tfoot className="sticky bottom-0 bg-surface">
+              <tr className="border-t-2 border-line text-ink">
+                <td className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider" colSpan={4}>
                   Total ({tasaciones.length})
                 </td>
-                <td className="px-3 py-2">{fmtUSD(total)}</td>
-                <td className="px-3 py-2" />
+                <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(total)}</td>
+                <td className="px-3 py-3" />
               </tr>
             </tfoot>
           )}
