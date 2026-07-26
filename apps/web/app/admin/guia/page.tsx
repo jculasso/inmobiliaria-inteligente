@@ -56,6 +56,92 @@ export default function GuiaPage() {
         </Paso>
       </Seccion>
 
+      <Seccion titulo="Revisar los datos antes de dar por abierta la inmobiliaria">
+        <Aviso tono="peligro" titulo="Este paso decide si el equipo confía en el sistema o no">
+          <p>
+            El primer día, el equipo va a mirar el tablero y compararlo con lo que ellos saben. Si los
+            números no cierran, no van a pensar “falta depurar”: van a pensar{' '}
+            <strong>“esto no sirve”</strong>. Y esa impresión no se recupera.
+          </p>
+          <p>
+            Recorré las tres listas <strong>antes</strong> de la reunión de onboarding, no después.
+          </p>
+        </Aviso>
+
+        <Tarjeta titulo="Ventas y Alquileres">
+          <p>
+            <strong>Datos de prueba.</strong> Buscá <em>test</em>, <em>prueba</em>, <em>asd</em> y
+            direcciones sin sentido. Suelen quedar de las pruebas de carga y son lo primero que salta a la
+            vista.
+          </p>
+          <p>
+            <strong>Precios o comisiones en cero.</strong> Una operación en 0 no rompe nada, pero baja el
+            ticket promedio y ensucia el ranking.
+          </p>
+          <p>
+            <strong>Operaciones sin punta asignada.</strong> Si no tiene vendedor, no le suma a nadie: no
+            aparece en el ranking ni en el seguimiento de objetivos.
+          </p>
+          <p>
+            <strong>Estado contra fecha de firma.</strong> Una escriturada sin fecha de firma, o una
+            señada con fecha de firma, casi siempre es un error de carga.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Tasaciones">
+          <p>
+            <strong>Cliente o dirección sin sentido</strong>, y <strong>valor recomendado en cero</strong>.
+          </p>
+          <p>
+            <strong>Captadas sin exclusividad.</strong> Si figura captada pero no se registró si era
+            exclusiva y por cuántos días, el protocolo no va a poder calcular el vencimiento.
+          </p>
+          <p>
+            <strong>No captadas sin motivo.</strong> El motivo es lo que después explica por qué se
+            pierden captaciones. Sin él, esa parte del reporte queda vacía.
+          </p>
+        </Tarjeta>
+
+        <Aviso tono="atencion" titulo="Ojo: las listas muestran hasta 500 registros">
+          <p>
+            Si el contador de arriba dice exactamente <strong>500 de 500</strong>, es muy probable que haya
+            más y no los estés viendo. Ese tope no avisa.
+          </p>
+          <p>
+            Con menos de 500 podés auditar recorriendo la lista con tranquilidad. Con más, el conteo que
+            veas no es el total real.
+          </p>
+        </Aviso>
+
+        <Tarjeta titulo="La prueba que de verdad valida todo">
+          <p>
+            Pedile a la dirección de la inmobiliaria <strong>el volumen y las puntas del año</strong> según
+            sus propios registros, y compará contra el tablero.
+          </p>
+          <p>
+            Si coinciden, el sistema quedó bien cargado y el equipo lo va a creer. Si no, tenés el número
+            de la diferencia para ir a buscar qué falta — que es mucho más fácil que revisar operación por
+            operación.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Cómo se limpia">
+          <p>
+            Desde <strong>Ventas</strong>, <strong>Alquileres</strong> o <strong>Tasaciones</strong>, con el
+            botón <strong>Borrar</strong> de cada fila. Antes de confirmar, el sistema muestra qué se va a
+            borrar —código, dirección, precio, comisión y puntas— justamente para esto.
+          </p>
+          <p>
+            Necesitás rol de <strong>team leader, dirección o admin</strong>. Con rol de vendedor no
+            aparece el botón.
+          </p>
+          <p>
+            <strong>El borrado es definitivo</strong> y hoy la base no tiene copias de seguridad
+            automáticas. Revisá dos veces.
+          </p>
+        </Tarjeta>
+      </Seccion>
+
       <Seccion titulo="Contraseñas: cómo funciona hoy">
         <Aviso tono="atencion" titulo="La contraseña temporal la escribís vos, no la genera el sistema">
           <p>
@@ -180,6 +266,84 @@ export default function GuiaPage() {
           <p>
             Nace apagado en toda inmobiliaria nueva. Se habilita marcándolo en la ficha de la
             inmobiliaria.
+          </p>
+        </Tarjeta>
+      </Seccion>
+
+      <Seccion titulo="Instalar la aplicación en el teléfono">
+        <Tarjeta titulo="Qué es y qué no es">
+          <p>
+            No hay que buscarla en ninguna tienda: se instala <strong>desde la dirección web</strong>. Es la
+            misma plataforma, con su ícono en la pantalla de inicio y a pantalla completa.
+          </p>
+          <p>
+            <strong>No descarga nada ni ocupa espacio</strong>, y las actualizaciones llegan solas: no hay
+            que reinstalar nunca.
+          </p>
+        </Tarjeta>
+
+        <Aviso tono="peligro" titulo="Que NO abran el enlace desde WhatsApp">
+          <p>
+            Si les mandás la dirección por mensaje y la abren ahí, se abre el navegador interno de la
+            aplicación de mensajería, <strong>que no permite instalar</strong>. Es la causa número uno de
+            “a mí no me aparece el botón”.
+          </p>
+          <p>
+            Hay que tocar los tres puntitos y elegir <strong>Abrir en Chrome</strong> (o en Safari, en
+            iPhone).
+          </p>
+        </Aviso>
+
+        <Tarjeta titulo="Android — es de un toque">
+          <p>
+            <strong>1.</strong> Abrir la dirección en <strong>Chrome</strong> (o el navegador de Samsung).
+          </p>
+          <p>
+            <strong>2.</strong> Entrar con correo y contraseña.
+          </p>
+          <p>
+            <strong>3.</strong> Aparece un cartel abajo: tocar{' '}
+            <strong>“Agregar a la pantalla de inicio”</strong> y confirmar.
+          </p>
+          <p>
+            Si el cartel no apareciera, se puede hacer igual desde los tres puntitos del navegador →{' '}
+            <strong>Instalar aplicación</strong>.
+          </p>
+          <p className="text-[13px]">
+            El ícono se va a ver con la forma que use ese teléfono —círculo o cuadrado redondeado—; es
+            normal, hay una versión preparada para eso.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="iPhone — hay que hacerlo a mano">
+          <p>
+            Apple <strong>no permite</strong> el botón de instalar, así que acá no hay atajo: se hace a
+            mano y por eso conviene acompañar a la persona.
+          </p>
+          <p>
+            <strong>1.</strong> Abrir la dirección <strong>en Safari</strong>. Desde Chrome en iPhone{' '}
+            <strong>no funciona</strong>.
+          </p>
+          <p>
+            <strong>2.</strong> Tocar el botón <strong>Compartir</strong> (el cuadrado con la flecha hacia
+            arriba, en la barra de abajo).
+          </p>
+          <p>
+            <strong>3.</strong> Bajar en la lista y elegir <strong>Agregar a inicio</strong>.
+          </p>
+          <p>
+            <strong>4.</strong> Confirmar con <strong>Agregar</strong>.
+          </p>
+          <p className="text-[13px]">
+            En la app instalada no hay barra de direcciones, así que no se puede escribir una URL adentro.
+            Si alguna vez hace falta, se abre desde Safari.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Cómo saber que quedó bien instalada">
+          <p>
+            Al abrirla desde el ícono <strong>no se ve la barra del navegador</strong>. Si se ve, quedó
+            como un acceso directo común: hay que borrarla y repetir los pasos.
           </p>
         </Tarjeta>
       </Seccion>
