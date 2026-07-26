@@ -274,8 +274,11 @@ export function TasadorDashboard({
             ))}
           </div>
 
+          {/* `min-w-0` en las celdas: por defecto una grilla no achica sus
+              celdas por debajo del contenido, así que una tarjeta con muchas
+              barras se salía de la pantalla en vez de comprimirse. */}
           <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
-            <Card>
+            <Card className="min-w-0">
               <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">
                 Tasaciones · {vista === 'anual' ? 'anual acumuladas' : vista}
               </p>
@@ -288,7 +291,7 @@ export function TasadorDashboard({
                 }}
               />
             </Card>
-            <Card>
+            <Card className="min-w-0">
               <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">Ranking de captaciones por vendedor</p>
               <RankingCaptacionesCards
                 ranking={rankingAnual ?? []}
