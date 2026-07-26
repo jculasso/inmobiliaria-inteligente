@@ -81,8 +81,11 @@ jobs:
           WEB_APP_URL=http://localhost:3210
           EOF
 
+      # `...` incluye las dependencias: sin compilar `@vacker/types` y compañía
+      # primero, el build de la web no las encuentra. En local pasaba
+      # desapercibido porque el `dist` ya estaba de antes.
       - name: Build web
-        run: pnpm --filter @vacker/web build
+        run: pnpm turbo run build --filter=@vacker/web...
 
       # WebKit además de Chromium: el "baile" era un comportamiento propio de
       # Safari, así que probarlo solo en Chrome no habría servido de nada.
