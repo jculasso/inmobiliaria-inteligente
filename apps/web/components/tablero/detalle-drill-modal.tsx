@@ -51,9 +51,7 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
   const sumComision = operaciones?.reduce((s, op) => s + op.comTotal, 0) ?? 0;
 
   return (
-    <Modal title={titulo} onClose={onClose} size="xl">
-      {subtitulo && <p className="-mt-2 mb-3 text-xs text-muted">{subtitulo}</p>}
-
+    <Modal title={titulo} subtitle={subtitulo} onClose={onClose} size="xl">
       {loading && <p className="py-6 text-sm text-muted">Cargando…</p>}
       {error && (
         <p role="alert" className="text-sm font-medium text-brand-red">

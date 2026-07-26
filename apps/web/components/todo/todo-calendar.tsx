@@ -65,10 +65,12 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
   const hayAllDay = dias.some((d) => eventos.some((e) => cubreDia(e, d) && e.todoElDia));
 
   return (
-    <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
-      <div className={soloDia ? '' : 'min-w-[640px]'}>
+    /* La grilla ocupa el alto que le queda en la pantalla y scrollea por
+       dentro: la página no se mueve. */
+    <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
+      <div className={`flex min-h-0 flex-1 flex-col ${soloDia ? '' : 'min-w-[640px]'}`}>
         {/* Encabezado de días */}
-        <div className="flex border-b border-line">
+        <div className="flex shrink-0 border-b border-line">
           <div className="w-14 shrink-0" />
           {dias.map((d) => (
             <div key={d} className={`flex-1 py-2 text-center ${d === hoy ? 'bg-brand-red/5' : ''}`}>
@@ -86,7 +88,7 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
 
         {/* Fila de "todo el día" (solo si hay) */}
         {hayAllDay && (
-          <div className="flex border-b border-line bg-surface/40">
+          <div className="flex shrink-0 border-b border-line bg-surface/40">
             <div className="flex w-14 shrink-0 items-center justify-end pr-2 text-[10px] uppercase text-muted">Todo el día</div>
             {dias.map((d) => (
               <div key={d} className="flex-1 space-y-1 border-l border-line p-1">
@@ -101,7 +103,7 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
         )}
 
         {/* Grilla horaria scrolleable */}
-        <div ref={scrollRef} className="max-h-[62vh] overflow-y-auto overflow-x-hidden">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div className="flex">
             {/* Eje de horas */}
             <div className="w-14 shrink-0">
@@ -183,15 +185,15 @@ function VistaMes({ fecha, eventos, onSelect }: { fecha: string; eventos: TodoEv
 
   const hoy = hoyArg();
   return (
-    <div className="overflow-hidden rounded-brand border border-line bg-white">
-      <div className="grid grid-cols-7 border-b border-line">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-brand border border-line bg-white">
+      <div className="grid shrink-0 grid-cols-7 border-b border-line">
         {DIAS_SEMANA.map((d) => (
           <div key={d} className="py-2 text-center text-[11px] font-semibold uppercase text-muted">
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
+      <div className="grid min-h-0 flex-1 grid-cols-7 overflow-y-auto overflow-x-hidden">
         {celdas.map((d) => {
           const delMes = d.slice(5, 7) === mesNum;
           const evs = porDia.get(d) ?? [];

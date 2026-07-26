@@ -41,7 +41,13 @@ export default async function TodoLayout({ children }: { children: ReactNode }) 
   if (principal.debeCambiarPassword) redirect('/cambiar-clave');
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10" style={tenantBrandStyle(principal.tenant.config)}>
+    /* Alto fijo a la pantalla: el calendario tiene que entrar entero, y lo que
+       scrollea es la grilla de horas por dentro, no la página. `dvh` y no `vh`
+       porque en el celular la barra del navegador cambia el alto real. */
+    <main
+      className="mx-auto flex h-dvh max-w-4xl flex-col px-4 py-8 sm:px-6 sm:py-10"
+      style={tenantBrandStyle(principal.tenant.config)}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar nombre={principal.tenant.nombre} fotoUrl={principal.tenant.config.logoUrl} size="lg" />
@@ -62,7 +68,7 @@ export default async function TodoLayout({ children }: { children: ReactNode }) 
         </div>
       </div>
 
-      <div className="mt-6">{children}</div>
+      <div className="mt-6 flex min-h-0 flex-1 flex-col">{children}</div>
     </main>
   );
 }

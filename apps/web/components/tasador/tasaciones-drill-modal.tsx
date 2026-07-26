@@ -23,9 +23,7 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
   const total = tasaciones.reduce((s, t) => s + (t.valorRecomendado ?? 0), 0);
 
   return (
-    <Modal title={titulo} onClose={onClose} size="xl">
-      {subtitulo && <p className="-mt-2 mb-3 text-xs text-muted">{subtitulo}</p>}
-
+    <Modal title={titulo} subtitle={subtitulo} onClose={onClose} size="xl">
       <div className="max-h-[65vh] overflow-y-auto overflow-x-hidden rounded-brand border border-line sm:hidden">
         {tasaciones.length === 0 ? (
           <p className="px-3 py-6 text-center text-muted">Sin tasaciones para mostrar.</p>

@@ -12,6 +12,10 @@
    nota al navegar entre módulos. */
 html {
   scrollbar-gutter: stable;
+  /* El corte va también acá, no solo en el body: cuando el body es el que
+     clipea, el navegador puede seguir dejando desplazar el documento entero,
+     que es justamente el arrastre lateral que se siente en el celular. */
+  overflow-x: clip;
 }
 
 body {
