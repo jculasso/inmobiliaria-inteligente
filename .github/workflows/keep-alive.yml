@@ -10,9 +10,18 @@ name: Keep API awake
 # "se pone lento por momentos" al navegar). A 5 min hay más margen. Para algo
 # realmente confiable conviene un uptime monitor externo (ver notas del proyecto).
 # No reemplaza la migración de infraestructura ya decidida (Lightsail).
+#
+# SOLO DÍAS HÁBILES, y no es una preferencia: el free tier de Render da 750
+# horas de servicio por mes y un servicio DORMIDO no las consume. Pingueando
+# 24/7 la API nunca se dormía y gastaba 24 × 31 = 744 h, seis horas de margen
+# — y al pasarse, Render no la ralentiza: SUSPENDE todos los servicios
+# gratuitos hasta el mes siguiente. De lunes a viernes son 528 h, con más de
+# 200 de colchón, y los vendedores no notan nada porque en días hábiles sigue
+# despierta las 24 horas. El fin de semana se duerme: quien entre un sábado
+# espera el arranque en frío de siempre.
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 * * * 1-5'
   workflow_dispatch: {}
 
 jobs:
