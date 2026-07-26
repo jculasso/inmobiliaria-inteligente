@@ -86,12 +86,16 @@ function renderReporte(over: Partial<Parameters<typeof ReporteGeneral>[0]> = {})
 }
 
 describe('ReporteGeneral', () => {
+// Cada propiedad se dibuja dos veces: tabla en pantalla ancha y tarjetas en el
+// celular (lo decide el CSS, que jsdom no aplica). Estos tests miran la tabla.
+const enLaTabla = () => within(screen.getByRole('table'));
+
   it('abre en "En comercialización" y muestra la cantidad de cada grupo', () => {
     renderReporte();
     expect(screen.getByRole('button', { name: /Captadas · 1/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /En comercialización · 1/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Archivadas · 1/ })).toBeInTheDocument();
-    expect(screen.getByText('Córdoba 1234')).toBeInTheDocument();
+    expect(enLaTabla().getByText('Córdoba 1234')).toBeInTheDocument();
   });
 
   it('cambia de grupo al tocar la solapa', async () => {
@@ -99,19 +103,19 @@ describe('ReporteGeneral', () => {
     renderReporte();
 
     await user.click(screen.getByRole('button', { name: /Captadas · 1/ }));
-    expect(screen.getByText('Mitre 500')).toBeInTheDocument();
+    expect(enLaTabla().getByText('Mitre 500')).toBeInTheDocument();
     expect(screen.queryByText('Córdoba 1234')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Archivadas · 1/ }));
-    expect(screen.getByText('San Martín 900')).toBeInTheDocument();
-    expect(screen.getByText('Vendida')).toBeInTheDocument();
+    expect(enLaTabla().getByText('San Martín 900')).toBeInTheDocument();
+    expect(enLaTabla().getByText('Vendida')).toBeInTheDocument();
   });
 
   it('el botón Archivar abre el modal con la propiedad elegida', async () => {
     const user = userEvent.setup();
     renderReporte();
 
-    await user.click(screen.getByRole('button', { name: 'Archivar' }));
+    await user.click(enLaTabla().getByRole('button', { name: 'Archivar' }));
 
     expect(screen.getByRole('heading', { name: 'Archivar propiedad' })).toBeInTheDocument();
     // Avisa que deja de alertar y que se puede reabrir: es una acción reversible.
@@ -127,7 +131,7 @@ describe('ReporteGeneral', () => {
 
     renderReporte({ puedeReabrir: true });
     await user.click(screen.getByRole('button', { name: /Archivadas · 1/ }));
-    expect(screen.getByRole('button', { name: 'Reabrir' })).toBeInTheDocument();
+    expect(enLaTabla().getByRole('button', { name: 'Reabrir' })).toBeInTheDocument();
   });
 
   it('al archivar, la propiedad cambia de solapa al instante y avisa que guarda', async () => {
@@ -136,7 +140,7 @@ describe('ReporteGeneral', () => {
     archivarProtocolo.mockReturnValue(new Promise(() => {}));
     renderReporte({ archivadas: [] });
 
-    await user.click(screen.getByRole('button', { name: 'Archivar' }));
+    await user.click(enLaTabla().getByRole('button', { name: 'Archivar' }));
     // Confirmar dentro del modal (el de la tabla queda detrás).
     const dialogo = screen.getByRole('dialog');
     await user.click(within(dialogo).getByRole('button', { name: 'Archivar' }));

@@ -12,6 +12,7 @@ import { Button } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
 import { desarchivarProtocolo } from '../../lib/protocolo-api';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { useRouter } from 'next/navigation';
 import { BarraAvance, Pill, porcentaje } from './protocolo-ui';
 import { ArchivarModal } from './archivar-modal';
@@ -232,7 +233,27 @@ function Tabla({
   }
 
   return (
-    <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
+    <>
+      {/* En el celular cada fila es una tarjeta: la primera celda hace de
+          título y el resto van etiquetadas con su columna. */}
+      <div className="rounded-brand border border-line bg-white sm:hidden">
+        <ListaTarjetas etiqueta={columnas[0] ?? 'Detalle'}>
+          {filas.map((f) => (
+            <Tarjeta key={f.id}>
+              <div className="text-sm font-bold text-ink">{f.celdas[0]}</div>
+              <CamposTarjeta>
+                {f.celdas.slice(1).map((celda, i) => (
+                  <CampoTarjeta key={i} etiqueta={columnas[i + 1] ?? ''}>
+                    {celda}
+                  </CampoTarjeta>
+                ))}
+              </CamposTarjeta>
+            </Tarjeta>
+          ))}
+        </ListaTarjetas>
+      </div>
+
+      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line bg-surface text-left">
@@ -255,6 +276,7 @@ function Tabla({
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

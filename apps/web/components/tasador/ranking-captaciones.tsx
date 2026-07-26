@@ -3,6 +3,7 @@
 import type { RankingCaptacionItem } from '@vacker/types';
 import { Avatar } from '@vacker/ui';
 import { fmtNum } from '../../lib/format';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 
 interface Props {
   ranking: RankingCaptacionItem[];
@@ -28,7 +29,38 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
           ({ranking.length} agentes · {periodoLabel})
         </span>
       </p>
-      <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
+      <div className="rounded-brand border border-line bg-white sm:hidden">
+        {ranking.length === 0 ? (
+          <p className="px-4 py-6 text-center text-muted">Sin datos para mostrar.</p>
+        ) : (
+          <ListaTarjetas etiqueta="Ranking de captaciones">
+            {ranking.map((r, i) => (
+              <Tarjeta
+                key={r.usuarioId}
+                destacada={i === 0}
+                onClick={onSelectAgente ? () => onSelectAgente(r.usuarioId, r.nombre) : undefined}
+                titulo={`Ver captaciones de ${r.nombre}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span aria-hidden className="w-6 shrink-0 text-center text-sm font-extrabold text-muted">
+                    {medalla(i)}
+                  </span>
+                  <Avatar nombre={r.nombre} fotoUrl={r.fotoUrl} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{r.nombre}</span>
+                  <span className="shrink-0 text-xs font-bold text-muted">{fmtPct(r.peso)}</span>
+                </div>
+                <CamposTarjeta>
+                  <CampoTarjeta etiqueta="Captadas">{fmtNum(r.captadas)}</CampoTarjeta>
+                  <CampoTarjeta etiqueta="Total">{fmtNum(r.total)}</CampoTarjeta>
+                  <CampoTarjeta etiqueta="Tasa de captación">{fmtPct(r.tasaCaptacion)}</CampoTarjeta>
+                </CamposTarjeta>
+              </Tarjeta>
+            ))}
+          </ListaTarjetas>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">

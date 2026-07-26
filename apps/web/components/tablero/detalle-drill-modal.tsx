@@ -6,6 +6,7 @@ import { Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { listOperaciones } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
+import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 
 interface Props {
   titulo: string;
@@ -61,7 +62,47 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
       )}
 
       {operaciones && !loading && (
-        <div className="max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line">
+        <div className="max-h-[65vh] overflow-y-auto rounded-brand border border-line sm:hidden">
+          {operaciones.length === 0 ? (
+            <p className="px-3 py-6 text-center text-muted">Sin operaciones para mostrar.</p>
+          ) : (
+            <ListaTarjetas etiqueta="Operaciones del detalle">
+              {operaciones.map((op) => {
+                const vend = op.puntas.find((p) => p.lado === 'vendedora');
+                const comp = op.puntas.find((p) => p.lado === 'compradora');
+                return (
+                  <Tarjeta key={op.id}>
+                    <div className="text-sm font-bold text-ink">{op.direccion}</div>
+                    <div className="mt-0.5 text-[11px] text-muted">
+                      {op.codigo} · Firma {op.fechaFirma ?? '—'} · {op.estado}
+                    </div>
+                    <CamposTarjeta>
+                      <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>
+                        {fmtUSD(op.precio ?? op.valorMensual ?? 0)}
+                      </CampoTarjeta>
+                      <CampoTarjeta etiqueta="Comisión">{fmtUSD(op.comTotal)}</CampoTarjeta>
+                      {esVenta && <CampoTarjeta etiqueta="Vendedora">{vend?.nombre ?? '—'}</CampoTarjeta>}
+                      {esVenta && <CampoTarjeta etiqueta="Compradora">{comp?.nombre ?? '—'}</CampoTarjeta>}
+                    </CamposTarjeta>
+                  </Tarjeta>
+                );
+              })}
+              <li className="mt-1 rounded-xl border-2 border-line bg-surface px-3 py-2.5">
+                <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Total ({operaciones.length})
+                </span>
+                <CamposTarjeta>
+                  <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>{fmtUSD(sumPrecio)}</CampoTarjeta>
+                  <CampoTarjeta etiqueta="Comisión">{fmtUSD(sumComision)}</CampoTarjeta>
+                </CamposTarjeta>
+              </li>
+            </ListaTarjetas>
+          )}
+        </div>
+      )}
+
+      {operaciones && !loading && (
+        <div className="hidden max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line sm:block">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="sticky top-0 z-10 bg-white">
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
