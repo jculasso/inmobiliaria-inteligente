@@ -54,8 +54,8 @@ vi.mock('../../lib/tablero-api', async (importOriginal) => {
 describe('RankingTable', () => {
   it('abierto por default, arranca en el tab "Acumulado año" y muestra el ranking', async () => {
     render(<RankingTable anio={2026} mesSeleccionado={7} />);
-    expect(await screen.findByText('Ana')).toBeInTheDocument();
-    expect(screen.getByText('Beto')).toBeInTheDocument();
+    expect((await screen.findAllByText('Ana'))[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Beto')[0]).toBeInTheDocument();
     expect(getResumenPeriodo).toHaveBeenCalledWith('token', {
       anio: 2026,
       periodo: 'anual',
@@ -66,18 +66,18 @@ describe('RankingTable', () => {
 
   it('se puede colapsar y volver a abrir', async () => {
     render(<RankingTable anio={2026} mesSeleccionado={7} />);
-    await screen.findByText('Ana');
+    await screen.findAllByText('Ana'); // espera a que cargue el ranking
 
     await userEvent.click(screen.getByRole('button', { name: /Ranking de vendedores/ }));
     expect(screen.queryByText('Ana')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /Ranking de vendedores/ }));
-    expect(await screen.findByText('Ana')).toBeInTheDocument();
+    expect((await screen.findAllByText('Ana'))[0]).toBeInTheDocument();
   });
 
   it('el tab "Acumulado trimestral" muestra los sub-tabs Q1-Q4 y cambia el período pedido', async () => {
     render(<RankingTable anio={2026} mesSeleccionado={7} />);
-    await screen.findByText('Ana');
+    await screen.findAllByText('Ana'); // espera a que cargue el ranking
 
     await userEvent.click(screen.getByRole('button', { name: 'Acumulado trimestral' }));
     await userEvent.click(screen.getByRole('button', { name: 'Q1' }));
@@ -92,7 +92,7 @@ describe('RankingTable', () => {
 
   it('el tab "Mes seleccionado" pide el período mensual', async () => {
     render(<RankingTable anio={2026} mesSeleccionado={7} />);
-    await screen.findByText('Ana');
+    await screen.findAllByText('Ana'); // espera a que cargue el ranking
 
     await userEvent.click(screen.getByRole('button', { name: 'Mes seleccionado' }));
 

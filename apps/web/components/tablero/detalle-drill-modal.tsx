@@ -61,7 +61,7 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
       )}
 
       {operaciones && !loading && (
-        <div className="max-h-[65vh] overflow-auto rounded-brand border border-line">
+        <div className="max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="sticky top-0 z-10 bg-white">
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">

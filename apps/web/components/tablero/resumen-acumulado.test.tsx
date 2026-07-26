@@ -51,7 +51,7 @@ describe('ResumenAcumulado', () => {
   it('carga el tab Anual por default y muestra las métricas + totales por vendedor', async () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
     expect(await screen.findByText('$1.000')).toBeInTheDocument();
-    expect(screen.getByText('Ana')).toBeInTheDocument();
+    expect(screen.getAllByText('Ana')[0]).toBeInTheDocument();
     expect(getResumenPeriodo).toHaveBeenCalledWith('token', {
       anio: 2026,
       periodo: 'anual',

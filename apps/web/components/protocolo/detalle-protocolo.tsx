@@ -238,7 +238,7 @@ export function DetalleProtocolo({
       </section>
 
       {/* Semanas */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1">
         {SEMANAS.map((n) => {
           const acciones = p.acciones.filter((a) => a.semana === n && a.estado !== 'no_corresponde');
           const hechas = acciones.filter((a) => a.estado === 'realizada').length;

@@ -79,7 +79,7 @@ export function ReporteGeneral({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex gap-2 overflow-x-auto overscroll-x-contain">
         {solapas.map((s) => (
           <button
             key={s.key}
@@ -232,7 +232,7 @@ function Tabla({
   }
 
   return (
-    <div className="overflow-x-auto rounded-brand border border-line bg-white">
+    <div className="overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line bg-surface text-left">
