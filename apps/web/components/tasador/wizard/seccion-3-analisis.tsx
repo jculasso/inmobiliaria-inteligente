@@ -8,7 +8,7 @@ import {
   type Nivel,
   type PerfilComprador,
 } from '@vacker/types';
-import { Campo, CheckPills, inputClass } from './campo';
+import { Campo, CheckPills, PasoHeader, inputClass } from './campo';
 
 const FORTALEZAS = FortalezaSchema.options;
 const ASPECTOS = AspectoSchema.options;
@@ -50,7 +50,7 @@ export function Seccion3Analisis({
 }: Props) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-base font-bold text-ink">3. Análisis comercial</h2>
+      <PasoHeader numero={3} titulo="Análisis comercial" bajada="Contexto de mercado y posicionamiento de la propiedad." />
       <CheckPills
         label="Fortalezas"
         opciones={FORTALEZAS}

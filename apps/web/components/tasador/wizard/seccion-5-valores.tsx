@@ -5,7 +5,7 @@ import type { AnalisisComparables } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../../lib/format';
 import { ConfianzaBadge } from '../confianza-badge';
-import { Campo, inputClass } from './campo';
+import { Campo, PasoHeader, inputClass } from './campo';
 
 const ESCENARIOS = EscenarioSchema.options;
 const PLAZOS = PlazoEstimadoSchema.options;
@@ -71,8 +71,7 @@ export function Seccion5Valores({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-base font-bold text-ink">5. Valores de tasación</h2>
-      <p className="text-xs text-muted">Definí el rango de valores y el escenario de comercialización.</p>
+      <PasoHeader numero={5} titulo="Valores de tasación" bajada="Definí el rango de valores y el escenario de comercialización." />
 
       {/* Cálculo sugerido */}
       <div className="rounded-brand border border-line border-l-[3px] border-l-brand-red bg-brand-red/[0.03] p-4">
@@ -104,7 +103,7 @@ export function Seccion5Valores({
         <Campo label="Valor mínimo competitivo (USD)">
           <input type="number" min={0} value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} className={inputClass} />
         </Campo>
-        <Campo label="Valor recomendado (USD) *">
+        <Campo label="Valor recomendado (USD)" requerido>
           <input type="number" min={0} value={valorRecomendado} onChange={(e) => setValorRecomendado(e.target.value)} className={inputClass} />
         </Campo>
         <Campo label="Valor aspiracional (USD)">

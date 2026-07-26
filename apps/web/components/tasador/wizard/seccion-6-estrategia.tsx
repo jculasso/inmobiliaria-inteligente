@@ -1,7 +1,7 @@
 'use client';
 
 import { EstrategiaAccionSchema } from '@vacker/types';
-import { Campo, CheckPills, inputClass } from './campo';
+import { Campo, CheckPills, PasoHeader, inputClass } from './campo';
 
 const ESTRATEGIAS = EstrategiaAccionSchema.options;
 
@@ -24,7 +24,7 @@ export function Seccion6Estrategia({
 }: Props) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-base font-bold text-ink">6. Estrategia comercial</h2>
+      <PasoHeader numero={6} titulo="Estrategia comercial" bajada="Cómo se va a comercializar y qué se le promete al propietario." />
       <CheckPills
         label="Acciones"
         opciones={ESTRATEGIAS}
