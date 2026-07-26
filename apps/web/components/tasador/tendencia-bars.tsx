@@ -22,7 +22,7 @@ export function TendenciaBars({
   const max = Math.max(1, ...datos.map((d) => d.total));
 
   return (
-    <div className="flex h-[190px] items-end justify-between gap-2.5">
+    <div className="flex h-[190px] items-end justify-between gap-1 sm:gap-2.5">
       {datos.map((d) => {
         const sel = seleccionado === d.full;
         return (
@@ -32,12 +32,12 @@ export function TendenciaBars({
             onClick={() => onSelect(d)}
             disabled={d.total === 0}
             title={`Ver tasaciones de ${d.full}`}
-            className={`flex h-full flex-1 flex-col items-center rounded-lg transition-colors ${
+            className={`flex h-full min-w-0 flex-1 flex-col items-center rounded-lg transition-colors ${
               sel ? 'bg-brand-red/10' : d.total > 0 ? 'hover:bg-brand-red/10' : 'cursor-default'
             }`}
           >
             <span
-              className={`mb-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+              className={`mb-1 rounded-full px-1.5 py-0.5 text-xs font-bold sm:px-2 ${
                 sel ? 'bg-brand-red text-white' : 'bg-surface text-ink'
               }`}
             >
