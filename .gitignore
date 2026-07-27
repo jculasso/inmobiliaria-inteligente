@@ -37,3 +37,6 @@ pnpm-debug.log*
 # Playwright
 playwright-report/
 test-results/
+
+# PDF generados de la documentación del panel
+apps/web/pdf/
