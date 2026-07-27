@@ -41,6 +41,35 @@ html {
   }
 }
 
+/* Impresión — el botón "Descargar PDF" del panel usa el diálogo del navegador,
+   así que lo que sale impreso se define acá. La alternativa era generar el
+   archivo en el servidor, pero entonces envejece: esto imprime exactamente la
+   página que se está mirando. */
+@media print {
+  /* Sin los colores de marca, los avisos y las prioridades pierden el sentido:
+     el rojo y el ámbar SON la información. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  /* Que ningún bloque quede partido entre dos hojas. */
+  section,
+  header,
+  li {
+    break-inside: avoid;
+  }
+
+  /* Lo que sirve en pantalla y no en papel. */
+  [data-debug-desborde] {
+    display: none !important;
+  }
+}
+
 body {
   background: var(--color-surface);
   color: var(--color-ink);

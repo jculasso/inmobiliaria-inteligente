@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { BotonImprimir } from './boton-imprimir';
 
 /**
  * Piezas para las páginas de documentación del panel (guía, onboarding,
@@ -9,7 +10,10 @@ import type { ReactNode } from 'react';
 export function DocHeader({ titulo, bajada }: { titulo: string; bajada: string }) {
   return (
     <header className="border-b border-line pb-4">
-      <h2 className="text-2xl font-extrabold tracking-tight text-ink">{titulo}</h2>
+      <div className="flex items-start justify-between gap-4">
+        <h2 className="min-w-0 text-2xl font-extrabold tracking-tight text-ink">{titulo}</h2>
+        <BotonImprimir nombre={titulo} />
+      </div>
       <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted">{bajada}</p>
     </header>
   );

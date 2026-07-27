@@ -58,8 +58,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <div className="flex items-start justify-between gap-4">
+    <main className="mx-auto max-w-6xl px-6 py-10 print:px-0 print:py-0">
+      <div className="flex items-start justify-between gap-4 print:hidden">
         <div>
           <Link
             href="/"
@@ -75,7 +75,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 print:hidden">
         <AdminNav />
       </div>
 
