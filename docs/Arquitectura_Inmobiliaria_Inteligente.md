@@ -490,9 +490,12 @@ Las listas traen como máximo **500 filas** y los KPIs se suman **en memoria** e
 5. **E2E con sesión**, una vez que exista base de pruebas.
 6. **App nativa**, diferida hasta después de la migración.
 
-Pasos que dependen de una persona, no del código: **habilitar el módulo Protocolo para Vacker** desde `/admin` (está construido pero apagado: hasta que se prenda, los vendedores no lo ven), **contratar Supabase Pro** por los backups, y **pasar Render a plan pago** cuando la plataforma se cobre.
+Pasos que dependen de una persona, no del código: **contratar Supabase Pro** por los backups, y **pasar Render a plan pago** cuando la plataforma se cobre. Ninguno de los dos bloquea la operación; el primero es la única exposición seria que queda abierta (ver 20.3).
 
-> **Ya hecho — no repetir.** El cierre de los buckets privados de Storage (`apps/api/scripts/storage-buckets-privados.sql`) se ejecutó y verificó el **26 de julio de 2026**, antes de la salida a producción: `informes-tasador` y `tasador-fotos` quedaron en `public = false`, y `tenants-logos` y `usuarios-avatares` siguen públicos a propósito. Para comprobarlo en cualquier momento: `select id, public from storage.buckets order by id;`
+> **Ya hechos — no repetir.** Al 27 de julio de 2026 no queda ningún paso manual de puesta en marcha:
+>
+> - **Buckets privados de Storage** (`apps/api/scripts/storage-buckets-privados.sql`) — ejecutado y verificado el **26 de julio**, antes de la salida a producción: `informes-tasador` y `tasador-fotos` en `public = false`; `tenants-logos` y `usuarios-avatares` públicos a propósito. Se comprueba con `select id, public from storage.buckets order by id;` y **no hace falta volver a correr el UPDATE**.
+> - **Módulo Protocolo habilitado para Vacker** — hecho el **27 de julio**. Los cuatro módulos están visibles para los vendedores.
 
 > **Corrección a la secuencia de 19.6.** Aquel punto (2) —"construir las apps móviles (React Native) antes de la migración"— quedó cumplido de otra forma: la movilidad se resolvió con la PWA, ya en producción, y la app nativa pasó a después de la migración de infraestructura. El razonamiento de 19.6 sobre latencia sigue siendo válido y es, justamente, la razón del cambio de orden.
 
