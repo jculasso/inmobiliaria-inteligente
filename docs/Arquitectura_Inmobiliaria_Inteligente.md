@@ -483,9 +483,11 @@ Las listas traen como máximo **500 filas** y los KPIs se suman **en memoria** e
 
 1. **Paginación real y KPIs como agregados SQL.** Agendado para el sábado 1 de agosto de 2026, después de contratar Supabase Pro (por los backups) y verificando ambas implementaciones contra datos reales antes de reemplazar la vieja.
 2. **Migración de infraestructura** — Lightsail en São Paulo + Supabase Pro, según 19.6.
-3. **Flyer de onboarding por inmobiliaria**, generado por la API con el logo del cliente y solo sus módulos contratados (a diferencia del comercial, que es estático).
-4. **E2E con sesión**, una vez que exista base de pruebas.
-5. **App nativa**, diferida hasta después de la migración.
+3. **Consola de plataforma — disparador: la segunda inmobiliaria en producción.** Con un solo cliente, administrar es recordar; con dos deja de serlo. Alcance mínimo acordado: ver todas las inmobiliarias productivas con sus módulos contratados, su monto mensual y si están al día, más un registro de pagos cargado a mano. **No** es un sistema de facturación: la emisión, AFIP y el cobro automático siguen siendo la decisión abierta de la sección 17, y se resuelven cuando cargar los pagos a mano moleste, no antes.
+   - Junto con esto hay que **retirar el campo `plan`**, que desde que se vende por módulo quedó como rótulo sin efecto sobre nada (ver 20.2). Hoy el panel lo muestra como si gobernara los accesos, que los gobierna `modulos`. Con un cliente no molesta; con varios induce a error a quien mire la tabla para saber qué contrató alguien. Si conviene conservar la palabra para la conversación comercial, que sea una etiqueta **derivada** de los módulos, no un campo aparte que se desincroniza.
+4. **Flyer de onboarding por inmobiliaria**, generado por la API con el logo del cliente y solo sus módulos contratados (a diferencia del comercial, que es estático).
+5. **E2E con sesión**, una vez que exista base de pruebas.
+6. **App nativa**, diferida hasta después de la migración.
 
 Pasos que dependen de una persona, no del código: habilitar el módulo Protocolo para Vacker desde `/admin`, aplicar `scripts/storage-buckets-privados.sql` en el entorno productivo, y pasar Render a plan pago cuando la plataforma se cobre.
 
