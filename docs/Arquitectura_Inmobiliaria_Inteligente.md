@@ -8,8 +8,10 @@ Documento preliminar de arquitectura
 
 *Para discusión con el equipo técnico*
 
-Versión 0.2 · borrador · Julio 2026
+Versión 0.3 · Julio 2026
 
+> **Nota de versión (v0.3 — 27 de julio de 2026).** El sistema salió a producción. Se incorpora la **sección 20 «Estado a la salida a producción»**, que es la foto de lo que efectivamente se construyó y **manda sobre lo planificado** en las secciones 16 y 19 donde haya diferencia. Los cambios de fondo respecto de v0.2: se sumó un cuarto módulo (**Protocolo 5 Semanas**, que no estaba en el catálogo), el licenciamiento pasó de planes cerrados a **módulos contratados por inmobiliaria**, y la movilidad arrancó por **PWA instalable** en lugar de app nativa. La sección 20 también documenta las restricciones que aparecieron recién con usuarios reales.
+>
 > **Nota de versión (v0.2).** Se incorpora la sección 19 «Plan de pasaje a CODE — Fase 1 (MVP productivo)», que define un enfoque pragmático de arranque con hosting y base de datos gratuitos, respetando los principios de la arquitectura objetivo (API-first, multi-tenant con RLS, RBAC, TypeScript full-stack). Se actualizan el roadmap (sección 16) y las decisiones abiertas (sección 17) marcando las que quedan cerradas para esta fase, y se suma el módulo **To Do List** (agenda por vendedor/Team Leader sincronizada con Google Calendar) al catálogo de módulos.
 
 **Contenido**
@@ -319,6 +321,8 @@ Camino sugerido desde el MVP actual hacia el sistema definitivo. Las fases son i
 
 > **Orden de los módulos.** El primer módulo productivo es el Tablero Comercial (su MVP ya está listo). El Tasador se incorpora una vez cerrado su MVP, y el To Do List una vez cerrado el suyo. El detalle de la secuencia de implementación está en la sección 19.
 
+> **Actualización (v0.3).** Esta tabla quedó atrasada respecto de lo que se construyó. Las fases 1 y 2 están cumplidas, y buena parte de la fase 4 se adelantó: el Tasador y el To Do List ya son productivos, y se sumó un módulo que no figura acá (Protocolo 5 Semanas). En cambio la fase 3 (app nativa) se pospuso: la movilidad se resolvió con PWA. **Para el estado real, ver la sección 20.** Lo que sigue vigente de esta tabla es la fase 5 y lo comercial de la fase 4 (facturación por uso, onboarding self-service).
+
 17. Decisiones abiertas para el equipo
 
 Puntos a debatir y cerrar antes de iniciar el desarrollo definitivo. Se marca el estado tras la revisión v0.2.
@@ -332,6 +336,14 @@ Puntos a debatir y cerrar antes de iniciar el desarrollo definitivo. Se marca el
 | **Umbral monolito → microservicios** | Cuándo y qué módulos extraer primero | Abierto — revisar al final de Fase 2 |
 | **Alcance del modo offline** | Qué funciones deben operar sin conexión en la app móvil | Abierto — se define en Fase 3 |
 | **Residencia de datos** | Región de alojamiento y requisitos de los clientes | Abierto — revisar antes de captar tenants regulados |
+
+> **Actualización (v0.3).** Se cerraron dos temas más y se movió uno:
+>
+> - **Proveedor de nube** — deja de estar diferido: se eligió **AWS Lightsail en São Paulo** para la API, manteniendo Supabase (ver 19.6). No es la nube completa, es el paso que resuelve el problema concreto de latencia.
+> - **Residencia de datos** — resuelto de hecho: los datos están en `sa-east-1` (São Paulo) y ahí se quedan; fue justamente el motivo de la decisión anterior.
+> - **Modelo de comercialización** (tema nuevo, no estaba en esta tabla) — **cerrado**: se vende por módulo contratado, no por planes. Ver 20.2.
+>
+> Siguen abiertos, sin cambios: facturación en Argentina, umbral monolito→microservicios y alcance del modo offline.
 
 18. Próximos pasos
 
@@ -419,4 +431,64 @@ Señales que indican que llegó el momento de dejar el free tier y avanzar hacia
 
 **Secuencia acordada (revisada, 2026-07-19)**: (1) cerrar el Tablero y el Tasador funcionando "de diez" en el stack actual (free tier); (2) construir las apps móviles (React Native, §19.3 punto 6) — **decisión explícita del usuario de ir con esto antes que con la migración de infraestructura**, a sabiendas de que las apps van a arrancar con el mismo problema de latencia que la web hoy (o más notorio, por la menor tolerancia de espera en mobile y la variabilidad de las redes 4G/5G); (3) recién ahí ejecutar la migración de infraestructura (Lightsail + Supabase Pro, etc.).
 
-*Documento de trabajo · **Vacker** — Inmobiliaria Inteligente 2.0 · v0.2*
+20. Estado a la salida a producción (27 de julio de 2026)
+
+El sistema salió a producción con Vacker y 15 vendedores. Esta sección es la foto de **lo que efectivamente existe**, no de lo planificado: donde diga algo distinto de las secciones 16 o 19, manda esta.
+
+20.1 Módulos construidos
+
+Son **cuatro** módulos de negocio, uno más que los tres previstos en v0.2, más el panel de plataforma.
+
+| **Módulo** | **Estado** | **Qué incluye** |
+| --- | --- | --- |
+| **Tablero Comercial** | Productivo | Operaciones (ventas y alquileres), objetivos, ranking, KPIs; dashboards por rol con drill-down; filtros anual/trimestral/mensual; informe y reporte descargables. Cada vendedor ve solo lo suyo, tanto en listas como en dashboards. |
+| **Tasador de Propiedades** | Productivo | Captación, comparables, fotos, informe PDF con la marca de la inmobiliaria, historial de tasaciones. |
+| **Protocolo 5 Semanas** | Construido — **falta habilitarlo por inmobiliaria** | **Módulo nuevo, no estaba en el catálogo de v0.2.** Seguimiento semana a semana de la propiedad captada, encadenado a la tasación que le dio origen. Detalle funcional en `docs/MODULO_PROTOCOLO_5_SEMANAS.md`. |
+| **To Do List** | Productivo | Espejo de **solo lectura** de Google Calendar; cada usuario ve únicamente su calendario principal. No escribe eventos: fue una decisión de alcance, no una limitación técnica. |
+| **Panel `/admin`** | Productivo | Alta de inmobiliarias y usuarios, módulos contratados, y tres documentos vivos: guía del implementador, onboarding e inversión. |
+
+20.2 Decisiones cerradas desde v0.2
+
+| **Tema** | **Decisión** | **Por qué** |
+| --- | --- | --- |
+| **Licenciamiento** | **Por módulo contratado**, no por plan cerrado. Cada inmobiliaria tiene sus módulos habilitados uno por uno (`MODULO_KEYS` en `packages/types`); la API lo hace cumplir con `ModuloGuard` y la Home solo muestra lo contratado. | Los planes obligaban a vender paquetes; el mercado real pide "quiero el Tasador y todavía no el resto". El esquema por plan quedó como `MODULOS_POR_PLAN_LEGACY` solo para no romper lo viejo. |
+| **Movilidad** | **PWA instalable por URL, sin tiendas**, como primera etapa. La app nativa queda diferida. | Pone el sistema en el teléfono de los 15 vendedores el mismo día, sin revisión de tiendas ni ciclo de publicación. Confirma lo que la sección 17 ya había cerrado ("nativa después de la PWA"), pero adelantando la PWA a producción. |
+| **Contraseñas** | El implementador **escribe** una clave temporal al dar de alta al usuario, y el sistema obliga a cambiarla en el primer ingreso. El recupero por email está construido pero **apagado** (`NEXT_PUBLIC_RECUPERO_POR_EMAIL`). | Con 15 altas hechas por una persona en una tarde, entregar la clave en mano es más simple y más rápido que depender del correo. El recupero se enciende cuando haya inmobiliarias que se den de alta solas. |
+| **Privacidad de archivos** | Informes de tasación y fotos en buckets **privados**, servidos con URLs firmadas. Logos y avatares quedan públicos a propósito. | Un informe de tasación tiene la dirección y el valor de la propiedad de un cliente. Un logo no. |
+| **Acceso al panel** | `/admin` tiene su **propia** pantalla de login y no rebota por la Home. | El administrador de plataforma no es usuario de ninguna inmobiliaria; hacerlo pasar por la Home de tenant era confuso y frágil. |
+| **Material comercial** | Flyer de 4 páginas **estático y público** (excluido del middleware de sesión). Los documentos del panel se descargan imprimiendo la propia página. | El flyer se le manda a dueños de inmobiliarias que no tienen cuenta: si pide login, se pierde el prospecto. Y los documentos impresos desde la página salen siempre actualizados, sin esperar a que la API despierte. |
+| **Alcance de las pruebas e2e** | Nunca contra la base productiva. CI corre con variables de entorno **falsas a propósito**, así no puede alcanzar datos reales aunque alguien se equivoque. | La base productiva está en el plan gratis y **no tiene backups automáticos** (ver 20.3). Un test que escriba ahí no se deshace. |
+
+20.3 Restricciones que aparecieron con usuarios reales
+
+Cosas que no se ven en desarrollo y conviene no volver a aprender por las malas:
+
+- **iOS agranda la pantalla al enfocar un campo con letra menor a 16px.** Al agrandar, la ventana visible se achica y la página entera se arrastra de costado: es lo que en las pruebas se llamó "el baile", y por eso pasaba en todos los módulos a la vez. La regla está en `apps/web/app/globals.css` con un test que la protege. **Cualquier módulo nuevo la hereda; no bajar de 16px en campos móviles.**
+- **El plan gratis de Render da 750 horas de instancia al mes y pasarse suspende todo el servicio**, no solo la API. Por eso el ping que mantiene despierta la API corre únicamente en días hábiles.
+- **El plan gratis de Supabase no hace backups automáticos.** Es el argumento más fuerte para pasar a Pro, por encima del rendimiento.
+- **El plan Hobby de Vercel es de uso no comercial.** En cuanto la plataforma se cobre, hay que pasar a Pro.
+- **La latencia entre continentes está mitigada, no resuelta** (ver 19.6). Las mitigaciones de código bajaron el impacto; la causa de fondo sigue siendo dónde corre la API.
+
+20.4 Estado de las pruebas
+
+Pruebas unitarias y de integración con Vitest, pruebas de API con Supertest, y pruebas end-to-end con Playwright sobre **Chromium y WebKit**, corriendo en CI. WebKit está incluido a propósito: el motor de Safari es donde apareció el problema de zoom del punto anterior, y un navegador solo no lo habría detectado.
+
+Falta cubrir con e2e los flujos **con sesión iniciada**, que requieren una base de pruebas separada de la productiva.
+
+20.5 Límites conocidos y asumidos
+
+Las listas traen como máximo **500 filas** y los KPIs se suman **en memoria** en vez de en la base. Alcanza de sobra para el volumen de Vacker y no escala más allá. La diferencia con v0.2 es que el tope ya no es mudo: cuando una lista se recorta, la pantalla lo avisa (`packages/types/src/limites.ts`). Se decidió avisar ahora y resolverlo después, en vez de frenar la salida a producción.
+
+20.6 Pendiente, en orden
+
+1. **Paginación real y KPIs como agregados SQL.** Agendado para el sábado 1 de agosto de 2026, después de contratar Supabase Pro (por los backups) y verificando ambas implementaciones contra datos reales antes de reemplazar la vieja.
+2. **Migración de infraestructura** — Lightsail en São Paulo + Supabase Pro, según 19.6.
+3. **Flyer de onboarding por inmobiliaria**, generado por la API con el logo del cliente y solo sus módulos contratados (a diferencia del comercial, que es estático).
+4. **E2E con sesión**, una vez que exista base de pruebas.
+5. **App nativa**, diferida hasta después de la migración.
+
+Pasos que dependen de una persona, no del código: habilitar el módulo Protocolo para Vacker desde `/admin`, aplicar `scripts/storage-buckets-privados.sql` en el entorno productivo, y pasar Render a plan pago cuando la plataforma se cobre.
+
+> **Corrección a la secuencia de 19.6.** Aquel punto (2) —"construir las apps móviles (React Native) antes de la migración"— quedó cumplido de otra forma: la movilidad se resolvió con la PWA, ya en producción, y la app nativa pasó a después de la migración de infraestructura. El razonamiento de 19.6 sobre latencia sigue siendo válido y es, justamente, la razón del cambio de orden.
+
+*Documento de trabajo · **Vacker** — Inmobiliaria Inteligente 2.0 · v0.3*
