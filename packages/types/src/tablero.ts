@@ -319,3 +319,49 @@ export const VendedorDtoSchema = z.object({
   objetivos: z.array(ObjetivoDtoSchema),
 });
 export type VendedorDto = z.infer<typeof VendedorDtoSchema>;
+
+/**
+ * Parte numérica de un código de operación, para poder ordenar por número y no
+ * por texto ("OP-999" es MAYOR que "OP-1001" comparado como texto).
+ *
+ * DEBE dar lo mismo que la columna generada `operacion.codigo_num` en Postgres,
+ * que hace `nullif(regexp_replace(codigo, '\D', '', 'g'), '')::numeric`. Si las
+ * dos definiciones se separan, el orden cambia según si la lista se ordenó en
+ * la base o en el navegador, y eso se ve como que la pantalla se desordena
+ * sola al filtrar.
+ *
+ * Devuelve `null` cuando el código no tiene ningún dígito: esas filas van al
+ * final, igual que los NULL en la consulta.
+ */
+export function numeroDeCodigo(codigo: string): number | null {
+  const digitos = codigo.replace(/\D/g, '');
+  return digitos === '' ? null : Number(digitos);
+}
+
+/**
+ * Compara dos operaciones por la columna y el sentido pedidos, con el mismo
+ * criterio que la API: los nulos SIEMPRE al final (en los dos sentidos) y
+ * desempate por código para que el orden sea estable.
+ */
+export function compararOperaciones(
+  a: { codigo: string; fechaFirma: string | null },
+  b: { codigo: string; fechaFirma: string | null },
+  orden: OrdenOperacion,
+  dir: DirOrden,
+): number {
+  const signo = dir === 'asc' ? 1 : -1;
+  const [va, vb] =
+    orden === 'fechaFirma'
+      ? [a.fechaFirma, b.fechaFirma]
+      : [numeroDeCodigo(a.codigo), numeroDeCodigo(b.codigo)];
+
+  // Nulos al final pase lo que pase: son las filas con menos información y
+  // arriba solo estorban. Por eso se resuelve ANTES de aplicar el signo.
+  if (va == null && vb == null) return a.codigo.localeCompare(b.codigo);
+  if (va == null) return 1;
+  if (vb == null) return -1;
+
+  if (va < vb) return -1 * signo;
+  if (va > vb) return 1 * signo;
+  return a.codigo.localeCompare(b.codigo) * signo;
+}

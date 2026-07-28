@@ -1,4 +1,4 @@
-import type { OperacionFiltro } from '@vacker/types';
+import { DIR_ORDEN_DEFAULT, ORDEN_OPERACION_DEFAULT, type OperacionFiltro } from '@vacker/types';
 import { listOperaciones, listVendedores } from '../../../lib/tablero-api';
 import { requireServerPrincipal } from '../../../lib/server-principal';
 import { puedeEscribirOperaciones, puedeVerTodo } from '../../../lib/rbac';
@@ -45,6 +45,8 @@ export default async function VentasPage({
         operaciones={operaciones}
         vendedores={vendedores}
         puedeEscribir={puedeEscribirOperaciones(ctx.principal.roles)}
+        orden={orden ?? ORDEN_OPERACION_DEFAULT}
+        dir={dir ?? DIR_ORDEN_DEFAULT}
       />
     </div>
   );
