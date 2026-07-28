@@ -68,9 +68,18 @@ export function puedeVerSoloLoMio(roles: Rol[]): boolean {
   return roles.some((r) => r === 'direccion' || r === 'admin_tenant' || r === 'team_leader');
 }
 
-/** DELETE /tablero/operaciones/:id. */
-export function puedeBorrarOperaciones(roles: Rol[]): boolean {
-  return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
+/**
+ * Alta, edición y borrado de operaciones (POST/PATCH/DELETE
+ * /tablero/operaciones). Solo dirección y el admin del tenant: la carga la
+ * centraliza la inmobiliaria para que los números del tablero tengan un único
+ * origen. El vendedor y el team leader SIGUEN VIENDO lo suyo —lo necesitan
+ * para sus KPIs y su ranking—, solo que en modo lectura.
+ *
+ * Espejo exacto de `PUEDEN_ESCRIBIR` en operaciones.controller.ts: esto oculta
+ * los botones, pero quien manda es la API.
+ */
+export function puedeEscribirOperaciones(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'direccion' || r === 'admin_tenant');
 }
 
 /** DELETE /tasador/tasaciones/:id. */
