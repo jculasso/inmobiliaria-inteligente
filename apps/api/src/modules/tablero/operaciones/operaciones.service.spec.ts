@@ -136,7 +136,12 @@ describe('OperacionesService — orden del listado', () => {
     const tx = makeTx();
     const svc = new OperacionesService(makeDb(tx));
     await svc.list(filtro as never, CTX_DIRECCION);
-    return (tx.operacion.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0].orderBy;
+    const findMany = tx.operacion.findMany as ReturnType<typeof vi.fn>;
+    const orderBy = findMany.mock.calls[0]?.[0]?.orderBy as
+      | { fechaFirma?: { sort: string; nulls: string }; codigoNum?: unknown; codigo?: unknown }[]
+      | undefined;
+    if (!orderBy) throw new Error('El servicio no llamó a findMany con un orderBy.');
+    return orderBy;
   }
 
   it('por defecto, la operación más nueva arriba', async () => {
@@ -172,7 +177,7 @@ describe('OperacionesService — orden del listado', () => {
     // nulos primero y la pantalla abriría con un bloque de guiones.
     for (const dir of ['asc', 'desc'] as const) {
       const orderBy = await orderByDe({ orden: 'fechaFirma', dir });
-      expect(orderBy[0].fechaFirma.nulls).toBe('last');
+      expect(orderBy[0]?.fechaFirma?.nulls).toBe('last');
     }
   });
 
