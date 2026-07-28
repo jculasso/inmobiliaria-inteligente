@@ -108,11 +108,29 @@ export const UpdateOperacionSchema = z
   .partial();
 export type UpdateOperacion = z.infer<typeof UpdateOperacionSchema>;
 
+/**
+ * Columnas por las que se puede ordenar el listado de operaciones. Son las dos
+ * que tienen encabezado clickeable en la tabla; cualquier otra se rechaza en
+ * vez de caer en un orden silencioso que no se pidió.
+ */
+export const OrdenOperacionSchema = z.enum(['codigo', 'fechaFirma']);
+export type OrdenOperacion = z.infer<typeof OrdenOperacionSchema>;
+
+export const DirOrdenSchema = z.enum(['asc', 'desc']);
+export type DirOrden = z.infer<typeof DirOrdenSchema>;
+
+/** Orden por defecto: la operación más nueva arriba. */
+export const ORDEN_OPERACION_DEFAULT: OrdenOperacion = 'codigo';
+export const DIR_ORDEN_DEFAULT: DirOrden = 'desc';
+
 /** Filtro de listados y KPIs por año/mes. */
 export const KpiFiltroSchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
   mes: z.coerce.number().int().min(1).max(12).optional(),
-  /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propios KPIs. */
+  /**
+   * Check "Ver todo": expande del trabajo propio (el default) al alcance
+   * máximo del rol. Ver `scopeDeVista` en la API.
+   */
   verTodo: z.coerce.boolean().optional(),
 });
 export type KpiFiltro = z.infer<typeof KpiFiltroSchema>;
@@ -128,6 +146,10 @@ export const OperacionFiltroSchema = KpiFiltroSchema.extend({
   /** Filtra a las operaciones donde este usuario tiene una punta — drill-down por vendedor. */
   usuarioId: z.string().uuid().optional(),
   // `verTodo` se hereda de KpiFiltroSchema.
+  /** Columna por la que ordenar el listado. */
+  orden: OrdenOperacionSchema.optional(),
+  /** Sentido del orden. */
+  dir: DirOrdenSchema.optional(),
 });
 export type OperacionFiltro = z.infer<typeof OperacionFiltroSchema>;
 

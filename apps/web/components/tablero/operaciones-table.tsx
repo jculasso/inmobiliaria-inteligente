@@ -11,6 +11,7 @@ import { estadoClass, estadoLabel } from '../../lib/operacion-estado';
 import { AvisoListaRecortada } from '../aviso-lista-recortada';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
+import { EncabezadoOrdenable } from './encabezado-ordenable';
 import { OperacionFormModal } from './operacion-form-modal';
 
 interface Props {
@@ -137,8 +138,8 @@ export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, pue
         <table className="w-full text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-3 py-2">Código</th>
-              <th className="px-3 py-2">Firma</th>
+              <EncabezadoOrdenable columna="codigo">Código</EncabezadoOrdenable>
+              <EncabezadoOrdenable columna="fechaFirma">Firma</EncabezadoOrdenable>
               <th className="px-3 py-2">Dirección</th>
               {tipo === 'venta' ? (
                 <>

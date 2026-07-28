@@ -112,6 +112,12 @@ model Operacion {
   id           String    @id @default(uuid()) @db.Uuid
   tenantId     String    @map("tenant_id") @db.Uuid
   codigo       String // Código legible: OP-1001 (venta) | ALQ-1001 (alquiler)
+  /// Parte numérica de `codigo`, para poder ordenar por número y no por texto
+  /// ("OP-999" es MAYOR que "OP-1001" si se compara como texto).
+  /// La calcula Postgres: es una columna GENERATED ALWAYS. NUNCA escribirla
+  /// desde la aplicación — la base rechaza el insert. Ver la migración
+  /// 20260728120000_operacion_codigo_num.
+  codigoNum    Decimal?  @map("codigo_num") @db.Decimal
   tipo         String // venta | alquiler
   direccion    String
   precio       Decimal?  @db.Decimal(14, 2) // null en alquileres (usan valor_mensual)
