@@ -66,14 +66,14 @@ const enLasTarjetas = () => within(screen.getByRole('list', { name: 'Operaciones
 
 describe('OperacionesTable', () => {
   it('muestra las operaciones y el contador', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(enLaTabla().getByText('Calle Falsa 123')).toBeInTheDocument();
     expect(screen.getByText('2 de 2 operaciones')).toBeInTheDocument();
   });
 
   it('en el celular cada operación es una tarjeta, sin tabla que deslizar', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
     expect(enLasTarjetas().getAllByRole('listitem')).toHaveLength(2);
     expect(enLasTarjetas().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     // El precio y la comisión se ven de una: antes había que deslizar a ciegas.
@@ -82,7 +82,7 @@ describe('OperacionesTable', () => {
   });
 
   it('filtra por texto de búsqueda', async () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
     await userEvent.type(screen.getByPlaceholderText(/Buscar/), 'Ana');
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(screen.queryByText('Calle Falsa 123')).not.toBeInTheDocument();
@@ -93,14 +93,14 @@ describe('OperacionesTable', () => {
   // las TRES acciones, no solo el borrado: ocultar una y olvidar otra deja un
   // botón que promete algo que la API va a rechazar con un 403.
   it('sin permiso de escritura no hay alta, edición ni borrado', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} orden="codigo" dir="desc" />);
     expect(screen.queryByRole('button', { name: /Nueva venta/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Editar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Borrar/ })).not.toBeInTheDocument();
   });
 
   it('con permiso de escritura están las tres', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
     expect(screen.getByRole('button', { name: /Nueva venta/ })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /Editar/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /Borrar/ }).length).toBeGreaterThan(0);
@@ -110,7 +110,7 @@ describe('OperacionesTable', () => {
     // El implementador va a depurar ventas reales y el borrado es definitivo:
     // tiene que poder confirmar que está mirando la operación correcta.
     const user = userEvent.setup();
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
 
     await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
 
@@ -130,7 +130,7 @@ describe('OperacionesTable', () => {
       id: `op-${i}`,
       codigo: `OP-${i}`,
     }));
-    render(<OperacionesTable tipo="venta" operaciones={muchas} vendedores={[]} puedeEscribir={false} />);
+    render(<OperacionesTable tipo="venta" operaciones={muchas} vendedores={[]} puedeEscribir={false} orden="codigo" dir="desc" />);
 
     expect(screen.getByRole('status')).toHaveTextContent(`Se están mostrando ${LIMITE_LISTA} ventas, y hay más`);
     // Y se muestra el tope exacto, no la fila de sonda.
@@ -138,18 +138,94 @@ describe('OperacionesTable', () => {
   });
 
   it('con pocas operaciones no avisa nada', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} orden="codigo" dir="desc" />);
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('borra recién cuando se confirma en el modal', async () => {
     const user = userEvent.setup();
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
 
     await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
     expect(deleteOperacion).not.toHaveBeenCalled();
 
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Sí, borrar' }));
     expect(deleteOperacion).toHaveBeenCalledWith('token', '1');
+  });
+});
+
+describe('OperacionesTable — ordenar sin ir al servidor', () => {
+  /** Códigos en el orden en que aparecen en la tabla de escritorio. */
+  function codigosEnPantalla() {
+    return enLaTabla()
+      .getAllByRole('row')
+      .slice(1) // saltea el encabezado
+      .map((fila) => fila.querySelector('td')?.textContent ?? '');
+  }
+
+  it('al hacer click en Código invierte el orden en la pantalla', async () => {
+    // La lista viene completa (2 filas, muy lejos del tope), así que reordenar
+    // no necesita consultar: es el caso normal de Vacker con 87 ventas.
+    const user = userEvent.setup();
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="asc"
+      />,
+    );
+    expect(codigosEnPantalla()).toEqual(['OP-1001', 'OP-1002']);
+
+    await user.click(enLaTabla().getByRole('button', { name: /Ordenar por Código/ }));
+
+    // 1002 tiene el número más alto: pasa a estar primero.
+    expect(codigosEnPantalla()).toEqual(['OP-1002', 'OP-1001']);
+  });
+
+  it('al ordenar por Firma, la que no tiene fecha queda al final', async () => {
+    const user = userEvent.setup();
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="asc"
+      />,
+    );
+
+    await user.click(enLaTabla().getByRole('button', { name: /Ordenar por Firma/ }));
+
+    // OP-1002 no tiene fecha de firma: va última en descendente...
+    expect(codigosEnPantalla()).toEqual(['OP-1001', 'OP-1002']);
+
+    await user.click(enLaTabla().getByRole('button', { name: /Ordenar por Firma/ }));
+
+    // ...y también en ascendente, que es el caso que se olvida.
+    expect(codigosEnPantalla()).toEqual(['OP-1001', 'OP-1002']);
+  });
+
+  it('la búsqueda por texto respeta el orden elegido', async () => {
+    const user = userEvent.setup();
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="asc"
+      />,
+    );
+
+    await user.click(enLaTabla().getByRole('button', { name: /Ordenar por Código/ }));
+    await user.type(screen.getByPlaceholderText(/Buscar/), 'a');
+
+    // Filtrar no puede devolver la tabla al orden original.
+    expect(codigosEnPantalla()).toEqual(['OP-1002', 'OP-1001']);
   });
 });

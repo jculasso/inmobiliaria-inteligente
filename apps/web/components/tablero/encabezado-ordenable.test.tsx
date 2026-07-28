@@ -17,89 +17,89 @@ beforeEach(() => {
   params = new URLSearchParams();
 });
 
-/** Query con la que se navegó la última vez. */
 function ultimaQuery(): URLSearchParams {
   const url = push.mock.calls.at(-1)?.[0] as string;
   return new URLSearchParams(url.split('?')[1] ?? '');
 }
 
-function renderEn(query: string) {
-  params = new URLSearchParams(query);
-  return render(
+function renderEncabezado(
+  opts: { activa?: boolean; dir?: 'asc' | 'desc'; enMemoria?: boolean; query?: string } = {},
+) {
+  const onOrdenar = vi.fn();
+  params = new URLSearchParams(opts.query ?? '');
+  render(
     <table>
       <thead>
         <tr>
-          <EncabezadoOrdenable columna="codigo">Código</EncabezadoOrdenable>
-          <EncabezadoOrdenable columna="fechaFirma">Firma</EncabezadoOrdenable>
+          <EncabezadoOrdenable
+            columna="codigo"
+            activa={opts.activa ?? true}
+            dir={opts.dir ?? 'desc'}
+            enMemoria={opts.enMemoria ?? true}
+            onOrdenar={onOrdenar}
+          >
+            Código
+          </EncabezadoOrdenable>
         </tr>
       </thead>
     </table>,
   );
+  return { onOrdenar };
 }
 
-describe('EncabezadoOrdenable', () => {
-  it('al hacer click en una columna inactiva, ordena de mayor a menor', async () => {
-    // Descendente primero porque es lo que se quiere mirar: lo más nuevo y lo
-    // más reciente arriba. Empezar ascendente mostraría la operación más vieja.
+describe('EncabezadoOrdenable — con la lista completa (ordena en memoria)', () => {
+  it('avisa el nuevo orden sin ir al servidor', async () => {
+    // Es el caso normal: 87 ventas ya están en el navegador. Navegar sería
+    // pagar un viaje a EE.UU. para reordenar algo que ya está acá.
     const user = userEvent.setup();
-    renderEn('');
+    const { onOrdenar } = renderEncabezado({ activa: true, dir: 'desc' });
 
-    await user.click(screen.getByRole('button', { name: /Firma/ }));
+    await user.click(screen.getByRole('button'));
 
-    expect(ultimaQuery().get('orden')).toBe('fechaFirma');
-    expect(ultimaQuery().get('dir')).toBe('desc');
+    expect(onOrdenar).toHaveBeenCalledWith({ orden: 'codigo', dir: 'asc' });
+    expect(push).not.toHaveBeenCalled();
   });
 
-  it('al hacer click en la columna activa, invierte el sentido', async () => {
+  it('invierte el sentido en cada click', async () => {
     const user = userEvent.setup();
-    renderEn('orden=codigo&dir=desc');
+    const { onOrdenar } = renderEncabezado({ activa: true, dir: 'asc' });
+    await user.click(screen.getByRole('button'));
+    expect(onOrdenar).toHaveBeenCalledWith({ orden: 'codigo', dir: 'desc' });
+  });
 
-    await user.click(screen.getByRole('button', { name: /Código/ }));
+  it('si la columna estaba inactiva, arranca descendente', async () => {
+    // Heredar el sentido de la columna anterior dejaría la firma más vieja
+    // arriba al cambiar de columna, que no es lo que nadie quiere ver.
+    const user = userEvent.setup();
+    const { onOrdenar } = renderEncabezado({ activa: false, dir: 'asc' });
+    await user.click(screen.getByRole('button'));
+    expect(onOrdenar).toHaveBeenCalledWith({ orden: 'codigo', dir: 'desc' });
+  });
+});
 
+describe('EncabezadoOrdenable — con la lista recortada (tiene que consultar)', () => {
+  it('navega para que el servidor traiga las primeras del orden pedido', async () => {
+    // Con más de 500 filas, ordenar en memoria ordenaría las 500 que bajaron,
+    // no las 500 primeras del orden pedido: sería mostrar algo falso.
+    const user = userEvent.setup();
+    const { onOrdenar } = renderEncabezado({ activa: true, dir: 'desc', enMemoria: false });
+
+    await user.click(screen.getByRole('button'));
+
+    expect(onOrdenar).toHaveBeenCalled();
+    expect(ultimaQuery().get('orden')).toBe('codigo');
     expect(ultimaQuery().get('dir')).toBe('asc');
   });
 
-  it('y volver a hacer click la devuelve a descendente', async () => {
+  it('conserva el resto de los filtros al navegar', async () => {
     const user = userEvent.setup();
-    renderEn('orden=codigo&dir=asc');
+    renderEncabezado({ enMemoria: false, query: 'anio=2026&trimestre=2&verTodo=1' });
 
-    await user.click(screen.getByRole('button', { name: /Código/ }));
-
-    expect(ultimaQuery().get('dir')).toBe('desc');
-  });
-
-  it('cambiar de columna arranca de nuevo en descendente', async () => {
-    // Si heredara el sentido de la columna anterior, ordenar por fecha después
-    // de haber puesto el código ascendente daría la firma más vieja arriba.
-    const user = userEvent.setup();
-    renderEn('orden=codigo&dir=asc');
-
-    await user.click(screen.getByRole('button', { name: /Firma/ }));
-
-    expect(ultimaQuery().get('orden')).toBe('fechaFirma');
-    expect(ultimaQuery().get('dir')).toBe('desc');
-  });
-
-  it('conserva el resto de los filtros al ordenar', async () => {
-    // Ordenar no puede resetear el año ni el "Ver todo": sería perder de vista
-    // lo que se estaba mirando por haber tocado un encabezado.
-    const user = userEvent.setup();
-    renderEn('anio=2026&trimestre=2&verTodo=1');
-
-    await user.click(screen.getByRole('button', { name: /Código/ }));
+    await user.click(screen.getByRole('button'));
 
     const q = ultimaQuery();
     expect(q.get('anio')).toBe('2026');
     expect(q.get('trimestre')).toBe('2');
     expect(q.get('verTodo')).toBe('1');
-  });
-
-  it('sin orden en la URL, la columna activa es el código descendente', async () => {
-    renderEn('');
-    // Es el default del backend; el encabezado tiene que reflejarlo o la
-    // pantalla muestra un orden distinto del que dice tener.
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /Código/ }));
-    expect(ultimaQuery().get('dir')).toBe('asc');
   });
 });
