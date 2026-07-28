@@ -11,7 +11,7 @@ import {
 } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { resolverScope } from '../scope.util';
+import { scopeDePermiso, scopeDeVista } from '../scope.util';
 import { decToNum, derivarPeriodo, fromDate, toDate } from '../tablero.util';
 
 /** Techo defensivo de filas por listado (las más recientes). Ver comentario en `list()`. */
@@ -30,7 +30,7 @@ export class OperacionesService {
   /** Lista operaciones del tenant, acotadas por el scope del rol y los filtros. */
   async list(filtro: OperacionFiltro, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, filtro.soloMio);
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
       const where: Prisma.OperacionWhereInput = {};
       if (filtro.tipo) where.tipo = filtro.tipo;
       if (filtro.anio != null) where.anio = filtro.anio;
@@ -71,7 +71,7 @@ export class OperacionesService {
     return this.db.withTenant(async (tx) => {
       const row = await tx.operacion.findUnique({ where: { id }, include: operacionInclude });
       if (!row) throw new NotFoundException('Operación no encontrada.');
-      assertEnScope(row, await resolverScope(ctx, tx));
+      assertEnScope(row, await scopeDePermiso(ctx, tx));
       return toDto(row);
     });
   }
@@ -125,7 +125,7 @@ export class OperacionesService {
     return this.db.withTenant(async (tx) => {
       const actual = await tx.operacion.findUnique({ where: { id }, include: operacionInclude });
       if (!actual) throw new NotFoundException('Operación no encontrada.');
-      assertEnScope(actual, await resolverScope(ctx, tx));
+      assertEnScope(actual, await scopeDePermiso(ctx, tx));
       this.assertUpdateCoherente(actual.tipo, dto);
 
       const fechaFirma = dto.fechaFirma !== undefined ? dto.fechaFirma : fromDate(actual.fechaFirma);
@@ -171,7 +171,7 @@ export class OperacionesService {
     return this.db.withTenant(async (tx) => {
       const actual = await tx.operacion.findUnique({ where: { id }, include: operacionInclude });
       if (!actual) throw new NotFoundException('Operación no encontrada.');
-      assertEnScope(actual, await resolverScope(ctx, tx));
+      assertEnScope(actual, await scopeDePermiso(ctx, tx));
       await tx.operacion.delete({ where: { id } });
       return { id };
     });

@@ -7,8 +7,8 @@ import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarInforme, getKpisResumenTasador, getRankingCaptaciones } from '../../lib/tasador-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { ETIQUETA_ROL, puedeVerSoloLoMio, rolPrincipal } from '../../lib/rbac';
-import { ToggleSoloMio } from '../tablero/toggle-solo-mio';
+import { ETIQUETA_ROL, puedeVerTodo, rolPrincipal } from '../../lib/rbac';
+import { ToggleVerTodo } from '../tablero/toggle-ver-todo';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { EstadoDistribucion } from './estado-distribucion';
 import { RankingCaptacionesCards } from './ranking-captaciones-cards';
@@ -56,11 +56,11 @@ export interface InicialTasador {
 export function TasadorDashboard({
   principal,
   inicial,
-  soloMio,
+  verTodo,
 }: {
   principal: AuthPrincipal;
   inicial: InicialTasador;
-  soloMio?: boolean;
+  verTodo?: boolean;
 }) {
   const router = useRouter();
   const anio = useMemo(() => new Date().getFullYear(), []);
@@ -91,8 +91,8 @@ export function TasadorDashboard({
     getAccessToken()
       .then((accessToken) =>
         Promise.all([
-          getKpisResumenTasador(accessToken, { anio, periodo: 'anual', soloMio }),
-          getRankingCaptaciones(accessToken, { anio, periodo: 'anual', soloMio }),
+          getKpisResumenTasador(accessToken, { anio, periodo: 'anual', verTodo }),
+          getRankingCaptaciones(accessToken, { anio, periodo: 'anual', verTodo }),
         ]),
       )
       .then(([resumen, ranking]) => {
@@ -170,7 +170,7 @@ export function TasadorDashboard({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {puedeVerSoloLoMio(principal.roles) && <ToggleSoloMio />}
+          {puedeVerTodo(principal.roles) && <ToggleVerTodo />}
           <Button variant="primary" onClick={() => router.push('/tasador/tasaciones/nueva')}>
             ＋ Nueva tasación
           </Button>

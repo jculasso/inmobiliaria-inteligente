@@ -5,7 +5,7 @@ import type { Prisma } from '@prisma/client';
 import type { EstadoTasacion, TasadorKpiFiltro } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { resolverScope } from '../../tablero/scope.util';
+import { scopeDeVista } from '../../tablero/scope.util';
 import { decToNum } from '../../tablero/tablero.util';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import { rangoDeFiltro } from '../fecha.util';
@@ -42,7 +42,9 @@ export class ReporteService {
     // (con el `select` que alcanza para las tres cosas) y el resumen/ranking
     // se calculan en memoria con las mismas funciones puras de kpis.calc.
     const { filas, resumen, ranking, tenantNombre, logoUrl, colorPrimario } = await this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
+      // El reporte es el PDF de lo que la pantalla está mostrando: si el
+      // usuario tiene el check en "lo mío", el PDF sale con lo mío.
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
       const where: Prisma.TasacionWhereInput = { fecha: rangoDeFiltro(filtro) };
       if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
 

@@ -20,8 +20,8 @@ import { ctxDe } from '../tablero/tablero.util';
 import { ProtocolosService } from './protocolos.service';
 
 /** Query de los endpoints que solo aceptan el toggle "ver solo lo mío". */
-const SoloMioSchema = z.object({ soloMio: z.coerce.boolean().optional() });
-type SoloMioQuery = z.infer<typeof SoloMioSchema>;
+const VerTodoSchema = z.object({ verTodo: z.coerce.boolean().optional() });
+type VerTodoQuery = z.infer<typeof VerTodoSchema>;
 
 const ROLES_MODULO = ['vendedor', 'team_leader', 'direccion', 'admin_tenant'] as const;
 
@@ -36,20 +36,20 @@ export class ProtocolosController {
   @Roles(...ROLES_MODULO)
   @ApiOperation({ summary: 'Tasaciones captadas sin protocolo iniciado (scope por rol)' })
   captadas(
-    @Query(new ZodValidationPipe(SoloMioSchema)) query: SoloMioQuery,
+    @Query(new ZodValidationPipe(VerTodoSchema)) query: VerTodoQuery,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.protocolos.listarCandidatas(query.soloMio ?? false, ctxDe(user));
+    return this.protocolos.listarCandidatas(query.verTodo ?? false, ctxDe(user));
   }
 
   @Get('kpis')
   @Roles(...ROLES_MODULO)
   @ApiOperation({ summary: 'KPIs del dashboard (activas, alertas críticas, avance promedio)' })
   kpis(
-    @Query(new ZodValidationPipe(SoloMioSchema)) query: SoloMioQuery,
+    @Query(new ZodValidationPipe(VerTodoSchema)) query: VerTodoQuery,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.protocolos.kpis(query.soloMio ?? false, ctxDe(user));
+    return this.protocolos.kpis(query.verTodo ?? false, ctxDe(user));
   }
 
   @Get()

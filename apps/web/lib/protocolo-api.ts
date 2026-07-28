@@ -13,17 +13,17 @@ import {
 import { apiFetch, apiFetchPdf } from './api-client';
 
 /** Tasaciones captadas que todavía no arrancaron el protocolo. */
-export async function listCaptadas(accessToken: string, soloMio = false) {
+export async function listCaptadas(accessToken: string, verTodo = false) {
   return apiFetch('/protocolo/captadas', z.array(CandidataDtoSchema), {
     accessToken,
-    searchParams: { soloMio: soloMio ? '1' : undefined },
+    searchParams: { verTodo: verTodo ? '1' : undefined },
   });
 }
 
-export async function getProtocoloKpis(accessToken: string, soloMio = false) {
+export async function getProtocoloKpis(accessToken: string, verTodo = false) {
   return apiFetch('/protocolo/kpis', ProtocoloKpisSchema, {
     accessToken,
-    searchParams: { soloMio: soloMio ? '1' : undefined },
+    searchParams: { verTodo: verTodo ? '1' : undefined },
   });
 }
 
@@ -35,7 +35,7 @@ export async function listProtocolos(accessToken: string, filtro: ProtocoloFiltr
       anio: filtro.anio,
       mes: filtro.mes,
       trimestre: filtro.trimestre,
-      soloMio: filtro.soloMio ? '1' : undefined,
+      verTodo: filtro.verTodo ? '1' : undefined,
     },
   });
 }

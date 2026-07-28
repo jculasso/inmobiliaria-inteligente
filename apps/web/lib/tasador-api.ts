@@ -21,7 +21,7 @@ export async function listTasaciones(accessToken: string, filtro: TasacionFiltro
       mes: filtro.mes,
       estado: filtro.estado,
       agenteId: filtro.agenteId,
-      soloMio: filtro.soloMio ? 1 : undefined,
+      verTodo: filtro.verTodo ? 1 : undefined,
     },
   });
 }
@@ -35,7 +35,7 @@ export async function listTasacionesResumen(accessToken: string, filtro: Tasacio
       mes: filtro.mes,
       estado: filtro.estado,
       agenteId: filtro.agenteId,
-      soloMio: filtro.soloMio ? 1 : undefined,
+      verTodo: filtro.verTodo ? 1 : undefined,
     },
   });
 }
@@ -108,7 +108,7 @@ export async function getKpisResumenTasador(accessToken: string, filtro: Tasador
       periodo: filtro.periodo,
       mes: filtro.mes,
       trimestre: filtro.trimestre,
-      soloMio: filtro.soloMio ? 1 : undefined,
+      verTodo: filtro.verTodo ? 1 : undefined,
     },
   });
 }
@@ -121,16 +121,16 @@ export async function getRankingCaptaciones(accessToken: string, filtro: Tasador
       periodo: filtro.periodo,
       mes: filtro.mes,
       trimestre: filtro.trimestre,
-      soloMio: filtro.soloMio ? 1 : undefined,
+      verTodo: filtro.verTodo ? 1 : undefined,
     },
   });
 }
 
 /** Agregados de los 12 meses del año en una sola llamada de red. */
-export async function getKpisMensualTasador(accessToken: string, anio: number, soloMio?: boolean) {
+export async function getKpisMensualTasador(accessToken: string, anio: number, verTodo?: boolean) {
   return apiFetch('/tasador/kpis/mensual', z.array(ResumenTasadorKpiSchema), {
     accessToken,
-    searchParams: { anio, soloMio: soloMio ? 1 : undefined },
+    searchParams: { anio, verTodo: verTodo ? 1 : undefined },
   });
 }
 

@@ -113,7 +113,7 @@ export const KpiFiltroSchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
   mes: z.coerce.number().int().min(1).max(12).optional(),
   /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propios KPIs. */
-  soloMio: z.coerce.boolean().optional(),
+  verTodo: z.coerce.boolean().optional(),
 });
 export type KpiFiltro = z.infer<typeof KpiFiltroSchema>;
 
@@ -127,7 +127,7 @@ export const OperacionFiltroSchema = KpiFiltroSchema.extend({
   estado: z.string().optional(),
   /** Filtra a las operaciones donde este usuario tiene una punta — drill-down por vendedor. */
   usuarioId: z.string().uuid().optional(),
-  // `soloMio` se hereda de KpiFiltroSchema.
+  // `verTodo` se hereda de KpiFiltroSchema.
 });
 export type OperacionFiltro = z.infer<typeof OperacionFiltroSchema>;
 

@@ -1,19 +1,19 @@
 import { requireServerPrincipal } from '../../../lib/server-principal';
-import { puedeVerSoloLoMio } from '../../../lib/rbac';
+import { puedeVerTodo } from '../../../lib/rbac';
 import { listCaptadas } from '../../../lib/protocolo-api';
-import { ToggleSoloMio } from '../../../components/tablero/toggle-solo-mio';
+import { ToggleVerTodo } from '../../../components/tablero/toggle-ver-todo';
 import { CaptadasLista } from '../../../components/protocolo/captadas-lista';
 
 export default async function CaptadasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ soloMio?: string }>;
+  searchParams: Promise<{ verTodo?: string }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
 
-  const soloMio = (await searchParams).soloMio === '1';
-  const captadas = await listCaptadas(ctx.accessToken, soloMio);
+  const verTodo = (await searchParams).verTodo === '1';
+  const captadas = await listCaptadas(ctx.accessToken, verTodo);
 
   return (
     <div className="flex flex-col gap-4">
@@ -24,7 +24,7 @@ export default async function CaptadasPage({
             Tasaciones en estado Captada que todavía no arrancaron su comercialización.
           </p>
         </div>
-        {puedeVerSoloLoMio(ctx.principal.roles) && <ToggleSoloMio />}
+        {puedeVerTodo(ctx.principal.roles) && <ToggleVerTodo />}
       </div>
 
       <CaptadasLista captadas={captadas} />

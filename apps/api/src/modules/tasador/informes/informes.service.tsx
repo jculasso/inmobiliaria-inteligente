@@ -4,7 +4,7 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import type { TasacionDto } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { resolverScope } from '../../tablero/scope.util';
+import { scopeDePermiso } from '../../tablero/scope.util';
 import { assertEnScope, tasacionInclude, toDto } from '../tasaciones/tasaciones.service';
 import { InformeDocument } from './informe.template';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
@@ -27,7 +27,7 @@ export class InformesService {
       const [row, tenant, scope] = await Promise.all([
         tx.tasacion.findUnique({ where: { id }, include: tasacionInclude }),
         tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
-        resolverScope(ctx, tx),
+        scopeDePermiso(ctx, tx),
       ]);
       if (!row) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(row, scope);

@@ -10,7 +10,7 @@ import type {
 } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { resolverScope, type Scope } from '../scope.util';
+import { scopeDeVista, type Scope } from '../scope.util';
 import { decToNum } from '../tablero.util';
 import {
   agregar,
@@ -35,7 +35,7 @@ export class KpisService {
   /** KPIs de cabecera: volumen anual/mes, puntas, comisión, pendiente de cobro, alquileres. */
   async resumen(filtro: KpiFiltro, ctx: TenantContext): Promise<ResumenKpis> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, filtro.soloMio);
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
       const scopeSet = toScopeSet(scope);
 
       const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
@@ -74,9 +74,9 @@ export class KpisService {
    * patrón anterior del front (`getAgregadosPorTrimestre`) de pedir
    * `resumen()` 12 veces (una por mes) solo para armar el gráfico trimestral.
    */
-  async mensual(anio: number, ctx: TenantContext, soloMio = false): Promise<AgregadoKpi[]> {
+  async mensual(anio: number, ctx: TenantContext, verTodo = false): Promise<AgregadoKpi[]> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, soloMio);
+      const scope = await scopeDeVista(ctx, tx, verTodo);
       const escrituradas = await this.ventas(tx, anio, 'escriturada', scope.usuarioIds);
       const scopeSet = toScopeSet(scope);
       return Array.from({ length: 12 }, (_, i) => agregar(puntasDeMes(escrituradas, i + 1), scopeSet));
@@ -86,7 +86,7 @@ export class KpisService {
   /** Ranking de vendedores por volumen (dentro del alcance). */
   async ranking(filtro: KpiFiltro, ctx: TenantContext): Promise<RankingItem[]> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, filtro.soloMio);
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
       const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
       const puntas =
         filtro.mes != null
@@ -107,10 +107,10 @@ export class KpisService {
     mesInicio: number,
     mesFin: number,
     ctx: TenantContext,
-    soloMio = false,
+    verTodo = false,
   ): Promise<{ agregado: AgregadoKpi; ranking: RankingItem[] }> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, soloMio);
+      const scope = await scopeDeVista(ctx, tx, verTodo);
       const scopeSet = toScopeSet(scope);
       const escrituradas = await this.ventas(tx, anio, 'escriturada', scope.usuarioIds);
       const enRango = escrituradas.filter((v) => v.mes != null && v.mes >= mesInicio && v.mes <= mesFin);
@@ -122,7 +122,7 @@ export class KpisService {
   /** Seguimiento real vs objetivo del año, por vendedor. */
   async objetivos(filtro: KpiFiltro, ctx: TenantContext): Promise<SeguimientoObjetivo[]> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, filtro.soloMio);
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
       const scopeSet = toScopeSet(scope);
 
       const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);

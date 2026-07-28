@@ -4,19 +4,23 @@ import { useEffect, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 /**
- * Toggle "Ver solo lo mío": un CEO/Team Leader alterna entre ver todo su
- * alcance y ver solo sus propias ventas/tasaciones, vía el query param
- * `soloMio`. No cambia el rol real. Usa estado optimista + useTransition: el
- * check se marca al instante (el navigate hace un round-trip al server) y un
- * spinner indica que está actualizando.
+ * Check "Ver todo": expande la pantalla del trabajo propio al alcance máximo
+ * que habilita el rol —dirección a toda la inmobiliaria, team leader a su
+ * equipo— vía el query param `verTodo`. No cambia el rol real.
+ *
+ * Hasta el 28/07/2026 era al revés: el check decía "Ver solo lo mío" y
+ * achicaba desde todo. Se invirtió para que cada uno entre viendo lo suyo.
+ *
+ * Estado optimista + useTransition: el check se marca al instante (el navigate
+ * hace un round-trip al server) y el spinner indica que está actualizando.
  */
-export function ToggleSoloMio() {
+export function ToggleVerTodo() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const propActivo = searchParams.get('soloMio') === '1';
+  const propActivo = searchParams.get('verTodo') === '1';
   const [activo, setActivo] = useState(propActivo);
   useEffect(() => {
     setActivo(propActivo);
@@ -26,8 +30,8 @@ export function ToggleSoloMio() {
     const next = !activo;
     setActivo(next); // marca al instante
     const params = new URLSearchParams(searchParams);
-    if (next) params.set('soloMio', '1');
-    else params.delete('soloMio');
+    if (next) params.set('verTodo', '1');
+    else params.delete('verTodo');
     startTransition(() => router.push(`${pathname}?${params.toString()}`));
   }
 
@@ -38,7 +42,7 @@ export function ToggleSoloMio() {
       }`}
     >
       <input type="checkbox" checked={activo} onChange={toggle} className="accent-brand-red" />
-      Ver solo lo mío
+      Ver todo
       {/* Siempre montado y solo invisible: montarlo al vuelo agregaba ancho a
           la fila y hacía saltar todo lo que tiene al lado. */}
       <span

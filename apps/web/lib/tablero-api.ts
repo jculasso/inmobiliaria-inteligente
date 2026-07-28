@@ -30,7 +30,7 @@ export async function listOperaciones(accessToken: string, filtro: OperacionFilt
       tipo: filtro.tipo,
       estado: filtro.estado,
       usuarioId: filtro.usuarioId,
-      soloMio: filtro.soloMio ? 1 : undefined,
+      verTodo: filtro.verTodo ? 1 : undefined,
     },
   });
 }
@@ -101,15 +101,15 @@ export async function setObjetivoVendedor(accessToken: string, id: string, dto: 
 export async function getKpisResumen(accessToken: string, filtro: KpiFiltro) {
   return apiFetch('/tablero/kpis/resumen', ResumenKpisSchema, {
     accessToken,
-    searchParams: { anio: filtro.anio, mes: filtro.mes, soloMio: filtro.soloMio ? 1 : undefined },
+    searchParams: { anio: filtro.anio, mes: filtro.mes, verTodo: filtro.verTodo ? 1 : undefined },
   });
 }
 
 /** Agregados de los 12 meses del año en una sola llamada de red. */
-export async function getKpisMensual(accessToken: string, anio: number, soloMio?: boolean) {
+export async function getKpisMensual(accessToken: string, anio: number, verTodo?: boolean) {
   return apiFetch('/tablero/kpis/mensual', z.array(AgregadoKpiSchema), {
     accessToken,
-    searchParams: { anio, soloMio: soloMio ? 1 : undefined },
+    searchParams: { anio, verTodo: verTodo ? 1 : undefined },
   });
 }
 
@@ -124,11 +124,11 @@ export async function getResumenRango(
   anio: number,
   mesInicio: number,
   mesFin: number,
-  soloMio?: boolean,
+  verTodo?: boolean,
 ) {
   return apiFetch('/tablero/kpis/rango', ResumenRangoSchema, {
     accessToken,
-    searchParams: { anio, mesInicio, mesFin, soloMio: soloMio ? 1 : undefined },
+    searchParams: { anio, mesInicio, mesFin, verTodo: verTodo ? 1 : undefined },
   });
 }
 
@@ -182,9 +182,9 @@ export interface ResumenPeriodoResult {
 export async function getAgregadosPorTrimestre(
   accessToken: string,
   anio: number,
-  soloMio?: boolean,
+  verTodo?: boolean,
 ): Promise<AgregadoKpi[]> {
-  const porMes = await getKpisMensual(accessToken, anio, soloMio);
+  const porMes = await getKpisMensual(accessToken, anio, verTodo);
   return [1, 2, 3, 4].map((q) => sumarAgregados(mesesDelTrimestre(q).map((m) => porMes[m - 1]!)));
 }
 
@@ -194,9 +194,9 @@ export async function getAgregadosPorTrimestre(
  */
 export async function getResumenPeriodo(
   accessToken: string,
-  opts: { anio: number; periodo: PeriodoResumen; mes?: number; trimestre?: number; soloMio?: boolean },
+  opts: { anio: number; periodo: PeriodoResumen; mes?: number; trimestre?: number; verTodo?: boolean },
 ): Promise<ResumenPeriodoResult> {
-  const { anio, periodo, mes, trimestre, soloMio } = opts;
+  const { anio, periodo, mes, trimestre, verTodo } = opts;
 
   const [mesInicio, mesFin] =
     periodo === 'trimestral'
@@ -205,5 +205,5 @@ export async function getResumenPeriodo(
         ? [mes ?? 1, mes ?? 1]
         : [1, 12];
 
-  return getResumenRango(accessToken, anio, mesInicio, mesFin, soloMio);
+  return getResumenRango(accessToken, anio, mesInicio, mesFin, verTodo);
 }

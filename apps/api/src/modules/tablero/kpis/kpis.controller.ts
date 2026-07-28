@@ -10,7 +10,7 @@ import { KpisService } from './kpis.service';
 
 const AnioFiltroSchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
-  soloMio: z.coerce.boolean().optional(),
+  verTodo: z.coerce.boolean().optional(),
 });
 type AnioFiltro = z.infer<typeof AnioFiltroSchema>;
 
@@ -18,7 +18,7 @@ const RangoFiltroSchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
   mesInicio: z.coerce.number().int().min(1).max(12),
   mesFin: z.coerce.number().int().min(1).max(12),
-  soloMio: z.coerce.boolean().optional(),
+  verTodo: z.coerce.boolean().optional(),
 });
 type RangoFiltro = z.infer<typeof RangoFiltroSchema>;
 
@@ -55,7 +55,7 @@ export class KpisController {
     @Query(new ZodValidationPipe(AnioFiltroSchema)) filtro: AnioFiltro,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.kpis.mensual(filtro.anio, ctxDe(user), filtro.soloMio);
+    return this.kpis.mensual(filtro.anio, ctxDe(user), filtro.verTodo);
   }
 
   @Get('rango')
@@ -65,7 +65,7 @@ export class KpisController {
     @Query(new ZodValidationPipe(RangoFiltroSchema)) filtro: RangoFiltro,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.kpis.resumenRango(filtro.anio, filtro.mesInicio, filtro.mesFin, ctxDe(user), filtro.soloMio);
+    return this.kpis.resumenRango(filtro.anio, filtro.mesInicio, filtro.mesFin, ctxDe(user), filtro.verTodo);
   }
 
   @Get('objetivos')

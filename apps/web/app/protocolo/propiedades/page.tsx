@@ -1,20 +1,20 @@
 import { requireServerPrincipal } from '../../../lib/server-principal';
-import { puedeReabrirProtocolo, puedeVerSoloLoMio } from '../../../lib/rbac';
+import { puedeReabrirProtocolo, puedeVerTodo } from '../../../lib/rbac';
 import { listCaptadas, listProtocolos } from '../../../lib/protocolo-api';
-import { ToggleSoloMio } from '../../../components/tablero/toggle-solo-mio';
+import { ToggleVerTodo } from '../../../components/tablero/toggle-ver-todo';
 import { FiltroOperaciones } from '../../../components/tablero/filtro-operaciones';
 import { ReporteGeneral } from '../../../components/protocolo/reporte-general';
 
 export default async function PropiedadesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ soloMio?: string; anio?: string; mes?: string; trimestre?: string }>;
+  searchParams: Promise<{ verTodo?: string; anio?: string; mes?: string; trimestre?: string }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
 
   const params = await searchParams;
-  const soloMio = params.soloMio === '1';
+  const verTodo = params.verTodo === '1';
   // Mismo control de período que Ventas. Sin `anio` = todos los años, para no
   // esconder propiedades que arrancaron el año pasado y siguen activas.
   const periodo = {
@@ -24,9 +24,9 @@ export default async function PropiedadesPage({
   };
 
   const [captadas, activas, archivadas] = await Promise.all([
-    listCaptadas(ctx.accessToken, soloMio),
-    listProtocolos(ctx.accessToken, { ...periodo, estado: 'activa', soloMio }),
-    listProtocolos(ctx.accessToken, { ...periodo, estado: 'archivada', soloMio }),
+    listCaptadas(ctx.accessToken, verTodo),
+    listProtocolos(ctx.accessToken, { ...periodo, estado: 'activa', verTodo }),
+    listProtocolos(ctx.accessToken, { ...periodo, estado: 'archivada', verTodo }),
   ]);
 
   return (
@@ -39,7 +39,7 @@ export default async function PropiedadesPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {puedeVerSoloLoMio(ctx.principal.roles) && <ToggleSoloMio />}
+          {puedeVerTodo(ctx.principal.roles) && <ToggleVerTodo />}
           <FiltroOperaciones anio={periodo.anio} mes={periodo.mes} trimestre={periodo.trimestre} />
         </div>
       </div>

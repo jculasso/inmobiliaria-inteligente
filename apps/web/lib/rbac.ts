@@ -60,12 +60,19 @@ export function puedeGestionarVendedores(roles: Rol[]): boolean {
 }
 
 /**
- * Muestra el toggle "Ver solo lo mío": usuarios cuyo alcance por rol es más
- * amplio que 'propio' (CEO/dirección, admin del tenant, team leader). Un
- * vendedor puro ya ve solo lo suyo, así que no lo necesita.
+ * Muestra el check "Ver todo". Solo aparece para quien el check le CAMBIA algo:
+ * dirección (pasa a ver toda la inmobiliaria) y team leader (pasa a ver su
+ * equipo).
+ *
+ * Queda oculto en los dos extremos, por la misma razón —no haría nada—:
+ * el vendedor ya está en su alcance máximo, y el admin ve todo siempre.
+ *
+ * Espejo de `resolverScope` en la API (scope.util.ts).
  */
-export function puedeVerSoloLoMio(roles: Rol[]): boolean {
-  return roles.some((r) => r === 'direccion' || r === 'admin_tenant' || r === 'team_leader');
+export function puedeVerTodo(roles: Rol[]): boolean {
+  const esAdmin = roles.some((r) => r === 'admin_tenant' || r === 'admin_plataforma');
+  if (esAdmin) return false;
+  return roles.some((r) => r === 'direccion' || r === 'team_leader');
 }
 
 /**
