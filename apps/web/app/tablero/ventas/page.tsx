@@ -1,3 +1,4 @@
+import type { OperacionFiltro } from '@vacker/types';
 import { listOperaciones, listVendedores } from '../../../lib/tablero-api';
 import { requireServerPrincipal } from '../../../lib/server-principal';
 import { puedeEscribirOperaciones, puedeVerTodo } from '../../../lib/rbac';
@@ -8,7 +9,7 @@ import { OperacionesTable } from '../../../components/tablero/operaciones-table'
 export default async function VentasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string; trimestre?: string; verTodo?: string }>;
+  searchParams: Promise<{ anio?: string; mes?: string; trimestre?: string; verTodo?: string; orden?: string; dir?: string }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
@@ -18,9 +19,13 @@ export default async function VentasPage({
   const mes = params.mes ? Number(params.mes) : undefined;
   const trimestre = params.trimestre ? Number(params.trimestre) : undefined;
   const verTodo = params.verTodo === '1';
+  // Sin validar acá a propósito: el schema Zod de la API es el que manda,
+  // y rechaza cualquier columna que no sea ordenable.
+  const orden = params.orden as OperacionFiltro['orden'];
+  const dir = params.dir as OperacionFiltro['dir'];
 
   const [operaciones, vendedores] = await Promise.all([
-    listOperaciones(ctx.accessToken, { anio, mes, trimestre, verTodo, tipo: 'venta' }),
+    listOperaciones(ctx.accessToken, { anio, mes, trimestre, verTodo, orden, dir, tipo: 'venta' }),
     // Un `vendedor` puro no puede listar vendedores (403 en la API) — el form
     // de alta/edición queda igual sin selects de punta, solo sin esa opción.
     listVendedores(ctx.accessToken).catch(() => []),

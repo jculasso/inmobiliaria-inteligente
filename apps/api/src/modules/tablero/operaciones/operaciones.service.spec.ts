@@ -129,3 +129,56 @@ describe('OperacionesService — coherencia y unicidad', () => {
     await expect(svc.create(ventaDtoBase, CTX_DIRECCION)).rejects.toThrow(BadRequestException);
   });
 });
+
+describe('OperacionesService — orden del listado', () => {
+  /** Devuelve el `orderBy` con el que el servicio consultó la base. */
+  async function orderByDe(filtro: Record<string, unknown>) {
+    const tx = makeTx();
+    const svc = new OperacionesService(makeDb(tx));
+    await svc.list(filtro as never, CTX_DIRECCION);
+    return (tx.operacion.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0].orderBy;
+  }
+
+  it('por defecto, la operación más nueva arriba', async () => {
+    expect(await orderByDe({})).toEqual([
+      { codigoNum: { sort: 'desc', nulls: 'last' } },
+      { codigo: 'desc' },
+    ]);
+  });
+
+  /**
+   * El punto de todo el cambio. El código es texto ("OP-1001", "OP-999") y
+   * ordenar texto NO da orden numérico: "OP-1001" quedaría ANTES que "OP-999"
+   * porque compara carácter por carácter. Por eso se ordena por la columna
+   * generada `codigoNum` y nunca por `codigo`.
+   */
+  it('ordena por el NÚMERO del código, no por el texto', async () => {
+    const orderBy = await orderByDe({ orden: 'codigo', dir: 'desc' });
+    expect(orderBy[0]).toHaveProperty('codigoNum');
+    expect(orderBy[0]).not.toHaveProperty('codigo');
+  });
+
+  it('ordena por fecha de firma en los dos sentidos', async () => {
+    expect((await orderByDe({ orden: 'fechaFirma', dir: 'asc' }))[0]).toEqual({
+      fechaFirma: { sort: 'asc', nulls: 'last' },
+    });
+    expect((await orderByDe({ orden: 'fechaFirma', dir: 'desc' }))[0]).toEqual({
+      fechaFirma: { sort: 'desc', nulls: 'last' },
+    });
+  });
+
+  it('las filas sin dato quedan al final en los DOS sentidos', async () => {
+    // Ascendente es el caso que se olvida: por defecto Postgres pondría los
+    // nulos primero y la pantalla abriría con un bloque de guiones.
+    for (const dir of ['asc', 'desc'] as const) {
+      const orderBy = await orderByDe({ orden: 'fechaFirma', dir });
+      expect(orderBy[0].fechaFirma.nulls).toBe('last');
+    }
+  });
+
+  it('desempata siempre, para que la lista no se mueva sola entre recargas', async () => {
+    for (const orden of ['codigo', 'fechaFirma'] as const) {
+      expect(await orderByDe({ orden })).toHaveLength(2);
+    }
+  });
+});

@@ -8,6 +8,8 @@ import {
   type PuntaInput,
   type UpdateOperacion,
   LIMITE_LISTA_CON_SONDA,
+  DIR_ORDEN_DEFAULT,
+  ORDEN_OPERACION_DEFAULT,
 } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
@@ -15,6 +17,31 @@ import { scopeDePermiso, scopeDeVista } from '../scope.util';
 import { decToNum, derivarPeriodo, fromDate, toDate } from '../tablero.util';
 
 /** Techo defensivo de filas por listado (las más recientes). Ver comentario en `list()`. */
+
+/**
+ * Traduce el orden pedido a un `orderBy` de Prisma.
+ *
+ * Por defecto, la operación más nueva arriba: número de operación descendente.
+ *
+ * Se ordena por `codigoNum` y NO por `codigo`, porque el código es texto y
+ * ordenar texto no da orden numérico ("OP-999" quedaría antes que "OP-1001").
+ * `codigoNum` es una columna generada por Postgres con la parte numérica.
+ *
+ * Las filas sin dato en la columna elegida —un código sin dígitos, una
+ * operación todavía sin fecha de firma— van SIEMPRE al final, en los dos
+ * sentidos: son las que menos información tienen y arriba solo estorban.
+ *
+ * El desempate por `codigo` mantiene el orden estable. Sin él, dos operaciones
+ * firmadas el mismo día pueden intercambiarse entre recargas de la pantalla y
+ * parece que la lista se mueve sola.
+ */
+function ordenDe(filtro: OperacionFiltro): Prisma.OperacionOrderByWithRelationInput[] {
+  const dir = filtro.dir ?? DIR_ORDEN_DEFAULT;
+  if ((filtro.orden ?? ORDEN_OPERACION_DEFAULT) === 'fechaFirma') {
+    return [{ fechaFirma: { sort: dir, nulls: 'last' } }, { codigo: dir }];
+  }
+  return [{ codigoNum: { sort: dir, nulls: 'last' } }, { codigo: dir }];
+}
 
 const operacionInclude = {
   puntas: { include: { usuario: { select: { id: true, nombre: true } } } },
@@ -56,7 +83,7 @@ export class OperacionesService {
       const rows = await tx.operacion.findMany({
         where,
         include: operacionInclude,
-        orderBy: [{ anio: 'desc' }, { mes: 'desc' }, { codigo: 'asc' }],
+        orderBy: ordenDe(filtro),
         // Se pide UNA FILA DE MÁS que el tope a propósito: si vuelven todas,
         // el front sabe que quedó algo afuera y lo avisa en vez de mostrar 500
         // en silencio. Ver `LIMITE_LISTA` en @vacker/types.

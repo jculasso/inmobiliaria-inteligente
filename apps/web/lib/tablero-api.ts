@@ -31,6 +31,8 @@ export async function listOperaciones(accessToken: string, filtro: OperacionFilt
       estado: filtro.estado,
       usuarioId: filtro.usuarioId,
       verTodo: filtro.verTodo ? 1 : undefined,
+      orden: filtro.orden,
+      dir: filtro.dir,
     },
   });
 }

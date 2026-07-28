@@ -7,6 +7,9 @@ import { OperacionesTable } from './operaciones-table';
 const refresh = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh }),
+  // Los usa el encabezado ordenable, que vive dentro de esta tabla.
+  usePathname: () => '/tablero/ventas',
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock('../../lib/supabase/client', () => ({
   getAccessToken: vi.fn().mockResolvedValue('token'),
