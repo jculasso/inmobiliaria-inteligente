@@ -17,10 +17,11 @@ interface Props {
   tipo: TipoOperacion;
   operaciones: OperacionDto[];
   vendedores: VendedorDto[];
-  puedeBorrar: boolean;
+  /** Alta, edición y borrado van juntos: los tres son de dirección/admin. */
+  puedeEscribir: boolean;
 }
 
-export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, puedeBorrar }: Props) {
+export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, puedeEscribir }: Props) {
   const router = useRouter();
   // La API pide una fila de más que el tope: si vino, es que quedó algo afuera.
   const { visibles: operaciones, hayMas } = recortarAlLimite(recibidas);
@@ -62,9 +63,11 @@ export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, pue
           <span className="whitespace-nowrap text-xs text-muted">
             {filtradas.length} de {operaciones.length} operaciones
           </span>
-          <Button variant="primary" size="sm" onClick={() => setModal('create')}>
-            ＋ {tipo === 'venta' ? 'Nueva venta' : 'Nuevo alquiler'}
-          </Button>
+          {puedeEscribir && (
+            <Button variant="primary" size="sm" onClick={() => setModal('create')}>
+              ＋ {tipo === 'venta' ? 'Nueva venta' : 'Nuevo alquiler'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -105,15 +108,15 @@ export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, pue
                     )}
                   </CamposTarjeta>
 
-                  <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setModal(op)}
-                      className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
-                    >
-                      ✏️ Editar
-                    </button>
-                    {puedeBorrar && (
+                  {puedeEscribir && (
+                    <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setModal(op)}
+                        className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                      >
+                        ✏️ Editar
+                      </button>
                       <button
                         type="button"
                         onClick={() => setABorrar(op)}
@@ -121,8 +124,8 @@ export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, pue
                       >
                         🗑️ Borrar
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </Tarjeta>
               );
             })}
@@ -149,13 +152,16 @@ export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, pue
               )}
               <th className="px-3 py-2">Comisión</th>
               <th className="px-3 py-2">Estado</th>
-              <th className="sticky right-0 bg-white px-3 py-2" />
+              {puedeEscribir && <th className="sticky right-0 bg-white px-3 py-2" />}
             </tr>
           </thead>
           <tbody>
             {filtradas.length === 0 ? (
               <tr>
-                <td colSpan={tipo === 'venta' ? 10 : 7} className="px-4 py-6 text-center text-muted">
+                <td
+                  colSpan={(tipo === 'venta' ? 9 : 6) + (puedeEscribir ? 1 : 0)}
+                  className="px-4 py-6 text-center text-muted"
+                >
                   Sin operaciones para mostrar.
                 </td>
               </tr>
@@ -188,17 +194,17 @@ export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, pue
                         {estadoLabel(op.estado)}
                       </span>
                     </td>
-                    <td className="sticky right-0 border-l border-line bg-white px-3 py-2">
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setModal(op)}
-                          aria-label="Editar"
-                          className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
-                        >
-                          ✏️
-                        </button>
-                        {puedeBorrar && (
+                    {puedeEscribir && (
+                      <td className="sticky right-0 border-l border-line bg-white px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setModal(op)}
+                            aria-label="Editar"
+                            className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
+                          >
+                            ✏️
+                          </button>
                           <button
                             type="button"
                             onClick={() => setABorrar(op)}
@@ -207,9 +213,9 @@ export function OperacionesTable({ tipo, operaciones: recibidas, vendedores, pue
                           >
                             Borrar
                           </button>
-                        )}
-                      </div>
-                    </td>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })

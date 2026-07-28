@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   alcanceDeModulo,
   etiquetaDeAlcance,
-  puedeBorrarOperaciones,
+  puedeEscribirOperaciones,
   puedeBorrarTasaciones,
   puedeGestionarVendedores,
   puedeVerVendedores,
@@ -76,15 +76,21 @@ describe('puedeGestionarVendedores', () => {
   });
 });
 
-describe('puedeBorrarOperaciones', () => {
-  it('un vendedor puro no puede borrar operaciones', () => {
-    expect(puedeBorrarOperaciones(['vendedor'])).toBe(false);
+describe('puedeEscribirOperaciones', () => {
+  it('la carga la centraliza la inmobiliaria: solo dirección y admin', () => {
+    expect(puedeEscribirOperaciones(['direccion'])).toBe(true);
+    expect(puedeEscribirOperaciones(['admin_tenant'])).toBe(true);
   });
 
-  it('team_leader, direccion y admin_tenant sí pueden', () => {
-    expect(puedeBorrarOperaciones(['team_leader'])).toBe(true);
-    expect(puedeBorrarOperaciones(['direccion'])).toBe(true);
-    expect(puedeBorrarOperaciones(['admin_tenant'])).toBe(true);
+  // Hasta el 28/07/2026 estos dos cargaban, y era intencional. Se revirtió por
+  // decisión de negocio; el test deja constancia de que hoy NO es un descuido.
+  it('ni el vendedor ni el team leader cargan operaciones', () => {
+    expect(puedeEscribirOperaciones(['vendedor'])).toBe(false);
+    expect(puedeEscribirOperaciones(['team_leader'])).toBe(false);
+  });
+
+  it('un team leader que además es dirección sí puede', () => {
+    expect(puedeEscribirOperaciones(['team_leader', 'direccion'])).toBe(true);
   });
 });
 

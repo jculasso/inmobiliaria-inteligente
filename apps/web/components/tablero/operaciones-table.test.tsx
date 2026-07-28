@@ -63,14 +63,14 @@ const enLasTarjetas = () => within(screen.getByRole('list', { name: 'Operaciones
 
 describe('OperacionesTable', () => {
   it('muestra las operaciones y el contador', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(enLaTabla().getByText('Calle Falsa 123')).toBeInTheDocument();
     expect(screen.getByText('2 de 2 operaciones')).toBeInTheDocument();
   });
 
   it('en el celular cada operación es una tarjeta, sin tabla que deslizar', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
     expect(enLasTarjetas().getAllByRole('listitem')).toHaveLength(2);
     expect(enLasTarjetas().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     // El precio y la comisión se ven de una: antes había que deslizar a ciegas.
@@ -79,22 +79,35 @@ describe('OperacionesTable', () => {
   });
 
   it('filtra por texto de búsqueda', async () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
     await userEvent.type(screen.getByPlaceholderText(/Buscar/), 'Ana');
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(screen.queryByText('Calle Falsa 123')).not.toBeInTheDocument();
   });
 
-  it('oculta el botón de borrar cuando puedeBorrar es false', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={false} />);
+  // El vendedor y el team leader entran acá en modo lectura: ven sus
+  // operaciones (las necesitan para sus KPIs) pero no las tocan. Se verifican
+  // las TRES acciones, no solo el borrado: ocultar una y olvidar otra deja un
+  // botón que promete algo que la API va a rechazar con un 403.
+  it('sin permiso de escritura no hay alta, edición ni borrado', () => {
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} />);
+    expect(screen.queryByRole('button', { name: /Nueva venta/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Editar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Borrar/ })).not.toBeInTheDocument();
+  });
+
+  it('con permiso de escritura están las tres', () => {
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
+    expect(screen.getByRole('button', { name: /Nueva venta/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Editar/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Borrar/ }).length).toBeGreaterThan(0);
   });
 
   it('antes de borrar muestra qué operación es, para no equivocarse', async () => {
     // El implementador va a depurar ventas reales y el borrado es definitivo:
     // tiene que poder confirmar que está mirando la operación correcta.
     const user = userEvent.setup();
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
 
     await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
 
@@ -114,7 +127,7 @@ describe('OperacionesTable', () => {
       id: `op-${i}`,
       codigo: `OP-${i}`,
     }));
-    render(<OperacionesTable tipo="venta" operaciones={muchas} vendedores={[]} puedeBorrar={false} />);
+    render(<OperacionesTable tipo="venta" operaciones={muchas} vendedores={[]} puedeEscribir={false} />);
 
     expect(screen.getByRole('status')).toHaveTextContent(`Se están mostrando ${LIMITE_LISTA} ventas, y hay más`);
     // Y se muestra el tope exacto, no la fila de sonda.
@@ -122,13 +135,13 @@ describe('OperacionesTable', () => {
   });
 
   it('con pocas operaciones no avisa nada', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={false} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} />);
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('borra recién cuando se confirma en el modal', async () => {
     const user = userEvent.setup();
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeBorrar={true} />);
+    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} />);
 
     await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
     expect(deleteOperacion).not.toHaveBeenCalled();

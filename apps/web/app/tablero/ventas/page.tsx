@@ -1,6 +1,6 @@
 import { listOperaciones, listVendedores } from '../../../lib/tablero-api';
 import { requireServerPrincipal } from '../../../lib/server-principal';
-import { puedeBorrarOperaciones, puedeVerSoloLoMio } from '../../../lib/rbac';
+import { puedeEscribirOperaciones, puedeVerSoloLoMio } from '../../../lib/rbac';
 import { FiltroOperaciones } from '../../../components/tablero/filtro-operaciones';
 import { ToggleSoloMio } from '../../../components/tablero/toggle-solo-mio';
 import { OperacionesTable } from '../../../components/tablero/operaciones-table';
@@ -39,7 +39,7 @@ export default async function VentasPage({
         tipo="venta"
         operaciones={operaciones}
         vendedores={vendedores}
-        puedeBorrar={puedeBorrarOperaciones(ctx.principal.roles)}
+        puedeEscribir={puedeEscribirOperaciones(ctx.principal.roles)}
       />
     </div>
   );
