@@ -7,7 +7,7 @@ import { DomainEventsService } from '../../../common/domain-events.service';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { resolverScope } from '../../tablero/scope.util';
+import { scopeDePermiso, scopeDeVista } from '../../tablero/scope.util';
 import { decToNum, fromDate, toDate } from '../../tablero/tablero.util';
 import { rangoDeAnioMes } from '../fecha.util';
 
@@ -130,7 +130,7 @@ export class TasacionesService {
     ctx: TenantContext,
     tx: Prisma.TransactionClient,
   ): Promise<Prisma.TasacionWhereInput> {
-    const scope = await resolverScope(ctx, tx, filtro.soloMio);
+    const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
     const where: Prisma.TasacionWhereInput = {};
     if (filtro.estado) where.estado = filtro.estado;
 
@@ -152,7 +152,7 @@ export class TasacionesService {
     const dto = await this.db.withTenant(async (tx) => {
       const row = await tx.tasacion.findUnique({ where: { id }, include: tasacionInclude });
       if (!row) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(row, await resolverScope(ctx, tx));
+      assertEnScope(row, await scopeDePermiso(ctx, tx));
       return toDto(row);
     });
     // Se firma fuera de la transacción (es una llamada a Storage, no a la base).
@@ -207,7 +207,7 @@ export class TasacionesService {
 
       const actual = await tx.tasacion.findUnique({ where: { id }, select: tasacionScopeSelect });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(actual, await resolverScope(ctx, tx));
+      assertEnScope(actual, await scopeDePermiso(ctx, tx));
 
       const data: Prisma.TasacionUpdateInput = {};
       if (dto.cliente !== undefined) data.cliente = dto.cliente;
@@ -243,7 +243,7 @@ export class TasacionesService {
       // así que no hace falta el JOIN de comparables/fotos de `tasacionInclude`.
       const actual = await tx.tasacion.findUnique({ where: { id }, select: tasacionScopeSelect });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(actual, await resolverScope(ctx, tx));
+      assertEnScope(actual, await scopeDePermiso(ctx, tx));
 
       const exclusividad = dto.estado === 'Captada' ? dto.exclusividad : null;
       const motivoNoCaptada = dto.estado === 'No captada' ? dto.motivoNoCaptada : null;
@@ -297,7 +297,7 @@ export class TasacionesService {
     return this.db.withTenant(async (tx) => {
       const actual = await tx.tasacion.findUnique({ where: { id }, select: { agenteId: true } });
       if (!actual) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(actual, await resolverScope(ctx, tx));
+      assertEnScope(actual, await scopeDePermiso(ctx, tx));
       await tx.tasacion.delete({ where: { id } });
       return { id };
     });

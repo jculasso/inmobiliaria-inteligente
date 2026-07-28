@@ -21,12 +21,12 @@ export function DashboardKpis({
   resumen,
   anio,
   mes,
-  soloMio,
+  verTodo,
 }: {
   resumen: ResumenKpis;
   anio: number;
   mes: number;
-  soloMio?: boolean;
+  verTodo?: boolean;
 }) {
   const [drill, setDrill] = useState<Drill | null>(null);
 
@@ -71,13 +71,13 @@ export function DashboardKpis({
       {resumen.mesActual && (
         <section className="flex flex-col gap-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Mes seleccionado</p>
-          {cards(resumen.mesActual, { anio, mes, soloMio }, `mes ${mes}/${anio}`)}
+          {cards(resumen.mesActual, { anio, mes, verTodo }, `mes ${mes}/${anio}`)}
         </section>
       )}
 
       <section className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Acumulado año {anio}</p>
-        {cards(resumen.anual, { anio, soloMio }, `año ${anio}`)}
+        {cards(resumen.anual, { anio, verTodo }, `año ${anio}`)}
       </section>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -91,7 +91,7 @@ export function DashboardKpis({
             setDrill({
               titulo: 'Pendiente de cobro',
               subtitulo: `Operaciones señadas · Año ${anio}`,
-              filtro: { anio, tipo: 'venta', estado: 'senada', soloMio },
+              filtro: { anio, tipo: 'venta', estado: 'senada', verTodo },
             })
           }
         />
@@ -104,7 +104,7 @@ export function DashboardKpis({
             setDrill({
               titulo: 'Alquileres firmados',
               subtitulo: `Año ${anio}`,
-              filtro: { anio, tipo: 'alquiler', estado: 'firmado', soloMio },
+              filtro: { anio, tipo: 'alquiler', estado: 'firmado', verTodo },
             })
           }
         />

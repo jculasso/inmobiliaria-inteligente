@@ -41,12 +41,12 @@ interface Props {
   anio: number;
   mesSeleccionado: number;
   /** "Ver solo lo mío": scopea los KPIs al usuario actual. */
-  soloMio?: boolean;
+  verTodo?: boolean;
   /** Acumulado anual ya resuelto server-side (mismo dato que pide el tab "Acumulado Anual" por defecto) — evita repetir esa consulta al montar. */
   inicial?: { agregado: AgregadoKpi; ranking: RankingItem[] };
 }
 
-export function ResumenAcumulado({ anio, mesSeleccionado, soloMio, inicial }: Props) {
+export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Props) {
   const [tab, setTab] = useState<PeriodoResumen>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
   const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(inicial ?? null);
@@ -65,8 +65,8 @@ export function ResumenAcumulado({ anio, mesSeleccionado, soloMio, inicial }: Pr
     setLoading(true);
     getAccessToken()
       .then((accessToken) =>
-        getOrFetch(`resumen:${anio}:${tab}:${mesSeleccionado}:${trimestre}:${soloMio ? 1 : 0}`, () =>
-          getResumenPeriodo(accessToken, { anio, periodo: tab, mes: mesSeleccionado, trimestre, soloMio }),
+        getOrFetch(`resumen:${anio}:${tab}:${mesSeleccionado}:${trimestre}:${verTodo ? 1 : 0}`, () =>
+          getResumenPeriodo(accessToken, { anio, periodo: tab, mes: mesSeleccionado, trimestre, verTodo }),
         ),
       )
       .then((res) => {
@@ -79,20 +79,20 @@ export function ResumenAcumulado({ anio, mesSeleccionado, soloMio, inicial }: Pr
       cancelado = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio, tab, mesSeleccionado, trimestre, soloMio]);
+  }, [anio, tab, mesSeleccionado, trimestre, verTodo]);
 
   useEffect(() => {
     if (tab !== 'trimestral') return;
     let cancelado = false;
     getAccessToken()
-      .then((accessToken) => getAgregadosPorTrimestre(accessToken, anio, soloMio))
+      .then((accessToken) => getAgregadosPorTrimestre(accessToken, anio, verTodo))
       .then((res) => {
         if (!cancelado) setPorTrimestre(res);
       });
     return () => {
       cancelado = true;
     };
-  }, [anio, tab, soloMio]);
+  }, [anio, tab, verTodo]);
 
   return (
     <Card className="p-0">

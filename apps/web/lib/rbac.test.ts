@@ -5,6 +5,7 @@ import {
   puedeEscribirOperaciones,
   puedeBorrarTasaciones,
   puedeGestionarVendedores,
+  puedeVerTodo,
   puedeVerVendedores,
   rolPrincipal,
 } from './rbac';
@@ -103,5 +104,27 @@ describe('puedeBorrarTasaciones', () => {
     expect(puedeBorrarTasaciones(['team_leader'])).toBe(true);
     expect(puedeBorrarTasaciones(['direccion'])).toBe(true);
     expect(puedeBorrarTasaciones(['admin_tenant'])).toBe(true);
+  });
+});
+
+describe('puedeVerTodo', () => {
+  // El check solo aparece para quien le cambia algo. En los dos extremos no
+  // haría nada, y un control que no hace nada se prueba una vez y confunde.
+  it('lo ven dirección y team leader, que es a quienes les expande el alcance', () => {
+    expect(puedeVerTodo(['direccion'])).toBe(true);
+    expect(puedeVerTodo(['team_leader'])).toBe(true);
+  });
+
+  it('el vendedor no lo ve: ya está en su alcance máximo', () => {
+    expect(puedeVerTodo(['vendedor'])).toBe(false);
+  });
+
+  it('el admin tampoco: ve todo siempre, tildado o no', () => {
+    expect(puedeVerTodo(['admin_tenant'])).toBe(false);
+    expect(puedeVerTodo(['admin_plataforma'])).toBe(false);
+  });
+
+  it('si además de dirección es admin, gana el admin y el check se oculta', () => {
+    expect(puedeVerTodo(['direccion', 'admin_tenant'])).toBe(false);
   });
 });

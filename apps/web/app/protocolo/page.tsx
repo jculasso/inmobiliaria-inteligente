@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { KpiCard } from '@vacker/ui';
 import { requireServerPrincipal } from '../../lib/server-principal';
-import { puedeVerSoloLoMio } from '../../lib/rbac';
+import { puedeVerTodo } from '../../lib/rbac';
 import { fmtNum } from '../../lib/format';
 import { getProtocoloKpis, listProtocolos } from '../../lib/protocolo-api';
-import { ToggleSoloMio } from '../../components/tablero/toggle-solo-mio';
+import { ToggleVerTodo } from '../../components/tablero/toggle-ver-todo';
 import { PropiedadCard } from '../../components/protocolo/propiedad-card';
 import { porcentaje } from '../../components/protocolo/protocolo-ui';
 import { PanelAlertas } from '../../components/protocolo/panel-alertas';
@@ -12,15 +12,15 @@ import { PanelAlertas } from '../../components/protocolo/panel-alertas';
 export default async function ProtocoloDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ soloMio?: string }>;
+  searchParams: Promise<{ verTodo?: string }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
 
-  const soloMio = (await searchParams).soloMio === '1';
+  const verTodo = (await searchParams).verTodo === '1';
   const [kpis, activas] = await Promise.all([
-    getProtocoloKpis(ctx.accessToken, soloMio),
-    listProtocolos(ctx.accessToken, { estado: 'activa', soloMio }),
+    getProtocoloKpis(ctx.accessToken, verTodo),
+    listProtocolos(ctx.accessToken, { estado: 'activa', verTodo }),
   ]);
 
   // Las alertas se muestran juntas y ordenadas por urgencia: es la pantalla
@@ -33,7 +33,7 @@ export default async function ProtocoloDashboardPage({
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-bold text-ink sm:text-lg">Panel de comercialización</h2>
-        {puedeVerSoloLoMio(ctx.principal.roles) && <ToggleSoloMio />}
+        {puedeVerTodo(ctx.principal.roles) && <ToggleVerTodo />}
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

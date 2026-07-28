@@ -1,16 +1,16 @@
 import type { EstadoTasacion, TasacionResumenDto } from '@vacker/types';
 import { listTasacionesResumen } from '../../../lib/tasador-api';
 import { requireServerPrincipal } from '../../../lib/server-principal';
-import { puedeBorrarTasaciones, puedeVerSoloLoMio } from '../../../lib/rbac';
+import { puedeBorrarTasaciones, puedeVerTodo } from '../../../lib/rbac';
 import { FiltroAnio } from '../../../components/tablero/filtro-anio';
-import { ToggleSoloMio } from '../../../components/tablero/toggle-solo-mio';
+import { ToggleVerTodo } from '../../../components/tablero/toggle-ver-todo';
 import { FiltroEstado } from '../../../components/tasador/filtro-estado';
 import { TasacionesTable } from '../../../components/tasador/tasaciones-table';
 
 export default async function TasacionesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; estado?: string; agenteId?: string; soloMio?: string }>;
+  searchParams: Promise<{ anio?: string; estado?: string; agenteId?: string; verTodo?: string }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
@@ -19,7 +19,7 @@ export default async function TasacionesPage({
   const anio = params.anio ? Number(params.anio) : undefined;
   const estado = params.estado as EstadoTasacion | undefined;
   const agenteId = params.agenteId;
-  const soloMio = params.soloMio === '1';
+  const verTodo = params.verTodo === '1';
 
   // Liviano: la tabla de historial no usa comparables/fotos/análisis (solo
   // fecha, cliente, dirección, tipo, sup. total, agente y estado) — pedir el
@@ -28,7 +28,7 @@ export default async function TasacionesPage({
     anio,
     estado,
     agenteId,
-    soloMio,
+    verTodo,
   });
 
   return (
@@ -36,7 +36,7 @@ export default async function TasacionesPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-ink">Tasaciones</h2>
         <div className="flex flex-wrap items-center gap-3">
-          {puedeVerSoloLoMio(ctx.principal.roles) && <ToggleSoloMio />}
+          {puedeVerTodo(ctx.principal.roles) && <ToggleVerTodo />}
           <FiltroAnio anio={anio} />
           <FiltroEstado estado={estado} />
         </div>

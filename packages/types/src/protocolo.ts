@@ -274,7 +274,7 @@ export type ArchivarProtocolo = z.infer<typeof ArchivarProtocoloSchema>;
 
 export const ProtocoloFiltroSchema = z.object({
   estado: EstadoProtocoloSchema.optional(),
-  soloMio: z.coerce.boolean().optional(),
+  verTodo: z.coerce.boolean().optional(),
   // Mismo control de período que Ventas: año + Anual / Trimestral / Mensual.
   anio: z.coerce.number().int().optional(),
   mes: z.coerce.number().int().min(1).max(12).optional(),

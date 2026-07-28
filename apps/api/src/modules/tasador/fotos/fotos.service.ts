@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { randomUUID } from 'node:crypto';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { resolverScope } from '../../tablero/scope.util';
+import { scopeDePermiso } from '../../tablero/scope.util';
 import { assertEnScope, tasacionInclude } from '../tasaciones/tasaciones.service';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 
@@ -36,7 +36,7 @@ export class FotosService {
     const { tenantId, ordenSiguiente } = await this.db.withTenant(async (tx) => {
       const tasacion = await tx.tasacion.findUnique({ where: { id: tasacionId }, include: tasacionInclude });
       if (!tasacion) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(tasacion, await resolverScope(ctx, tx));
+      assertEnScope(tasacion, await scopeDePermiso(ctx, tx));
 
       if (tasacion.fotos.length >= MAX_FOTOS) {
         throw new BadRequestException(`Ya se cargaron el máximo de ${MAX_FOTOS} fotos.`);
@@ -65,7 +65,7 @@ export class FotosService {
     return this.db.withTenant(async (tx) => {
       const tasacion = await tx.tasacion.findUnique({ where: { id: tasacionId }, include: tasacionInclude });
       if (!tasacion) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(tasacion, await resolverScope(ctx, tx));
+      assertEnScope(tasacion, await scopeDePermiso(ctx, tx));
 
       const foto = tasacion.fotos.find((f) => f.id === fotoId);
       if (!foto) throw new NotFoundException('Foto no encontrada.');

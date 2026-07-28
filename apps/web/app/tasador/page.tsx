@@ -10,31 +10,31 @@ import { TasadorDashboard } from '../../components/tasador/tasador-dashboard';
 export default async function TasadorDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ soloMio?: string }>;
+  searchParams: Promise<{ verTodo?: string }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
 
   const anio = new Date().getFullYear();
-  const soloMio = (await searchParams).soloMio === '1';
+  const verTodo = (await searchParams).verTodo === '1';
   // Se resuelven server-side y en paralelo (mismo criterio que app/tablero/page.tsx):
   // el dashboard llega con datos, sin "Cargando…" ni la cascada getAccessToken→4 fetches
   // client-side sobre el hop lento hacia Supabase.
   const [kpisMensual, resumenAnual, rankingAnual, tasaciones] = await Promise.all([
-    getKpisMensualTasador(ctx.accessToken, anio, soloMio),
-    getKpisResumenTasador(ctx.accessToken, { anio, periodo: 'anual', soloMio }),
-    getRankingCaptaciones(ctx.accessToken, { anio, periodo: 'anual', soloMio }),
-    listTasacionesResumen(ctx.accessToken, { anio, soloMio }),
+    getKpisMensualTasador(ctx.accessToken, anio, verTodo),
+    getKpisResumenTasador(ctx.accessToken, { anio, periodo: 'anual', verTodo }),
+    getRankingCaptaciones(ctx.accessToken, { anio, periodo: 'anual', verTodo }),
+    listTasacionesResumen(ctx.accessToken, { anio, verTodo }),
   ]);
 
   return (
-    // key por soloMio: al togglear, el componente re-monta con el `inicial`
+    // key por verTodo: al togglear, el componente re-monta con el `inicial`
     // nuevo (ya scopeado), en vez de conservar el estado con datos viejos.
     <TasadorDashboard
-      key={soloMio ? 'mio' : 'todo'}
+      key={verTodo ? 'todo' : 'mio'}
       principal={ctx.principal}
       inicial={{ kpisMensual, resumenAnual, rankingAnual, tasaciones }}
-      soloMio={soloMio}
+      verTodo={verTodo}
     />
   );
 }

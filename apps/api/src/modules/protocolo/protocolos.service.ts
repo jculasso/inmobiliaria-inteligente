@@ -16,7 +16,7 @@ import {
 import { SupabaseStorageService } from '../../common/supabase-storage.service';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
-import { resolverScope } from '../tablero/scope.util';
+import { scopeDePermiso, scopeDeVista } from '../tablero/scope.util';
 import { rangoDeAnioMesTrimestre } from '../tasador/fecha.util';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import {
@@ -74,9 +74,9 @@ export class ProtocolosService {
    * Tasaciones captadas que todavía no arrancaron el protocolo — la bandeja de
    * entrada del módulo. Acotadas por el alcance del rol.
    */
-  async listarCandidatas(soloMio: boolean, ctx: TenantContext): Promise<CandidataDto[]> {
+  async listarCandidatas(verTodo: boolean, ctx: TenantContext): Promise<CandidataDto[]> {
     const filas = await this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, soloMio);
+      const scope = await scopeDeVista(ctx, tx, verTodo);
       return tx.tasacion.findMany({
         where: {
           estado: ESTADO_CAPTADA,
@@ -129,7 +129,7 @@ export class ProtocolosService {
     const fechaInicio = dto.fechaInicio ?? hoyArgentina();
 
     const row = await this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
+      const scope = await scopeDePermiso(ctx, tx);
       const tasacion = await tx.tasacion.findUnique({
         where: { id: dto.tasacionId },
         select: { id: true, estado: true, agenteId: true, cliente: true, protocolo: { select: { id: true } } },
@@ -187,7 +187,7 @@ export class ProtocolosService {
   /** Lista los protocolos del tenant, acotados por scope y filtros. */
   async list(filtro: ProtocoloFiltro, ctx: TenantContext): Promise<ProtocoloResumenDto[]> {
     const filas = await this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, filtro.soloMio);
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
       const where: Prisma.ProtocoloWhereInput = {};
       if (filtro.estado) where.estado = filtro.estado;
       if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
@@ -206,7 +206,7 @@ export class ProtocolosService {
 
   async getOne(id: string, ctx: TenantContext): Promise<ProtocoloDto> {
     const row = await this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx);
+      const scope = await scopeDePermiso(ctx, tx);
       const p = await tx.protocolo.findUnique({ where: { id }, include: protocoloInclude });
       if (!p) throw new NotFoundException('Protocolo no encontrado.');
       if (scope.usuarioIds !== null && !scope.usuarioIds.includes(p.agenteId)) {
@@ -272,7 +272,7 @@ export class ProtocolosService {
       if (!accion || accion.protocoloId !== id) {
         throw new NotFoundException('Acción no encontrada.');
       }
-      const scope = await resolverScope(ctx, tx);
+      const scope = await scopeDePermiso(ctx, tx);
       if (scope.usuarioIds !== null && !scope.usuarioIds.includes(accion.protocolo.agenteId)) {
         throw new NotFoundException('Protocolo no encontrado.');
       }
@@ -341,9 +341,9 @@ export class ProtocolosService {
   }
 
   /** KPIs de cabecera del dashboard del módulo. */
-  async kpis(soloMio: boolean, ctx: TenantContext): Promise<ProtocoloKpis> {
+  async kpis(verTodo: boolean, ctx: TenantContext): Promise<ProtocoloKpis> {
     return this.db.withTenant(async (tx) => {
-      const scope = await resolverScope(ctx, tx, soloMio);
+      const scope = await scopeDeVista(ctx, tx, verTodo);
       const porAgente = scope.usuarioIds !== null ? { agenteId: { in: scope.usuarioIds } } : {};
 
       const [protocolos, captadasSinIniciar] = await Promise.all([
@@ -401,7 +401,7 @@ export class ProtocolosService {
     tx: Prisma.TransactionClient,
     ctx: TenantContext,
   ): Promise<{ estado: string; updatedAt: Date }> {
-    const scope = await resolverScope(ctx, tx);
+    const scope = await scopeDePermiso(ctx, tx);
     const p = await tx.protocolo.findUnique({
       where: { id },
       select: { agenteId: true, estado: true, updatedAt: true },
