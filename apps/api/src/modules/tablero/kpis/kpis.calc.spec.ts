@@ -35,6 +35,19 @@ describe('agregar', () => {
     expect(a.ticketPromedio).toBe(150);
   });
 
+  /**
+   * El caso que importa en una venta compartida: OP1 tiene una punta de A y
+   * otra de B. Para A, la comisión de B no existe — y la operación cuenta una
+   * sola vez, no dos.
+   */
+  it('en una venta compartida, la punta ajena no suma', () => {
+    const soloA = agregar(puntas.filter((p) => p.operacionId === 'op1'), new Set(['a']));
+    expect(soloA.comision).toBe(3); // la suya, no los 5 de la operación
+    expect(soloA.puntas).toBe(1);
+    expect(soloA.operaciones).toBe(1);
+    expect(soloA.volumen).toBe(100); // el precio entra una vez, por su punta
+  });
+
   it('ticket 0 cuando no hay puntas', () => {
     expect(agregar([], null).ticketPromedio).toBe(0);
     expect(agregar(puntas, new Set(['zzz'])).volumen).toBe(0);

@@ -60,6 +60,17 @@ operación de cualquier otro.
 `verTodo` llega por query param, o sea que lo controla el cliente: **nunca puede
 agrandar el alcance más allá del rol**. Lo fija `scope.util.spec.ts`.
 
+**Una venta puede tener una punta tuya y otra ajena.** La ajena no se muestra —ni
+el nombre ni su comisión— pero la operación sí aparece, porque una punta es
+tuya. El enmascarado usa el alcance del ROL (`scopeDePermiso`), no el del check:
+un team leader mirando "solo lo mío" igual ve el nombre de su vendedor en la otra
+punta, porque el check es un filtro suyo y no una regla de confidencialidad.
+
+`cantPuntas` conserva el número real: cuántas puntas tuvo la venta no es
+confidencial, el nombre sí. Y `comTotal` se recalcula **solo si se ocultó algo**,
+porque los alquileres no tienen puntas y recalcularlos los dejaría en cero. Lo
+fijan `operaciones.service.spec.ts` y `kpis.calc.spec.ts`.
+
 ---
 
 ## 3. Quién escribe en el Tablero
