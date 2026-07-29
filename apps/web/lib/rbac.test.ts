@@ -57,10 +57,23 @@ describe('puedeVerVendedores', () => {
     expect(puedeVerVendedores(['vendedor'])).toBe(false);
   });
 
-  it('team_leader, direccion y admin_tenant sí pueden', () => {
-    expect(puedeVerVendedores(['team_leader'])).toBe(true);
+  it('solo direccion y admin_tenant', () => {
     expect(puedeVerVendedores(['direccion'])).toBe(true);
     expect(puedeVerVendedores(['admin_tenant'])).toBe(true);
+  });
+
+  // El team leader la tenía hasta el 29/07/2026. Se le sacó por pedido del
+  // usuario: el equipo con sus objetivos es información de conducción.
+  it('el team leader ya no ve la pantalla de vendedores', () => {
+    expect(puedeVerVendedores(['team_leader'])).toBe(false);
+  });
+
+  // Si ver y gestionar se separan de nuevo, la pantalla queda a medias: se ve
+  // pero no se puede tocar nada, sin ninguna razón visible.
+  it('ver y gestionar quedaron en las mismas manos', () => {
+    for (const rol of ['vendedor', 'team_leader', 'direccion', 'admin_tenant'] as const) {
+      expect(puedeVerVendedores([rol])).toBe(puedeGestionarVendedores([rol]));
+    }
   });
 
   it('admin_plataforma solo no puede', () => {

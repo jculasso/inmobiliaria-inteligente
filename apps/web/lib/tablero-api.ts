@@ -16,7 +16,7 @@ import {
   type UpdateOperacion,
   type UpdateVendedor,
 } from '@vacker/types';
-import { apiFetch } from './api-client';
+import { apiFetch, apiFetchForm } from './api-client';
 
 // --- Operaciones ---
 
@@ -88,6 +88,21 @@ export async function desactivarVendedor(accessToken: string, id: string) {
     z.object({ id: z.string(), estado: z.literal('inactivo') }),
     { accessToken, method: 'DELETE' },
   );
+}
+
+/**
+ * Cambia la foto de un vendedor desde el Tablero, sin pasar por el panel de
+ * plataforma. Es la misma foto: escribe el mismo archivo que `/admin`.
+ */
+export async function subirFotoVendedor(accessToken: string, id: string, file: File) {
+  return apiFetchForm(`/tablero/vendedores/${id}/foto`, VendedorDtoSchema, { accessToken, file });
+}
+
+export async function eliminarFotoVendedor(accessToken: string, id: string) {
+  return apiFetch(`/tablero/vendedores/${id}/foto`, VendedorDtoSchema, {
+    accessToken,
+    method: 'DELETE',
+  });
 }
 
 export async function setObjetivoVendedor(accessToken: string, id: string, dto: ObjetivoInput) {

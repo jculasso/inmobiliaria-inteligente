@@ -24,7 +24,8 @@ import {
 } from '@vacker/types';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { AdminUsuariosService, type AvatarFile } from './admin-usuarios.service';
+import { AdminUsuariosService } from './admin-usuarios.service';
+import type { AvatarFile } from '../common/avatar';
 
 @ApiTags('admin')
 @ApiBearerAuth()

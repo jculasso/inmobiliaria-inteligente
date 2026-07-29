@@ -37,6 +37,15 @@ function makeDb(tx: unknown): TenantPrismaService {
   return { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
 }
 
+/** Storage mockeado: devuelve una URL como la que da Supabase. */
+function makeStorage(over: Record<string, unknown> = {}) {
+  return {
+    upload: vi.fn().mockResolvedValue('https://storage.test/usuarios-avatares/t1/u1.jpg'),
+    remove: vi.fn().mockResolvedValue(undefined),
+    ...over,
+  } as unknown as ConstructorParameters<typeof VendedoresService>[3];
+}
+
 const vendedorRow = {
   id: 'u1',
   nombre: 'Ana',
@@ -54,7 +63,7 @@ describe('VendedoresService', () => {
     const tx = makeTx({
       usuario: { findFirst: vi.fn().mockResolvedValue({ id: 'existente' }), findUniqueOrThrow: vi.fn() },
     });
-    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache());
+    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache(), makeStorage());
 
     await expect(
       svc.create({ nombre: 'X', email: 'ana@vacker.test', estado: 'activo', roles: ['vendedor'] } as unknown as CreateVendedor, CTX),
@@ -64,7 +73,7 @@ describe('VendedoresService', () => {
   it('update: un usuario no puede ser su propio líder', async () => {
     const tx = makeTx();
     tx.usuario.findUnique = vi.fn().mockResolvedValue({ id: 'u1', email: 'ana@vacker.test' });
-    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache());
+    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache(), makeStorage());
 
     await expect(
       svc.update('u1', { liderId: 'u1' } as unknown as UpdateVendedor, CTX),
@@ -80,7 +89,7 @@ describe('VendedoresService', () => {
       .mockResolvedValue({ id: 'u1', email: 'viejo@vacker.com', authUserId: 'auth-1' });
     tx.usuario.findUniqueOrThrow = vi.fn().mockResolvedValue(vendedorRow);
     const supabaseAdmin = makeSupabaseAdmin();
-    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache());
+    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache(), makeStorage());
 
     await svc.update('u1', { email: 'nuevo@vacker.com.ar' } as unknown as UpdateVendedor, CTX);
 
@@ -94,7 +103,7 @@ describe('VendedoresService', () => {
       .mockResolvedValue({ id: 'u1', email: 'viejo@vacker.com', authUserId: null });
     tx.usuario.findUniqueOrThrow = vi.fn().mockResolvedValue(vendedorRow);
     const supabaseAdmin = makeSupabaseAdmin();
-    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache());
+    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache(), makeStorage());
 
     await svc.update('u1', { email: 'nuevo@vacker.com.ar' } as unknown as UpdateVendedor, CTX);
 
@@ -108,7 +117,7 @@ describe('VendedoresService', () => {
       .mockResolvedValue({ id: 'u1', email: 'viejo@vacker.com', authUserId: 'auth-1' });
     const supabaseAdmin = makeSupabaseAdmin();
     supabaseAdmin.setEmail.mockRejectedValue(new BadRequestException('Email ya usado'));
-    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache());
+    const svc = new VendedoresService(makeDb(tx), supabaseAdmin, makeCache(), makeStorage());
 
     await expect(
       svc.update('u1', { email: 'repetido@vacker.com.ar' } as unknown as UpdateVendedor, CTX),
@@ -120,7 +129,7 @@ describe('VendedoresService', () => {
     const tx = makeTx();
     tx.usuario.findUnique = vi.fn().mockResolvedValue({ id: 'u1', email: 'ana@vacker.test' });
     tx.usuario.findUniqueOrThrow = vi.fn().mockResolvedValue(vendedorRow);
-    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache());
+    const svc = new VendedoresService(makeDb(tx), makeSupabaseAdmin(), makeCache(), makeStorage());
 
     await svc.update('u1', { roles: ['vendedor'] } as unknown as UpdateVendedor, CTX);
 

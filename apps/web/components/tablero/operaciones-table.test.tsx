@@ -135,7 +135,10 @@ describe('OperacionesTable', () => {
     expect(screen.getByRole('status')).toHaveTextContent(`Se están mostrando ${LIMITE_LISTA} ventas, y hay más`);
     // Y se muestra el tope exacto, no la fila de sonda.
     expect(enLaTabla().getAllByRole('row')).toHaveLength(LIMITE_LISTA + 1); // + encabezado
-  });
+    // Dibuja 501 filas dos veces (tabla + tarjetas): con los 5s por defecto se
+    // pasaba de tiempo cuando corre en paralelo con el resto de los paquetes,
+    // y fallaba de forma intermitente sin que hubiera nada roto.
+  }, 20_000);
 
   it('con pocas operaciones no avisa nada', () => {
     render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} orden="codigo" dir="desc" />);
