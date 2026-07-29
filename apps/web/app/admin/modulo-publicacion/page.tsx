@@ -99,6 +99,39 @@ export default function ModuloPublicacionPage() {
         </Paso>
       </Seccion>
 
+      <Seccion titulo="La misma carga puede alimentar la web de la inmobiliaria">
+        <Tarjeta>
+          <p>
+            El listado que se arma para Tokko sirve igual para un sitio web. Es el mismo dato, cargado
+            una sola vez, publicado en dos lados. No hay que construir nada aparte para que eso sea
+            posible.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Si la inmobiliaria tiene su propia web">
+          <p>
+            Le entregamos el listado <strong>documentado</strong> para que su desarrollador lo consuma.
+            Es lo mismo que consume Tokko, así que no hay trabajo extra de nuestro lado.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Si más adelante toma nuestro módulo de sitio web">
+          <p>La conexión ya está hecha: el sitio lee de acá desde el primer día.</p>
+        </Tarjeta>
+
+        <Aviso tono="atencion" titulo="Antes de poner esto en el precio, hay algo que preguntar">
+          <p>
+            <strong>¿Cómo se actualiza hoy la web de Vacker?</strong> Si ya la alimenta Tokko —hay
+            integraciones que hacen exactamente eso—, entonces publicar en Tokko ya actualiza la web, y
+            este punto no les cambia nada.
+          </p>
+          <p>
+            Si en cambio la web se actualiza a mano, es una <strong>tercera carga</strong> de los mismos
+            datos, y ahí el módulo vale bastante más de lo que parece.
+          </p>
+        </Aviso>
+      </Seccion>
+
       <Seccion titulo="Qué NO incluye este módulo">
         <Aviso tono="peligro" titulo="Un alcance que solo dice lo que sí hace no se puede aprobar">
           <ul className="ml-4 list-disc space-y-1.5">
@@ -110,8 +143,14 @@ export default function ModuloPublicacionPage() {
               <strong>No reemplaza a Tokko</strong> ni propone dejar de pagarlo.
             </li>
             <li>
-              <strong>No incluye sitio web propio de la inmobiliaria.</strong> Es un módulo aparte, con
-              su propia decisión.
+              <strong>No construye el sitio web de la inmobiliaria.</strong> Entrega el listado para que
+              una web lo consuma, pero hacer esa web es un módulo aparte con su propia decisión.
+            </li>
+            <li>
+              <strong>No incluye adaptar el módulo a la web que ya tenga cada cliente.</strong> El
+              listado es uno solo y está documentado; si una inmobiliaria necesita que se lo conectemos
+              nosotros, es trabajo a medida y se cotiza aparte. Si entrara acá, el módulo dejaría de
+              tener un alcance cerrado: cada web está hecha de una forma distinta.
             </li>
             <li>
               <strong>No incluye gestión de contactos</strong> —consultas por web, mail o WhatsApp—. Ese
