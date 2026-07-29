@@ -159,8 +159,12 @@ export default function OnboardingPage() {
         </Tarjeta>
         <Tarjeta titulo="“¿Y si me equivoco al cargar algo?”">
           <p>
-            Todo se puede editar. Borrar solo pueden el líder, dirección y el administrador, y antes de
-            borrar el sistema muestra exactamente qué se va a borrar.
+            Las <strong>tasaciones</strong> las corregís vos mismo. Las <strong>ventas y alquileres</strong>{' '}
+            los carga la inmobiliaria —dirección o el administrador—, así que un error ahí se avisa y se
+            corrige en el momento.
+          </p>
+          <p>
+            Antes de borrar cualquier cosa, el sistema muestra exactamente qué se va a borrar.
           </p>
         </Tarjeta>
       </Seccion>
