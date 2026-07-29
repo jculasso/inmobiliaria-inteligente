@@ -53,6 +53,20 @@ separación es deliberada:
 - **`scopeDePermiso(ctx, tx)`** — qué puede tocar. **Siempre** el máximo del rol,
   sin mirar el check de la pantalla.
 
+Cómo se traduce eso a lo que ve cada uno (confirmado con el usuario el 29/07/2026):
+
+| Rol | Al entrar ve | Con "Ver todo" | ¿Le aparece el check? |
+|---|---|---|---|
+| **Vendedor** | solo lo suyo | — | No: ya está en su alcance máximo |
+| **Team leader** | solo lo suyo | él + sus vendedores | Sí |
+| **Dirección (CEO)** | **solo lo suyo** | toda la inmobiliaria | Sí |
+| **Admin** (tenant o plataforma) | **toda la inmobiliaria** | — | No: ya ve todo |
+
+La asimetría entre dirección y admin es deliberada. El admin no tiene puntas
+propias, así que abrirle en "lo mío" sería una pantalla vacía. El CEO sí las
+tiene —en Vacker es además vendedor, con sus propias operaciones que seguir— y
+abrir en lo suyo es lo que le sirve.
+
 Fueron una sola función hasta el 28/07/2026. Al invertir el default del check se
 invirtieron las dos a la vez y un CEO mirando "lo mío" dejaba de poder abrir la
 operación de cualquier otro.
