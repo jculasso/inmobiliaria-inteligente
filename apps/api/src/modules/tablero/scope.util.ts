@@ -89,3 +89,26 @@ export async function scopeDeVista(
   if (!verTodo) return { mode: 'propio', usuarioIds: [ctx.userId] };
   return usuariosDelModo(modoDeScope(ctx.roles), ctx, tx);
 }
+
+/**
+ * Las dos respuestas de una sola consulta, para cuando hacen falta juntas.
+ *
+ * Listar operaciones necesita las dos: `vista` decide QUÉ operaciones entran, y
+ * `permiso` decide qué se puede MOSTRAR de cada una — un team leader que está
+ * mirando "solo lo mío" igual puede ver el nombre de su vendedor en la otra
+ * punta, porque el check es un filtro suyo, no una regla de confidencialidad.
+ *
+ * Pedirlas por separado costaría dos veces la consulta del equipo, y con la
+ * base en otro continente eso se nota.
+ */
+export async function scopes(
+  ctx: TenantContext,
+  tx: Prisma.TransactionClient,
+  verTodo = false,
+): Promise<{ vista: Scope; permiso: Scope }> {
+  const permiso = await scopeDePermiso(ctx, tx);
+  const esAdmin = ctx.roles.some((r) => ROLES_ADMIN.includes(r));
+  const vista: Scope =
+    esAdmin || verTodo ? permiso : { mode: 'propio', usuarioIds: [ctx.userId] };
+  return { vista, permiso };
+}

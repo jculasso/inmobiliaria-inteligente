@@ -13,7 +13,7 @@ import {
 } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { scopeDePermiso, scopeDeVista } from '../scope.util';
+import { scopeDePermiso, scopes, type Scope } from '../scope.util';
 import { decToNum, derivarPeriodo, fromDate, toDate } from '../tablero.util';
 
 /** Techo defensivo de filas por listado (las más recientes). Ver comentario en `list()`. */
@@ -57,7 +57,7 @@ export class OperacionesService {
   /** Lista operaciones del tenant, acotadas por el scope del rol y los filtros. */
   async list(filtro: OperacionFiltro, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
+      const { vista, permiso } = await scopes(ctx, tx, filtro.verTodo);
       const where: Prisma.OperacionWhereInput = {};
       if (filtro.tipo) where.tipo = filtro.tipo;
       if (filtro.anio != null) where.anio = filtro.anio;
@@ -75,10 +75,10 @@ export class OperacionesService {
       // acota a esa punta exacta — pero solo si cae dentro del alcance del
       // rol; si no, se oculta (lista vacía), mismo criterio que `assertEnScope`.
       if (filtro.usuarioId) {
-        const permitido = scope.usuarioIds === null || scope.usuarioIds.includes(filtro.usuarioId);
+        const permitido = vista.usuarioIds === null || vista.usuarioIds.includes(filtro.usuarioId);
         where.puntas = { some: { usuarioId: { in: permitido ? [filtro.usuarioId] : [] } } };
-      } else if (scope.usuarioIds !== null) {
-        where.puntas = { some: { usuarioId: { in: scope.usuarioIds } } };
+      } else if (vista.usuarioIds !== null) {
+        where.puntas = { some: { usuarioId: { in: vista.usuarioIds } } };
       }
       const rows = await tx.operacion.findMany({
         where,
@@ -89,7 +89,7 @@ export class OperacionesService {
         // en silencio. Ver `LIMITE_LISTA` en @vacker/types.
         take: LIMITE_LISTA_CON_SONDA,
       });
-      return rows.map(toDto);
+      return rows.map((r) => toDto(r, permiso));
     });
   }
 
@@ -98,8 +98,9 @@ export class OperacionesService {
     return this.db.withTenant(async (tx) => {
       const row = await tx.operacion.findUnique({ where: { id }, include: operacionInclude });
       if (!row) throw new NotFoundException('Operación no encontrada.');
-      assertEnScope(row, await scopeDePermiso(ctx, tx));
-      return toDto(row);
+      const permiso = await scopeDePermiso(ctx, tx);
+      assertEnScope(row, permiso);
+      return toDto(row, permiso);
     });
   }
 
@@ -143,7 +144,8 @@ export class OperacionesService {
       }
 
       const row = await tx.operacion.create({ data, include: operacionInclude });
-      return toDto(row);
+      // Crear y editar son de dirección/admin: no hay nada que ocultarles.
+      return toDto(row, SIN_OCULTAR);
     });
   }
 
@@ -189,7 +191,7 @@ export class OperacionesService {
       }
 
       const row = await tx.operacion.update({ where: { id }, data, include: operacionInclude });
-      return toDto(row);
+      return toDto(row, SIN_OCULTAR);
     });
   }
 
@@ -268,7 +270,32 @@ function assertEnScope(
 }
 
 /** Mapea la fila (Decimal/Date) a la forma JSON de la API. */
-function toDto(row: OperacionConPuntas) {
+/** Alcance que no oculta nada: para quien crea o edita, que siempre es dirección o admin. */
+const SIN_OCULTAR: Scope = { mode: 'tenant', usuarioIds: null };
+
+/**
+ * Convierte la fila a DTO ocultando las puntas fuera del alcance del rol.
+ *
+ * Una venta puede tener una punta de tu equipo y otra de un vendedor ajeno. Esa
+ * otra punta no es asunto tuyo: no se muestra el nombre y su comisión no suma.
+ * Los KPIs ya lo hacían (`agregar` filtra por alcance); el listado no, así que
+ * el tablero y la tabla decían cosas distintas sobre la misma operación.
+ *
+ * `comTotal` se recalcula SOLO si se ocultó alguna punta. Si no, se usa el valor
+ * guardado, que es la fuente de verdad — y en los alquileres, que no tienen
+ * puntas, recalcularlo lo dejaría en cero.
+ *
+ * `cantPuntas` conserva el número real. Que la operación tenga dos puntas no es
+ * confidencial —el nombre sí—, y verla como "2 puntas, una tuya" explica sola
+ * por qué la comisión es la que es.
+ */
+function toDto(row: OperacionConPuntas, scope: Scope) {
+  const visibles =
+    scope.usuarioIds === null
+      ? row.puntas
+      : row.puntas.filter((p) => scope.usuarioIds!.includes(p.usuarioId));
+  const seOculto = visibles.length < row.puntas.length;
+
   return {
     id: row.id,
     codigo: row.codigo,
@@ -278,14 +305,16 @@ function toDto(row: OperacionConPuntas) {
     valorMensual: row.valorMensual == null ? null : decToNum(row.valorMensual),
     moneda: row.moneda,
     cantPuntas: row.cantPuntas,
-    comTotal: decToNum(row.comTotal),
+    comTotal: seOculto
+      ? visibles.reduce((acc, p) => acc + decToNum(p.comision), 0)
+      : decToNum(row.comTotal),
     estado: row.estado,
     fechaReserva: fromDate(row.fechaReserva),
     fechaFirma: fromDate(row.fechaFirma),
     anio: row.anio,
     mes: row.mes,
     obs: row.obs,
-    puntas: row.puntas.map((p) => ({
+    puntas: visibles.map((p) => ({
       id: p.id,
       lado: p.lado,
       usuarioId: p.usuarioId,

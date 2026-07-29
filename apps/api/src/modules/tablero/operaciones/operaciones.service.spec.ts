@@ -187,3 +187,85 @@ describe('OperacionesService — orden del listado', () => {
     }
   });
 });
+
+/**
+ * Una venta con dos puntas donde solo una es tuya: la otra no es asunto tuyo.
+ *
+ * Los KPIs ya lo respetaban (`agregar` filtra por alcance) pero el listado no,
+ * así que el tablero y la tabla decían cosas distintas sobre la misma venta.
+ */
+describe('OperacionesService — puntas fuera del alcance', () => {
+  const CTX_VENDEDOR_A: TenantContext = { tenantId: 't1', userId: 'vA', roles: ['vendedor'] };
+
+  /** Venta compartida: una punta de vA (5.000) y otra de un ajeno (3.000). */
+  const compartida = {
+    id: 'op1',
+    codigo: 'OP-1',
+    tipo: 'venta',
+    direccion: 'Calle 1',
+    precio: 100000,
+    valorMensual: null,
+    moneda: 'USD',
+    cantPuntas: 2,
+    comTotal: 8000,
+    estado: 'escriturada',
+    fechaReserva: null,
+    fechaFirma: new Date('2026-05-10'),
+    anio: 2026,
+    mes: 5,
+    obs: null,
+    puntas: [
+      { id: 'p1', lado: 'vendedora', usuarioId: 'vA', comision: 5000, usuario: { id: 'vA', nombre: 'Ana' } },
+      { id: 'p2', lado: 'compradora', usuarioId: 'vB', comision: 3000, usuario: { id: 'vB', nombre: 'Beto' } },
+    ],
+  };
+
+  async function listarComo(ctx: TenantContext, row: unknown = compartida) {
+    const tx = makeTx();
+    tx.operacion.findMany = vi.fn().mockResolvedValue([row]);
+    const svc = new OperacionesService(makeDb(tx));
+    return (await svc.list({} as never, ctx))[0]!;
+  }
+
+  it('no devuelve el nombre del vendedor ajeno', async () => {
+    const dto = await listarComo(CTX_VENDEDOR_A);
+    const nombres = dto.puntas.map((p) => p.nombre);
+    expect(nombres).toEqual(['Ana']);
+    expect(nombres).not.toContain('Beto');
+  });
+
+  it('la comisión que se muestra es solo la propia', async () => {
+    // La operación tiene 8.000 de comisión total; a Ana le corresponden 5.000.
+    // Si mostrara 8.000, la tabla contradiría a su propio tablero.
+    const dto = await listarComo(CTX_VENDEDOR_A);
+    expect(dto.comTotal).toBe(5000);
+  });
+
+  it('la operación SIGUE apareciendo: tiene una punta suya', async () => {
+    const dto = await listarComo(CTX_VENDEDOR_A);
+    expect(dto.codigo).toBe('OP-1');
+  });
+
+  it('conserva que la venta tuvo dos puntas', async () => {
+    // Cuántas puntas tuvo la operación no es confidencial —el nombre sí—, y
+    // verla como "2 puntas, una tuya" explica sola por qué la comisión es esa.
+    const dto = await listarComo(CTX_VENDEDOR_A);
+    expect(dto.cantPuntas).toBe(2);
+  });
+
+  it('a dirección no se le oculta nada', async () => {
+    const tx = makeTx();
+    tx.operacion.findMany = vi.fn().mockResolvedValue([compartida]);
+    const svc = new OperacionesService(makeDb(tx));
+    const dto = (await svc.list({ verTodo: true } as never, CTX_DIRECCION))[0]!;
+    expect(dto.puntas.map((p) => p.nombre)).toEqual(['Ana', 'Beto']);
+    expect(dto.comTotal).toBe(8000);
+  });
+
+  it('un alquiler no pierde su comisión (no tiene puntas que ocultar)', async () => {
+    // Recalcular comTotal desde las puntas dejaría todos los alquileres en 0.
+    const alquiler = { ...compartida, tipo: 'alquiler', cantPuntas: 0, comTotal: 1200, puntas: [] };
+    const dto = await listarComo(CTX_VENDEDOR_A, alquiler);
+    expect(dto.comTotal).toBe(1200);
+  });
+});
