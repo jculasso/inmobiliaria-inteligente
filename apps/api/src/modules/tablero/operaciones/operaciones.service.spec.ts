@@ -253,11 +253,44 @@ describe('OperacionesService — puntas fuera del alcance', () => {
     expect(dto.cantPuntas).toBe(2);
   });
 
-  it('a dirección no se le oculta nada', async () => {
+  it('a dirección con "Ver todo" no se le oculta nada', async () => {
     const tx = makeTx();
     tx.operacion.findMany = vi.fn().mockResolvedValue([compartida]);
     const svc = new OperacionesService(makeDb(tx));
     const dto = (await svc.list({ verTodo: true } as never, CTX_DIRECCION))[0]!;
+    expect(dto.puntas.map((p) => p.nombre)).toEqual(['Ana', 'Beto']);
+    expect(dto.comTotal).toBe(8000);
+  });
+
+  /**
+   * El caso real que se escapó: Ezequiel es vendedor Y dirección. Cuando
+   * destilda "Ver todo" está pidiendo SUS números, así que ver la comisión
+   * completa de una venta compartida hacía que la tabla contradijera a su
+   * propio tablero.
+   *
+   * Por eso se oculta con el alcance de la VISTA y no con el del rol: lo que
+   * se muestra tiene que sumar lo mismo que lo que se calculó.
+   */
+  it('dirección SIN "Ver todo" ve solo su punta y su comisión', async () => {
+    const ctxCeo: TenantContext = { tenantId: 't1', userId: 'vA', roles: ['vendedor', 'direccion'] };
+    const tx = makeTx();
+    tx.operacion.findMany = vi.fn().mockResolvedValue([compartida]);
+    const svc = new OperacionesService(makeDb(tx));
+
+    const dto = (await svc.list({} as never, ctxCeo))[0]!;
+
+    expect(dto.puntas.map((p) => p.nombre)).toEqual(['Ana']);
+    expect(dto.comTotal).toBe(5000);
+  });
+
+  it('y con "Ver todo" el mismo usuario ve la venta completa', async () => {
+    const ctxCeo: TenantContext = { tenantId: 't1', userId: 'vA', roles: ['vendedor', 'direccion'] };
+    const tx = makeTx();
+    tx.operacion.findMany = vi.fn().mockResolvedValue([compartida]);
+    const svc = new OperacionesService(makeDb(tx));
+
+    const dto = (await svc.list({ verTodo: true } as never, ctxCeo))[0]!;
+
     expect(dto.puntas.map((p) => p.nombre)).toEqual(['Ana', 'Beto']);
     expect(dto.comTotal).toBe(8000);
   });
