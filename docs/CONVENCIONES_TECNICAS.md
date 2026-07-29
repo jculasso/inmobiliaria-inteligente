@@ -218,3 +218,38 @@ contradicen según por dónde se subió.
 El 28/07/2026 una purga se llevó puestas 30 tasaciones de un segundo tenant que
 nadie recordaba que existía. Se recuperaron **solo** porque el paso 3 estaba
 hecho.
+
+---
+
+## 11. Auditorías: cada cuánto y por qué esa frecuencia
+
+Acordado con el usuario el 29/07/2026. Las tres están agendadas como tareas
+automáticas; esto documenta **el criterio**, que es lo que hay que revisar si
+alguna deja de aportar.
+
+| Auditoría | Frecuencia | Disparador que vale más que la fecha |
+|---|---|---|
+| **Seguridad** | Mensual (día 5) | **Antes de dar de alta cada inmobiliaria nueva** |
+| **Código** | Bimestral (día 12) | **Al cerrar cada módulo** |
+| **Performance** | Trimestral (día 19) | **Cuando una lista pase las 300 filas** |
+
+**Seguridad va mensual porque el aislamiento entre inmobiliarias es la promesa
+central del producto.** Un bug ahí no es un error, es existencial. CI lo
+verifica en cada PR, pero solo sobre las tablas que alguien se acordó de agregar
+a `isolation.e2e-spec.ts`: lo que se escapa es siempre lo nuevo. Con un solo
+cliente real una fuga es teórica; con dos, no — por eso el disparador por alta
+de inmobiliaria pesa más que el calendario.
+
+**Código va bimestral porque la calidad se degrada despacio.** Mensual
+encontraría lo mismo dos veces seguidas y se volvería trámite. El momento en que
+los patrones más divergen es al cerrar un módulo, no el día 12.
+
+**Performance está atada al volumen, no al calendario.** Hasta que se haga la
+migración de infraestructura, una auditoría de performance va a decir siempre lo
+mismo —que la API corre lejos de la base—, y repetirlo gasta atención. Lo que sí
+cambia es el tamaño: el tope de 500 filas y los KPIs en memoria alcanzan hasta
+cierto punto. La tarea agendada **mide primero y se detiene** si el volumen no
+creció.
+
+**Las tres reportan, no arreglan.** Un informe que además aplica cambios obliga a
+revisar código y hallazgos al mismo tiempo, que es cuando se aprueba de más.
