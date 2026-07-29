@@ -1,7 +1,12 @@
 # CLAUDE.md — Inmobiliaria Inteligente 2.0 (Vacker)
 
 > Este archivo es el brief permanente del proyecto. Claude Code lo lee en cada sesión.
-> **Regla de oro:** ante cualquier duda de stack, alcance o convención, este archivo y `/docs/Arquitectura_Inmobiliaria_Inteligente.md` (sección 19) mandan. No reinventes decisiones ya cerradas.
+> **Regla de oro:** ante cualquier duda de stack, alcance o convención, este archivo y `/docs/Arquitectura_Inmobiliaria_Inteligente.md` mandan. No reinventes decisiones ya cerradas.
+>
+> **Los tres documentos y para qué sirve cada uno:**
+> - **`CLAUDE.md`** (este) — qué se está construyendo y con qué reglas. Se lee entero en cada sesión.
+> - **`docs/Arquitectura_Inmobiliaria_Inteligente.md`** — las decisiones grandes y su porqué. **La sección 20 es el estado real** del sistema y manda sobre lo planificado en el resto.
+> - **`docs/CONVENCIONES_TECNICAS.md`** — el cómo del día a día: las reglas que ya nos costaron una vez. **Leerlo antes de tocar RLS, permisos, el middleware, la PWA o de correr SQL en producción.**
 
 ---
 
@@ -9,7 +14,9 @@
 
 Plataforma SaaS **multi-tenant** para inmobiliarias. Un sistema único, modular, accesible desde web y (más adelante) apps móviles. Se comercializa a múltiples inmobiliarias (tenants); cada una opera aislada.
 
-Estado actual: existen prototipos HTML/React validados (`/docs/prototipos`). Ahora se construye la versión **productiva** empezando por el backend y el módulo Tablero Comercial.
+**Estado (julio 2026):** en producción con su primer cliente, Vacker, y cuatro módulos vivos — Tablero Comercial, Tasador, Protocolo 5 Semanas y To Do List — más el panel de plataforma. El detalle está en la sección 20 del documento de arquitectura; si algo de este archivo la contradice, gana la sección 20.
+
+En la base conviven **dos inmobiliarias**: Vacker (el cliente real) y Sanso Propiedades (la demo del usuario). Cualquier consulta o script que no filtre por `tenant_id` las alcanza a las dos.
 
 **Este NO es un rewrite del prototipo.** Los HTML son referencia de UX y de lógica de negocio, no la base de código. La versión productiva se construye limpia según la arquitectura.
 
@@ -71,7 +78,7 @@ Estado actual: existen prototipos HTML/React validados (`/docs/prototipos`). Aho
 └─ turbo.json / pnpm-workspace.yaml
 ```
 
-Módulos del backend (`apps/api/src/modules/`): `core` (tenants, usuarios, roles, auth), `tablero` (operaciones, vendedores, objetivos, KPIs). Futuros: `tasador`, `todo`.
+Módulos del backend (`apps/api/src/modules/`): `tablero` (operaciones, vendedores, objetivos, KPIs), `tasador`, `protocolo` (5 semanas) y `todo` (espejo de Google Calendar). El núcleo —tenants, usuarios, roles, auth— vive en `src/{auth,admin,usuarios,prisma}`.
 
 ---
 
@@ -86,7 +93,9 @@ Seguir la secuencia de la **sección 19.3** de la arquitectura. Resumen:
 5. **Tablero web con datos reales** — migrar el prototipo a consumir la API.
 6. Endurecer PWA → luego app React Native. Después: Tasador, luego To Do List.
 
-No adelantar módulos. Cerrar cada paso con su "definición de hecho" (§7) antes de avanzar.
+**Los seis pasos están cumplidos**, salvo la app nativa, que se pospuso: la movilidad se resolvió con la PWA. Lo que sigue —y en qué orden— está en la **sección 20.6** del documento de arquitectura, no acá.
+
+Cerrar cada paso con su "definición de hecho" (§7) antes de avanzar.
 
 ---
 
@@ -145,7 +154,21 @@ Regla práctica: **lo estructural con Opus, el volumen con Sonnet.**
 
 ---
 
-## 10. Lo que aporta el humano (no lo resuelve el agente)
+## 10. Cinco reglas que no se negocian
+
+Están explicadas, con su porqué y el test que las protege, en **`docs/CONVENCIONES_TECNICAS.md`**. Acá quedan como recordatorio:
+
+1. **Toda tabla de negocio nueva lleva RLS**, y sus queries van por `TenantPrismaService.withTenant`. Nunca `PrismaService` directo para datos con aislamiento.
+2. **Filtrar una lista y negar un permiso son cosas distintas** — `scopeDeVista` y `scopeDePermiso` no se unifican.
+3. **Todo lo que el navegador pide sin sesión** va en `PUBLIC_PATHS` o fuera del matcher, y se suma a `middleware.test.ts`. Ya se olvidó tres veces.
+4. **Nada de campos por debajo de 16px en móvil**: iOS hace zoom y la pantalla entera se arrastra.
+5. **Antes de un SQL masivo en producción: contar tenants y copiar.** La base no tiene backups automáticos hasta que se pague Supabase Pro.
+
+Cuando una regla se pueda convertir en test, convertila: un test rojo obliga a leer el porqué, una nota se ignora.
+
+---
+
+## 11. Lo que aporta el humano (no lo resuelve el agente)
 
 - Crear el proyecto en Supabase y pasar `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`.
 - Crear el repo en GitHub y conectar Render (API) y Vercel (web).
