@@ -133,8 +133,10 @@ export default function GuiaPage() {
             borrar —código, dirección, precio, comisión y puntas— justamente para esto.
           </p>
           <p>
-            Necesitás rol de <strong>team leader, dirección o admin</strong>. Con rol de vendedor no
-            aparece el botón.
+            En <strong>Ventas y Alquileres</strong> necesitás rol de <strong>dirección o admin</strong>:
+            son los únicos que cargan, editan y borran operaciones. Al vendedor y al team leader no les
+            aparece ninguno de los tres botones. En <strong>Tasaciones</strong>, en cambio, el team
+            leader sí puede borrar.
           </p>
           <p>
             <strong>El borrado es definitivo</strong> y hoy la base no tiene copias de seguridad
@@ -204,22 +206,37 @@ export default function GuiaPage() {
       <Seccion titulo="Los cuatro roles">
         <div className="grid gap-3 sm:grid-cols-2">
           <Tarjeta titulo="Vendedor">
-            <p>Ve y carga lo suyo. No ve el equipo ni la inmobiliaria completa.</p>
+            <p>
+              Ve lo suyo. Carga y edita <strong>tasaciones</strong>, pero en Ventas y Alquileres es
+              solo lectura.
+            </p>
           </Tarjeta>
           <Tarjeta titulo="Team Leader">
-            <p>Ve lo suyo y lo de su equipo. Puede borrar operaciones y tasaciones.</p>
+            <p>
+              Lo mismo que el vendedor, y además puede ver a su equipo tildando{' '}
+              <strong>Ver todo</strong>. Borra tasaciones, no operaciones.
+            </p>
           </Tarjeta>
           <Tarjeta titulo="Dirección">
-            <p>Ve toda la inmobiliaria y gestiona vendedores y objetivos.</p>
+            <p>
+              Ve toda la inmobiliaria con <strong>Ver todo</strong>, gestiona vendedores y objetivos, y
+              es quien carga las ventas y los alquileres.
+            </p>
           </Tarjeta>
           <Tarjeta titulo="Admin de la inmobiliaria">
             <p>Como dirección, más la administración interna de su propia inmobiliaria.</p>
           </Tarjeta>
         </div>
-        <Aviso tono="atencion" titulo="El rol decide qué se puede borrar">
+        <Aviso tono="atencion" titulo="Las ventas las carga la inmobiliaria, no el vendedor">
           <p>
-            Un <strong>vendedor no puede borrar</strong> operaciones ni tasaciones — no le aparece el
-            botón. Si alguien te dice que “no le figura Borrar”, casi siempre es esto y no un error.
+            En <strong>Ventas y Alquileres</strong> solo <strong>dirección y admin</strong> dan de alta,
+            editan y borran. El vendedor y el team leader entran en modo lectura: ven sus operaciones
+            —que es de donde salen sus KPIs, su ranking y sus objetivos— pero no les aparece “Nueva
+            venta”, ni el lápiz, ni Borrar.
+          </p>
+          <p>
+            Es la respuesta a la consulta más común del arranque. Si alguien te dice que “no le figura
+            cargar” o que “se le fue el botón”, casi siempre es esto y no un error.
           </p>
         </Aviso>
       </Seccion>
