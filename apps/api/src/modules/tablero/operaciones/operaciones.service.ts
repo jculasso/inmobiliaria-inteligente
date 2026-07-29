@@ -13,7 +13,7 @@ import {
 } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
-import { scopeDePermiso, scopes, type Scope } from '../scope.util';
+import { scopeDePermiso, scopeDeVista, type Scope } from '../scope.util';
 import { decToNum, derivarPeriodo, fromDate, toDate } from '../tablero.util';
 
 /** Techo defensivo de filas por listado (las más recientes). Ver comentario en `list()`. */
@@ -57,7 +57,7 @@ export class OperacionesService {
   /** Lista operaciones del tenant, acotadas por el scope del rol y los filtros. */
   async list(filtro: OperacionFiltro, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const { vista, permiso } = await scopes(ctx, tx, filtro.verTodo);
+      const vista = await scopeDeVista(ctx, tx, filtro.verTodo);
       const where: Prisma.OperacionWhereInput = {};
       if (filtro.tipo) where.tipo = filtro.tipo;
       if (filtro.anio != null) where.anio = filtro.anio;
@@ -89,7 +89,9 @@ export class OperacionesService {
         // en silencio. Ver `LIMITE_LISTA` en @vacker/types.
         take: LIMITE_LISTA_CON_SONDA,
       });
-      return rows.map((r) => toDto(r, permiso));
+      // Se oculta con el MISMO alcance con el que se filtró, para que la
+      // comisión de la columna sume siempre lo mismo que el tablero.
+      return rows.map((r) => toDto(r, vista));
     });
   }
 
@@ -276,10 +278,16 @@ const SIN_OCULTAR: Scope = { mode: 'tenant', usuarioIds: null };
 /**
  * Convierte la fila a DTO ocultando las puntas fuera del alcance del rol.
  *
- * Una venta puede tener una punta de tu equipo y otra de un vendedor ajeno. Esa
- * otra punta no es asunto tuyo: no se muestra el nombre y su comisión no suma.
- * Los KPIs ya lo hacían (`agregar` filtra por alcance); el listado no, así que
- * el tablero y la tabla decían cosas distintas sobre la misma operación.
+ * Una venta puede tener una punta tuya y otra de un vendedor fuera del alcance.
+ * Esa otra punta no se muestra —ni el nombre ni su comisión—.
+ *
+ * El alcance que se usa es el de la VISTA, el mismo con el que se filtró la
+ * lista. Así la comisión de la columna suma siempre lo mismo que el tablero,
+ * que es la única forma de que los dos números se puedan comparar. Un CEO que
+ * destilda "Ver todo" está pidiendo SUS números: si viera la comisión completa
+ * de una venta compartida, su propia pantalla se contradiría.
+ *
+ * Con "Ver todo" tildado, dirección y admin no tienen nada oculto.
  *
  * `comTotal` se recalcula SOLO si se ocultó alguna punta. Si no, se usa el valor
  * guardado, que es la fuente de verdad — y en los alquileres, que no tienen

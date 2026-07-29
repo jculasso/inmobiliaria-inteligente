@@ -61,10 +61,16 @@ operación de cualquier otro.
 agrandar el alcance más allá del rol**. Lo fija `scope.util.spec.ts`.
 
 **Una venta puede tener una punta tuya y otra ajena.** La ajena no se muestra —ni
-el nombre ni su comisión— pero la operación sí aparece, porque una punta es
-tuya. El enmascarado usa el alcance del ROL (`scopeDePermiso`), no el del check:
-un team leader mirando "solo lo mío" igual ve el nombre de su vendedor en la otra
-punta, porque el check es un filtro suyo y no una regla de confidencialidad.
+el nombre ni su comisión— pero la operación sí aparece, porque una punta es tuya.
+
+El enmascarado usa **el mismo alcance con el que se filtró la lista** (el de la
+vista). Así la comisión de la columna suma siempre lo mismo que el tablero, que
+es la única forma de que los dos números se puedan comparar.
+
+Se probó primero con el alcance del ROL y estaba mal: el CEO —que además es
+vendedor— destildaba "Ver todo" para mirar sus números y veía la comisión
+completa de una venta compartida, o sea que su tabla contradecía a su propio
+tablero. **Lo que se muestra tiene que sumar lo mismo que lo que se calculó.**
 
 `cantPuntas` conserva el número real: cuántas puntas tuvo la venta no es
 confidencial, el nombre sí. Y `comTotal` se recalcula **solo si se ocultó algo**,
