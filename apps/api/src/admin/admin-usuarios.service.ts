@@ -1,5 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import {
+  assertAvatarValido,
+  pathDesdeUrl,
+  rutaAvatar,
+  AVATAR_BUCKET,
+  type AvatarFile,
+} from '../common/avatar';
 import type { CreateUsuarioAdmin, ResetPassword, UpdateUsuarioAdmin } from '@vacker/types';
 import { SupabaseStorageService } from '../common/supabase-storage.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,16 +18,6 @@ const usuarioAdminInclude = {
 } satisfies Prisma.UsuarioInclude;
 
 type UsuarioAdminRow = Prisma.UsuarioGetPayload<{ include: typeof usuarioAdminInclude }>;
-
-const AVATAR_BUCKET = 'usuarios-avatares';
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
-
-export interface AvatarFile {
-  buffer: Buffer;
-  mimetype: string;
-  originalname: string;
-  size: number;
-}
 
 /**
  * Alta/gestión de usuarios con acceso real (cuenta de Supabase Auth + perfil
@@ -172,15 +169,9 @@ export class AdminUsuariosService {
    */
   async subirFoto(tenantId: string, id: string, file: AvatarFile) {
     await this.assertUsuarioDeTenant(tenantId, id);
-    if (!file.mimetype.startsWith('image/')) {
-      throw new BadRequestException('El archivo debe ser una imagen.');
-    }
-    if (file.size > AVATAR_MAX_BYTES) {
-      throw new BadRequestException('La imagen no puede superar los 5MB.');
-    }
+    assertAvatarValido(file);
 
-    const ext = extensionDe(file.mimetype, file.originalname);
-    const path = `${tenantId}/${id}${ext}`;
+    const path = rutaAvatar(tenantId, id, file);
     const fotoUrl = await this.storage.upload(AVATAR_BUCKET, path, file.buffer, file.mimetype);
 
     await this.db.usuario.update({ where: { id }, data: { fotoUrl } });
@@ -191,7 +182,7 @@ export class AdminUsuariosService {
   async eliminarFoto(tenantId: string, id: string) {
     const usuario = await this.assertUsuarioDeTenant(tenantId, id);
     if (usuario.fotoUrl) {
-      const path = usuario.fotoUrl.split(`/${AVATAR_BUCKET}/`)[1];
+      const path = pathDesdeUrl(usuario.fotoUrl);
       if (path) await this.storage.remove(AVATAR_BUCKET, path);
     }
     await this.db.usuario.update({ where: { id }, data: { fotoUrl: null } });
@@ -217,12 +208,6 @@ export class AdminUsuariosService {
   }
 }
 
-function extensionDe(mimetype: string, originalname: string): string {
-  const fromName = originalname.includes('.') ? originalname.slice(originalname.lastIndexOf('.')) : '';
-  if (fromName) return fromName;
-  const sub = mimetype.split('/')[1];
-  return sub ? `.${sub}` : '';
-}
 
 function toDto(row: UsuarioAdminRow) {
   return {

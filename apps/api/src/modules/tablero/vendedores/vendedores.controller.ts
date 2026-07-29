@@ -1,4 +1,19 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiConsumes } from '@nestjs/swagger';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateVendedorSchema,
@@ -11,6 +26,8 @@ import {
 import { CurrentUser, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ZodValidationPipe } from '../../../common/zod-validation.pipe';
+import { uploadUnArchivo } from '../../../common/upload';
+import type { AvatarFile } from '../../../common/avatar';
 import { ctxDe } from '../tablero.util';
 import { VendedoresService } from './vendedores.service';
 
@@ -20,8 +37,11 @@ import { VendedoresService } from './vendedores.service';
 export class VendedoresController {
   constructor(private readonly vendedores: VendedoresService) {}
 
+  // Ver el equipo con sus objetivos es información de conducción: queda en
+  // dirección y en el admin de la inmobiliaria. El team leader dejó de tener
+  // acceso el 29/07/2026, por pedido del usuario.
   @Get()
-  @Roles('team_leader', 'direccion', 'admin_tenant')
+  @Roles('direccion', 'admin_tenant')
   @ApiOperation({ summary: 'Lista de usuarios comerciales (roles y objetivos)' })
   list() {
     return this.vendedores.list();
@@ -64,5 +84,30 @@ export class VendedoresController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.vendedores.setObjetivo(id, dto, ctxDe(user));
+  }
+
+  /**
+   * La dirección cambia la foto de su equipo sin depender del panel de
+   * plataforma: cuando incorpora a alguien, la actualiza en el momento.
+   */
+  @Post(':id/foto')
+  @Roles('direccion', 'admin_tenant')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Sube (o reemplaza) la foto del vendedor (5MB, imagen)' })
+  @UseInterceptors(FileInterceptor('file', uploadUnArchivo))
+  subirFoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: AvatarFile | undefined,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    if (!file) throw new BadRequestException('Falta el archivo.');
+    return this.vendedores.subirFoto(id, file, ctxDe(user));
+  }
+
+  @Delete(':id/foto')
+  @Roles('direccion', 'admin_tenant')
+  @ApiOperation({ summary: 'Quita la foto del vendedor' })
+  eliminarFoto(@Param('id', ParseUUIDPipe) id: string) {
+    return this.vendedores.eliminarFoto(id);
   }
 }

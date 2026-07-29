@@ -4,8 +4,14 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { VendedorDto } from '@vacker/types';
 import { Avatar, Button } from '@vacker/ui';
+import { AvatarUploader } from '../avatar-uploader';
 import { getAccessToken } from '../../lib/supabase/client';
-import { desactivarVendedor, updateVendedor } from '../../lib/tablero-api';
+import {
+  desactivarVendedor,
+  eliminarFotoVendedor,
+  subirFotoVendedor,
+  updateVendedor,
+} from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { VendedorFormModal } from './vendedor-form-modal';
@@ -44,6 +50,36 @@ export function VendedoresTable({
     }
   }
 
+  /**
+   * Cambiar la foto NO es un permiso aparte: quien gestiona vendedores puede
+   * cambiarla. Es el pedido concreto — que cuando la dirección incorpora a
+   * alguien no tenga que esperar a que la subamos nosotros.
+   */
+  async function cambiarFoto(id: string, file: File) {
+    const accessToken = await getAccessToken();
+    await subirFotoVendedor(accessToken, id, file);
+    router.refresh();
+  }
+
+  async function quitarFoto(id: string) {
+    const accessToken = await getAccessToken();
+    await eliminarFotoVendedor(accessToken, id);
+    router.refresh();
+  }
+
+  /** El avatar es editable solo para quien gestiona; si no, es una imagen. */
+  function AvatarDe({ v }: { v: VendedorDto }) {
+    if (!puedeGestionar) return <Avatar nombre={v.nombre} fotoUrl={v.fotoUrl} size="sm" />;
+    return (
+      <AvatarUploader
+        nombre={v.nombre}
+        fotoUrl={v.fotoUrl}
+        onUpload={(file) => cambiarFoto(v.id, file)}
+        onRemove={() => quitarFoto(v.id)}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -70,7 +106,7 @@ export function VendedoresTable({
               return (
                 <Tarjeta key={v.id}>
                   <div className="flex items-center gap-2">
-                    <Avatar nombre={v.nombre} fotoUrl={v.fotoUrl} size="sm" />
+                    <AvatarDe v={v} />
                     <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{v.nombre}</span>
                     <button
                       type="button"
@@ -140,7 +176,7 @@ export function VendedoresTable({
                   <tr key={v.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-2 font-medium text-ink">
                       <div className="flex items-center gap-2">
-                        <Avatar nombre={v.nombre} fotoUrl={v.fotoUrl} size="sm" />
+                        <AvatarDe v={v} />
                         {v.nombre}
                       </div>
                     </td>

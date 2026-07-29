@@ -49,9 +49,16 @@ export function rolPrincipal(roles: Rol[]): Rol | null {
 // apps/api/src/modules/tablero/{operaciones,vendedores}.controller.ts, para no
 // ofrecer en el front acciones que la API va a rechazar con 403.
 
-/** GET /tablero/vendedores: un `vendedor` puro no tiene acceso, ni de lectura. */
+/**
+ * GET /tablero/vendedores. La pantalla muestra el equipo con sus objetivos:
+ * es información de conducción, no de trabajo diario.
+ *
+ * El team leader la tenía y se le sacó el 29/07/2026 por pedido del usuario.
+ * Ahora coincide exactamente con `puedeGestionarVendedores` — ver y gestionar
+ * quedaron en las mismas manos, así que la pantalla no tiene modo lectura.
+ */
 export function puedeVerVendedores(roles: Rol[]): boolean {
-  return roles.some((r) => r === 'team_leader' || r === 'direccion' || r === 'admin_tenant');
+  return roles.some((r) => r === 'direccion' || r === 'admin_tenant');
 }
 
 /** POST/PATCH/DELETE /tablero/vendedores y PUT .../objetivo. */

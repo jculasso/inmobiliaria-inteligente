@@ -5,6 +5,14 @@ import { RolAsignableSchema, type CreateVendedor, type ObjetivoInput, type Updat
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { SupabaseAdminService } from '../../../admin/supabase-admin.service';
+import { SupabaseStorageService } from '../../../common/supabase-storage.service';
+import {
+  assertAvatarValido,
+  pathDesdeUrl,
+  rutaAvatar,
+  AVATAR_BUCKET,
+  type AvatarFile,
+} from '../../../common/avatar';
 import { PrincipalCacheService } from '../../../auth/principal-cache.service';
 import { decToNum } from '../tablero.util';
 
@@ -28,6 +36,7 @@ export class VendedoresService {
     private readonly db: TenantPrismaService,
     private readonly supabaseAdmin: SupabaseAdminService,
     private readonly principalCache: PrincipalCacheService,
+    private readonly storage: SupabaseStorageService,
   ) {}
 
   /** Lista los usuarios comerciales del tenant con sus roles y objetivos. */
@@ -164,6 +173,54 @@ export class VendedoresService {
       objVolumen: decToNum(obj.objVolumen),
       objPuntas: obj.objPuntas,
     };
+  }
+
+  /**
+   * Cambia la foto de un vendedor desde el Tablero.
+   *
+   * Existe además de la del panel de plataforma porque quien incorpora a un
+   * vendedor es la dirección de la inmobiliaria, y esperar a que la cambiemos
+   * nosotros deja al equipo con la silueta gris durante días.
+   *
+   * Escribe en el MISMO archivo que el panel (ver `rutaAvatar`): un usuario,
+   * una foto, no dos que se contradicen según por dónde se subió. Y corre
+   * dentro de `withTenant`, así que RLS impide tocar a alguien de otra
+   * inmobiliaria aunque se mande un id ajeno.
+   */
+  async subirFoto(id: string, file: AvatarFile, ctx: TenantContext) {
+    assertAvatarValido(file);
+    return this.db.withTenant(async (tx) => {
+      await this.assertUsuarioExiste(tx, id);
+      const fotoUrl = await this.storage.upload(
+        AVATAR_BUCKET,
+        rutaAvatar(ctx.tenantId, id, file),
+        file.buffer,
+        file.mimetype,
+      );
+      const row = await tx.usuario.update({
+        where: { id },
+        data: { fotoUrl },
+        include: vendedorInclude,
+      });
+      return toDto(row);
+    });
+  }
+
+  async eliminarFoto(id: string) {
+    return this.db.withTenant(async (tx) => {
+      const actual = await tx.usuario.findUnique({ where: { id }, select: { fotoUrl: true } });
+      if (!actual) throw new BadRequestException('El usuario referenciado no existe en el tenant.');
+      if (actual.fotoUrl) {
+        const path = pathDesdeUrl(actual.fotoUrl);
+        if (path) await this.storage.remove(AVATAR_BUCKET, path);
+      }
+      const row = await tx.usuario.update({
+        where: { id },
+        data: { fotoUrl: null },
+        include: vendedorInclude,
+      });
+      return toDto(row);
+    });
   }
 
   private async assertEmailLibre(
