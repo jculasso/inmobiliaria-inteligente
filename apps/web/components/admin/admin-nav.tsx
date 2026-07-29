@@ -8,6 +8,7 @@ const SECCIONES = [
   { href: '/admin/guia', label: 'Guía del implementador' },
   { href: '/admin/onboarding', label: 'Onboarding' },
   { href: '/admin/inversion', label: 'Inversión' },
+  { href: '/admin/modulo-publicacion', label: 'Módulo: publicación' },
 ] as const;
 
 /** Navegación del panel de plataforma. Mismo lenguaje que las solapas de los módulos. */
