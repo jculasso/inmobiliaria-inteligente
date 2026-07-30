@@ -1,6 +1,6 @@
 import React from 'react';
-import { inflateSync } from 'node:zlib';
 import { renderToBuffer } from '@react-pdf/renderer';
+import { medirFotosPdf } from '../../../common/medir-fotos-pdf';
 import { describe, expect, it } from 'vitest';
 import type { TasacionDto } from '@vacker/types';
 import { InformeDocument } from './informe.template';
@@ -122,7 +122,7 @@ describe('InformeDocument — las fotos no se recortan', () => {
     const buffer = await renderToBuffer(
       <InformeDocument tasacion={TASACION} tenantNombre="Vacker" logoUrl={null} />,
     );
-    const medidas = medirFotos(buffer);
+    const medidas = medirFotosPdf(buffer);
 
     expect(medidas.length).toBeGreaterThan(0);
     for (const { cajaAlto, fotoAlto } of medidas) {
@@ -136,37 +136,3 @@ describe('InformeDocument — las fotos no se recortan', () => {
  * Saca del PDF, para cada foto, el alto de su caja de recorte y el alto al que
  * se dibujó. Si la caja es más baja que el dibujo, hay recorte.
  */
-function medirFotos(buffer: Buffer): { cajaAlto: number; fotoAlto: number }[] {
-  const bin = buffer.toString('binary');
-  const salida: { cajaAlto: number; fotoAlto: number }[] = [];
-
-  for (const m of bin.matchAll(/stream\r?\n([\s\S]*?)endstream/g)) {
-    let txt: string;
-    try {
-      txt = inflateSync(Buffer.from(m[1]!, 'binary')).toString('binary');
-    } catch {
-      continue;
-    }
-
-    for (const dibujo of txt.matchAll(
-      /([-\d.]+) [-\d.]+ [-\d.]+ ([-\d.]+) [-\d.]+ [-\d.]+ cm\s*\/\w+ Do/g,
-    )) {
-      const fotoAncho = Math.abs(Number(dibujo[1]));
-      const fotoAlto = Math.abs(Number(dibujo[2]));
-      // Las fotos de la fila son las grandes; el logo y el avatar son chicos.
-      if (fotoAlto < 100) continue;
-
-      // El recorte más cercano hacia atrás define la caja visible.
-      const antes = txt.slice(0, dibujo.index);
-      const corte = antes.lastIndexOf('W n');
-      if (corte < 0) continue;
-      const path = antes.slice(Math.max(0, corte - 600), corte);
-      const ys = [...path.matchAll(/([-\d.]+)\s+(?:l|c|m)\b/g)].map((y) => Number(y[1]));
-      const cajaAlto = ys.length ? Math.max(...ys) : fotoAlto;
-
-      salida.push({ cajaAlto, fotoAlto });
-      void fotoAncho;
-    }
-  }
-  return salida;
-}

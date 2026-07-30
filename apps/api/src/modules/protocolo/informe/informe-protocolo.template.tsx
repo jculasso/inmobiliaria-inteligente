@@ -52,7 +52,25 @@ function crearEstilos(red: string, redDark: string) {
     sectionTitle: { fontSize: 11, fontWeight: 800, color: INK, marginBottom: 8, marginTop: 4 },
     sectionUnderline: { width: '100%', height: 2, backgroundColor: red, marginBottom: 10, marginTop: -4 },
 
-    foto: { width: '100%', height: 150, borderRadius: 6, objectFit: 'cover', marginBottom: 12 },
+    /*
+     * La foto se muestra ENTERA, no recortada.
+     *
+     * Antes era `width: '100%', height: 150`: una caja de 3,5:1 contra una foto
+     * de 4:3, así que se veía el 37% del alto y se perdía casi dos tercios. Es
+     * el mismo problema que se corrigió en el informe de tasación, acá peor por
+     * ser una sola foto a todo el ancho.
+     *
+     * No se le da 4:3 a todo el ancho porque quedaría de 404pt: media página
+     * para una foto sola. Se achica a 60% y se muestra completa, que es lo que
+     * la hace útil — una foto de ambiente sin techo ni piso no dice nada.
+     */
+    foto: {
+      width: '60%',
+      aspectRatio: 4 / 3,
+      borderRadius: 6,
+      objectFit: 'cover',
+      marginBottom: 12,
+    },
 
     // — tarjetas del resumen —
     resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
