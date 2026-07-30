@@ -1,7 +1,7 @@
 import { requireServerPrincipal } from '../../lib/server-principal';
 import { puedeUsarPublicacion } from '../../lib/rbac';
 import { getCredencial, listarPropiedades } from '../../lib/publicacion-api';
-import { CredencialTokko } from '../../components/publicacion/credencial-tokko';
+import { EstadoCredencial } from '../../components/publicacion/estado-credencial';
 import { PropiedadesTokko } from '../../components/publicacion/propiedades-tokko';
 
 export const metadata = { title: 'Publicación' };
@@ -31,7 +31,7 @@ export default async function PublicacionPage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
-      <CredencialTokko inicial={credencial} />
+      <EstadoCredencial estado={credencial} />
       {credencial.configurada && <PropiedadesTokko inicial={propiedades} />}
     </div>
   );

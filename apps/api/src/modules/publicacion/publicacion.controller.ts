@@ -1,12 +1,6 @@
-import { Body, Controller, Delete, Get, Post, Put, Query } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import {
-  GuardarCredencialSchema,
-  ImportarSchema,
-  ROLES_PUBLICACION,
-  type GuardarCredencial,
-  type Importar,
-} from '@vacker/types';
+import { ImportarSchema, ROLES_PUBLICACION, type Importar } from '@vacker/types';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -27,40 +21,25 @@ import { PublicacionService } from './publicacion.service';
 export class PublicacionController {
   constructor(private readonly publicacion: PublicacionService) {}
 
+  /**
+   * Solo LECTURA del estado. Cargarla o reemplazarla se hace desde el panel de
+   * plataforma (`/admin/tenants/:id/credencial`): es configuración de alta, no
+   * una tarea del día a día. Acá se muestra para que quien publica sepa si está
+   * y a quién pedirle que la cargue, no para que la toque.
+   */
   @Get('credencial')
   @Roles(...ROLES_PUBLICACION)
-  @ApiOperation({ summary: 'Si la clave de Tokko está cargada (nunca devuelve el valor)' })
+  @ApiOperation({ summary: 'Si la clave de Tokko está cargada (solo lectura)' })
   estado() {
     return this.publicacion.estado();
   }
 
-  @Put('credencial')
-  @Roles(...ROLES_PUBLICACION)
-  @ApiOperation({ summary: 'Carga o reemplaza la clave de Tokko (se guarda cifrada)' })
-  guardar(
-    @Body(new ZodValidationPipe(GuardarCredencialSchema)) dto: GuardarCredencial,
-    @CurrentUser() user: AuthPrincipal,
-  ) {
-    return this.publicacion.guardar(dto.secreto, ctxDe(user));
-  }
 
-  @Delete('credencial')
-  @Roles(...ROLES_PUBLICACION)
-  @ApiOperation({ summary: 'Quita la clave de Tokko' })
-  borrar() {
-    return this.publicacion.borrar();
-  }
 
   /**
    * POST y no GET porque sale a la red hacia un tercero: no es una lectura
    * cacheable y no queremos que un prefetch del navegador la dispare sola.
    */
-  @Post('credencial/probar')
-  @Roles(...ROLES_PUBLICACION)
-  @ApiOperation({ summary: 'Prueba la conexión con Tokko y devuelve cuántas propiedades ve' })
-  probar() {
-    return this.publicacion.probarConexion();
-  }
 
   @Get('propiedades')
   @Roles(...ROLES_PUBLICACION)

@@ -2,11 +2,13 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -15,11 +17,14 @@ import { uploadUnArchivo } from '../common/upload';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateTenantSchema,
+  GuardarCredencialSchema,
   UpdateTenantSchema,
   type CreateTenant,
+  type GuardarCredencial,
   type UpdateTenant,
 } from '@vacker/types';
-import { Roles } from '../auth/decorators';
+import { CurrentUser, Roles } from '../auth/decorators';
+import type { AuthPrincipal } from '../auth/auth-principal';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AdminTenantsService, type LogoFile } from './admin-tenants.service';
 
@@ -61,5 +66,43 @@ export class AdminTenantsController {
   subirLogo(@Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: LogoFile | undefined) {
     if (!file) throw new BadRequestException('Falta el archivo.');
     return this.tenants.subirLogo(id, file);
+  }
+
+  // --- Credencial de Tokko de la inmobiliaria ---
+  //
+  // Está acá y no en el módulo de Publicación porque cargar una API key es
+  // configuración de alta, no una tarea diaria: en la pantalla donde se publica
+  // cualquiera con rol `publicador` podía reemplazarla y romper la integración.
+
+  @Get(':id/credencial')
+  @Roles('admin_plataforma')
+  @ApiOperation({ summary: 'Si la clave de Tokko está cargada (nunca devuelve el valor)' })
+  credencial(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tenants.credencial(id);
+  }
+
+  @Put(':id/credencial')
+  @Roles('admin_plataforma')
+  @ApiOperation({ summary: 'Carga o reemplaza la clave de Tokko (se guarda cifrada)' })
+  guardarCredencial(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(GuardarCredencialSchema)) dto: GuardarCredencial,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.tenants.guardarCredencial(id, dto.secreto, user.userId);
+  }
+
+  @Delete(':id/credencial')
+  @Roles('admin_plataforma')
+  @ApiOperation({ summary: 'Quita la clave de Tokko' })
+  borrarCredencial(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tenants.borrarCredencial(id);
+  }
+
+  @Post(':id/credencial/probar')
+  @Roles('admin_plataforma')
+  @ApiOperation({ summary: 'Prueba la conexión con Tokko y devuelve cuántas propiedades ve' })
+  probarCredencial(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tenants.probarCredencial(id);
   }
 }

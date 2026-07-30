@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { listTenants, listUsuariosDeTenant } from '../../../../lib/admin-api';
+import { getCredencialTenant, listTenants, listUsuariosDeTenant } from '../../../../lib/admin-api';
 import { requireServerPrincipal } from '../../../../lib/server-principal';
 import { UsuariosAdminTable } from '../../../../components/admin/usuarios-admin-table';
+import { CredencialTokko } from '../../../../components/admin/credencial-tokko';
 
 export default async function AdminTenantPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,9 +13,10 @@ export default async function AdminTenantPage({ params }: { params: Promise<{ id
   // devolver una página en blanco sin explicación.
   if (!ctx) throw new Error('No se pudo cargar tu perfil. Probá recargar la página.');
 
-  const [tenants, usuarios] = await Promise.all([
+  const [tenants, usuarios, credencial] = await Promise.all([
     listTenants(ctx.accessToken),
     listUsuariosDeTenant(ctx.accessToken, id),
+    getCredencialTenant(ctx.accessToken, id),
   ]);
   const tenant = tenants.find((t) => t.id === id);
   if (!tenant) notFound();
@@ -32,6 +34,14 @@ export default async function AdminTenantPage({ params }: { params: Promise<{ id
       </div>
 
       <UsuariosAdminTable tenantId={tenant.id} usuarios={usuarios} />
+
+      {/* La integración con Tokko solo tiene sentido si el módulo está
+          contratado; mostrarla siempre haría pensar que falta configurarla. */}
+      {tenant.modulos.publicacion && (
+        <div className="max-w-2xl">
+          <CredencialTokko tenantId={tenant.id} inicial={credencial} />
+        </div>
+      )}
     </div>
   );
 }

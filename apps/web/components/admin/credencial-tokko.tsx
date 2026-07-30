@@ -5,10 +5,19 @@ import type { CredencialEstado, PruebaConexion } from '@vacker/types';
 import { Button, Card } from '@vacker/ui';
 import { Campo, inputClass } from '../form-ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { borrarCredencial, guardarCredencial, probarConexion } from '../../lib/publicacion-api';
+import {
+  borrarCredencialTenant,
+  guardarCredencialTenant,
+  probarCredencialTenant,
+} from '../../lib/admin-api';
 
 /**
- * Carga de la clave de API de Tokko de la inmobiliaria.
+ * Carga de la clave de API de Tokko de una inmobiliaria, en el panel de
+ * plataforma.
+ *
+ * Está acá y no en el módulo de Publicación porque cargar una API key es
+ * configuración de alta, no una tarea diaria: tenerla donde se publica hacía
+ * que cualquiera con rol `publicador` pudiera reemplazarla sin querer.
  *
  * La clave se escribe una vez y no se vuelve a mostrar: la API guarda solo el
  * valor cifrado y devuelve los últimos 4 caracteres, que alcanzan para que
@@ -19,7 +28,13 @@ import { borrarCredencial, guardarCredencial, probarConexion } from '../../lib/p
  * descifrar y que Tokko la acepte — y muestra cuántas propiedades ve la cuenta,
  * que es como se confirma que es la inmobiliaria correcta y no otra.
  */
-export function CredencialTokko({ inicial }: { inicial: CredencialEstado }) {
+export function CredencialTokko({
+  tenantId,
+  inicial,
+}: {
+  tenantId: string;
+  inicial: CredencialEstado;
+}) {
   const [estado, setEstado] = useState(inicial);
   const [secreto, setSecreto] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -40,7 +55,7 @@ export function CredencialTokko({ inicial }: { inicial: CredencialEstado }) {
   async function guardar() {
     setGuardando(true);
     setPrueba(null);
-    const r = await conToken((t) => guardarCredencial(t, secreto.trim()));
+    const r = await conToken((t) => guardarCredencialTenant(t, tenantId, secreto.trim()));
     if (r) {
       setEstado(r);
       setSecreto('');
@@ -50,13 +65,13 @@ export function CredencialTokko({ inicial }: { inicial: CredencialEstado }) {
 
   async function probar() {
     setProbando(true);
-    const r = await conToken(probarConexion);
+    const r = await conToken((t) => probarCredencialTenant(t, tenantId));
     if (r) setPrueba(r);
     setProbando(false);
   }
 
   async function quitar() {
-    const r = await conToken(borrarCredencial);
+    const r = await conToken((t) => borrarCredencialTenant(t, tenantId));
     if (r) {
       setEstado(r);
       setPrueba(null);

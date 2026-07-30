@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { CredencialEstado, PropiedadDto, PruebaConexion, ResultadoImportacion } from '@vacker/types';
+import type { CredencialEstado, PropiedadDto, ResultadoImportacion } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
-import { desencriptarSecreto, encriptarSecreto } from '../../common/cripto-secreto';
-import { TokkoError, listarPropiedades, ultimasPropiedades } from './tokko.client';
+import { desencriptarSecreto } from '../../common/cripto-secreto';
+import { ultimasPropiedades } from './tokko.client';
 
 const PROVEEDOR = 'tokko';
 const ENC_VAR = 'INTEGRACIONES_ENC_KEY';
@@ -49,72 +49,8 @@ export class PublicacionService {
     });
   }
 
-  async guardar(secreto: string, ctx: TenantContext): Promise<CredencialEstado> {
-    const encKey = this.encKey();
-    const secretoEnc = encriptarSecreto(secreto, encKey, ENC_VAR);
-    const ultimos4 = secreto.slice(-4);
 
-    return this.db.withTenant(async (tx) => {
-      const row = await tx.integracionCredencial.upsert({
-        where: { tenantId_proveedor: { tenantId: ctx.tenantId, proveedor: PROVEEDOR } },
-        create: {
-          tenantId: ctx.tenantId,
-          proveedor: PROVEEDOR,
-          secretoEnc,
-          ultimos4,
-          actualizadoPor: ctx.userId,
-        },
-        update: { secretoEnc, ultimos4, actualizadoPor: ctx.userId },
-        select: { ultimos4: true, updatedAt: true },
-      });
-      return { configurada: true, ultimos4: row.ultimos4, actualizadoEl: row.updatedAt.toISOString() };
-    });
-  }
 
-  async borrar(): Promise<CredencialEstado> {
-    await this.db.withTenant(async (tx) => {
-      await tx.integracionCredencial.deleteMany({ where: { proveedor: PROVEEDOR } });
-    });
-    return { configurada: false, ultimos4: null, actualizadoEl: null };
-  }
-
-  /**
-   * Prueba el circuito completo de una sola vez: que exista la credencial, que
-   * la clave de cifrado sea la correcta para descifrarla, y que Tokko la acepte.
-   *
-   * Devuelve `ok: false` con un mensaje en vez de tirar 500, porque es una
-   * pantalla de configuración: el usuario necesita saber QUÉ está mal, y un
-   * error acá es un resultado esperable, no una falla del servidor.
-   */
-  async probarConexion(): Promise<PruebaConexion> {
-    const fallo = (error: string): PruebaConexion => ({ ok: false, propiedades: null, error });
-
-    let secreto: string;
-    try {
-      const guardado = await this.db.withTenant((tx) =>
-        tx.integracionCredencial.findFirst({
-          where: { proveedor: PROVEEDOR },
-          select: { secretoEnc: true },
-        }),
-      );
-      if (!guardado) return fallo('Todavía no hay una clave de Tokko cargada.');
-      secreto = desencriptarSecreto(guardado.secretoEnc, this.encKey(), ENC_VAR);
-    } catch {
-      // Descifrado fallido = la clave de cifrado del servidor cambió respecto de
-      // cuando se guardó. Hay que volver a cargar la credencial, no hay forma
-      // de recuperarla.
-      return fallo(
-        'No se pudo descifrar la clave guardada. Volvé a cargarla: la clave de cifrado del servidor cambió.',
-      );
-    }
-
-    try {
-      const { totalCount } = await listarPropiedades(secreto, 1);
-      return { ok: true, propiedades: totalCount, error: null };
-    } catch (e) {
-      return fallo(e instanceof TokkoError ? e.message : 'Error inesperado al consultar Tokko.');
-    }
-  }
 
   /** La credencial en claro, o un error explicando por qué no se pudo. */
   private async secreto(): Promise<string> {
