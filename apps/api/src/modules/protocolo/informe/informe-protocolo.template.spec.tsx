@@ -1,5 +1,6 @@
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
+import { medirFotosPdf } from '../../../common/medir-fotos-pdf';
 import { describe, expect, it } from 'vitest';
 import { PLANTILLA_ACCIONES, type ProtocoloDto } from '@vacker/types';
 import { InformeProtocoloDocument } from './informe-protocolo.template';
@@ -74,6 +75,10 @@ function protocolo(over: Partial<ProtocoloDto> = {}): ProtocoloDto {
     ...over,
   };
 }
+
+/** Foto 4:3, la proporción de cualquier cámara de celular. Va como data URI
+ *  para que el test no dependa de la red. */
+const FOTO_4_3 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAEsCAIAAABi1XKVAAAEz0lEQVR4nO3OQQkAMQADsPpXMRETcbLOQn9lEIiA5LsH4AmZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASj8kc/7l+5mn7AAAAABJRU5ErkJggg==';
 
 describe('InformeProtocoloDocument', () => {
   /** Cuenta páginas del PDF, para verificar dónde caen los cortes. */
@@ -152,4 +157,36 @@ describe('InformeProtocoloDocument', () => {
     );
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
   });
+});
+
+/**
+ * La foto de la propiedad se muestra entera.
+ *
+ * Antes la caja era `width: 100%, height: 150` —3,5:1— contra una foto de 4:3:
+ * se veía el 37% del alto y se perdía casi dos tercios. Es el mismo problema
+ * que se corrigió en el informe de tasación, acá peor por ser una sola foto a
+ * todo el ancho.
+ *
+ * La foto va solo en este test y no en el fixture compartido: agregarla allá
+ * suma una página y le cambiaría la línea de base al test de cantidad de
+ * páginas, que mide otra cosa.
+ */
+describe('InformeProtocoloDocument — la foto no se recorta', () => {
+  it('la caja de la foto tiene la misma proporción que la foto', async () => {
+    const conFoto = protocolo({});
+    const buffer = await renderToBuffer(
+      <InformeProtocoloDocument
+        protocolo={{ ...conFoto, propiedad: { ...conFoto.propiedad, fotoUrl: FOTO_4_3 } }}
+        tenantNombre="Vacker"
+        logoUrl={null}
+      />,
+    );
+
+    const medidas = medirFotosPdf(buffer);
+
+    expect(medidas.length).toBeGreaterThan(0);
+    for (const { cajaAlto, fotoAlto } of medidas) {
+      expect(Math.abs(cajaAlto - fotoAlto)).toBeLessThanOrEqual(1);
+    }
+  }, 20_000);
 });
