@@ -33,15 +33,17 @@ export default async function AdminTenantPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
-      <UsuariosAdminTable tenantId={tenant.id} usuarios={usuarios} />
-
-      {/* La integración con Tokko solo tiene sentido si el módulo está
-          contratado; mostrarla siempre haría pensar que falta configurarla. */}
+      {/* Va ARRIBA de los usuarios: es configuración de la inmobiliaria, y
+          debajo de una tabla de veinte personas quedaba tan abajo que no se
+          encontraba. Aparece solo si el módulo está contratado — mostrarla
+          siempre haría pensar que falta configurar algo. */}
       {tenant.modulos.publicacion && (
         <div className="max-w-2xl">
           <CredencialTokko tenantId={tenant.id} inicial={credencial} />
         </div>
       )}
+
+      <UsuariosAdminTable tenantId={tenant.id} usuarios={usuarios} />
     </div>
   );
 }
