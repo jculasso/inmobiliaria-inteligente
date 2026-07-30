@@ -228,4 +228,19 @@ export class PublicacionService {
       }));
     });
   }
+
+  /**
+   * Vacía el espejo de propiedades.
+   *
+   * Es seguro por naturaleza y por eso no pide más ceremonia que una
+   * confirmación: lo que se borra es una COPIA. Tokko sigue teniendo el
+   * original, así que volver a traerlas es un click. Muy distinto de borrar una
+   * tasación, donde se pierde trabajo hecho.
+   */
+  async vaciarPropiedades(): Promise<{ borradas: number }> {
+    return this.db.withTenant(async (tx) => {
+      const { count } = await tx.propiedad.deleteMany({});
+      return { borradas: count };
+    });
+  }
 }

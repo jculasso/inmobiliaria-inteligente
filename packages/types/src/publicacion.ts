@@ -107,3 +107,7 @@ export const PropiedadDtoSchema = z.object({
   creadoEnTokko: z.string().nullable(),
 });
 export type PropiedadDto = z.infer<typeof PropiedadDtoSchema>;
+
+/** Cuántas filas del espejo se borraron. */
+export const VaciadoSchema = z.object({ borradas: z.number() });
+export type Vaciado = z.infer<typeof VaciadoSchema>;
