@@ -35,9 +35,22 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
   vendedor: 'Vendedor',
   team_leader: 'Team Leader',
   direccion: 'Dirección',
+  publicador: 'Publicador',
   admin_tenant: 'Admin tenant',
   admin_plataforma: 'Admin plataforma',
 };
+
+/**
+ * Ve y usa el módulo de Publicación. Es un rol FUNCIONAL: en Vacker lo va a
+ * tener la persona administrativa que hoy carga las propiedades en Tokko a mano.
+ *
+ * Los admins entran igual sin tener el rol, porque son los que van a probar el
+ * módulo antes de asignárselo a nadie. Mientras nadie tenga `publicador`, el
+ * módulo queda de hecho apagado para el resto de la inmobiliaria.
+ */
+export function puedeUsarPublicacion(roles: Rol[]): boolean {
+  return roles.some((r) => r === 'publicador' || r === 'admin_tenant' || r === 'admin_plataforma');
+}
 
 /** Rol más privilegiado del usuario dentro del tenant (mismo orden que `alcanceDeModulo`). */
 export function rolPrincipal(roles: Rol[]): Rol | null {

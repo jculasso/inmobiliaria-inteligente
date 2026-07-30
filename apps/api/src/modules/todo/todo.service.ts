@@ -4,7 +4,7 @@ import type { TodoEstadoDto, TodoEventoDto, TodoEventosDto, TodoEventosQuery, To
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { GoogleService, type GoogleEvento } from './google.service';
-import { desencriptarToken, encriptarToken } from './token-crypto';
+import { desencriptarSecreto, encriptarSecreto } from '../../common/cripto-secreto';
 
 // Argentina no tiene horario de verano: offset fijo -03:00. Los rangos día/
 // semana/mes se calculan en hora local y se mandan a Google en UTC.
@@ -30,7 +30,7 @@ export class TodoService {
 
   /** Paso 1: devuelve la URL de Google a la que redirigir para conectar el calendario. */
   connect(ctx: TenantContext): { url: string } {
-    const state = encriptarToken(
+    const state = encriptarSecreto(
       JSON.stringify({ t: ctx.tenantId, u: ctx.userId, ts: Date.now() }),
       this.encKey(),
     );
@@ -51,7 +51,7 @@ export class TodoService {
       return this.volverAWeb('error');
     }
     const googleEmail = await this.google.getPrimaryEmail(accessToken);
-    const refreshTokenEnc = encriptarToken(refreshToken, this.encKey());
+    const refreshTokenEnc = encriptarSecreto(refreshToken, this.encKey());
 
     const ctx: TenantContext = { tenantId, userId, roles: [] };
     await this.db.withTenant(
@@ -100,7 +100,7 @@ export class TodoService {
       throw new ConflictException('Tu cuenta de Google no está conectada.');
     }
 
-    const refreshToken = desencriptarToken(cuenta.refreshTokenEnc, this.encKey());
+    const refreshToken = desencriptarSecreto(cuenta.refreshTokenEnc, this.encKey());
     const accessToken = await this.google.refreshAccessToken(refreshToken);
     const crudos = await this.google.listEvents(accessToken, rango.desde, rango.hasta);
 
@@ -129,7 +129,7 @@ export class TodoService {
   private decodeState(state: string): { tenantId: string; userId: string } {
     let payload: { t?: string; u?: string; ts?: number };
     try {
-      payload = JSON.parse(desencriptarToken(state, this.encKey())) as typeof payload;
+      payload = JSON.parse(desencriptarSecreto(state, this.encKey())) as typeof payload;
     } catch {
       throw new BadRequestException('El parámetro de estado del OAuth es inválido.');
     }

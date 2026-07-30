@@ -13,7 +13,7 @@ export const TenantConfigSchema = z.object({
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 
-export const MODULO_KEYS = ['tablero', 'tasador', 'todo', 'protocolo'] as const;
+export const MODULO_KEYS = ['tablero', 'tasador', 'todo', 'protocolo', 'publicacion'] as const;
 export type ModuloKey = (typeof MODULO_KEYS)[number];
 
 /**
@@ -21,15 +21,16 @@ export type ModuloKey = (typeof MODULO_KEYS)[number];
  * el admin ("habilitado / pagado"): es la fuente de verdad de qué ve cada
  * inmobiliaria. `plan` quedó como etiqueta comercial, sin efecto en permisos.
  *
- * Las 4 claves son obligatorias: la columna tiene default en la base y la
- * migración las backfillea. Al sumar un módulo nuevo va su propia migración
- * agregando la clave a las filas existentes (como hizo `protocolo`).
+ * Todas las claves son obligatorias: la columna tiene default en la base y cada
+ * módulo nuevo trae su propia migración agregando la clave a las filas que ya
+ * existen (como hicieron `protocolo` y `publicacion`).
  */
 export const ModulosTenantSchema = z.object({
   tablero: z.boolean(),
   tasador: z.boolean(),
   todo: z.boolean(),
   protocolo: z.boolean(),
+  publicacion: z.boolean(),
 });
 export type ModulosTenant = z.infer<typeof ModulosTenantSchema>;
 
@@ -39,6 +40,7 @@ export const MODULOS_DEFAULT: ModulosTenant = {
   tasador: false,
   todo: false,
   protocolo: false,
+  publicacion: false,
 };
 
 /** Lista de claves habilitadas, para iterar (la Home arma las tarjetas con esto). */

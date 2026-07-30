@@ -68,7 +68,7 @@ describe('HomeView · modo logueado', () => {
           nombre: 'Demo',
           fotoUrl: null,
           roles: ['vendedor'],
-          tenant: tenant({ tasador: true, todo: true, protocolo: false }),
+          tenant: tenant({ tasador: true, todo: true, protocolo: false, publicacion: false }),
         }}
       />,
     );
