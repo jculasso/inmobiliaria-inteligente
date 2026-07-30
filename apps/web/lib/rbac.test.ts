@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RolSchema } from '@vacker/types';
+import { ROLES_REPORTE_PROTOCOLO, RolSchema } from '@vacker/types';
 
 const ROL_KEYS = RolSchema.options;
 import {
@@ -9,6 +9,7 @@ import {
   puedeBorrarTasaciones,
   puedeGestionarVendedores,
   puedeUsarPublicacion,
+  puedeVerReporteProtocolo,
   puedeVerTodo,
   puedeVerVendedores,
   rolPrincipal,
@@ -176,5 +177,31 @@ describe('catálogo de módulos y roles', () => {
   // deja el motivo escrito para quien vea el error y no entienda por qué.
   it('todo rol tiene etiqueta visible', () => {
     for (const rol of ROL_KEYS) expect(ETIQUETA_ROL[rol]).toBeTruthy();
+  });
+});
+
+describe('puedeVerReporteProtocolo', () => {
+  it('lo abre para dirección y para el admin del tenant', () => {
+    expect(puedeVerReporteProtocolo(['direccion'])).toBe(true);
+    expect(puedeVerReporteProtocolo(['admin_tenant'])).toBe(true);
+  });
+
+  // El vendedor y el team leader ven sus propias alertas en el dashboard. El
+  // reporte reúne toda la inmobiliaria: es otra cosa.
+  it('no lo abre para vendedor ni team leader', () => {
+    expect(puedeVerReporteProtocolo(['vendedor'])).toBe(false);
+    expect(puedeVerReporteProtocolo(['team_leader'])).toBe(false);
+    expect(puedeVerReporteProtocolo(['vendedor', 'team_leader'])).toBe(false);
+  });
+
+  /**
+   * El gate del front y el @Roles de la API salen de la MISMA constante. Con
+   * ROLES_PUBLICACION se escribieron por separado, se separaron, y la API
+   * devolvía 403 que el front mostraba como "no pudimos conectar".
+   */
+  it('coincide con ROLES_REPORTE_PROTOCOLO, la lista compartida', () => {
+    for (const rol of ROLES_REPORTE_PROTOCOLO) {
+      expect(puedeVerReporteProtocolo([rol])).toBe(true);
+    }
   });
 });

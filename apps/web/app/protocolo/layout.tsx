@@ -10,6 +10,7 @@ import { LogoutButton } from '../../components/logout-button';
 import { MarcaPlataforma } from '../../components/marca-plataforma';
 import { MenuModulos } from '../../components/menu-modulos';
 import { ProtocoloNav } from '../../components/protocolo/protocolo-nav';
+import { puedeVerReporteProtocolo } from '../../lib/rbac';
 
 export default async function ProtocoloLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -89,7 +90,7 @@ export default async function ProtocoloLayout({ children }: { children: ReactNod
       </div>
 
       <div className="mt-6">
-        <ProtocoloNav />
+        <ProtocoloNav mostrarReporte={puedeVerReporteProtocolo(principal.roles)} />
       </div>
 
       <div className="mt-6">{children}</div>

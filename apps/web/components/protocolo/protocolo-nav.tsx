@@ -10,12 +10,16 @@ const TABS = [
   { href: '/protocolo/propiedades', label: 'Propiedades' },
 ];
 
-export function ProtocoloNav() {
+/** Solo para dirección y admin: el reporte reúne toda la inmobiliaria. */
+const TAB_REPORTE = { href: '/protocolo/reporte', label: 'Reporte' };
+
+export function ProtocoloNav({ mostrarReporte = false }: { mostrarReporte?: boolean }) {
   const pathname = usePathname();
+  const tabs = mostrarReporte ? [...TABS, TAB_REPORTE] : TABS;
 
   return (
     <nav className="flex border-b border-line sm:gap-1">
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const activo = pathname === tab.href;
         return (
           <Link

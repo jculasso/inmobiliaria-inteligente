@@ -1,4 +1,4 @@
-import { ROLES_PUBLICACION, type Rol } from '@vacker/types';
+import { ROLES_PUBLICACION, ROLES_REPORTE_PROTOCOLO, type Rol } from '@vacker/types';
 
 export type AlcanceModulo = 'propio' | 'equipo' | 'total' | 'ver';
 
@@ -50,6 +50,18 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
  */
 export function puedeUsarPublicacion(roles: Rol[]): boolean {
   return roles.some((r) => (ROLES_PUBLICACION as readonly string[]).includes(r));
+}
+
+/**
+ * Ve el reporte semanal del Protocolo (GET /protocolo/reporte-semanal).
+ *
+ * Usa la MISMA constante que el `@Roles` de la API. Es información de
+ * conducción: el vendedor y el team leader ven sus propias alertas en el
+ * dashboard del módulo, pero el reporte completo de la inmobiliaria es otra
+ * cosa.
+ */
+export function puedeVerReporteProtocolo(roles: Rol[]): boolean {
+  return roles.some((r) => (ROLES_REPORTE_PROTOCOLO as readonly string[]).includes(r));
 }
 
 /** Rol más privilegiado del usuario dentro del tenant (mismo orden que `alcanceDeModulo`). */
