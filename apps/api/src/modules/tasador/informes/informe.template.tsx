@@ -67,7 +67,19 @@ function crearEstilos(red: string, redDark: string) {
     paragraph: { lineHeight: 1.5, color: INK, fontSize: 9.5 },
     paragraphMuted: { lineHeight: 1.4, color: MUTED, fontSize: 8.5, fontStyle: 'italic' },
     fotos: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 4 },
-    foto: { flex: 1, height: 84, borderRadius: 4, objectFit: 'cover' },
+    /*
+     * La caja tiene la MISMA proporción que las fotos (4:3, la de cualquier
+     * cámara de celular), así que `cover` no tiene nada que recortar.
+     *
+     * Antes era `height: 84`, o sea una caja de 2:1: la foto se dibujaba a
+     * 169x126,8 y se recortaba a 169x84 — se veía el 66% del alto y se perdía
+     * un tercio, arriba y abajo. Una foto de ambiente sin techo ni piso se
+     * percibe como estirada, y así se reportó.
+     *
+     * Se deja `cover` igual: si alguien sube una foto vertical, se recorta
+     * antes que romper la fila.
+     */
+    foto: { flex: 1, aspectRatio: 4 / 3, borderRadius: 4, objectFit: 'cover' },
     table: { borderWidth: 1, borderColor: LINE, borderRadius: 4, marginBottom: 8 },
     tableHeaderRow: { flexDirection: 'row', backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: LINE },
     tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE },
