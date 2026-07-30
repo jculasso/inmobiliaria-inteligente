@@ -155,16 +155,15 @@ export class PublicacionService {
       const usuarios = await tx.usuario.findMany({ select: { id: true, email: true } });
       const porEmail = new Map(usuarios.map((u) => [u.email.toLowerCase().trim(), u.id]));
 
-      let creadas = 0;
-      let actualizadas = 0;
       let sinAgente = 0;
-
-      for (const p of propiedades) {
+      const filas = propiedades.map((p) => {
         const emailTokko = (p.producer?.email ?? '').toLowerCase().trim();
         const agenteId = porEmail.get(emailTokko) ?? null;
         if (!agenteId) sinAgente += 1;
 
-        const datos = {
+        return {
+          tenantId: ctx.tenantId,
+          tokkoId: p.id,
           referenceCode: p.reference_code,
           titulo: p.publication_title,
           tipo: p.type?.name ?? null,
@@ -182,22 +181,44 @@ export class PublicacionService {
           agenteNombreTokko: p.producer?.name ?? null,
           creadoEnTokko: p.created_at ? new Date(p.created_at) : null,
           importadoEl: new Date(),
+          updatedAt: new Date(),
         };
+      });
 
-        const existe = await tx.propiedad.findFirst({
-          where: { tokkoId: p.id },
-          select: { id: true },
-        });
-        if (existe) {
-          await tx.propiedad.update({ where: { id: existe.id }, data: datos });
-          actualizadas += 1;
-        } else {
-          await tx.propiedad.create({ data: { ...datos, tenantId: ctx.tenantId, tokkoId: p.id } });
-          creadas += 1;
-        }
-      }
+      /*
+       * TRES consultas, no dos por propiedad.
+       *
+       * La primera versión hacía findFirst + create/update por cada una: 50
+       * viajes a la base para 25 propiedades. Con la base en São Paulo y la API
+       * en otro continente, eso se pasó de los 15 segundos de la transacción y
+       * la traída de 25 se cancelaba.
+       *
+       * Se borra y se vuelve a insertar en lugar de actualizar fila por fila
+       * porque Postgres no puede actualizar N filas con N valores distintos en
+       * una sola consulta. Es seguro acá porque esto es un ESPEJO: la identidad
+       * de una propiedad es su `tokkoId`, no el uuid de nuestra fila, y nada
+       * apunta todavía a esta tabla. El día que algo la referencie, hay que
+       * cambiarlo por un INSERT ... ON CONFLICT DO UPDATE.
+       *
+       * Todo pasa dentro de la misma transacción, así que no existe un momento
+       * en el que las propiedades no estén.
+       */
+      const ids = filas.map((f) => f.tokkoId);
+      const existentes = await tx.propiedad.findMany({
+        where: { tokkoId: { in: ids } },
+        select: { tokkoId: true },
+      });
+      const yaEstaban = existentes.length;
 
-      return { leidas: propiedades.length, creadas, actualizadas, sinAgente };
+      await tx.propiedad.deleteMany({ where: { tokkoId: { in: ids } } });
+      await tx.propiedad.createMany({ data: filas });
+
+      return {
+        leidas: propiedades.length,
+        creadas: filas.length - yaEstaban,
+        actualizadas: yaEstaban,
+        sinAgente,
+      };
     });
   }
 
