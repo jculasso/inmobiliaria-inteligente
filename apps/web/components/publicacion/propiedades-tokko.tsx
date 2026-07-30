@@ -7,7 +7,6 @@ import { Button, Card } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
 import { importarPropiedades, vaciarPropiedades } from '../../lib/publicacion-api';
-import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 
 /** Precio con su moneda: Tokko devuelve USD y ARS mezclados. */
@@ -120,40 +119,75 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
       )}
 
       {inicial.length > 0 && (
-        <ListaTarjetas etiqueta="Propiedades">
+        /* Grilla y no tabla: una propiedad se reconoce por la foto antes que
+           por sus datos. Y grilla propia y no `ListaTarjetas`, que lleva
+           `sm:hidden` porque es la vista de celular de las tablas — usarla acá
+           hacía que la lista no se viera en pantalla ancha. */
+        <ul
+          aria-label="Propiedades"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {inicial.map((p) => (
-            <Tarjeta key={p.id}>
-              <div className="flex items-start gap-3">
-                {p.fotoPortada && (
-                  /* <img> y no next/image: las fotos viven en el CDN de Tokko y
-                     habría que declarar ese dominio como remoto. Para una miniatura
-                     de listado no vale la pena atarse a esa configuración. */
-                  <img
-                    src={p.fotoPortada}
-                    alt=""
-                    className="h-16 w-20 shrink-0 rounded-brand border border-line object-cover"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-ink">{p.titulo ?? '(sin título)'}</p>
+            <li key={p.id} className="flex flex-col overflow-hidden rounded-brand border border-line bg-white">
+              {p.fotoPortada ? (
+                /* <img> y no next/image: las fotos viven en el CDN de Tokko y
+                   habría que declarar ese dominio como remoto. Para una
+                   miniatura de listado no vale la pena atarse a eso. */
+                <img src={p.fotoPortada} alt="" className="h-36 w-full object-cover" />
+              ) : (
+                <div className="flex h-36 w-full items-center justify-center bg-surface text-xs text-muted">
+                  sin foto
+                </div>
+              )}
+
+              <div className="flex min-w-0 flex-1 flex-col gap-2 p-3">
+                <div className="min-w-0">
+                  <p className="line-clamp-2 text-sm font-bold text-ink" title={p.titulo ?? undefined}>
+                    {p.titulo ?? '(sin título)'}
+                  </p>
                   <p className="mt-0.5 truncate text-xs text-muted">{p.ubicacion ?? p.direccion ?? '—'}</p>
                 </div>
-              </div>
-              <CamposTarjeta>
-                <CampoTarjeta etiqueta="Tipo">{p.tipo ?? '—'}</CampoTarjeta>
-                <CampoTarjeta etiqueta="Operación">{p.operacion ?? '—'}</CampoTarjeta>
-                <CampoTarjeta etiqueta="Precio">{precioDe(p)}</CampoTarjeta>
-                <CampoTarjeta etiqueta="Fotos">{p.fotos}</CampoTarjeta>
-                <CampoTarjeta etiqueta="Captó">
-                  {p.agente ?? (
-                    <span className="text-brand-red">sin vincular · {p.agenteTokko ?? '?'}</span>
+
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-base font-extrabold text-ink">{precioDe(p)}</span>
+                  {p.operacion && (
+                    <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-semibold text-muted">
+                      {p.operacion}
+                    </span>
                   )}
-                </CampoTarjeta>
-                <CampoTarjeta etiqueta="ID Tokko">{p.tokkoId}</CampoTarjeta>
-              </CamposTarjeta>
-            </Tarjeta>
+                  {p.tipo && (
+                    <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-semibold text-muted">
+                      {p.tipo}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-2 text-xs">
+                  <span className={p.agente ? 'text-muted' : 'font-semibold text-brand-red'}>
+                    {p.agente ?? `sin vincular · ${p.agenteTokko ?? '?'}`}
+                  </span>
+                  <span className="text-muted">{p.fotos} fotos</span>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-muted">
+                  <span className="truncate" title={p.referenceCode ?? undefined}>
+                    {p.referenceCode ?? `Tokko ${p.tokkoId}`}
+                  </span>
+                  {p.publicUrl && (
+                    <a
+                      href={p.publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 font-semibold text-brand-red hover:underline"
+                    >
+                      Ver ficha ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            </li>
           ))}
-        </ListaTarjetas>
+        </ul>
       )}
     </Card>
   );
