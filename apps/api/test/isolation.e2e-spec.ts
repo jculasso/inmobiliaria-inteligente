@@ -91,6 +91,14 @@ suite('Aislamiento entre tenants (RLS)', () => {
               ($2, $4, $6, 1, 0, 'estudio-titulos', 'Acción B')`,
       [randomUUID(), randomUUID(), protocoloA, protocoloB, tenantA, tenantB],
     );
+    // Una credencial de integración por tenant, con ultimos4 distintos para
+    // poder afirmar CUÁL se vio y no solo cuántas.
+    await client.query(
+      `INSERT INTO integracion_credencial (id, tenant_id, proveedor, secreto_enc, ultimos4, updated_at)
+       VALUES ($1, $3, 'tokko', 'cifrado-A', 'AAAA', now()),
+              ($2, $4, 'tokko', 'cifrado-B', 'BBBB', now())`,
+      [randomUUID(), randomUUID(), tenantA, tenantB],
+    );
   });
 
   afterAll(async () => {
@@ -190,6 +198,53 @@ suite('Aislamiento entre tenants (RLS)', () => {
       `INSERT INTO protocolo (id, tenant_id, tasacion_id, agente_id, fecha_inicio, updated_at)
        VALUES ($1, $2, $3, $4, now(), now())`,
       [randomUUID(), tenantB, tasacionB, userB],
+    );
+    expect(blocked).toBe(true);
+  });
+
+  /**
+   * Credenciales de integraciones (la API key de Tokko de cada inmobiliaria).
+   *
+   * Es la tabla más sensible del sistema: con la clave de otra agencia se le
+   * pueden leer y publicar propiedades en su propia cuenta de Tokko. El secreto
+   * va cifrado, pero eso protege un backup robado, no una consulta mal acotada
+   * — el aislamiento lo tiene que dar RLS.
+   */
+  it('una inmobiliaria no ve ni toca la credencial de integración de otra', async () => {
+    await enterTenant(tenantA, userA);
+
+    const propias = await client.query<{ tenant_id: string; ultimos4: string }>(
+      'SELECT tenant_id, ultimos4 FROM integracion_credencial',
+    );
+    expect(propias.rows).toHaveLength(1);
+    expect(propias.rows[0]?.tenant_id).toBe(tenantA);
+    expect(propias.rows[0]?.ultimos4).toBe('AAAA');
+
+    // Ni leyendo por proveedor, que es la consulta natural del servicio.
+    const porProveedor = await client.query(
+      `SELECT secreto_enc FROM integracion_credencial WHERE proveedor = 'tokko'`,
+    );
+    expect(porProveedor.rows).toHaveLength(1);
+
+    // Ni pisándola con un UPDATE apuntando al tenant ajeno.
+    const upd = await client.query(
+      'UPDATE integracion_credencial SET secreto_enc = $1 WHERE tenant_id = $2',
+      ['robada', tenantB],
+    );
+    expect(upd.rowCount).toBe(0);
+
+    const del = await client.query('DELETE FROM integracion_credencial WHERE tenant_id = $1', [
+      tenantB,
+    ]);
+    expect(del.rowCount).toBe(0);
+  });
+
+  it('no se puede cargar una credencial en el tenant ajeno (WITH CHECK)', async () => {
+    await enterTenant(tenantA, userA);
+    const blocked = await writeIsBlocked(
+      `INSERT INTO integracion_credencial (id, tenant_id, proveedor, secreto_enc, ultimos4, updated_at)
+       VALUES ($1, $2, 'tokko', 'x', 'XXXX', now())`,
+      [randomUUID(), tenantB],
     );
     expect(blocked).toBe(true);
   });

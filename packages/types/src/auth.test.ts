@@ -12,7 +12,7 @@ const base = {
   tenant: {
     nombre: 'Vacker',
     plan: 'basico',
-    modulos: { tablero: true, tasador: false, todo: false, protocolo: false },
+    modulos: { tablero: true, tasador: false, todo: false, protocolo: false, publicacion: false },
     config: {},
   },
 };

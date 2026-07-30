@@ -1,3 +1,4 @@
+import { MODULO_KEYS } from '@vacker/types';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -11,7 +12,7 @@ const TENANT: TenantDto = {
   nombre: 'Vacker',
   slug: 'vacker',
   plan: 'enterprise',
-  modulos: { tablero: true, tasador: true, todo: false, protocolo: false },
+  modulos: { tablero: true, tasador: true, todo: false, protocolo: false, publicacion: false },
   estado: 'activo',
   config: {},
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -34,9 +35,9 @@ describe('TenantFormModal', () => {
     const user = userEvent.setup();
     render(<TenantFormModal tenant={TENANT} onClose={() => {}} onSaved={() => {}} />);
 
-    expect(screen.getByText(/Módulos habilitados · 2 de 4/)).toBeInTheDocument();
+    expect(screen.getByText(`Módulos habilitados · 2 de ${MODULO_KEYS.length}`)).toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: /Protocolo 5 Semanas/ }));
-    expect(screen.getByText(/Módulos habilitados · 3 de 4/)).toBeInTheDocument();
+    expect(screen.getByText(`Módulos habilitados · 3 de ${MODULO_KEYS.length}`)).toBeInTheDocument();
   });
 
   it('aclara que el plan es solo una etiqueta comercial', () => {

@@ -22,6 +22,13 @@ export const envSchema = z.object({
   // Clave para encriptar los refresh tokens de Google en reposo (AES-256-GCM).
   // Debe ser idéntica en todos los entornos que compartan la misma base.
   GOOGLE_TOKEN_ENC_KEY: z.string().min(1).optional(),
+
+  // Clave para cifrar las credenciales de integraciones de terceros (hoy la API
+  // key de Tokko de cada inmobiliaria). 32 bytes en base64:
+  //   openssl rand -base64 32
+  // Vive fuera de la base a propósito: quien consiga un backup no puede usar
+  // las credenciales de nadie.
+  INTEGRACIONES_ENC_KEY: z.string().min(1).optional(),
   // Base del frontend, para volver a la web tras el callback de OAuth.
   WEB_APP_URL: z.string().url().optional(),
 });

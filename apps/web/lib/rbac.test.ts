@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { RolSchema } from '@vacker/types';
+
+const ROL_KEYS = RolSchema.options;
 import {
   alcanceDeModulo,
   etiquetaDeAlcance,
   puedeEscribirOperaciones,
   puedeBorrarTasaciones,
   puedeGestionarVendedores,
+  puedeUsarPublicacion,
   puedeVerTodo,
   puedeVerVendedores,
   rolPrincipal,
+  ETIQUETA_ROL,
 } from './rbac';
 
 describe('alcanceDeModulo', () => {
@@ -139,5 +144,35 @@ describe('puedeVerTodo', () => {
 
   it('si además de dirección es admin, gana el admin y el check se oculta', () => {
     expect(puedeVerTodo(['direccion', 'admin_tenant'])).toBe(false);
+  });
+});
+
+describe('puedeUsarPublicacion', () => {
+  it('lo usa quien tiene el rol publicador', () => {
+    expect(puedeUsarPublicacion(['publicador'])).toBe(true);
+  });
+
+  // Los admins entran sin tener el rol porque son los que van a probar el
+  // módulo antes de asignárselo a nadie.
+  it('y los admins, que son los que lo van a probar', () => {
+    expect(puedeUsarPublicacion(['admin_tenant'])).toBe(true);
+    expect(puedeUsarPublicacion(['admin_plataforma'])).toBe(true);
+  });
+
+  // Mientras nadie tenga `publicador`, el módulo queda de hecho apagado para
+  // el resto de la inmobiliaria — que es justamente lo que se pidió.
+  it('el resto de la inmobiliaria no, ni siquiera dirección', () => {
+    expect(puedeUsarPublicacion(['direccion'])).toBe(false);
+    expect(puedeUsarPublicacion(['team_leader'])).toBe(false);
+    expect(puedeUsarPublicacion(['vendedor'])).toBe(false);
+  });
+});
+
+describe('catálogo de módulos y roles', () => {
+  // Al sumar un módulo o un rol hay varias tablas que enumerarlos: nombre,
+  // ícono, ruta, etiqueta. El typecheck ya obliga a completarlas, pero esto
+  // deja el motivo escrito para quien vea el error y no entienda por qué.
+  it('todo rol tiene etiqueta visible', () => {
+    for (const rol of ROL_KEYS) expect(ETIQUETA_ROL[rol]).toBeTruthy();
   });
 });

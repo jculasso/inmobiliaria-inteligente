@@ -20,7 +20,7 @@ model Tenant {
   plan      String   @default("basico") // etiqueta comercial: basico | profesional | enterprise
   // Módulos habilitados ("prendido / pagado"), fuente de verdad de permisos —
   // ModulosTenantSchema. El plan quedó como rótulo, sin efecto en accesos.
-  modulos   Json     @default("{\"tablero\": true, \"tasador\": false, \"todo\": false, \"protocolo\": false}")
+  modulos   Json     @default("{\"tablero\": true, \"tasador\": false, \"todo\": false, \"protocolo\": false, \"publicacion\": false}")
   estado    String   @default("activo") // activo | suspendido
   config    Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -37,6 +37,7 @@ model Tenant {
   tasacionEstadoHistorials TasacionEstadoHistorial[]
   informeGenerados         InformeGenerado[]
   googleCuentas            GoogleCuenta[]
+  integracionCredenciales  IntegracionCredencial[]
   protocolos               Protocolo[]
   protocoloAcciones        ProtocoloAccion[]
 
@@ -89,7 +90,7 @@ model Usuario {
 /// Asignación de roles (un usuario puede tener uno o más roles en su tenant).
 model UsuarioRol {
   usuarioId String @map("usuario_id") @db.Uuid
-  rol       String // vendedor | team_leader | direccion | admin_tenant | admin_plataforma
+  rol       String // vendedor | team_leader | direccion | publicador | admin_tenant | admin_plataforma
   tenantId  String @map("tenant_id") @db.Uuid
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -361,6 +362,36 @@ model InformeGenerado {
 // ============================================================================
 
 /// Conexión OAuth de un usuario con Google (para leer su Calendar principal).
+/// Credenciales de integraciones de terceros, una fila por inmobiliaria y
+/// proveedor. Hoy solo Tokko Broker; la tabla es genérica porque el próximo
+/// portal va a necesitar lo mismo.
+///
+/// El secreto va CIFRADO (AES-256-GCM, ver common/cripto-secreto.ts) y nunca
+/// vuelve al cliente: la API expone si está configurada y cuándo se cambió, no
+/// el valor. La clave de cifrado vive en INTEGRACIONES_ENC_KEY, fuera de la base
+/// — quien lea un backup no puede usar las credenciales.
+model IntegracionCredencial {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  /// Proveedor: por ahora solo 'tokko'.
+  proveedor String
+  /// Secreto cifrado, formato "iv.tag.ciphertext" en base64.
+  secretoEnc String @map("secreto_enc")
+  /// Últimos 4 caracteres en claro, para que el admin reconozca cuál cargó sin
+  /// que la API tenga que devolver el secreto.
+  ultimos4  String @map("ultimos4")
+  /// Quién la cargó por última vez, para poder preguntarle.
+  actualizadoPor String? @map("actualizado_por") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, proveedor])
+  @@index([tenantId])
+  @@map("integracion_credencial")
+}
+
 model GoogleCuenta {
   id              String   @id @default(uuid()) @db.Uuid
   tenantId        String   @map("tenant_id") @db.Uuid

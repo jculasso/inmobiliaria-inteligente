@@ -25,6 +25,11 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx', 'test/**/*.e2e-spec.ts'],
     root: '.',
+    // Los tests que renderizan PDF tardan entre 300ms y 1s solos, pero pasaban
+    // los 5s por defecto cuando el monorepo corre los cinco paquetes en
+    // paralelo: fallaban de forma intermitente sin que hubiera nada roto.
+    // 15s sigue siendo 15 veces lo normal, así que un cuelgue real igual falla.
+    testTimeout: 15_000,
   },
   // SWC compila los decoradores de NestJS (esbuild de Vitest no soporta
   // emitDecoratorMetadata), necesario para el arranque de la app en los tests.
