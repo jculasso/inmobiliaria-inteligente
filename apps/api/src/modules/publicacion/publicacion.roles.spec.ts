@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { describe, expect, it } from 'vitest';
-import type { ModuloKey, Rol } from '@vacker/types';
+import { ROLES_PUBLICACION, type ModuloKey, type Rol } from '@vacker/types';
 import { MODULO_KEY, ROLES_KEY } from '../../auth/decorators';
 import { PublicacionController } from './publicacion.controller';
 
@@ -20,9 +20,17 @@ describe('RBAC del módulo de Publicación', () => {
     expect(modulo).toBe('publicacion');
   });
 
-  it.each(HANDLERS)('%s lo puede hacer el publicador y el admin del tenant', (metodo) => {
+  /**
+   * Los roles de la API tienen que ser EXACTAMENTE los que usa el front.
+   *
+   * Estaban duplicados y se separaron: el front dejaba entrar a
+   * `admin_plataforma` y la API respondía 403, que el borde de error mostraba
+   * como "no pudimos conectar con el servidor". Ahora los dos importan
+   * `ROLES_PUBLICACION` y este test lo verifica.
+   */
+  it.each(HANDLERS)('%s usa exactamente ROLES_PUBLICACION, la lista compartida', (metodo) => {
     const roles = Reflect.getMetadata(ROLES_KEY, PublicacionController.prototype[metodo]) as Rol[];
-    expect([...roles].sort()).toEqual(['admin_tenant', 'publicador']);
+    expect([...roles].sort()).toEqual([...ROLES_PUBLICACION].sort());
   });
 
   // Publicar no es una tarea de conducción: dirección no entra por ser
