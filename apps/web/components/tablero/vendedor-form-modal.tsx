@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import type { VendedorDto } from '@vacker/types';
+import type { RolAsignable, VendedorDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createVendedor, updateVendedor } from '../../lib/tablero-api';
@@ -48,10 +48,20 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
       const objetivo = { anio: anioActual, objComision: Number(objComision) || 0, objVolumen: 0, objPuntas: 0 };
 
       if (vendedor) {
-        // El selector "Rol" solo alterna vendedor/team_leader — se preservan
-        // 'direccion'/'admin_tenant' si el usuario ya los tenía, para no
-        // pisarle un rol elevado por una edición que no lo tocaba (ej. asignar líder).
-        const rolesElevados = vendedor.roles.filter((r) => r === 'direccion' || r === 'admin_tenant');
+        // El selector "Rol" solo alterna vendedor/team_leader. Todo lo demás
+        // que la persona tenga se preserva: esta pantalla no lo muestra, así
+        // que pisarlo sería quitarle un rol sin que nadie se entere, en una
+        // edición que ni siquiera lo tocaba (ej. asignar líder).
+        //
+        // Se enumera lo que se CONSERVA y no lo que se descarta: al sumar un
+        // rol nuevo, olvidarlo acá lo borra en silencio. Ya pasó con
+        // `publicador`, que se perdía al editar cualquier vendedor.
+        // `admin_plataforma` queda afuera: no es un rol del tenant y la API no
+        // lo acepta en este endpoint.
+        const OTROS_ROLES: RolAsignable[] = ['direccion', 'admin_tenant', 'publicador'];
+        const rolesElevados = vendedor.roles.filter((r): r is RolAsignable =>
+          (OTROS_ROLES as string[]).includes(r),
+        );
         await updateVendedor(accessToken, vendedor.id, {
           nombre,
           email,

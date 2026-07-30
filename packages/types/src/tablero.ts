@@ -155,7 +155,21 @@ export type OperacionFiltro = z.infer<typeof OperacionFiltroSchema>;
 
 // --- Vendedores (usuarios comerciales) ---
 
-export const RolAsignableSchema = z.enum(['vendedor', 'team_leader', 'direccion', 'admin_tenant']);
+/**
+ * Roles que se pueden asignar desde la aplicación. Excluye `admin_plataforma`
+ * a propósito: ese no es un rol del tenant y no se reparte desde acá.
+ *
+ * `publicador` es funcional y no jerárquico: se suma a lo que la persona ya
+ * sea. El vendedor que además publica lleva los dos.
+ */
+export const RolAsignableSchema = z.enum([
+  'vendedor',
+  'team_leader',
+  'direccion',
+  'publicador',
+  'admin_tenant',
+]);
+export type RolAsignable = z.infer<typeof RolAsignableSchema>;
 
 /** Objetivo anual de un vendedor. */
 export const ObjetivoInputSchema = z.object({
