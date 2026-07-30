@@ -99,6 +99,13 @@ suite('Aislamiento entre tenants (RLS)', () => {
               ($2, $4, 'tokko', 'cifrado-B', 'BBBB', now())`,
       [randomUUID(), randomUUID(), tenantA, tenantB],
     );
+    // Una propiedad espejada de Tokko por tenant.
+    await client.query(
+      `INSERT INTO propiedad (id, tenant_id, tokko_id, titulo, updated_at)
+       VALUES ($1, $3, 111, 'Casa A', now()),
+              ($2, $4, 222, 'Casa B', now())`,
+      [randomUUID(), randomUUID(), tenantA, tenantB],
+    );
   });
 
   afterAll(async () => {
@@ -237,6 +244,24 @@ suite('Aislamiento entre tenants (RLS)', () => {
       tenantB,
     ]);
     expect(del.rowCount).toBe(0);
+  });
+
+  it('una inmobiliaria no ve las propiedades espejadas de otra', async () => {
+    await enterTenant(tenantA, userA);
+
+    const propias = await client.query<{ titulo: string }>('SELECT titulo FROM propiedad');
+    expect(propias.rows).toHaveLength(1);
+    expect(propias.rows[0]?.titulo).toBe('Casa A');
+
+    // Ni por el id de Tokko, que es la consulta natural al espejar.
+    const porTokko = await client.query('SELECT titulo FROM propiedad WHERE tokko_id = $1', [222]);
+    expect(porTokko.rows).toHaveLength(0);
+
+    const upd = await client.query('UPDATE propiedad SET titulo = $1 WHERE tokko_id = $2', [
+      'pisada',
+      222,
+    ]);
+    expect(upd.rowCount).toBe(0);
   });
 
   it('no se puede cargar una credencial en el tenant ajeno (WITH CHECK)', async () => {

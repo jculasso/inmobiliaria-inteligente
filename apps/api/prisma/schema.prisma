@@ -38,6 +38,7 @@ model Tenant {
   informeGenerados         InformeGenerado[]
   googleCuentas            GoogleCuenta[]
   integracionCredenciales  IntegracionCredencial[]
+  propiedades              Propiedad[]
   protocolos               Protocolo[]
   protocoloAcciones        ProtocoloAccion[]
 
@@ -79,6 +80,7 @@ model Usuario {
   tasaciones        Tasacion[]
   historialTasacion TasacionEstadoHistorial[]
   googleCuenta      GoogleCuenta?
+  propiedades       Propiedad[]
   protocolos        Protocolo[]
 
   @@unique([tenantId, email])
@@ -390,6 +392,61 @@ model IntegracionCredencial {
   @@unique([tenantId, proveedor])
   @@index([tenantId])
   @@map("integracion_credencial")
+}
+
+/// Propiedad publicada, espejo de lo que vive en Tokko.
+///
+/// Se trae leyendo la API de Tokko, que es lo único que se puede hacer sin
+/// riesgo: escribir con el importador da de baja lo que no viaja en el archivo
+/// (ver docs/CONVENCIONES_TECNICAS.md §12).
+///
+/// NO se guarda `real_address`. Tokko separa la dirección publicada de la real
+/// —la del propietario— y para mostrar el catálogo alcanza la publicada.
+model Propiedad {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  /// Id que asigna Tokko: el "DNI" de la propiedad.
+  tokkoId       Int     @map("tokko_id")
+  /// Identificador propio de la inmobiliaria dentro de Tokko. Es el campo por
+  /// el que se hace el match al publicar (`reference_code` del importador).
+  referenceCode String? @map("reference_code")
+
+  titulo    String?
+  tipo      String?
+  operacion String?
+  precio    Decimal? @db.Decimal(14, 2)
+  moneda    String?
+  direccion String?
+  ubicacion String?
+  fotos     Int      @default(0)
+  fotoPortada String? @map("foto_portada")
+  publicUrl String?  @map("public_url")
+  estado    String?
+
+  /// Vendedor que la captó. Se resuelve por el email del `producer` de Tokko;
+  /// queda en null cuando ese email no corresponde a ningún usuario nuestro.
+  agenteId        String? @map("agente_id") @db.Uuid
+  /// El email tal como vino de Tokko, aunque no haya matcheado. Sin esto no se
+  /// puede ofrecer vincularlo después: se perdería a quién pertenece.
+  agenteEmailTokko String? @map("agente_email_tokko")
+  agenteNombreTokko String? @map("agente_nombre_tokko")
+
+  /// Fechas de Tokko, no las nuestras: `updated_at` es lo que el importador usa
+  /// para decidir si una modificación se aplica o se ignora.
+  creadoEnTokko     DateTime? @map("creado_en_tokko") @db.Timestamptz(6)
+  importadoEl       DateTime  @default(now()) @map("importado_el") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agente Usuario? @relation(fields: [agenteId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, tokkoId])
+  @@index([tenantId])
+  @@index([agenteId])
+  @@map("propiedad")
 }
 
 model GoogleCuenta {

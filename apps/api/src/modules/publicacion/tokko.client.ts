@@ -22,6 +22,14 @@ export interface PropiedadTokko {
   reference_code: string | null;
   publication_title: string | null;
   public_url: string | null;
+  created_at: string | null;
+  status: string | number | null;
+  address: string | null;
+  type: { id: number; name: string } | null;
+  location: { id: number; short_location: string | null } | null;
+  operations: { operation_type: string; prices: { currency: string; price: number }[] }[] | null;
+  photos: { image: string; is_front_cover: boolean }[] | null;
+  producer: { id: number; name: string | null; email: string | null } | null;
 }
 
 export interface RespuestaListado {
@@ -66,13 +74,36 @@ async function pedir(path: string, key: string, params: Record<string, string> =
  * el `total_count` de la respuesta dice cuántas ve la cuenta, que es lo que le
  * confirma al usuario que cargó la clave de la inmobiliaria correcta.
  */
-export async function listarPropiedades(key: string, limit = 1): Promise<RespuestaListado> {
-  const data = (await pedir('/property/', key, { limit: String(limit) })) as {
-    meta?: { total_count?: number };
-    objects?: PropiedadTokko[];
-  };
+export async function listarPropiedades(
+  key: string,
+  limit = 1,
+  offset = 0,
+): Promise<RespuestaListado> {
+  const data = (await pedir('/property/', key, {
+    limit: String(limit),
+    offset: String(offset),
+  })) as { meta?: { total_count?: number }; objects?: PropiedadTokko[] };
   return {
     totalCount: data.meta?.total_count ?? 0,
     propiedades: data.objects ?? [],
   };
+}
+
+/**
+ * Las N propiedades más recientes.
+ *
+ * Tokko NO soporta `order_by` —devuelve un error— pero su orden natural es por
+ * fecha de creación ascendente, así que las últimas están al final. Se pide el
+ * total con una consulta mínima y se salta hasta ahí.
+ *
+ * Cuesta dos llamadas en vez de una; la alternativa sería traer las 387 para
+ * quedarse con 10.
+ */
+export async function ultimasPropiedades(key: string, cuantas: number): Promise<PropiedadTokko[]> {
+  const { totalCount } = await listarPropiedades(key, 1);
+  if (totalCount === 0) return [];
+  const offset = Math.max(0, totalCount - cuantas);
+  const { propiedades } = await listarPropiedades(key, cuantas, offset);
+  // De más nueva a más vieja, que es como se quiere mirar la lista.
+  return [...propiedades].reverse();
 }

@@ -1,8 +1,13 @@
+import { z } from 'zod';
 import {
   CredencialEstadoSchema,
+  PropiedadDtoSchema,
   PruebaConexionSchema,
+  ResultadoImportacionSchema,
   type CredencialEstado,
+  type PropiedadDto,
   type PruebaConexion,
+  type ResultadoImportacion,
 } from '@vacker/types';
 import { apiFetch } from './api-client';
 
@@ -36,5 +41,20 @@ export async function probarConexion(accessToken: string): Promise<PruebaConexio
   return apiFetch('/publicacion/credencial/probar', PruebaConexionSchema, {
     accessToken,
     method: 'POST',
+  });
+}
+
+export async function listarPropiedades(accessToken: string): Promise<PropiedadDto[]> {
+  return apiFetch('/publicacion/propiedades', z.array(PropiedadDtoSchema), { accessToken });
+}
+
+export async function importarPropiedades(
+  accessToken: string,
+  cuantas: number,
+): Promise<ResultadoImportacion> {
+  return apiFetch('/publicacion/propiedades/importar', ResultadoImportacionSchema, {
+    accessToken,
+    method: 'POST',
+    searchParams: { cuantas },
   });
 }

@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { CredencialEstado, PruebaConexion } from '@vacker/types';
+import type { CredencialEstado, PropiedadDto, PruebaConexion, ResultadoImportacion } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { desencriptarSecreto, encriptarSecreto } from '../../common/cripto-secreto';
-import { TokkoError, listarPropiedades } from './tokko.client';
+import { TokkoError, listarPropiedades, ultimasPropiedades } from './tokko.client';
 
 const PROVEEDOR = 'tokko';
 const ENC_VAR = 'INTEGRACIONES_ENC_KEY';
@@ -114,5 +114,118 @@ export class PublicacionService {
     } catch (e) {
       return fallo(e instanceof TokkoError ? e.message : 'Error inesperado al consultar Tokko.');
     }
+  }
+
+  /** La credencial en claro, o un error explicando por qué no se pudo. */
+  private async secreto(): Promise<string> {
+    const guardado = await this.db.withTenant((tx) =>
+      tx.integracionCredencial.findFirst({
+        where: { proveedor: PROVEEDOR },
+        select: { secretoEnc: true },
+      }),
+    );
+    if (!guardado) throw new BadRequestException('Todavía no hay una clave de Tokko cargada.');
+    try {
+      return desencriptarSecreto(guardado.secretoEnc, this.encKey(), ENC_VAR);
+    } catch {
+      throw new BadRequestException(
+        'No se pudo descifrar la clave guardada. Volvé a cargarla desde la pantalla de Publicación.',
+      );
+    }
+  }
+
+  /**
+   * Trae desde Tokko las N propiedades más recientes y las espeja acá.
+   *
+   * Es una LECTURA: no toca nada en Tokko. Se eligió empezar así porque el
+   * importador —el único camino de escritura— trata el archivo como el
+   * inventario completo y da de baja lo que no viaja en él.
+   *
+   * El vendedor que la captó sale del `producer` de Tokko, vinculado **por
+   * email**. Vincular por nombre daría peor: en Tokko figura "Martin Picabea" y
+   * en el sistema "Martin Piccabea", "Andres" contra "Andrés". Lo que no
+   * vincula queda con el email a la vista, para poder resolverlo a mano después
+   * — si se descartara, se perdería a quién pertenece.
+   */
+  async importar(cuantas: number, ctx: TenantContext): Promise<ResultadoImportacion> {
+    const key = await this.secreto();
+    const propiedades = await ultimasPropiedades(key, cuantas);
+
+    return this.db.withTenant(async (tx) => {
+      const usuarios = await tx.usuario.findMany({ select: { id: true, email: true } });
+      const porEmail = new Map(usuarios.map((u) => [u.email.toLowerCase().trim(), u.id]));
+
+      let creadas = 0;
+      let actualizadas = 0;
+      let sinAgente = 0;
+
+      for (const p of propiedades) {
+        const emailTokko = (p.producer?.email ?? '').toLowerCase().trim();
+        const agenteId = porEmail.get(emailTokko) ?? null;
+        if (!agenteId) sinAgente += 1;
+
+        const datos = {
+          referenceCode: p.reference_code,
+          titulo: p.publication_title,
+          tipo: p.type?.name ?? null,
+          operacion: p.operations?.[0]?.operation_type ?? null,
+          precio: p.operations?.[0]?.prices?.[0]?.price ?? null,
+          moneda: p.operations?.[0]?.prices?.[0]?.currency ?? null,
+          direccion: p.address,
+          ubicacion: p.location?.short_location ?? null,
+          fotos: p.photos?.length ?? 0,
+          fotoPortada: p.photos?.find((f) => f.is_front_cover)?.image ?? p.photos?.[0]?.image ?? null,
+          publicUrl: p.public_url,
+          estado: p.status == null ? null : String(p.status),
+          agenteId,
+          agenteEmailTokko: p.producer?.email ?? null,
+          agenteNombreTokko: p.producer?.name ?? null,
+          creadoEnTokko: p.created_at ? new Date(p.created_at) : null,
+          importadoEl: new Date(),
+        };
+
+        const existe = await tx.propiedad.findFirst({
+          where: { tokkoId: p.id },
+          select: { id: true },
+        });
+        if (existe) {
+          await tx.propiedad.update({ where: { id: existe.id }, data: datos });
+          actualizadas += 1;
+        } else {
+          await tx.propiedad.create({ data: { ...datos, tenantId: ctx.tenantId, tokkoId: p.id } });
+          creadas += 1;
+        }
+      }
+
+      return { leidas: propiedades.length, creadas, actualizadas, sinAgente };
+    });
+  }
+
+  async listar(): Promise<PropiedadDto[]> {
+    return this.db.withTenant(async (tx) => {
+      const filas = await tx.propiedad.findMany({
+        include: { agente: { select: { nombre: true } } },
+        orderBy: [{ creadoEnTokko: 'desc' }, { tokkoId: 'desc' }],
+        take: 100,
+      });
+      return filas.map((f) => ({
+        id: f.id,
+        tokkoId: f.tokkoId,
+        referenceCode: f.referenceCode,
+        titulo: f.titulo,
+        tipo: f.tipo,
+        operacion: f.operacion,
+        precio: f.precio == null ? null : Number(f.precio),
+        moneda: f.moneda,
+        direccion: f.direccion,
+        ubicacion: f.ubicacion,
+        fotos: f.fotos,
+        fotoPortada: f.fotoPortada,
+        publicUrl: f.publicUrl,
+        agente: f.agente?.nombre ?? null,
+        agenteTokko: f.agenteNombreTokko,
+        creadoEnTokko: f.creadoEnTokko?.toISOString() ?? null,
+      }));
+    });
   }
 }
