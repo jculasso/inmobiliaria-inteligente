@@ -7,6 +7,8 @@ import {
   type ResetPassword,
   type UpdateTenant,
   type UpdateUsuarioAdmin,
+  CredencialEstadoSchema,
+  PruebaConexionSchema,
 } from '@vacker/types';
 import { apiFetch, apiFetchForm } from './api-client';
 
@@ -98,5 +100,36 @@ export async function eliminarFotoUsuario(accessToken: string, tenantId: string,
   return apiFetch(`/admin/tenants/${tenantId}/usuarios/${id}/foto`, UsuarioAdminDtoSchema, {
     accessToken,
     method: 'DELETE',
+  });
+}
+
+// --- Credencial de Tokko de la inmobiliaria ---
+//
+// Vive en el panel y no en el módulo de Publicación: cargar una API key es
+// configuración de alta, no una tarea diaria.
+
+export async function getCredencialTenant(accessToken: string, tenantId: string) {
+  return apiFetch(`/admin/tenants/${tenantId}/credencial`, CredencialEstadoSchema, { accessToken });
+}
+
+export async function guardarCredencialTenant(accessToken: string, tenantId: string, secreto: string) {
+  return apiFetch(`/admin/tenants/${tenantId}/credencial`, CredencialEstadoSchema, {
+    accessToken,
+    method: 'PUT',
+    body: { secreto },
+  });
+}
+
+export async function borrarCredencialTenant(accessToken: string, tenantId: string) {
+  return apiFetch(`/admin/tenants/${tenantId}/credencial`, CredencialEstadoSchema, {
+    accessToken,
+    method: 'DELETE',
+  });
+}
+
+export async function probarCredencialTenant(accessToken: string, tenantId: string) {
+  return apiFetch(`/admin/tenants/${tenantId}/credencial/probar`, PruebaConexionSchema, {
+    accessToken,
+    method: 'POST',
   });
 }

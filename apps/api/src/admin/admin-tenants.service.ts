@@ -3,6 +3,9 @@ import type { Prisma } from '@prisma/client';
 import { MODULOS_DEFAULT, type CreateTenant, type TenantConfig, type UpdateTenant } from '@vacker/types';
 import { SupabaseStorageService } from '../common/supabase-storage.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { desencriptarSecreto, encriptarSecreto } from '../common/cripto-secreto';
+import { TokkoError, listarPropiedades } from '../modules/publicacion/tokko.client';
 
 const LOGO_BUCKET = 'tenants-logos';
 const LOGO_MAX_BYTES = 5 * 1024 * 1024;
@@ -25,6 +28,7 @@ export class AdminTenantsService {
   constructor(
     private readonly db: PrismaService,
     private readonly storage: SupabaseStorageService,
+    private readonly config: ConfigService,
   ) {}
 
   async list() {
@@ -96,6 +100,99 @@ export class AdminTenantsService {
     const logoUrl = await this.storage.upload(LOGO_BUCKET, path, file.buffer, file.mimetype);
 
     return this.update(id, { config: { logoUrl } });
+  }
+
+  // --- Credencial de integración (Tokko), por inmobiliaria ---
+  //
+  // Vive en el panel de plataforma y no en el módulo de Publicación: cargar
+  // una API key es configuración de alta, no una tarea diaria. Tenerla en la
+  // pantalla donde se publica hacía que cualquiera con rol `publicador`
+  // pudiera reemplazarla y romper la integración sin querer.
+  //
+  // Corre con PrismaService (cross-tenant) porque el admin de plataforma
+  // administra TODAS las inmobiliarias, igual que el resto de este servicio.
+
+  private encKey(): string {
+    const k = this.config.get<string>('INTEGRACIONES_ENC_KEY');
+    if (!k) {
+      throw new BadRequestException(
+        'Falta configurar INTEGRACIONES_ENC_KEY en el servidor. Sin esa clave no se pueden guardar credenciales.',
+      );
+    }
+    return k;
+  }
+
+  async credencial(tenantId: string) {
+    await this.assertExiste(tenantId);
+    const row = await this.db.integracionCredencial.findFirst({
+      where: { tenantId, proveedor: 'tokko' },
+      select: { ultimos4: true, updatedAt: true },
+    });
+    return {
+      configurada: row !== null,
+      ultimos4: row?.ultimos4 ?? null,
+      actualizadoEl: row?.updatedAt.toISOString() ?? null,
+    };
+  }
+
+  async guardarCredencial(tenantId: string, secreto: string, usuarioId: string) {
+    await this.assertExiste(tenantId);
+    const secretoEnc = encriptarSecreto(secreto, this.encKey(), 'INTEGRACIONES_ENC_KEY');
+    const row = await this.db.integracionCredencial.upsert({
+      where: { tenantId_proveedor: { tenantId, proveedor: 'tokko' } },
+      create: {
+        tenantId,
+        proveedor: 'tokko',
+        secretoEnc,
+        ultimos4: secreto.slice(-4),
+        actualizadoPor: usuarioId,
+      },
+      update: { secretoEnc, ultimos4: secreto.slice(-4), actualizadoPor: usuarioId },
+      select: { ultimos4: true, updatedAt: true },
+    });
+    return { configurada: true, ultimos4: row.ultimos4, actualizadoEl: row.updatedAt.toISOString() };
+  }
+
+  async borrarCredencial(tenantId: string) {
+    await this.assertExiste(tenantId);
+    await this.db.integracionCredencial.deleteMany({ where: { tenantId, proveedor: 'tokko' } });
+    return { configurada: false, ultimos4: null, actualizadoEl: null };
+  }
+
+  /**
+   * Prueba el circuito completo: que la credencial exista, que se pueda
+   * descifrar con la clave del servidor, y que Tokko la acepte. Devuelve el
+   * error en vez de tirarlo — es una pantalla de configuración y saber QUÉ
+   * está mal es la mitad del trabajo.
+   */
+  async probarCredencial(tenantId: string) {
+    const fallo = (error: string) => ({ ok: false, propiedades: null, error });
+    const row = await this.db.integracionCredencial.findFirst({
+      where: { tenantId, proveedor: 'tokko' },
+      select: { secretoEnc: true },
+    });
+    if (!row) return fallo('Todavía no hay una clave de Tokko cargada.');
+
+    let secreto: string;
+    try {
+      secreto = desencriptarSecreto(row.secretoEnc, this.encKey(), 'INTEGRACIONES_ENC_KEY');
+    } catch {
+      return fallo(
+        'No se pudo descifrar la clave guardada. Volvé a cargarla: la clave de cifrado del servidor cambió.',
+      );
+    }
+
+    try {
+      const { totalCount } = await listarPropiedades(secreto, 1);
+      return { ok: true, propiedades: totalCount, error: null };
+    } catch (e) {
+      return fallo(e instanceof TokkoError ? e.message : 'Error inesperado al consultar Tokko.');
+    }
+  }
+
+  private async assertExiste(tenantId: string): Promise<void> {
+    const t = await this.db.tenant.findUnique({ where: { id: tenantId }, select: { id: true } });
+    if (!t) throw new NotFoundException('Inmobiliaria no encontrada.');
   }
 }
 
