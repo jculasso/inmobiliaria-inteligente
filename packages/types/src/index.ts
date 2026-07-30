@@ -34,3 +34,4 @@ export * from './todo';
 
 // Contratos del módulo Protocolo 5 Semanas (comercialización de una captación).
 export * from './protocolo';
+export * from './publicacion';
