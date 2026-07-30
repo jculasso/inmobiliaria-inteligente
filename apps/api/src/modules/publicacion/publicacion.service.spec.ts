@@ -159,3 +159,74 @@ describe('PublicacionService — vaciar el espejo', () => {
     expect(deleteMany).toHaveBeenCalledWith({});
   });
 });
+
+describe('PublicacionService — importar no escala con la cantidad', () => {
+  /**
+   * La primera versión hacía findFirst + create/update por propiedad: 50
+   * consultas para 25. Con la base en otro continente eso se pasó del timeout
+   * de la transacción y la traída se cancelaba.
+   *
+   * Este test fija que la cantidad de consultas NO dependa de cuántas
+   * propiedades vengan, que es lo único que evita que vuelva a pasar al traer
+   * las 387.
+   */
+  function tokkoProp(id: number) {
+    return {
+      id,
+      reference_code: `REF-${id}`,
+      publication_title: 'Depto',
+      public_url: null,
+      created_at: '2026-07-01T00:00:00Z',
+      status: 2,
+      address: 'Calle 1',
+      type: { id: 1, name: 'Departamento' },
+      location: { id: 9, short_location: 'Rosario' },
+      operations: [{ operation_type: 'Venta', prices: [{ currency: 'USD', price: 100 }] }],
+      photos: [{ image: 'https://x/1.jpg', is_front_cover: true }],
+      producer: { id: 5, name: 'Ana', email: 'ana@vacker.test' },
+    };
+  }
+
+  async function importarN(n: number) {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      // Primera llamada: el total. Segunda: la página de propiedades.
+      const esConteo = String(url).includes('limit=1&');
+      const objects = esConteo ? [] : Array.from({ length: n }, (_, i) => tokkoProp(1000 + i));
+      return new Response(JSON.stringify({ meta: { total_count: n }, objects }), { status: 200 });
+    });
+
+    const findMany = vi.fn().mockResolvedValue([]);
+    const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const createMany = vi.fn().mockResolvedValue({ count: n });
+    const tx = {
+      integracionCredencial: {
+        findFirst: vi.fn().mockResolvedValue({ secretoEnc: encriptarSecreto(SECRETO, ENC_KEY) }),
+      },
+      usuario: { findMany: vi.fn().mockResolvedValue([{ id: 'u1', email: 'ana@vacker.test' }]) },
+      propiedad: { findMany, deleteMany, createMany },
+    };
+    const svc = new PublicacionService(makeDb(tx), makeConfig(ENC_KEY));
+    const r = await svc.importar(n, CTX);
+    fetchSpy.mockRestore();
+    return { r, findMany, deleteMany, createMany };
+  }
+
+  it('con 25 propiedades hace las mismas consultas que con 5', async () => {
+    const pocas = await importarN(5);
+    const muchas = await importarN(25);
+
+    for (const c of [pocas, muchas]) {
+      expect(c.findMany).toHaveBeenCalledTimes(1);
+      expect(c.deleteMany).toHaveBeenCalledTimes(1);
+      expect(c.createMany).toHaveBeenCalledTimes(1);
+    }
+    expect(muchas.r.leidas).toBe(25);
+    expect(muchas.r.creadas).toBe(25);
+  });
+
+  it('vincula el vendedor por email y cuenta los que no matchean', async () => {
+    const { r, createMany } = await importarN(3);
+    expect(r.sinAgente).toBe(0);
+    expect(createMany.mock.calls[0]![0].data[0].agenteId).toBe('u1');
+  });
+});
