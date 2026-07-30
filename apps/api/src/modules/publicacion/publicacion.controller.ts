@@ -1,6 +1,12 @@
-import { Body, Controller, Delete, Get, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { GuardarCredencialSchema, ROLES_PUBLICACION, type GuardarCredencial } from '@vacker/types';
+import {
+  GuardarCredencialSchema,
+  ImportarSchema,
+  ROLES_PUBLICACION,
+  type GuardarCredencial,
+  type Importar,
+} from '@vacker/types';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -54,5 +60,26 @@ export class PublicacionController {
   @ApiOperation({ summary: 'Prueba la conexión con Tokko y devuelve cuántas propiedades ve' })
   probar() {
     return this.publicacion.probarConexion();
+  }
+
+  @Get('propiedades')
+  @Roles(...ROLES_PUBLICACION)
+  @ApiOperation({ summary: 'Propiedades ya traídas de Tokko' })
+  propiedades() {
+    return this.publicacion.listar();
+  }
+
+  /**
+   * Trae de Tokko las N más recientes. Es una LECTURA: no modifica nada en
+   * Tokko. POST y no GET porque sale a la red y escribe en nuestra base.
+   */
+  @Post('propiedades/importar')
+  @Roles(...ROLES_PUBLICACION)
+  @ApiOperation({ summary: 'Trae desde Tokko las N propiedades más recientes' })
+  importar(
+    @Query(new ZodValidationPipe(ImportarSchema)) query: Importar,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.publicacion.importar(query.cuantas, ctxDe(user));
   }
 }

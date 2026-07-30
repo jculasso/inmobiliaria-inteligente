@@ -1,7 +1,8 @@
 import { requireServerPrincipal } from '../../lib/server-principal';
 import { puedeUsarPublicacion } from '../../lib/rbac';
-import { getCredencial } from '../../lib/publicacion-api';
+import { getCredencial, listarPropiedades } from '../../lib/publicacion-api';
 import { CredencialTokko } from '../../components/publicacion/credencial-tokko';
+import { PropiedadesTokko } from '../../components/publicacion/propiedades-tokko';
 
 export const metadata = { title: 'Publicación' };
 
@@ -23,11 +24,15 @@ export default async function PublicacionPage() {
     );
   }
 
-  const credencial = await getCredencial(ctx.accessToken);
+  const [credencial, propiedades] = await Promise.all([
+    getCredencial(ctx.accessToken),
+    listarPropiedades(ctx.accessToken),
+  ]);
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
+    <div className="flex max-w-3xl flex-col gap-4">
       <CredencialTokko inicial={credencial} />
+      {credencial.configurada && <PropiedadesTokko inicial={propiedades} />}
     </div>
   );
 }

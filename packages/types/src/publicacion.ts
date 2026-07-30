@@ -63,3 +63,47 @@ export const PruebaConexionSchema = z.object({
   error: z.string().nullable(),
 });
 export type PruebaConexion = z.infer<typeof PruebaConexionSchema>;
+
+/** Cuántas propiedades traer de Tokko en una importación de prueba. */
+export const ImportarSchema = z.object({
+  cuantas: z.coerce.number().int().min(1).max(50).default(10),
+});
+export type Importar = z.infer<typeof ImportarSchema>;
+
+/**
+ * Resultado de traer propiedades desde Tokko.
+ *
+ * `sinAgente` se informa aparte porque es la única parte que necesita una
+ * decisión humana: el email del agente en Tokko no siempre corresponde a un
+ * usuario nuestro (mismo persona, mail personal contra corporativo).
+ */
+export const ResultadoImportacionSchema = z.object({
+  leidas: z.number(),
+  creadas: z.number(),
+  actualizadas: z.number(),
+  sinAgente: z.number(),
+});
+export type ResultadoImportacion = z.infer<typeof ResultadoImportacionSchema>;
+
+/** Una propiedad como la muestra la pantalla. */
+export const PropiedadDtoSchema = z.object({
+  id: z.string(),
+  tokkoId: z.number(),
+  referenceCode: z.string().nullable(),
+  titulo: z.string().nullable(),
+  tipo: z.string().nullable(),
+  operacion: z.string().nullable(),
+  precio: z.number().nullable(),
+  moneda: z.string().nullable(),
+  direccion: z.string().nullable(),
+  ubicacion: z.string().nullable(),
+  fotos: z.number(),
+  fotoPortada: z.string().nullable(),
+  publicUrl: z.string().nullable(),
+  /** Nombre del vendedor vinculado, o `null` si no se pudo vincular. */
+  agente: z.string().nullable(),
+  /** Cómo figura en Tokko — se muestra cuando no hay vínculo, para saber a quién reclamar. */
+  agenteTokko: z.string().nullable(),
+  creadoEnTokko: z.string().nullable(),
+});
+export type PropiedadDto = z.infer<typeof PropiedadDtoSchema>;
