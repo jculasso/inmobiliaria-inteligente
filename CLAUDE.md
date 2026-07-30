@@ -168,7 +168,23 @@ Cuando una regla se pueda convertir en test, convertila: un test rojo obliga a l
 
 ---
 
-## 11. Lo que aporta el humano (no lo resuelve el agente)
+## 11. Skills: los tres procedimientos que se repiten
+
+En `.claude/skills/` viven tres procedimientos que ya se ejecutaron varias
+veces a mano y que conviene que salgan siempre igual. Se invocan por nombre.
+
+| Skill | Cuándo | Qué evita |
+|---|---|---|
+| **`sql-produccion`** | Antes de cualquier DELETE/UPDATE masivo en la base real | La purga del 28/07 que alcanzó a un tenant que nadie recordaba |
+| **`ship`** | Cuando un cambio está terminado y hay que publicarlo | Mergear antes de que CI reporte; saltear la definición de hecho |
+| **`verificar-ui`** | Al tocar componentes, estilos, responsive o PWA | Dar por hecho algo que renderiza pero no se ve |
+
+No reemplazan a `docs/CONVENCIONES_TECNICAS.md`: lo ejecutan. El documento
+explica el porqué, la skill da los pasos.
+
+---
+
+## 12. Lo que aporta el humano (no lo resuelve el agente)
 
 - Crear el proyecto en Supabase y pasar `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`.
 - Crear el repo en GitHub y conectar Render (API) y Vercel (web).
