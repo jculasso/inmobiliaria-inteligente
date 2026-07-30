@@ -170,7 +170,7 @@ Cuando una regla se pueda convertir en test, convertila: un test rojo obliga a l
 
 ## 11. Skills: los procedimientos que se repiten
 
-En `.claude/skills/` viven seis procedimientos que ya se ejecutaron varias
+En `.claude/skills/` viven siete procedimientos que ya se ejecutaron varias
 veces a mano y que conviene que salgan siempre igual. Se invocan por nombre.
 
 **Antes de codificar** — se encadenan, y para un cambio chico se puede entrar
@@ -178,6 +178,7 @@ directo por la última:
 
 | Skill | Cuándo | Qué evita |
 |---|---|---|
+| **`ordenar-pedido`** | Un mensaje con varios pedidos mezclados, ambiguos o que se contradicen | Codificar la lectura equivocada de un pedido largo |
 | **`indagar`** | Un módulo nuevo, un cambio de reglas, un pedido de terceros | Implementar bien la interpretación equivocada |
 | **`especificar`** | Cuando lo acordado tiene que quedar escrito | Reglas que no se pueden comprobar, o sea que no se pueden testear |
 | **`plan-tecnico`** | Antes de la primera línea de código | Escribir la misma constante dos veces; queries que crecen con las filas |
