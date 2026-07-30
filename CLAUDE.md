@@ -168,16 +168,27 @@ Cuando una regla se pueda convertir en test, convertila: un test rojo obliga a l
 
 ---
 
-## 11. Skills: los tres procedimientos que se repiten
+## 11. Skills: los procedimientos que se repiten
 
-En `.claude/skills/` viven tres procedimientos que ya se ejecutaron varias
+En `.claude/skills/` viven seis procedimientos que ya se ejecutaron varias
 veces a mano y que conviene que salgan siempre igual. Se invocan por nombre.
+
+**Antes de codificar** — se encadenan, y para un cambio chico se puede entrar
+directo por la última:
+
+| Skill | Cuándo | Qué evita |
+|---|---|---|
+| **`indagar`** | Un módulo nuevo, un cambio de reglas, un pedido de terceros | Implementar bien la interpretación equivocada |
+| **`especificar`** | Cuando lo acordado tiene que quedar escrito | Reglas que no se pueden comprobar, o sea que no se pueden testear |
+| **`plan-tecnico`** | Antes de la primera línea de código | Escribir la misma constante dos veces; queries que crecen con las filas |
+
+**Al ejecutar:**
 
 | Skill | Cuándo | Qué evita |
 |---|---|---|
 | **`sql-produccion`** | Antes de cualquier DELETE/UPDATE masivo en la base real | La purga del 28/07 que alcanzó a un tenant que nadie recordaba |
-| **`ship`** | Cuando un cambio está terminado y hay que publicarlo | Mergear antes de que CI reporte; saltear la definición de hecho |
 | **`verificar-ui`** | Al tocar componentes, estilos, responsive o PWA | Dar por hecho algo que renderiza pero no se ve |
+| **`ship`** | Cuando un cambio está terminado y hay que publicarlo | Mergear antes de que CI reporte; saltear la definición de hecho |
 
 No reemplazan a `docs/CONVENCIONES_TECNICAS.md`: lo ejecutan. El documento
 explica el porqué, la skill da los pasos.
