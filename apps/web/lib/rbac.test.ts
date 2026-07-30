@@ -156,6 +156,8 @@ describe('puedeUsarPublicacion', () => {
   // módulo antes de asignárselo a nadie.
   it('y los admins, que son los que lo van a probar', () => {
     expect(puedeUsarPublicacion(['admin_tenant'])).toBe(true);
+    // admin_plataforma faltaba en la lista de la API y el front lo dejaba
+    // pasar: 403 disfrazado de error de conexión. Ahora la lista es una sola.
     expect(puedeUsarPublicacion(['admin_plataforma'])).toBe(true);
   });
 

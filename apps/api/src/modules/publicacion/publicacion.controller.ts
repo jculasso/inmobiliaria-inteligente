@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { GuardarCredencialSchema, type GuardarCredencial } from '@vacker/types';
+import { GuardarCredencialSchema, ROLES_PUBLICACION, type GuardarCredencial } from '@vacker/types';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -10,16 +10,10 @@ import { PublicacionService } from './publicacion.service';
 /**
  * Configuración del módulo de Publicación.
  *
- * `publicador` es un rol funcional: lo tiene quien carga y publica propiedades.
- * Los admins entran igual sin tenerlo porque son los que van a probar el módulo
- * antes de asignárselo a nadie — mientras nadie tenga `publicador`, el módulo
- * está de hecho apagado para el resto de la inmobiliaria.
- *
- * Dirección NO está: publicar no es una tarea de conducción, y sumar el rol a
- * quien lo necesite es un click en /admin.
+ * Los roles salen de `ROLES_PUBLICACION` (@vacker/types), la MISMA constante que
+ * usa el front: tenerla duplicada ya causó un 403 que se veía como un error de
+ * conexión.
  */
-const PUEDEN_PUBLICAR = ['publicador', 'admin_tenant'] as const;
-
 @ApiTags('publicacion')
 @ApiBearerAuth()
 @Controller('publicacion')
@@ -28,14 +22,14 @@ export class PublicacionController {
   constructor(private readonly publicacion: PublicacionService) {}
 
   @Get('credencial')
-  @Roles(...PUEDEN_PUBLICAR)
+  @Roles(...ROLES_PUBLICACION)
   @ApiOperation({ summary: 'Si la clave de Tokko está cargada (nunca devuelve el valor)' })
   estado() {
     return this.publicacion.estado();
   }
 
   @Put('credencial')
-  @Roles(...PUEDEN_PUBLICAR)
+  @Roles(...ROLES_PUBLICACION)
   @ApiOperation({ summary: 'Carga o reemplaza la clave de Tokko (se guarda cifrada)' })
   guardar(
     @Body(new ZodValidationPipe(GuardarCredencialSchema)) dto: GuardarCredencial,
@@ -45,7 +39,7 @@ export class PublicacionController {
   }
 
   @Delete('credencial')
-  @Roles(...PUEDEN_PUBLICAR)
+  @Roles(...ROLES_PUBLICACION)
   @ApiOperation({ summary: 'Quita la clave de Tokko' })
   borrar() {
     return this.publicacion.borrar();
@@ -56,7 +50,7 @@ export class PublicacionController {
    * cacheable y no queremos que un prefetch del navegador la dispare sola.
    */
   @Post('credencial/probar')
-  @Roles(...PUEDEN_PUBLICAR)
+  @Roles(...ROLES_PUBLICACION)
   @ApiOperation({ summary: 'Prueba la conexión con Tokko y devuelve cuántas propiedades ve' })
   probar() {
     return this.publicacion.probarConexion();

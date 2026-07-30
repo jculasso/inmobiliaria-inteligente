@@ -1,4 +1,4 @@
-import type { Rol } from '@vacker/types';
+import { ROLES_PUBLICACION, type Rol } from '@vacker/types';
 
 export type AlcanceModulo = 'propio' | 'equipo' | 'total' | 'ver';
 
@@ -41,15 +41,15 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
 };
 
 /**
- * Ve y usa el módulo de Publicación. Es un rol FUNCIONAL: en Vacker lo va a
- * tener la persona administrativa que hoy carga las propiedades en Tokko a mano.
+ * Ve y usa el módulo de Publicación.
  *
- * Los admins entran igual sin tener el rol, porque son los que van a probar el
- * módulo antes de asignárselo a nadie. Mientras nadie tenga `publicador`, el
- * módulo queda de hecho apagado para el resto de la inmobiliaria.
+ * Usa la MISMA constante que los `@Roles` de la API (`ROLES_PUBLICACION` en
+ * @vacker/types). Estaba duplicada y las dos listas se separaron: el front
+ * dejaba entrar a `admin_plataforma` y la API respondía 403, que el borde de
+ * error mostraba como "no pudimos conectar con el servidor".
  */
 export function puedeUsarPublicacion(roles: Rol[]): boolean {
-  return roles.some((r) => r === 'publicador' || r === 'admin_tenant' || r === 'admin_plataforma');
+  return roles.some((r) => (ROLES_PUBLICACION as readonly string[]).includes(r));
 }
 
 /** Rol más privilegiado del usuario dentro del tenant (mismo orden que `alcanceDeModulo`). */

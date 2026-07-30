@@ -7,6 +7,21 @@ import { z } from 'zod';
  * propiedad y el feed llegan en los pasos siguientes.
  */
 
+/**
+ * Quién puede usar el módulo de Publicación.
+ *
+ * Vive acá y no duplicada en la API y en el front porque tenerla dos veces ya
+ * falló: el front dejaba entrar a `admin_plataforma` y la API lo rechazaba con
+ * un 403, que el borde de error mostraba como "no pudimos conectar con el
+ * servidor". Media hora para encontrar una lista desincronizada.
+ *
+ * `publicador` es el rol funcional: quien carga y publica propiedades.
+ * Los admins entran además porque son los que prueban el módulo antes de
+ * asignarle el rol a nadie. Dirección NO entra por ser dirección: publicar no
+ * es una tarea de conducción.
+ */
+export const ROLES_PUBLICACION = ['publicador', 'admin_tenant', 'admin_plataforma'] as const;
+
 /** Proveedores de integración soportados. Hoy uno solo. */
 export const ProveedorSchema = z.enum(['tokko']);
 export type Proveedor = z.infer<typeof ProveedorSchema>;
