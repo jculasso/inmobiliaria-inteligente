@@ -144,3 +144,18 @@ describe('PublicacionService — probar conexión', () => {
     fetchSpy.mockRestore();
   });
 });
+
+describe('PublicacionService — vaciar el espejo', () => {
+  it('borra solo la copia local y dice cuántas', async () => {
+    // Es seguro por naturaleza: el original vive en Tokko. Por eso no hay
+    // respaldo ni confirmación extra del lado del servidor — muy distinto de
+    // borrar una tasación, donde se pierde trabajo hecho.
+    const deleteMany = vi.fn().mockResolvedValue({ count: 10 });
+    const tx = { propiedad: { deleteMany } };
+    const svc = new PublicacionService(makeDb(tx), makeConfig(ENC_KEY));
+
+    expect(await svc.vaciarPropiedades()).toEqual({ borradas: 10 });
+    // Sin `where`: dentro de withTenant, RLS ya acota a la inmobiliaria.
+    expect(deleteMany).toHaveBeenCalledWith({});
+  });
+});

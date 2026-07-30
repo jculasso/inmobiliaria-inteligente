@@ -4,10 +4,12 @@ import {
   PropiedadDtoSchema,
   PruebaConexionSchema,
   ResultadoImportacionSchema,
+  VaciadoSchema,
   type CredencialEstado,
   type PropiedadDto,
   type PruebaConexion,
   type ResultadoImportacion,
+  type Vaciado,
 } from '@vacker/types';
 import { apiFetch } from './api-client';
 
@@ -57,4 +59,8 @@ export async function importarPropiedades(
     method: 'POST',
     searchParams: { cuantas },
   });
+}
+
+export async function vaciarPropiedades(accessToken: string): Promise<Vaciado> {
+  return apiFetch('/publicacion/propiedades', VaciadoSchema, { accessToken, method: 'DELETE' });
 }

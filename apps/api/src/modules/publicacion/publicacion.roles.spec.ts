@@ -13,7 +13,15 @@ import { PublicacionController } from './publicacion.controller';
  * aunque la Home no le muestre la tarjeta — pasó antes en este proyecto.
  */
 describe('RBAC del módulo de Publicación', () => {
-  const HANDLERS = ['estado', 'guardar', 'borrar', 'probar'] as const;
+  const HANDLERS = [
+    'estado',
+    'guardar',
+    'borrar',
+    'probar',
+    'propiedades',
+    'importar',
+    'vaciarPropiedades',
+  ] as const;
 
   it('el controller exige tener contratado el módulo', () => {
     const modulo = Reflect.getMetadata(MODULO_KEY, PublicacionController) as ModuloKey | undefined;

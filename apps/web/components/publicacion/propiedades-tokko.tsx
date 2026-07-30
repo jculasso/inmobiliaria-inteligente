@@ -6,8 +6,9 @@ import type { PropiedadDto, ResultadoImportacion } from '@vacker/types';
 import { Button, Card } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
-import { importarPropiedades } from '../../lib/publicacion-api';
+import { importarPropiedades, vaciarPropiedades } from '../../lib/publicacion-api';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
+import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 
 /** Precio con su moneda: Tokko devuelve USD y ARS mezclados. */
 function precioDe(p: PropiedadDto): string {
@@ -29,6 +30,7 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
   const [trayendo, setTrayendo] = useState(false);
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmandoVaciar, setConfirmandoVaciar] = useState(false);
 
   async function traer() {
     setTrayendo(true);
@@ -41,6 +43,12 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
     } finally {
       setTrayendo(false);
     }
+  }
+
+  async function vaciar() {
+    await vaciarPropiedades(await getAccessToken());
+    setResultado(null);
+    router.refresh();
   }
 
   return (
@@ -71,6 +79,15 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
         <Button variant="primary" size="sm" onClick={traer} disabled={trayendo}>
           {trayendo ? 'Trayendo…' : 'Traer de Tokko'}
         </Button>
+        {inicial.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setConfirmandoVaciar(true)}
+            className="h-10 text-xs font-semibold text-brand-red hover:underline"
+          >
+            Vaciar la lista
+          </button>
+        )}
       </div>
 
       {resultado && (
@@ -91,6 +108,16 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
       )}
 
       {error && <p className="text-sm text-brand-red">{error}</p>}
+
+      {confirmandoVaciar && (
+        <ConfirmarBorradoModal
+          titulo="Vaciar la lista de propiedades"
+          descripcion="Se borra la copia local. En Tokko no se toca nada: podés volver a traerlas cuando quieras."
+          detalle={<DatoBorrado etiqueta="Propiedades a borrar">{inicial.length}</DatoBorrado>}
+          onConfirm={vaciar}
+          onClose={() => setConfirmandoVaciar(false)}
+        />
+      )}
 
       {inicial.length > 0 && (
         <ListaTarjetas etiqueta="Propiedades">

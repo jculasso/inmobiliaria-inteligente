@@ -82,4 +82,11 @@ export class PublicacionController {
   ) {
     return this.publicacion.importar(query.cuantas, ctxDe(user));
   }
+
+  @Delete('propiedades')
+  @Roles(...ROLES_PUBLICACION)
+  @ApiOperation({ summary: 'Vacía el espejo local de propiedades (no toca Tokko)' })
+  vaciarPropiedades() {
+    return this.publicacion.vaciarPropiedades();
+  }
 }
