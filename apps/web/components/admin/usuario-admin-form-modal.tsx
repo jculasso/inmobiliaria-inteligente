@@ -9,9 +9,14 @@ import { Campo, CheckCard, Seccion, inputClass } from '../form-ui';
 
 /** Qué ve/puede cada rol — evita tener que recordarlo de memoria al dar de alta. */
 const ROLES_DISPONIBLES: { value: Rol; label: string; descripcion: string }[] = [
-  { value: 'vendedor', label: 'Vendedor', descripcion: 'Ve y carga lo suyo.' },
+  { value: 'vendedor', label: 'Vendedor', descripcion: 'Ve lo suyo. No carga operaciones.' },
   { value: 'team_leader', label: 'Team Leader', descripcion: 'Ve lo suyo y lo de su equipo.' },
   { value: 'direccion', label: 'Dirección (CEO)', descripcion: 'Ve toda la inmobiliaria.' },
+  {
+    value: 'publicador',
+    label: 'Publicador',
+    descripcion: 'Publica propiedades en Tokko. Se suma a lo que la persona ya sea.',
+  },
   { value: 'admin_tenant', label: 'Admin del tenant', descripcion: 'Administra usuarios y ajustes.' },
 ];
 
