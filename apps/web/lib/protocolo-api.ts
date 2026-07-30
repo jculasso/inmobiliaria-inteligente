@@ -4,6 +4,7 @@ import {
   ProtocoloDtoSchema,
   ProtocoloKpisSchema,
   ProtocoloResumenDtoSchema,
+  ReporteSemanalSchema,
   type ArchivarProtocolo,
   type IniciarProtocolo,
   type ProtocoloFiltro,
@@ -80,4 +81,13 @@ export async function generarInformeProtocolo(accessToken: string, id: string) {
 
 export async function desarchivarProtocolo(accessToken: string, id: string) {
   return apiFetch(`/protocolo/${id}/desarchivar`, ProtocoloDtoSchema, { accessToken, method: 'POST' });
+}
+
+/**
+ * Reporte semanal de alertas agrupado por vendedor — el mismo que sale por
+ * mail, servido a pedido. Solo dirección y admin del tenant (la API valida
+ * con `ROLES_REPORTE_PROTOCOLO`).
+ */
+export async function getReporteSemanal(accessToken: string) {
+  return apiFetch('/protocolo/reporte-semanal', ReporteSemanalSchema, { accessToken });
 }
