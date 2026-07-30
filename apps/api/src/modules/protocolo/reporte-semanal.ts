@@ -1,4 +1,15 @@
-import { SEMANAS, type AlertaProtocolo, type NivelAlerta } from '@vacker/types';
+import {
+  SEMANAS,
+  type AlertaProtocolo,
+  type EstadoSemana,
+  type ItemDecision,
+  type NivelAlerta,
+  type PropiedadEnReporte,
+  type ReporteSemanal,
+  type ResumenReporte,
+  type SemanaEnReporte,
+  type VendedorEnReporte,
+} from '@vacker/types';
 import {
   avanceSemana,
   calcularAlertas,
@@ -10,29 +21,17 @@ import {
   type DatosAlertas,
 } from './protocolo.calc';
 
-// Generador del reporte semanal que se le manda por mail a la dirección.
+// Generador del reporte semanal que se le manda por mail a la dirección y que
+// el CEO también puede correr a pedido desde la aplicación.
 //
 // Es una función PURA a propósito: no toca Prisma, no manda mails y no sabe
 // qué día es salvo que se lo digan. Así se puede escribir y verificar entero
 // antes de que exista el proveedor de envío, y el día que se cambie el
 // proveedor esto no se toca.
 //
-// Especificación: docs/specs/reporte-semanal-protocolo.md — los números de
-// regla que aparecen en los comentarios son los de ese documento.
-
-/** Estado de una de las cinco semanas del protocolo (regla 6). */
-export type EstadoSemana = 'futura' | 'completa' | 'en_curso' | 'incompleta';
-
-export interface SemanaEnReporte {
-  semana: number;
-  estado: EstadoSemana;
-  /** Acciones vencidas y sin cerrar de esta semana. */
-  atrasadas: number;
-  /** Acciones aplicables todavía sin realizar (incluye las atrasadas). */
-  pendientes: number;
-  /** Alertas atribuidas a esta semana (regla 7). */
-  alertas: AlertaProtocolo[];
-}
+// El contrato de salida vive en @vacker/types porque lo consumen los dos
+// lados. Especificación: docs/specs/reporte-semanal-protocolo.md — los
+// números de regla de los comentarios son los de ese documento.
 
 /** Lo que el generador necesita de un protocolo. Deliberadamente chico. */
 export interface ProtocoloParaReporte {
@@ -48,63 +47,16 @@ export interface ProtocoloParaReporte {
   agente: { id: string; nombre: string };
 }
 
-export interface PropiedadEnReporte {
-  protocoloId: string;
-  direccion: string;
-  semanaActual: number;
-  prioridad: NivelAlerta;
-  /** Alertas sin semana: son de la propiedad, no del proceso (regla 7). */
-  alertasGenerales: AlertaProtocolo[];
-  semanas: SemanaEnReporte[];
-}
-
-export interface VendedorEnReporte {
-  vendedorId: string;
-  vendedorNombre: string;
-  propiedades: PropiedadEnReporte[];
-  /** Cuántas de sus propiedades tienen al menos una alerta roja. */
-  conRojas: number;
-}
-
-export interface ResumenReporte {
-  activas: number;
-  conRojas: number;
-  autorizacionesEnRiesgo: number;
-  listasParaCierre: number;
-}
-
-export interface ItemDecision {
-  vendedorNombre: string;
-  direccion: string;
-  protocoloId: string;
-  alertas: AlertaProtocolo[];
-}
-
-export interface ReporteSemanal {
-  generadoEl: string;
-  resumen: ResumenReporte;
-  /**
-   * Si es `false` no hay nada rojo y el mail va corto: solo el resumen
-   * (regla 9). Un mail que mide siempre lo mismo se ignora enseguida.
-   */
-  necesitaAtencion: boolean;
-  /** Solo lo rojo, de todos los vendedores. Es lo primero que se lee (regla 5). */
-  necesitaDecision: ItemDecision[];
-  porVendedor: VendedorEnReporte[];
-}
-
 const ORDEN_NIVEL: Record<NivelAlerta, number> = { roja: 0, ambar: 1, verde: 2 };
+
+const TITULO_CIERRE = 'Protocolo listo para cierre';
 
 /** Compara textos como los ordenaría una persona (acentos y ñ incluidos). */
 function porTexto(a: string, b: string): number {
   return a.localeCompare(b, 'es', { sensitivity: 'base' });
 }
 
-function estadoDeSemana(
-  semana: number,
-  enCurso: number,
-  acciones: AccionCalc[],
-): EstadoSemana {
+function estadoDeSemana(semana: number, enCurso: number, acciones: AccionCalc[]): EstadoSemana {
   if (semana > enCurso) return 'futura';
   // Una semana sin acciones aplicables cuenta como completa: `avanceSemana`
   // devuelve 1 para el conjunto vacío, así que las "no corresponde" no la
@@ -127,7 +79,7 @@ function armarPropiedad(p: ProtocoloParaReporte, hoy: string): PropiedadEnReport
   const alertas = calcularAlertas(datos, hoy);
   const enCurso = semanaActual(p.fechaInicio, hoy);
 
-  const semanas = SEMANAS.map((semana) => {
+  const semanas: SemanaEnReporte[] = SEMANAS.map((semana) => {
     const aplicables = p.acciones.filter(
       (a) => a.semana === semana && a.estado !== 'no_corresponde',
     );
@@ -140,11 +92,21 @@ function armarPropiedad(p: ProtocoloParaReporte, hoy: string): PropiedadEnReport
     };
   });
 
+  // El protocolo se puede cerrar con tareas pendientes —decisión de la
+  // dirección el 30/07/2026— pero el reporte tiene que decirlo. Antes el verde
+  // aparecía pelado al lado de una alerta roja y parecía una contradicción.
+  const listoParaCierre = alertas.some((a) => a.titulo === TITULO_CIERRE);
+  const pendientesArrastrados = p.acciones.filter(
+    (a) => a.semana < enCurso && a.estado !== 'realizada' && a.estado !== 'no_corresponde',
+  ).length;
+
   return {
     protocoloId: p.id,
     direccion: p.direccion,
     semanaActual: enCurso,
     prioridad: prioridad(alertas),
+    listoParaCierre,
+    pendientesArrastrados,
     alertasGenerales: alertas.filter((a) => a.semana == null),
     semanas,
   };
@@ -158,10 +120,6 @@ function esDeAutorizacion(a: AlertaProtocolo): boolean {
 function rojasDe(p: PropiedadEnReporte): AlertaProtocolo[] {
   const deSemanas = p.semanas.flatMap((s) => s.alertas);
   return [...p.alertasGenerales, ...deSemanas].filter((a) => a.nivel === 'roja');
-}
-
-function todasLasAlertas(p: PropiedadEnReporte): AlertaProtocolo[] {
-  return [...p.alertasGenerales, ...p.semanas.flatMap((s) => s.alertas)];
 }
 
 /**
@@ -226,14 +184,13 @@ export function generarReporteSemanal(
   }
 
   const todas = porVendedor.flatMap((g) => g.propiedades);
+  const listas = todas.filter((p) => p.listoParaCierre);
   const resumen: ResumenReporte = {
     activas: todas.length,
     conRojas: todas.filter((p) => p.prioridad === 'roja').length,
-    autorizacionesEnRiesgo: todas.filter((p) => p.alertasGenerales.some(esDeAutorizacion))
-      .length,
-    listasParaCierre: todas.filter((p) =>
-      todasLasAlertas(p).some((a) => a.titulo === 'Protocolo listo para cierre'),
-    ).length,
+    autorizacionesEnRiesgo: todas.filter((p) => p.alertasGenerales.some(esDeAutorizacion)).length,
+    listasParaCierre: listas.length,
+    listasConPendientes: listas.filter((p) => p.pendientesArrastrados > 0).length,
   };
 
   return {

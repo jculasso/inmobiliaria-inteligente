@@ -34,4 +34,8 @@ export * from './todo';
 
 // Contratos del módulo Protocolo 5 Semanas (comercialización de una captación).
 export * from './protocolo';
+
+// Reporte semanal del Protocolo: lo consumen el generador del mail y la
+// pantalla que lo corre a pedido, así que el contrato es uno solo.
+export * from './reporte-protocolo';
 export * from './publicacion';

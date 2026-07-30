@@ -5,6 +5,7 @@ import {
   ArchivarProtocoloSchema,
   IniciarProtocoloSchema,
   ProtocoloFiltroSchema,
+  ROLES_REPORTE_PROTOCOLO,
   UpdateAccionSchema,
   UpdateProtocoloSchema,
   type ArchivarProtocolo,
@@ -50,6 +51,17 @@ export class ProtocolosController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.protocolos.kpis(query.verTodo ?? false, ctxDe(user));
+  }
+
+  // Va ANTES de @Get(':id') a propósito: si no, Nest toma 'reporte-semanal'
+  // como si fuera un id y responde 404.
+  @Get('reporte-semanal')
+  @Roles(...ROLES_REPORTE_PROTOCOLO)
+  @ApiOperation({
+    summary: 'Reporte semanal de alertas agrupado por vendedor (el mismo que sale por mail)',
+  })
+  reporteSemanal(@CurrentUser() user: AuthPrincipal) {
+    return this.protocolos.reporteSemanal(ctxDe(user));
   }
 
   @Get()

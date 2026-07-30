@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { fechaPrevistaDeSemana, type AccionCalc } from './protocolo.calc';
 import {
-  generarReporteSemanal,
+  textoDeCierre,
   type PropiedadEnReporte,
-  type ProtocoloParaReporte,
   type ReporteSemanal,
   type SemanaEnReporte,
-} from './reporte-semanal';
+} from '@vacker/types';
+import { describe, expect, it } from 'vitest';
+import { fechaPrevistaDeSemana, type AccionCalc } from './protocolo.calc';
+import { generarReporteSemanal, type ProtocoloParaReporte } from './reporte-semanal';
 
 // Los números de regla son los de docs/specs/reporte-semanal-protocolo.md.
 
@@ -235,16 +235,17 @@ describe('generarReporteSemanal', () => {
     expect(r.resumen.conRojas).toBe(1);
     expect(r.resumen.autorizacionesEnRiesgo).toBe(1);
     expect(r.resumen.listasParaCierre).toBe(3);
+    // Solo la de 'atraso' arrastra tareas sin cerrar.
+    expect(r.resumen.listasConPendientes).toBe(1);
   });
 
-  // Deja constancia de un comportamiento HEREDADO de calcularAlertas, no una
-  // decisión de este reporte: "Protocolo listo para cierre" mira SOLO que la
-  // semana 5 esté completa, así que convive con acciones atrasadas de semanas
-  // anteriores. El reporte lo replica a propósito (regla 2) en vez de corregirlo
-  // por su cuenta: si el mail contara distinto que el dashboard, se dejaría de
-  // creer en los dos. Si se decide cambiarlo, se cambia en calcularAlertas y
-  // los dos se mueven juntos.
-  it('conocido · "listo para cierre" convive con atrasos de semanas previas', () => {
+  // "Protocolo listo para cierre" mira SOLO que la semana 5 esté completa, así
+  // que convive con acciones atrasadas de semanas anteriores. La dirección
+  // decidió el 30/07/2026 que eso está bien —una propiedad se puede cerrar con
+  // tareas pendientes— a condición de que el reporte lo diga con todas las
+  // letras. Por eso `pendientesArrastrados`: el verde solo, al lado de una
+  // alerta roja, parecía una contradicción.
+  it('cierre · listo para cierre informa cuántas tareas arrastra', () => {
     const inicio = '2026-07-01';
     const r = generarReporteSemanal(
       [protocolo({ acciones: acciones(inicio, { 1: 'pendiente' }) })],
@@ -253,9 +254,47 @@ describe('generarReporteSemanal', () => {
 
     const prop = unicaPropiedad(r);
     expect(titulosDe(prop)).toContain('2 acciones atrasadas');
-    expect(titulosDe(prop)).toContain('Protocolo listo para cierre');
+    expect(prop.listoParaCierre).toBe(true);
+    expect(prop.pendientesArrastrados).toBe(2);
     expect(prop.prioridad).toBe('roja');
+    expect(textoDeCierre(prop)).toBe(
+      'Listo para cierre · 2 tareas pendientes de semanas anteriores',
+    );
     expect(r.resumen.listasParaCierre).toBe(1);
+    expect(r.resumen.listasConPendientes).toBe(1);
+  });
+
+  it('cierre · sin nada arrastrado el texto va limpio', () => {
+    const prop = unicaPropiedad(generarReporteSemanal([protocolo()], HOY));
+
+    expect(prop.listoParaCierre).toBe(true);
+    expect(prop.pendientesArrastrados).toBe(0);
+    expect(textoDeCierre(prop)).toBe('Listo para cierre');
+  });
+
+  it('cierre · una sola tarea arrastrada se dice en singular', () => {
+    const inicio = '2026-07-01';
+    const acc = acciones(inicio);
+    const primeraDeSemana1 = acc.findIndex((a) => a.semana === 1);
+    const conUna = acc.map((a, i) =>
+      i === primeraDeSemana1 ? { ...a, estado: 'pendiente' as const } : a,
+    );
+    const prop = unicaPropiedad(generarReporteSemanal([protocolo({ acciones: conUna })], HOY));
+
+    expect(prop.pendientesArrastrados).toBe(1);
+    expect(textoDeCierre(prop)).toBe(
+      'Listo para cierre · 1 tarea pendiente de semanas anteriores',
+    );
+  });
+
+  it('cierre · una propiedad que no llegó al final no anuncia cierre', () => {
+    const inicio = '2026-07-15'; // semana 3
+    const prop = unicaPropiedad(
+      generarReporteSemanal([protocolo({ fechaInicio: inicio, acciones: acciones(inicio) })], HOY),
+    );
+
+    expect(prop.listoParaCierre).toBe(false);
+    expect(textoDeCierre(prop)).toBeNull();
   });
 
   it('regla 9 · sin alertas rojas el reporte no necesita atención', () => {
@@ -317,6 +356,7 @@ describe('generarReporteSemanal', () => {
       conRojas: 0,
       autorizacionesEnRiesgo: 0,
       listasParaCierre: 0,
+      listasConPendientes: 0,
     });
     expect(r.necesitaAtencion).toBe(false);
     expect(r.porVendedor).toHaveLength(0);
