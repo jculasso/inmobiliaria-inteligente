@@ -69,6 +69,20 @@ confusión que ya costó una vez entre vista y permiso
 11. El reporte se genera **por inmobiliaria**. Cada tenant recibe el suyo, con
     sus propios destinatarios, y solo si tiene el módulo `protocolo`
     habilitado.
+12. Una propiedad **se puede cerrar con tareas pendientes**, y el reporte tiene
+    que decirlo con todas las letras: `listoParaCierre` viene acompañado de
+    `pendientesArrastrados` —las acciones sin realizar de semanas ya pasadas— y
+    de una frase única (`textoDeCierre`) que usan el mail y la pantalla.
+
+    Decidido por la dirección el 30/07/2026. Antes el verde aparecía pelado al
+    lado de una alerta roja y parecía una contradicción; el estado era correcto
+    y estaba mal comunicado.
+13. El reporte **se puede pedir a demanda** desde la aplicación
+    (`GET /protocolo/reporte-semanal`), sin esperar al lunes. Lo pueden pedir
+    `direccion` y `admin_tenant`, por la constante compartida
+    `ROLES_REPORTE_PROTOCOLO`. Devuelve siempre el alcance máximo de quien
+    consulta: un reporte de conducción con la mitad de las propiedades no
+    sirve para conducir.
 
 ## Casos borde
 
@@ -106,7 +120,11 @@ confusión que ya costó una vez entre vista y permiso
 | Parte | Estado |
 |---|---|
 | Generador (función pura) + tests | **hecho** — `reporte-semanal.ts` |
+| Contrato compartido en `@vacker/types` | **hecho** — `reporte-protocolo.ts` |
+| Cierre con tareas pendientes, explícito | **hecho** — regla 12 |
+| Endpoint a demanda | **hecho** — `GET /protocolo/reporte-semanal` |
+| Pantalla del reporte a demanda | pendiente |
 | Marca "recibe el reporte" por usuario | pendiente |
 | Render del mail (HTML) | pendiente |
-| Proveedor de envío (Resend) + DNS | pendiente — depende de `avisos.inmobiliariainteligente.net` |
+| Proveedor de envío (Resend) + DNS | **DNS hecho** el 30/07/2026 — `avisos.inmobiliariainteligente.net` verificado, `RESEND_API_KEY` cargada en Render |
 | Disparo por cron (GitHub Actions) | pendiente |

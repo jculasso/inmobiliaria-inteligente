@@ -9,6 +9,7 @@ import {
   type ProtocoloFiltro,
   type ProtocoloKpis,
   type ProtocoloResumenDto,
+  type ReporteSemanal,
   type UpdateAccion,
   type UpdateProtocolo,
   LIMITE_LISTA_CON_SONDA,
@@ -30,6 +31,7 @@ import {
   semanaActual,
   type AccionCalc,
 } from './protocolo.calc';
+import { generarReporteSemanal } from './reporte-semanal';
 
 /** Bucket privado de fotos de propiedades — el acceso es siempre por URL firmada. */
 const FOTOS_BUCKET = 'tasador-fotos';
@@ -375,6 +377,53 @@ export class ProtocolosService {
         archivadas: protocolos.length - activas.length,
       };
     }, ctx);
+  }
+
+  /**
+   * Reporte semanal para la dirección: el mismo que va a salir por mail, pero
+   * servido a pedido para que el CEO pueda correrlo el día que tenga un rato
+   * en vez de esperar al lunes.
+   *
+   * Pide SIEMPRE el alcance máximo de quien lo consulta (`verTodo: true`): un
+   * reporte de conducción con la mitad de las propiedades no sirve para
+   * conducir. Quién puede pedirlo lo decide el `@Roles` del controller.
+   *
+   * Una sola consulta, con todo lo que el generador necesita. El número de
+   * queries no crece con la cantidad de propiedades: la API está en Oregon y
+   * la base en São Paulo, y ya nos costó un timeout importar 25 filas con dos
+   * consultas cada una.
+   */
+  async reporteSemanal(ctx: TenantContext): Promise<ReporteSemanal> {
+    const filas = await this.db.withTenant(async (tx) => {
+      const scope = await scopeDeVista(ctx, tx, true);
+      return tx.protocolo.findMany({
+        where: {
+          estado: 'activa',
+          ...(scope.usuarioIds !== null ? { agenteId: { in: scope.usuarioIds } } : {}),
+        },
+        take: LIMITE_LISTA_CON_SONDA,
+        include: {
+          agente: { select: { id: true, nombre: true } },
+          acciones: { select: { semana: true, estado: true, fechaPrevista: true } },
+          tasacion: { select: { direccion: true } },
+        },
+      });
+    }, ctx);
+
+    return generarReporteSemanal(
+      filas.map((f) => ({
+        id: f.id,
+        direccion: f.tasacion.direccion,
+        estado: f.estado as 'activa' | 'archivada',
+        fechaInicio: f.fechaInicio.toISOString().slice(0, 10),
+        vencimientoAutorizacion: fromDate(f.vencimientoAutorizacion),
+        actualizadoEn: f.updatedAt.toISOString().slice(0, 10),
+        consultas: f.consultas,
+        visitas: f.visitas,
+        acciones: f.acciones.map(aAccionCalc),
+        agente: { id: f.agente.id, nombre: f.agente.nombre },
+      })),
+    );
   }
 
   /**
