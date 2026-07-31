@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { DestinatarioReporte } from '@vacker/types';
+import { esDireccionInexistente, type DestinatarioReporte } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { enviarReporteSemanal, getDestinatariosReporte } from '../../lib/protocolo-api';
@@ -58,7 +58,11 @@ export function EnviarReporteModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const vacia = destinatarios?.length === 0;
+  // Las direcciones de dominio reservado (.test, .invalid…) rebotan siempre.
+  // Se muestran igual, tachadas: filtrarlas en silencio dejaría al usuario
+  // creyendo que a esa persona le llegó.
+  const alcanzables = destinatarios?.filter((d) => !esDireccionInexistente(d.email)) ?? [];
+  const vacia = destinatarios !== null && alcanzables.length === 0;
 
   return (
     <Modal title="Enviar el reporte por mail" onClose={onClose}>
@@ -96,26 +100,43 @@ export function EnviarReporteModal({ onClose }: { onClose: () => void }) {
               </div>
             )}
 
-            {destinatarios && destinatarios.length > 0 && (
+            {destinatarios && destinatarios.length > 0 && !vacia && (
               <div>
                 <p className="text-sm text-ink">
                   Le va a llegar a{' '}
                   <strong>
-                    {destinatarios.length}{' '}
-                    {destinatarios.length === 1 ? 'persona' : 'personas'}
+                    {alcanzables.length} {alcanzables.length === 1 ? 'persona' : 'personas'}
                   </strong>
                   , con el PDF adjunto:
                 </p>
                 <ul className="mt-2 flex flex-col gap-1">
-                  {destinatarios.map((d) => (
-                    <li
-                      key={d.email}
-                      className="rounded-brand border border-line bg-surface px-3 py-2 text-sm"
-                    >
-                      <span className="font-semibold text-ink">{d.nombre}</span>{' '}
-                      <span className="text-muted">· {d.email}</span>
-                    </li>
-                  ))}
+                  {destinatarios.map((d) => {
+                    const inalcanzable = esDireccionInexistente(d.email);
+                    return (
+                      <li
+                        key={d.email}
+                        className={`rounded-brand border px-3 py-2 text-sm ${
+                          inalcanzable
+                            ? 'border-warning/40 bg-warning/5'
+                            : 'border-line bg-surface'
+                        }`}
+                      >
+                        <span
+                          className={`font-semibold ${inalcanzable ? 'text-muted line-through' : 'text-ink'}`}
+                        >
+                          {d.nombre}
+                        </span>{' '}
+                        <span className={inalcanzable ? 'text-muted line-through' : 'text-muted'}>
+                          · {d.email}
+                        </span>
+                        {inalcanzable && (
+                          <span className="block text-xs font-semibold text-warning">
+                            No se le manda: es un dominio de prueba y el mail rebotaría.
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

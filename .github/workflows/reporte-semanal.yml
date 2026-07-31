@@ -1,0 +1,36 @@
+name: Reporte semanal del Protocolo
+
+# Lunes a las 11:00 UTC = 8:00 en Argentina. Se manda a primera hora del lunes
+# porque es cuando la dirección decide la semana; un reporte que llega el
+# viernes se lee cuando ya no se puede hacer nada con él.
+#
+# Los cron de GitHub Actions NO son puntuales: bajo carga se atrasan y pueden
+# saltar corridas. Para un reporte semanal media hora de diferencia no cambia
+# nada, pero por eso mismo NO se usa esto para nada que dependa del minuto.
+on:
+  schedule:
+    - cron: '0 11 * * 1'
+  # Para poder dispararlo a mano desde la pestaña Actions sin esperar al lunes.
+  workflow_dispatch:
+
+jobs:
+  enviar:
+    name: Enviar el reporte a cada inmobiliaria
+    runs-on: ubuntu-latest
+    steps:
+      # La API vive en el free tier de Render y se duerme: el primer request
+      # después de dormir tarda 50s o más. Por eso el timeout es generoso y hay
+      # reintentos — sin esto la tarea fallaba justamente los lunes temprano,
+      # que es cuando lleva más rato sin tráfico.
+      - name: Despertar la API
+        run: curl -fsS --max-time 120 --retry 3 --retry-delay 15 https://api.inmobiliariainteligente.net/health
+
+      - name: Enviar los reportes
+        run: |
+          respuesta=$(curl -fsS --max-time 180 --retry 2 --retry-delay 20 \
+            -X POST https://api.inmobiliariainteligente.net/tareas/reporte-semanal \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}")
+          echo "$respuesta"
+          # El resumen queda en el log de la corrida: sin esto, saber a quién le
+          # llegó exige entrar a Render a leer los logs de la API.
+          echo "$respuesta" | python3 -c "import json,sys; d=json.load(sys.stdin); print(f\"{d['enviados']}/{d['tenants']} inmobiliarias con envío\"); [print(f\"  - {x['tenant']}: {'enviado a '+str(x['destinatarios']) if x['enviado'] else x.get('motivo','no se mandó')}\") for x in d['detalle']]"

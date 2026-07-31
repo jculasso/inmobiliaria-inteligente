@@ -159,7 +159,7 @@ Primero el hábito, después la historia.
 | Precio publicado y frase de resumen | **hecho** |
 | Reporte en PDF | **hecho** — `reporte-semanal.template.tsx` |
 | Comparación contra la semana pasada | pendiente — ver arriba |
-| Marca "recibe el reporte" por usuario | pendiente |
-| Render del mail (HTML) | pendiente |
+| Marca "recibe el reporte" por usuario | **hecho** |
+| Render del mail (HTML) | **hecho** |
 | Proveedor de envío (Resend) + DNS | **DNS hecho** el 30/07/2026 — `avisos.inmobiliariainteligente.net` verificado, `RESEND_API_KEY` cargada en Render |
-| Disparo por cron (GitHub Actions) | pendiente |
+| Disparo por cron (GitHub Actions) | **hecho** — lunes 8:00 AR |

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { DestinatarioReporte } from '@vacker/types';
+import { esDireccionInexistente, type DestinatarioReporte } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { enviarMail, MailError } from '../../../common/resend.client';
@@ -71,6 +71,28 @@ export class ReporteSemanalMailService {
       return { tenant: t, destinatarios: us };
     }, ctx);
 
+    // Las direcciones de prueba se sacan ANTES de mandar: rebotan siempre, y
+    // un rebote semanal durante meses baja la reputación del dominio.
+    const validos = destinatarios.filter((d) => !esDireccionInexistente(d.email));
+    const descartados = destinatarios.filter((d) => esDireccionInexistente(d.email));
+    if (descartados.length > 0) {
+      this.logger.warn(
+        `Se omiten ${descartados.length} dirección(es) de dominio reservado: ${descartados
+          .map((d) => d.email)
+          .join(', ')}`,
+      );
+    }
+
+    if (destinatarios.length > 0 && validos.length === 0) {
+      return {
+        enviado: false,
+        destinatarios: [],
+        motivo: `Las únicas direcciones marcadas son de prueba y no pueden recibir correo: ${descartados
+          .map((d) => d.email)
+          .join(', ')}.`,
+      };
+    }
+
     if (destinatarios.length === 0) {
       // No es un error: es que nadie lo pidió todavía. Devolverlo como 400
       // haría que el cron marcara la corrida como fallida todas las semanas.
@@ -89,7 +111,7 @@ export class ReporteSemanalMailService {
     if (reporte.resumen.activas === 0) {
       return {
         enviado: false,
-        destinatarios: destinatarios.map((d) => d.email),
+        destinatarios: validos.map((d) => d.email),
         motivo: 'No hay propiedades en comercialización: no se manda un reporte vacío.',
       };
     }
@@ -103,11 +125,11 @@ export class ReporteSemanalMailService {
       const { id } = await enviarMail(
         {
           de: `${tenant.nombre} · Inmobiliaria Inteligente <${slug}@${DOMINIO_ENVIO}>`,
-          para: destinatarios.map((d) => d.email),
+          para: validos.map((d) => d.email),
           // Si alguien contesta el reporte, que la conversación se quede
           // adentro de la inmobiliaria y no muera en el dominio de la
           // plataforma.
-          responderA: destinatarios[0]?.email,
+          responderA: validos[0]?.email,
           asunto: `${tenant.nombre} · ${asunto}`,
           html,
           texto,
@@ -115,8 +137,8 @@ export class ReporteSemanalMailService {
         },
         this.config.get<string>('RESEND_API_KEY') ?? '',
       );
-      this.logger.log(`Reporte semanal enviado a ${destinatarios.length} destinatario(s): ${id}`);
-      return { enviado: true, destinatarios: destinatarios.map((d) => d.email) };
+      this.logger.log(`Reporte semanal enviado a ${validos.length} destinatario(s): ${id}`);
+      return { enviado: true, destinatarios: validos.map((d) => d.email) };
     } catch (err) {
       if (err instanceof MailError) throw new BadRequestException(err.message);
       throw err;

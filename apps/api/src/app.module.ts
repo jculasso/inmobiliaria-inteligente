@@ -12,6 +12,7 @@ import { TableroModule } from './modules/tablero/tablero.module';
 import { PublicacionModule } from './modules/publicacion/publicacion.module';
 import { TasadorModule } from './modules/tasador/tasador.module';
 import { ProtocoloModule } from './modules/protocolo/protocolo.module';
+import { TareasModule } from './modules/tareas/tareas.module';
 import { TodoModule } from './modules/todo/todo.module';
 import { AdminModule } from './admin/admin.module';
 
@@ -36,6 +37,7 @@ import { AdminModule } from './admin/admin.module';
     TasadorModule,
     TodoModule,
     ProtocoloModule,
+    TareasModule,
     AdminModule,
   ],
 })
