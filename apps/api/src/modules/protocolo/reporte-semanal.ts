@@ -13,6 +13,7 @@ import {
 import {
   avanceSemana,
   calcularAlertas,
+  diasPublicada,
   estaDemorada,
   hoyArgentina,
   prioridad,
@@ -37,6 +38,8 @@ import {
 export interface ProtocoloParaReporte {
   id: string;
   direccion: string;
+  /** Key o URL de la portada; el servicio la firma después de generar. */
+  fotoUrl: string | null;
   estado: 'activa' | 'archivada';
   fechaInicio: string;
   vencimientoAutorizacion: string | null;
@@ -106,6 +109,9 @@ function armarPropiedad(p: ProtocoloParaReporte, hoy: string): PropiedadEnReport
   return {
     protocoloId: p.id,
     direccion: p.direccion,
+    fotoUrl: p.fotoUrl,
+    fechaInicio: p.fechaInicio,
+    diasTranscurridos: diasPublicada(p.fechaInicio, hoy),
     semanaActual: enCurso,
     prioridad: prioridad(alertas),
     listoParaCierre,

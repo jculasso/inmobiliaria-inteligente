@@ -409,15 +409,21 @@ export class ProtocolosService {
         include: {
           agente: { select: { id: true, nombre: true } },
           acciones: { select: { semana: true, estado: true, fechaPrevista: true } },
-          tasacion: { select: { direccion: true } },
+          tasacion: {
+            select: {
+              direccion: true,
+              fotos: { orderBy: { orden: 'asc' }, take: 1, select: { url: true } },
+            },
+          },
         },
       });
     }, ctx);
 
-    return generarReporteSemanal(
+    const reporte = generarReporteSemanal(
       filas.map((f) => ({
         id: f.id,
         direccion: f.tasacion.direccion,
+        fotoUrl: f.tasacion.fotos[0]?.url ?? null,
         estado: f.estado as 'activa' | 'archivada',
         fechaInicio: f.fechaInicio.toISOString().slice(0, 10),
         vencimientoAutorizacion: fromDate(f.vencimientoAutorizacion),
@@ -428,6 +434,12 @@ export class ProtocolosService {
         agente: { id: f.agente.id, nombre: f.agente.nombre },
       })),
     );
+
+    // Las portadas se firman DESPUÉS de generar y todas juntas: el bucket es
+    // privado y una llamada a Storage por propiedad multiplicaría los round
+    // trips justo en la pantalla que mira toda la inmobiliaria de una vez.
+    await this.firmarPortadas(reporte.porVendedor.flatMap((v) => v.propiedades));
+    return reporte;
   }
 
   /**
