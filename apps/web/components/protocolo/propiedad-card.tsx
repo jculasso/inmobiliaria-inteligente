@@ -26,7 +26,7 @@ export function PropiedadCard({ p }: { p: ProtocoloResumenDto }) {
         {!archivada && (
           <span
             className={`absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold ${
-              nivel === 'roja' ? 'text-brand-red' : nivel === 'ambar' ? 'text-warning' : 'text-success'
+              nivel === 'roja' ? 'text-danger' : nivel === 'ambar' ? 'text-warning' : 'text-success'
             }`}
           >
             {ETIQUETA_PRIORIDAD[nivel]}

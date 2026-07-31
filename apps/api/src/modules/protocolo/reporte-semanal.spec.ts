@@ -135,7 +135,7 @@ describe('generarReporteSemanal', () => {
     expect(props.slice(1).map((p) => p.direccion)).toEqual(['Belgrano 3', 'Zapiola 1']);
   });
 
-  it('regla 5 · necesitaDecision trae solo alertas rojas, con su vendedor', () => {
+  it('regla 5 · urgencias trae solo alertas rojas, con su vendedor', () => {
     const inicio = '2026-07-01';
     const r = generarReporteSemanal(
       [
@@ -150,8 +150,8 @@ describe('generarReporteSemanal', () => {
       HOY,
     );
 
-    expect(r.necesitaDecision).toHaveLength(1);
-    const item = primero(r.necesitaDecision, 'ítem');
+    expect(r.urgencias).toHaveLength(1);
+    const item = primero(r.urgencias, 'ítem');
     expect(item).toMatchObject({ vendedorNombre: 'Ana Perez', direccion: 'Alsina 9' });
     expect(item.alertas.every((a) => a.nivel === 'roja')).toBe(true);
   });
@@ -300,8 +300,8 @@ describe('generarReporteSemanal', () => {
   it('regla 9 · sin alertas rojas el reporte no necesita atención', () => {
     const r = generarReporteSemanal([protocolo()], HOY);
 
-    expect(r.necesitaAtencion).toBe(false);
-    expect(r.necesitaDecision).toHaveLength(0);
+    expect(r.hayUrgencias).toBe(false);
+    expect(r.urgencias).toHaveLength(0);
     expect(r.resumen.activas).toBe(1);
   });
 
@@ -332,7 +332,7 @@ describe('generarReporteSemanal', () => {
     expect(semanaDe(prop, 1).estado).toBe('en_curso');
     expect(prop.semanas.slice(1).every((s) => s.estado === 'futura')).toBe(true);
     expect(prop.semanas.every((s) => s.atrasadas === 0)).toBe(true);
-    expect(r.necesitaAtencion).toBe(false);
+    expect(r.hayUrgencias).toBe(false);
   });
 
   it('borde · pasadas las cinco semanas sigue apareciendo, clavado en la 5', () => {
@@ -358,7 +358,7 @@ describe('generarReporteSemanal', () => {
       listasParaCierre: 0,
       listasConPendientes: 0,
     });
-    expect(r.necesitaAtencion).toBe(false);
+    expect(r.hayUrgencias).toBe(false);
     expect(r.porVendedor).toHaveLength(0);
     expect(r.generadoEl).toBe(HOY);
   });

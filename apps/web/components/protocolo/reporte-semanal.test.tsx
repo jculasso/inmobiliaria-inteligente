@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type { PropiedadEnReporte, ReporteSemanal, SemanaEnReporte } from '@vacker/types';
 import { describe, expect, it } from 'vitest';
-import { ReporteSemanalVista } from './reporte-semanal';
+import { ReporteSemanalVista, resumenDeVendedor } from './reporte-semanal';
 
 function semanas(over: Partial<SemanaEnReporte>[] = []): SemanaEnReporte[] {
   return [1, 2, 3, 4, 5].map((semana, i) => ({
@@ -38,8 +38,8 @@ function reporte(over: Partial<ReporteSemanal> = {}): ReporteSemanal {
       listasParaCierre: 0,
       listasConPendientes: 0,
     },
-    necesitaAtencion: false,
-    necesitaDecision: [],
+    hayUrgencias: false,
+    urgencias: [],
     porVendedor: [
       {
         vendedorId: '22222222-2222-4222-8222-222222222222',
@@ -53,11 +53,11 @@ function reporte(over: Partial<ReporteSemanal> = {}): ReporteSemanal {
 }
 
 describe('ReporteSemanalVista', () => {
-  it('sin nada urgente lo dice en una línea y no arma la sección de decisiones', () => {
+  it('sin nada urgente lo dice en una línea y no arma la sección de atención', () => {
     render(<ReporteSemanalVista reporte={reporte()} />);
 
-    expect(screen.getByText(/Nada urgente esta semana/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Necesita decisión/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Ninguna propiedad necesita atención esta semana/i)).toBeInTheDocument();
+    expect(screen.queryByText('Necesita atención')).not.toBeInTheDocument();
   });
 
   it('agrupa las propiedades bajo el nombre del vendedor', () => {
@@ -72,7 +72,7 @@ describe('ReporteSemanalVista', () => {
 
   it('muestra lo urgente arriba, con el vendedor al lado', () => {
     const r = reporte({
-      necesitaAtencion: true,
+      hayUrgencias: true,
       resumen: {
         activas: 1,
         conRojas: 1,
@@ -80,7 +80,7 @@ describe('ReporteSemanalVista', () => {
         listasParaCierre: 0,
         listasConPendientes: 0,
       },
-      necesitaDecision: [
+      urgencias: [
         {
           vendedorNombre: 'Nicolás Vera',
           direccion: 'Alsina 3841',
@@ -98,7 +98,7 @@ describe('ReporteSemanalVista', () => {
     });
     render(<ReporteSemanalVista reporte={r} />);
 
-    expect(screen.getByText('Necesita decisión')).toBeInTheDocument();
+    expect(screen.getByText('Necesita atención')).toBeInTheDocument();
     expect(screen.getAllByText('2 acciones atrasadas').length).toBeGreaterThan(0);
     expect(screen.getByText(/· Nicolás Vera/)).toBeInTheDocument();
   });
@@ -162,5 +162,66 @@ describe('ReporteSemanalVista', () => {
     for (const s of [1, 2, 3, 4, 5]) {
       expect(screen.getByText(`S${s}`)).toBeInTheDocument();
     }
+  });
+
+  // Pedido de la dirección: llegar de un click a la semana donde está el
+  // problema, sin tener que buscarla dentro de la ficha.
+  it('cada alerta lleva a la semana donde está el problema', () => {
+    const r = reporte({
+      hayUrgencias: true,
+      urgencias: [
+        {
+          vendedorNombre: 'Nicolás Vera',
+          direccion: 'Alsina 3841',
+          protocoloId: '11111111-1111-4111-8111-111111111111',
+          alertas: [
+            { nivel: 'roja', titulo: '2 acciones atrasadas', detalle: 'x', semana: 2 },
+            { nivel: 'roja', titulo: 'Autorización vencida', detalle: 'y', semana: null },
+          ],
+        },
+      ],
+    });
+    render(<ReporteSemanalVista reporte={r} />);
+
+    const conSemana = screen.getAllByRole('link').find((a) =>
+      a.textContent?.includes('2 acciones atrasadas'),
+    );
+    expect(conSemana).toHaveAttribute(
+      'href',
+      '/protocolo/11111111-1111-4111-8111-111111111111?semana=2',
+    );
+
+    // Las que no son de una semana llevan a la ficha, sin parámetro.
+    const sinSemana = screen.getAllByRole('link').find((a) =>
+      a.textContent?.includes('Autorización vencida'),
+    );
+    expect(sinSemana).toHaveAttribute('href', '/protocolo/11111111-1111-4111-8111-111111111111');
+  });
+
+  it('la tira de semanas también es navegable', () => {
+    render(<ReporteSemanalVista reporte={reporte()} />);
+
+    const s3 = screen.getAllByRole('link').find((a) => a.textContent?.startsWith('S3'));
+    expect(s3).toHaveAttribute(
+      'href',
+      '/protocolo/11111111-1111-4111-8111-111111111111?semana=3',
+    );
+  });
+});
+
+describe('resumenDeVendedor', () => {
+  // "1 propiedad · 1 con atención" decía dos veces lo mismo.
+  it('no repite el número cuando hay una sola propiedad', () => {
+    expect(resumenDeVendedor(1, 1)).toBe('1 propiedad · necesita atención');
+  });
+
+  it('sin nada rojo, solo el conteo', () => {
+    expect(resumenDeVendedor(1, 0)).toBe('1 propiedad');
+    expect(resumenDeVendedor(4, 0)).toBe('4 propiedades');
+  });
+
+  it('con varias, dice cuántas necesitan atención', () => {
+    expect(resumenDeVendedor(3, 1)).toBe('3 propiedades · 1 necesita atención');
+    expect(resumenDeVendedor(3, 2)).toBe('3 propiedades · 2 necesitan atención');
   });
 });

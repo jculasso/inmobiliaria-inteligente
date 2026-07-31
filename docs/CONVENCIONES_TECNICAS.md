@@ -253,3 +253,62 @@ creció.
 
 **Las tres reportan, no arreglan.** Un informe que además aplica cambios obliga a
 revisar código y hallazgos al mismo tiempo, que es cuando se aprueba de más.
+
+---
+
+## 12. El importador de Tokko da de baja lo que no viaja en el archivo
+
+La API de propiedades de Tokko es de **solo lectura**. Para escribir hay un
+importador: `POST /property_importer/` con `{url, callback_url}`. Tokko va a
+buscar el archivo y responde con seis listas, una de ellas **`disabled_list`**:
+"propiedades quitadas del archivo de importación".
+
+Ahí está el peligro: **el feed se interpreta como el inventario completo.**
+Mandar las 5 propiedades que gestionamos daría de baja las otras 384 que la
+inmobiliaria tiene publicadas. Lo confirmó Tokko por escrito.
+
+Por eso:
+
+- **El feed se arma leyendo Tokko en el momento de mandarlo**, nunca desde
+  nuestra tabla `propiedad`. Tenemos importadas 25 de 389: generarlo desde la
+  base daría de baja 364.
+- Las que no gestionamos viajan igual, como entrada mínima
+  (`reference_code` + su `updated_at` actual) para que caigan en
+  `not_updated_list` y no en `disabled_list`.
+- **Nada de esto se prueba contra la cuenta real.** Hace falta el ambiente de
+  prueba, que se pide al ejecutivo de cuenta de Tokko.
+
+Dato contraintuitivo, verificado el 30/07/2026 contra las 389 propiedades: la
+fecha de última modificación viene en el campo **`deleted_at`**, no en un
+`updated_at` (que no existe en la respuesta). Ninguna está en null y se mueve
+en vivo. Apoyarse en un campo con ese nombre es frágil: si Tokko lo corrige o
+empieza a usarlo para bajas reales, la lógica se rompe **en silencio**. Va con
+una verificación que falle fuerte si aparece nulo o con fecha futura.
+
+---
+
+## 13. El color de marca no puede pintar la urgencia
+
+Cada inmobiliaria define su `colorPrimario`, y `tenant-style.ts` lo aplica
+pisando `--color-brand-red`. Eso está bien para botones, pestañas activas y
+links: es la marca.
+
+**No está bien para la severidad.** Jorgito Propiedades tiene marca azul
+(`#0B5FA5`), y las alertas críticas del Protocolo salían **azules**: nada
+resaltaba y el reporte de la dirección parecía estar todo en orden. Con una
+marca verde, una alerta crítica se vería verde.
+
+Por eso existe **`--color-danger`**, que ninguna inmobiliaria pisa. La regla:
+
+| Para qué | Token |
+|---|---|
+| Botón primario, pestaña activa, link | `brand-red` |
+| Alerta urgente, vencido, atrasado | **`danger`** |
+| Advertencia, en curso | `warning` |
+| Completo, al día | `success` |
+
+Antes de usar `brand-red` en algo, preguntarse: **¿esto sería igual de correcto
+si la inmobiliaria fuera verde?** Si la respuesta es no, va `danger`.
+
+Reportado el 30/07/2026 por el usuario mirando el reporte semanal: "pone todo
+verde en las semanas". No estaba todo verde — lo rojo estaba azul.

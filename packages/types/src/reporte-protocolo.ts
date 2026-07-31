@@ -84,13 +84,13 @@ export const ResumenReporteSchema = z.object({
 });
 export type ResumenReporte = z.infer<typeof ResumenReporteSchema>;
 
-export const ItemDecisionSchema = z.object({
+export const ItemUrgenteSchema = z.object({
   vendedorNombre: z.string(),
   direccion: z.string(),
   protocoloId: z.string().uuid(),
   alertas: z.array(AlertaProtocoloSchema),
 });
-export type ItemDecision = z.infer<typeof ItemDecisionSchema>;
+export type ItemUrgente = z.infer<typeof ItemUrgenteSchema>;
 
 export const ReporteSemanalSchema = z.object({
   generadoEl: z.string(),
@@ -99,9 +99,9 @@ export const ReporteSemanalSchema = z.object({
    * Si es `false` no hay nada rojo y el mail va corto: solo el resumen
    * (regla 9). Un mail que mide siempre lo mismo se ignora enseguida.
    */
-  necesitaAtencion: z.boolean(),
+  hayUrgencias: z.boolean(),
   /** Solo lo rojo, de todos los vendedores. Es lo primero que se lee (regla 5). */
-  necesitaDecision: z.array(ItemDecisionSchema),
+  urgencias: z.array(ItemUrgenteSchema),
   porVendedor: z.array(VendedorEnReporteSchema),
 });
 export type ReporteSemanal = z.infer<typeof ReporteSemanalSchema>;
