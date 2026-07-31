@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type { PropiedadEnReporte, ReporteSemanal, SemanaEnReporte } from '@vacker/types';
 import { describe, expect, it } from 'vitest';
-import { ReporteSemanalVista, resumenDeVendedor } from './reporte-semanal';
+import { fmtFechaCorta, ReporteSemanalVista, resumenDeVendedor } from './reporte-semanal';
 
 function semanas(over: Partial<SemanaEnReporte>[] = []): SemanaEnReporte[] {
   return [1, 2, 3, 4, 5].map((semana, i) => ({
@@ -18,6 +18,9 @@ function propiedad(over: Partial<PropiedadEnReporte> = {}): PropiedadEnReporte {
   return {
     protocoloId: '11111111-1111-4111-8111-111111111111',
     direccion: 'Alsina 3841',
+    fotoUrl: null,
+    fechaInicio: '2026-07-30',
+    diasTranscurridos: 1,
     semanaActual: 1,
     prioridad: 'verde',
     listoParaCierre: false,
@@ -198,6 +201,35 @@ describe('ReporteSemanalVista', () => {
     expect(sinSemana).toHaveAttribute('href', '/protocolo/11111111-1111-4111-8111-111111111111');
   });
 
+  // Pedido de la dirección: ver desde cuándo está publicada y cuántos días
+  // lleva, porque "semana 5 de 5" se clava y esconde la antigüedad.
+  it('muestra la fecha de inicio y los días transcurridos', () => {
+    render(<ReporteSemanalVista reporte={reporte()} />);
+
+    expect(screen.getByText('30/07/2026')).toBeInTheDocument();
+    // Singular: decía "1 días".
+    expect(screen.getByText('1 día')).toBeInTheDocument();
+    expect(screen.queryByText(/pasó las 5 semanas/i)).not.toBeInTheDocument();
+  });
+
+  it('avisa cuando la propiedad ya pasó las cinco semanas', () => {
+    const r = reporte({
+      porVendedor: [
+        {
+          vendedorId: '22222222-2222-4222-8222-222222222222',
+          vendedorNombre: 'Nicolás Vera',
+          propiedades: [propiedad({ fechaInicio: '2026-06-18', diasTranscurridos: 43 })],
+          conRojas: 0,
+        },
+      ],
+    });
+    render(<ReporteSemanalVista reporte={r} />);
+
+    expect(screen.getByText('18/06/2026')).toBeInTheDocument();
+    expect(screen.getByText('43 días')).toBeInTheDocument();
+    expect(screen.getByText(/pasó las 5 semanas/i)).toBeInTheDocument();
+  });
+
   it('la tira de semanas también es navegable', () => {
     render(<ReporteSemanalVista reporte={reporte()} />);
 
@@ -223,5 +255,11 @@ describe('resumenDeVendedor', () => {
   it('con varias, dice cuántas necesitan atención', () => {
     expect(resumenDeVendedor(3, 1)).toBe('3 propiedades · 1 necesita atención');
     expect(resumenDeVendedor(3, 2)).toBe('3 propiedades · 2 necesitan atención');
+  });
+});
+
+describe('fmtFechaCorta', () => {
+  it('escribe la fecha como dd/mm/aaaa', () => {
+    expect(fmtFechaCorta('2026-06-18')).toBe('18/06/2026');
   });
 });

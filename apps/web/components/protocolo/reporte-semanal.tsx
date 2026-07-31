@@ -10,7 +10,7 @@ import {
 } from '@vacker/types';
 import { KpiCard } from '@vacker/ui';
 import { fmtNum } from '../../lib/format';
-import { AlertaItem, ETIQUETA_PRIORIDAD } from './protocolo-ui';
+import { AlertaItem, ETIQUETA_PRIORIDAD, FotoPropiedad } from './protocolo-ui';
 
 // Reporte semanal en pantalla. Es EL MISMO objeto que va a viajar en el mail,
 // así que lo que se ve acá es lo que va a leer la dirección el lunes: si esta
@@ -73,22 +73,59 @@ function TiraDeSemanas({ propiedad }: { propiedad: PropiedadEnReporte }) {
   );
 }
 
+/** dd/mm/aaaa — el formato en que la dirección escribe las fechas. */
+export function fmtFechaCorta(iso: string): string {
+  const [a, m, d] = iso.split('-');
+  return a && m && d ? `${d}/${m}/${a}` : iso;
+}
+
+/**
+ * Días desde el inicio. Se resalta al pasar los 35 —las cinco semanas— porque
+ * ahí `semanaActual` deja de crecer: una propiedad de 43 días y una de 29 se
+ * mostraban las dos como "semana 5 de 5", y la diferencia es justo la que la
+ * dirección necesita ver.
+ */
+const CINCO_SEMANAS_EN_DIAS = 35;
+
 function FichaPropiedad({ propiedad }: { propiedad: PropiedadEnReporte }) {
   const cierre = textoDeCierre(propiedad);
   const alertas = [...propiedad.alertasGenerales, ...propiedad.semanas.flatMap((s) => s.alertas)];
+  const pasada = propiedad.diasTranscurridos > CINCO_SEMANAS_EN_DIAS;
 
   return (
-    <div className="flex flex-col gap-2 rounded-brand border border-line bg-white p-3">
-      <div>
-        <Link
-          href={`/protocolo/${propiedad.protocoloId}`}
-          className="block truncate text-sm font-bold text-ink hover:text-brand-red hover:underline"
-        >
-          {propiedad.direccion}
-        </Link>
-        <p className="text-xs text-muted">
-          Semana {propiedad.semanaActual} de 5 · {ETIQUETA_PRIORIDAD[propiedad.prioridad]}
-        </p>
+    // `min-w-0`: los hijos de un grid arrancan con `min-width: auto`, así que
+    // una dirección larga ("Avenida Presidente Roque Sáenz Peña 1234, piso 7")
+    // estiraba la celda a 486px dentro de un viewport de 375 y el `truncate`
+    // nunca llegaba a actuar.
+    <div className="flex min-w-0 flex-col gap-2 rounded-brand border border-line bg-white p-3">
+      <div className="flex min-w-0 items-start gap-2.5">
+        <FotoPropiedad
+          url={propiedad.fotoUrl}
+          alt={propiedad.direccion}
+          className="h-14 w-20 shrink-0 rounded"
+        />
+        <div className="min-w-0 flex-1">
+          <Link
+            href={`/protocolo/${propiedad.protocoloId}`}
+            className="block truncate text-sm font-bold text-ink hover:text-brand-red hover:underline"
+          >
+            {propiedad.direccion}
+          </Link>
+          <p className="text-xs text-muted">
+            Semana {propiedad.semanaActual} de 5 · {ETIQUETA_PRIORIDAD[propiedad.prioridad]}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">
+            Desde el{' '}
+            <strong className="font-semibold text-ink">
+              {fmtFechaCorta(propiedad.fechaInicio)}
+            </strong>{' '}
+            ·{' '}
+            <strong className={`font-bold ${pasada ? 'text-warning' : 'text-ink'}`}>
+              {propiedad.diasTranscurridos} {propiedad.diasTranscurridos === 1 ? 'día' : 'días'}
+            </strong>
+            {pasada && <span className="text-warning"> (pasó las 5 semanas)</span>}
+          </p>
+        </div>
       </div>
 
       <TiraDeSemanas propiedad={propiedad} />

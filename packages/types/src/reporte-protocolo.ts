@@ -47,6 +47,18 @@ export type SemanaEnReporte = z.infer<typeof SemanaEnReporteSchema>;
 export const PropiedadEnReporteSchema = z.object({
   protocoloId: z.string().uuid(),
   direccion: z.string(),
+  /** Portada de la tasación (URL firmada; el bucket es privado). */
+  fotoUrl: z.string().nullable(),
+  /** Día en que arrancó la comercialización, ISO. */
+  fechaInicio: z.string(),
+  /**
+   * Días desde el inicio, contando el primero.
+   *
+   * Va aparte de `semanaActual` porque esa se clava en 5: una propiedad de 43
+   * días se mostraba como "semana 5 de 5", igual que una de 29, y la dirección
+   * no tenía forma de ver cuánto hacía que estaba sin cerrarse.
+   */
+  diasTranscurridos: z.number().int(),
   semanaActual: z.number().int(),
   prioridad: NivelAlertaSchema,
   /**

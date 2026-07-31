@@ -62,6 +62,7 @@ function protocolo(over: Partial<ProtocoloParaReporte> = {}): ProtocoloParaRepor
   return {
     id: 'p1',
     direccion: 'Rivadavia 100',
+    fotoUrl: null,
     estado: 'activa',
     fechaInicio,
     vencimientoAutorizacion: null,
