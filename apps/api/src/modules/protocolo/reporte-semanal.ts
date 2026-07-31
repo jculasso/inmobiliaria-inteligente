@@ -40,6 +40,8 @@ export interface ProtocoloParaReporte {
   direccion: string;
   /** Key o URL de la portada; el servicio la firma después de generar. */
   fotoUrl: string | null;
+  precio: number | null;
+  moneda: string;
   estado: 'activa' | 'archivada';
   fechaInicio: string;
   vencimientoAutorizacion: string | null;
@@ -111,6 +113,8 @@ function armarPropiedad(p: ProtocoloParaReporte, hoy: string): PropiedadEnReport
     direccion: p.direccion,
     fotoUrl: p.fotoUrl,
     fechaInicio: p.fechaInicio,
+    precio: p.precio,
+    moneda: p.moneda,
     diasTranscurridos: diasPublicada(p.fechaInicio, hoy),
     semanaActual: enCurso,
     prioridad: prioridad(alertas),

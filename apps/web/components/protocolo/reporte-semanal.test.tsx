@@ -19,6 +19,8 @@ function propiedad(over: Partial<PropiedadEnReporte> = {}): PropiedadEnReporte {
     protocoloId: '11111111-1111-4111-8111-111111111111',
     direccion: 'Alsina 3841',
     fotoUrl: null,
+    precio: 145000,
+    moneda: 'USD',
     fechaInicio: '2026-07-30',
     diasTranscurridos: 1,
     semanaActual: 1,
@@ -228,6 +230,18 @@ describe('ReporteSemanalVista', () => {
     expect(screen.getByText('18/06/2026')).toBeInTheDocument();
     expect(screen.getByText('43 días')).toBeInTheDocument();
     expect(screen.getByText(/pasó las 5 semanas/i)).toBeInTheDocument();
+  });
+
+  it('muestra el precio publicado junto a la propiedad', () => {
+    render(<ReporteSemanalVista reporte={reporte()} />);
+
+    expect(screen.getByText('$145.000')).toBeInTheDocument();
+  });
+
+  it('abre con la frase que resume la semana', () => {
+    render(<ReporteSemanalVista reporte={reporte()} />);
+
+    expect(screen.getByText('1 propiedad en comercialización, al día')).toBeInTheDocument();
   });
 
   it('la tira de semanas también es navegable', () => {

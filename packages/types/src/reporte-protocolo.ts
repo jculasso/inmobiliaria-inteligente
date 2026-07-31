@@ -51,6 +51,9 @@ export const PropiedadEnReporteSchema = z.object({
   fotoUrl: z.string().nullable(),
   /** Día en que arrancó la comercialización, ISO. */
   fechaInicio: z.string(),
+  /** Precio publicado — da la escala de lo que está en juego. */
+  precio: z.number().nullable(),
+  moneda: z.string(),
   /**
    * Días desde el inicio, contando el primero.
    *
@@ -133,4 +136,34 @@ export function textoDeCierre(p: {
   if (p.pendientesArrastrados === 0) return 'Listo para cierre';
   const n = p.pendientesArrastrados;
   return `Listo para cierre · ${n} ${n === 1 ? 'tarea pendiente' : 'tareas pendientes'} de semanas anteriores`;
+}
+
+/**
+ * El reporte en una frase: lo que va en el asunto del mail y como titular de
+ * la pantalla.
+ *
+ * Existe para que Ezequiel entienda la semana desde la notificación del
+ * celular, sin abrir nada. Vive acá y no en cada consumidor porque el asunto
+ * del mail y el titular de la pantalla tienen que decir lo mismo.
+ */
+export function asuntoDelReporte(r: {
+  resumen: { activas: number; conRojas: number };
+  urgencias: { direccion: string }[];
+}): string {
+  const { activas, conRojas } = r.resumen;
+  if (activas === 0) return 'Sin propiedades en comercialización';
+  if (conRojas === 0) {
+    return activas === 1
+      ? '1 propiedad en comercialización, al día'
+      : `${activas} propiedades en comercialización, todas al día`;
+  }
+
+  // Se nombran hasta dos: el asunto de un mail se corta, y una lista de ocho
+  // direcciones no se lee en una notificación.
+  const nombres = r.urgencias.slice(0, 2).map((u) => u.direccion);
+  const resto = r.urgencias.length - nombres.length;
+  const lista =
+    resto > 0 ? `${nombres.join(', ')} y ${resto} más` : nombres.join(' y ');
+  const verbo = conRojas === 1 ? 'necesita' : 'necesitan';
+  return `${conRojas} de ${activas} ${verbo} atención: ${lista}`;
 }

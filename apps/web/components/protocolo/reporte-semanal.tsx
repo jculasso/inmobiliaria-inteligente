@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import {
+  asuntoDelReporte,
   ESTADO_SEMANA_LABEL,
   textoDeCierre,
   type AlertaProtocolo,
@@ -9,7 +10,7 @@ import {
   type VendedorEnReporte,
 } from '@vacker/types';
 import { KpiCard } from '@vacker/ui';
-import { fmtNum } from '../../lib/format';
+import { fmtNum, fmtUSD } from '../../lib/format';
 import { AlertaItem, ETIQUETA_PRIORIDAD, FotoPropiedad } from './protocolo-ui';
 
 // Reporte semanal en pantalla. Es EL MISMO objeto que va a viajar en el mail,
@@ -73,6 +74,11 @@ function TiraDeSemanas({ propiedad }: { propiedad: PropiedadEnReporte }) {
   );
 }
 
+/** El monto con su moneda. `fmtUSD` asume dólares; acá puede venir otra. */
+export function fmtPrecio(precio: number, moneda: string): string {
+  return moneda === 'USD' ? fmtUSD(precio) : `${moneda} ${fmtNum(precio)}`;
+}
+
 /** dd/mm/aaaa — el formato en que la dirección escribe las fechas. */
 export function fmtFechaCorta(iso: string): string {
   const [a, m, d] = iso.split('-');
@@ -113,6 +119,14 @@ function FichaPropiedad({ propiedad }: { propiedad: PropiedadEnReporte }) {
           </Link>
           <p className="text-xs text-muted">
             Semana {propiedad.semanaActual} de 5 · {ETIQUETA_PRIORIDAD[propiedad.prioridad]}
+            {propiedad.precio != null && (
+              <>
+                {' · '}
+                {/* El precio da la escala de lo que está en juego: no es lo
+                    mismo que se trabe una de 80 mil que una de 400 mil. */}
+                <strong className="font-bold text-ink">{fmtPrecio(propiedad.precio, propiedad.moneda)}</strong>
+              </>
+            )}
           </p>
           <p className="mt-0.5 text-xs text-muted">
             Desde el{' '}
@@ -190,6 +204,14 @@ export function ReporteSemanalVista({ reporte }: { reporte: ReporteSemanal }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* La misma frase que va a ir en el asunto del mail: la semana entendida
+          desde la notificación del celular, sin abrir nada. */}
+      <p
+        className={`text-base font-extrabold ${reporte.hayUrgencias ? 'text-danger' : 'text-success'}`}
+      >
+        {asuntoDelReporte(reporte)}
+      </p>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="En comercialización"

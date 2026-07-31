@@ -424,6 +424,8 @@ export class ProtocolosService {
         id: f.id,
         direccion: f.tasacion.direccion,
         fotoUrl: f.tasacion.fotos[0]?.url ?? null,
+        precio: f.precioPublicado == null ? null : decToNum(f.precioPublicado),
+        moneda: f.moneda,
         estado: f.estado as 'activa' | 'archivada',
         fechaInicio: f.fechaInicio.toISOString().slice(0, 10),
         vencimientoAutorizacion: fromDate(f.vencimientoAutorizacion),
