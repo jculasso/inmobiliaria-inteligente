@@ -4,7 +4,7 @@ import { requireServerPrincipal } from '../../../lib/server-principal';
 import { puedeVerReporteProtocolo } from '../../../lib/rbac';
 import { getReporteSemanal } from '../../../lib/protocolo-api';
 import { ReporteSemanalVista } from '../../../components/protocolo/reporte-semanal';
-import { BotonReportePdf } from '../../../components/protocolo/boton-reporte-pdf';
+import { AccionesReporte } from '../../../components/protocolo/acciones-reporte';
 
 // Se pide siempre fresco: el sentido de esta pantalla es correr el reporte
 // cuando uno tiene un rato, no leer una copia de ayer.
@@ -54,7 +54,7 @@ export default async function ReportePage() {
             que se manda por mail — generado al {fmtDia(reporte.generadoEl)}.
           </p>
         </div>
-        <BotonReportePdf />
+        <AccionesReporte />
       </div>
 
       <ReporteSemanalVista reporte={reporte} />

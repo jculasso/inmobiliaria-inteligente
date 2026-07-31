@@ -7,6 +7,7 @@ import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ctxDe } from '../../tablero/tablero.util';
 import { InformeProtocoloService } from './informe-protocolo.service';
 import { ReporteSemanalPdfService } from './reporte-semanal-pdf.service';
+import { ReporteSemanalMailService } from './reporte-semanal-mail.service';
 
 @ApiTags('protocolo')
 @ApiBearerAuth()
@@ -16,7 +17,15 @@ export class InformeProtocoloController {
   constructor(
     private readonly informes: InformeProtocoloService,
     private readonly reporteSemanal: ReporteSemanalPdfService,
+    private readonly reporteMail: ReporteSemanalMailService,
   ) {}
+
+  @Post('reporte-semanal/enviar')
+  @Roles(...ROLES_REPORTE_PROTOCOLO)
+  @ApiOperation({ summary: 'Manda el reporte semanal por mail a quienes lo tengan marcado' })
+  enviarReporteSemanal(@CurrentUser() user: AuthPrincipal) {
+    return this.reporteMail.enviar(ctxDe(user));
+  }
 
   // POST y no GET porque genera un documento; además el front abre la pestaña
   // dentro del click y le manda el token (ver abrir-pdf.ts).
