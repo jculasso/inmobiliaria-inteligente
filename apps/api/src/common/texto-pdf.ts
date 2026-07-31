@@ -115,3 +115,50 @@ function aTexto(hex: string): string {
   }
   return s;
 }
+
+/**
+ * Las familias tipográficas con las que el PDF realmente DIBUJA texto, sin el
+ * prefijo aleatorio del subconjunto ("VFSAUO+Montserrat-Bold" → "Montserrat-Bold").
+ *
+ * Sirve para verificar que un informe de marca no arrastre una segunda
+ * tipografía: react-pdf incrusta Helvetica por CADA carácter que no encuentre
+ * en la familia registrada. Pasó con el ✓ de la tira de semanas —Montserrat no
+ * lo tiene— y el PDF terminaba con Helvetica adentro por una sola tilde.
+ *
+ * Mira lo DIBUJADO y no lo declarado, que no es lo mismo: react-pdf emite un
+ * `/F1 Tf` seleccionando Helvetica incluso para un texto vacío, y esa fuente
+ * queda declarada en el archivo sin que se vea un solo carácter. Contarla sería
+ * denunciar un problema que no existe.
+ */
+export function fuentesUsadasEnPdf(buffer: Buffer): string[] {
+  const bin = buffer.toString('latin1');
+
+  // /F4 → 11 0 R → "/BaseFont /DHWSEN+Montserrat-Regular"
+  const objetos = new Map<string, string>();
+  for (const o of bin.matchAll(/(\d+) 0 obj([\s\S]*?)endobj/g)) {
+    const base = o[2]!.match(/\/BaseFont\s*\/([A-Za-z0-9+\-,_]+)/);
+    if (base) objetos.set(o[1]!, base[1]!.replace(/^[A-Z]{6}\+/, ''));
+  }
+  const recursos = new Map<string, string>();
+  for (const mapa of bin.matchAll(/\/Font\s*<<([^>]*)>>/g)) {
+    for (const r of mapa[1]!.matchAll(/\/(F\d+)\s+(\d+) 0 R/g)) {
+      const familia = objetos.get(r[2]!);
+      if (familia) recursos.set(r[1]!, familia);
+    }
+  }
+
+  const usadas = new Set<string>();
+  for (const s of inflarStreams(buffer)) {
+    let actual: string | null = null;
+    for (const op of s.matchAll(/\/(F\d+) [\d.]+ Tf|\[([^\]]*)\]\s*TJ|<([0-9a-fA-F]+)>\s*Tj/g)) {
+      if (op[1]) {
+        actual = recursos.get(op[1]) ?? null;
+        continue;
+      }
+      const cuerpo = op[2] ?? op[3] ?? '';
+      // Un `Tj` sin glifos no dibuja nada: no cuenta como uso.
+      if (actual && /<[0-9a-fA-F]+>/.test(cuerpo)) usadas.add(actual);
+    }
+  }
+  return [...usadas].sort();
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { medirFotosPdf } from '../../../common/medir-fotos-pdf';
+import { fuentesUsadasEnPdf } from '../../../common/texto-pdf';
 import { describe, expect, it } from 'vitest';
 import type { TasacionDto } from '@vacker/types';
 import { InformeDocument } from './informe.template';
@@ -136,3 +137,23 @@ describe('InformeDocument — las fotos no se recortan', () => {
  * Saca del PDF, para cada foto, el alto de su caja de recorte y el alto al que
  * se dibujó. Si la caja es más baja que el dibujo, hay recorte.
  */
+
+/**
+ * Un informe de marca no puede llevar dos tipografías.
+ *
+ * react-pdf incrusta Helvetica por CADA carácter que no encuentre en la familia
+ * registrada. Pasó en el reporte semanal con el ✓ de la tira de semanas:
+ * Montserrat no lo tiene, y el PDF terminaba con Helvetica adentro por una sola
+ * tilde. Este test lo detecta sin abrir el archivo.
+ */
+describe('tipografía del informe de tasación', () => {
+  it('solo dibuja con Montserrat', async () => {
+    const familias = fuentesUsadasEnPdf(
+      await renderToBuffer(
+        <InformeDocument tasacion={TASACION} tenantNombre="Vacker" logoUrl={null} />,
+      ),
+    );
+
+    expect(familias.every((f) => f.startsWith('Montserrat'))).toBe(true);
+  });
+});
