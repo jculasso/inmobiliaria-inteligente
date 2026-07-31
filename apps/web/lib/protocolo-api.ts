@@ -4,6 +4,7 @@ import {
   ProtocoloDtoSchema,
   ProtocoloKpisSchema,
   ProtocoloResumenDtoSchema,
+  DestinatarioReporteSchema,
   ReporteSemanalSchema,
   ResultadoEnvioSchema,
   type ArchivarProtocolo,
@@ -72,6 +73,13 @@ export async function archivarProtocolo(accessToken: string, id: string, dto: Ar
     accessToken,
     method: 'POST',
     body: dto,
+  });
+}
+
+/** Quiénes tienen marcado que reciben el reporte. */
+export async function getDestinatariosReporte(accessToken: string) {
+  return apiFetch('/protocolo/reporte-semanal/destinatarios', z.array(DestinatarioReporteSchema), {
+    accessToken,
   });
 }
 
