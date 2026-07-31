@@ -251,9 +251,25 @@ export const UpdateProtocoloSchema = z
   .partial();
 export type UpdateProtocolo = z.infer<typeof UpdateProtocoloSchema>;
 
+/**
+ * Editar una acción del checklist NO lleva control de versión, a diferencia de
+ * la ficha (`UpdateProtocoloSchema`).
+ *
+ * Lo llevaba, y era un falso positivo constante: la versión se comparaba contra
+ * `protocolo.updatedAt`, que este mismo endpoint pisa al terminar para alimentar
+ * la alerta de inactividad. Tildar dos acciones seguidas —sin esperar a que la
+ * primera volviera— mandaba la versión vieja en la segunda y la API respondía
+ * "otra persona actualizó esta propiedad mientras la editabas". No había otra
+ * persona: era uno mismo.
+ *
+ * Y el candado estaba en la granularidad equivocada. Dos personas tildando
+ * acciones DISTINTAS del mismo checklist no se pisan: son filas distintas y
+ * campos explícitos. Lo que el control de versión protege de verdad son los
+ * contadores de la ficha (consultas, visitas), que viajan como valor absoluto y
+ * podrían retroceder — y eso sigue protegido en `UpdateProtocoloSchema`.
+ */
 export const UpdateAccionSchema = z
   .object({
-    version: z.string(),
     estado: EstadoAccionSchema,
     fechaPrevista: IsoDateSchema.nullable(),
     fechaRealizada: IsoDateSchema.nullable(),
