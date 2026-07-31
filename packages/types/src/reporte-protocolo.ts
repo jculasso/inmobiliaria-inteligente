@@ -183,3 +183,20 @@ export const DestinatarioReporteSchema = z.object({
   email: z.string(),
 });
 export type DestinatarioReporte = z.infer<typeof DestinatarioReporteSchema>;
+
+/**
+ * Dominios que NO pueden recibir correo, nunca: los TLD reservados por la RFC
+ * 2606 y 6761 para pruebas y documentación.
+ *
+ * Existen para que nadie los registre, así que un mail a `ceo@prueba.test`
+ * rebota siempre. Un rebote suelto no es nada; uno todos los lunes durante
+ * meses baja la reputación del dominio y termina mandando a spam los correos
+ * que sí importan.
+ */
+const TLD_INEXISTENTES = ['.test', '.invalid', '.example', '.localhost'];
+
+/** true si la dirección nunca va a poder recibir un mail. */
+export function esDireccionInexistente(email: string): boolean {
+  const dominio = email.toLowerCase().split('@')[1] ?? '';
+  return TLD_INEXISTENTES.some((t) => dominio === t.slice(1) || dominio.endsWith(t));
+}

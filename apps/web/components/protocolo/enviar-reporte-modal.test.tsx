@@ -76,3 +76,39 @@ describe('EnviarReporteModal', () => {
     );
   });
 });
+
+describe('EnviarReporteModal — direcciones que rebotan', () => {
+  beforeEach(() => {
+    getDestinatarios.mockReset();
+    enviar.mockReset();
+  });
+
+  /**
+   * `ceo@prueba.test` no existe y nunca va a existir: `.test` es un TLD
+   * reservado. Un rebote todos los lunes baja la reputación del dominio y
+   * termina mandando a spam los correos que sí importan.
+   *
+   * Se muestran tachadas en vez de desaparecer: filtrarlas en silencio dejaría
+   * al usuario creyendo que a esa persona le llegó.
+   */
+  it('tacha las direcciones de dominio reservado y no las cuenta', async () => {
+    getDestinatarios.mockResolvedValue([
+      { nombre: 'Javier', email: 'javierblasculasso@gmail.com' },
+      { nombre: 'Bernardo', email: 'ceo@prueba.test' },
+    ]);
+    render(<EnviarReporteModal onClose={() => {}} />);
+
+    expect(await screen.findByText(/Le va a llegar a/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 persona/i)).toBeInTheDocument();
+    expect(screen.getByText(/dominio de prueba y el mail rebotaría/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Enviar ahora/i })).toBeEnabled();
+  });
+
+  it('si TODAS son de prueba, no deja enviar', async () => {
+    getDestinatarios.mockResolvedValue([{ nombre: 'Bernardo', email: 'ceo@prueba.test' }]);
+    render(<EnviarReporteModal onClose={() => {}} />);
+
+    expect(await screen.findByText(/Todavía no hay destinatarios/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Enviar ahora/i })).toBeDisabled();
+  });
+});

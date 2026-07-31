@@ -17,5 +17,6 @@ import { ReporteSemanalMailService } from './informe/reporte-semanal-mail.servic
     ReporteSemanalMailService,
     SupabaseStorageService,
   ],
+  exports: [ReporteSemanalMailService],
 })
 export class ProtocoloModule {}

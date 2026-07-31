@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asuntoDelReporte, textoDeCierre } from './reporte-protocolo';
+import { asuntoDelReporte, esDireccionInexistente, textoDeCierre } from './reporte-protocolo';
 
 // La frase que va en el asunto del mail y como titular de la pantalla. Tiene
 // que entenderse desde la notificación del celular, sin abrir nada.
@@ -50,5 +50,21 @@ describe('textoDeCierre', () => {
     expect(textoDeCierre({ listoParaCierre: true, pendientesArrastrados: 1 })).toBe(
       'Listo para cierre · 1 tarea pendiente de semanas anteriores',
     );
+  });
+});
+
+describe('esDireccionInexistente', () => {
+  it('detecta los TLD reservados', () => {
+    expect(esDireccionInexistente('ceo@prueba.test')).toBe(true);
+    expect(esDireccionInexistente('x@algo.invalid')).toBe(true);
+    expect(esDireccionInexistente('x@foo.example')).toBe(true);
+    expect(esDireccionInexistente('x@localhost')).toBe(true);
+  });
+
+  it('no toca las direcciones reales', () => {
+    expect(esDireccionInexistente('javierblasculasso@gmail.com')).toBe(false);
+    expect(esDireccionInexistente('ezequiel@vacker.com.ar')).toBe(false);
+    // "test" adentro del dominio no es lo mismo que el TLD .test
+    expect(esDireccionInexistente('x@testing.com')).toBe(false);
   });
 });
