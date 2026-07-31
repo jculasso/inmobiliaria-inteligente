@@ -57,6 +57,15 @@ export const UsuarioAdminDtoSchema = z.object({
   telefono: z.string().nullable(),
   /** true = todavía usa la clave temporal que le dio el implementador. */
   debeCambiarPassword: z.boolean(),
+  /**
+   * Recibe el reporte semanal del Protocolo por mail.
+   *
+   * NO se deriva del rol. En Vacker `direccion` son cuatro personas —los dos
+   * dueños y los dos implementadores— y mandarlo "a los direccion" se lo manda
+   * también a quienes no lo pidieron. Quién recibe un mail es una decisión de
+   * negocio; el rol es un permiso.
+   */
+  recibeReporteSemanal: z.boolean(),
 });
 export type UsuarioAdminDto = z.infer<typeof UsuarioAdminDtoSchema>;
 
@@ -85,6 +94,7 @@ export const UpdateUsuarioAdminSchema = z
     estado: z.enum(['activo', 'inactivo']),
     roles: z.array(RolSchema).min(1),
     telefono: z.string().nullish(),
+    recibeReporteSemanal: z.boolean(),
   })
   .partial();
 export type UpdateUsuarioAdmin = z.infer<typeof UpdateUsuarioAdminSchema>;

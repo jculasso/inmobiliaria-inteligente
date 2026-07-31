@@ -106,6 +106,9 @@ export class AdminUsuariosService {
     if (dto.nombre !== undefined) data.nombre = dto.nombre;
     if (dto.estado !== undefined) data.estado = dto.estado;
     if (dto.telefono !== undefined) data.telefono = dto.telefono ?? null;
+    if (dto.recibeReporteSemanal !== undefined) {
+      data.recibeReporteSemanal = dto.recibeReporteSemanal;
+    }
     if (Object.keys(data).length > 0) {
       await this.db.usuario.update({ where: { id }, data });
     }
@@ -220,5 +223,6 @@ function toDto(row: UsuarioAdminRow) {
     roles: row.roles.map((r) => r.rol),
     tieneAcceso: row.authUserId !== null,
     debeCambiarPassword: row.debeCambiarPassword,
+    recibeReporteSemanal: row.recibeReporteSemanal,
   };
 }

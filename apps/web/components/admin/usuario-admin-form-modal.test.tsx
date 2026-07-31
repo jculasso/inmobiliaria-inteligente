@@ -13,6 +13,7 @@ const USUARIO: UsuarioAdminDto = {
   roles: ['vendedor'],
   tieneAcceso: true,
   debeCambiarPassword: false,
+  recibeReporteSemanal: false,
   fotoUrl: null,
 };
 

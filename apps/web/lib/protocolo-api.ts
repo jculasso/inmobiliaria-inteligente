@@ -5,6 +5,7 @@ import {
   ProtocoloKpisSchema,
   ProtocoloResumenDtoSchema,
   ReporteSemanalSchema,
+  ResultadoEnvioSchema,
   type ArchivarProtocolo,
   type IniciarProtocolo,
   type ProtocoloFiltro,
@@ -71,6 +72,14 @@ export async function archivarProtocolo(accessToken: string, id: string, dto: Ar
     accessToken,
     method: 'POST',
     body: dto,
+  });
+}
+
+/** Manda el reporte semanal por mail a quienes lo tengan marcado. */
+export async function enviarReporteSemanal(accessToken: string) {
+  return apiFetch('/protocolo/reporte-semanal/enviar', ResultadoEnvioSchema, {
+    accessToken,
+    method: 'POST',
   });
 }
 

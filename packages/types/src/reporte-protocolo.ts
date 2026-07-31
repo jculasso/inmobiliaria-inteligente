@@ -167,3 +167,12 @@ export function asuntoDelReporte(r: {
   const verbo = conRojas === 1 ? 'necesita' : 'necesitan';
   return `${conRojas} de ${activas} ${verbo} atención: ${lista}`;
 }
+
+/** Qué pasó al intentar mandar el reporte por mail. */
+export const ResultadoEnvioSchema = z.object({
+  enviado: z.boolean(),
+  destinatarios: z.array(z.string()),
+  /** Por qué no se mandó, cuando `enviado` es false. */
+  motivo: z.string().optional(),
+});
+export type ResultadoEnvio = z.infer<typeof ResultadoEnvioSchema>;

@@ -68,6 +68,10 @@ model Usuario {
   /// elija la suya, la app la manda a /cambiar-clave. Se vuelve a marcar cuando
   /// un admin resetea la contraseña (misma situación que el primer ingreso).
   debeCambiarPassword Boolean @default(true) @map("debe_cambiar_password")
+  /// Recibe el reporte semanal del Protocolo por mail. NO se deriva del rol:
+  /// quién recibe un mail es una decisión de negocio, el rol es un permiso.
+  /// Arranca apagado — un reporte que nadie pidió se marca como spam.
+  recibeReporteSemanal Boolean @default(false) @map("recibe_reporte_semanal")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

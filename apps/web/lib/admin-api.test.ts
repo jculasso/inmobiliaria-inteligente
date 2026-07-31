@@ -30,6 +30,7 @@ const USUARIO = {
   roles: ['vendedor'],
   tieneAcceso: true,
   debeCambiarPassword: false,
+  recibeReporteSemanal: false,
   fotoUrl: null,
   telefono: null,
 };

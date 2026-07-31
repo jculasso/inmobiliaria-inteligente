@@ -5,6 +5,7 @@ import { InformeProtocoloService } from './informe/informe-protocolo.service';
 import { ProtocolosController } from './protocolos.controller';
 import { ProtocolosService } from './protocolos.service';
 import { ReporteSemanalPdfService } from './informe/reporte-semanal-pdf.service';
+import { ReporteSemanalMailService } from './informe/reporte-semanal-mail.service';
 
 /** Módulo Protocolo 5 Semanas: seguimiento de la comercialización de una captación. */
 @Module({
@@ -13,6 +14,7 @@ import { ReporteSemanalPdfService } from './informe/reporte-semanal-pdf.service'
     ProtocolosService,
     InformeProtocoloService,
     ReporteSemanalPdfService,
+    ReporteSemanalMailService,
     SupabaseStorageService,
   ],
 })

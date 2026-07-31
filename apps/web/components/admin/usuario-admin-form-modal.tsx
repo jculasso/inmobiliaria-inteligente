@@ -43,6 +43,7 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
   const [password, setPassword] = useState(() => passwordAlAzar());
   const [estado, setEstado] = useState(usuario?.estado ?? 'activo');
   const [telefono, setTelefono] = useState(usuario?.telefono ?? '');
+  const [recibeReporte, setRecibeReporte] = useState(usuario?.recibeReporteSemanal ?? false);
   const [roles, setRoles] = useState<Rol[]>(usuario?.roles ?? ['vendedor']);
 
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
           estado,
           roles,
           telefono: tel,
+          recibeReporteSemanal: recibeReporte,
         });
       } else {
         await createUsuarioAdmin(accessToken, tenantId, { nombre, email, password, roles, telefono: tel });
@@ -99,6 +101,25 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
                 className={inputClass}
               />
             </Campo>
+            {usuario && (
+              // Solo al editar: al crear no se sabe todavía si la persona va a
+              // ser destinataria, y prender un envío por default es la forma
+              // más rápida de que lo marquen como spam.
+              <Campo
+                label="Reporte semanal"
+                hint="Recibe por mail el reporte del Protocolo, los lunes."
+              >
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={recibeReporte}
+                    onChange={(e) => setRecibeReporte(e.target.checked)}
+                    className="h-4 w-4 accent-brand-red"
+                  />
+                  Recibe el reporte semanal
+                </label>
+              </Campo>
+            )}
             {usuario && (
               <Campo label="Estado" hint="Un usuario inactivo no puede entrar.">
                 <select
