@@ -23,6 +23,37 @@ export function hoyArgentina(ahora: Date = new Date()): string {
   return new Date(ahora.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
+const MESES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+/**
+ * Fecha en castellano para los textos que lee una persona: "20 de julio".
+ *
+ * El año solo aparece si no es el corriente — en un reporte semanal, "vence el
+ * 4 de agosto de 2026" sobra, pero una autorización que venció el año pasado
+ * necesita decirlo. Los mensajes de alerta mostraban la fecha ISO cruda
+ * (`2026-07-20`), que en un informe para la dirección se lee como un dato de
+ * sistema, no como una fecha.
+ */
+export function fechaEnPalabras(iso: string, hoy = hoyArgentina()): string {
+  const [anio, mes, dia] = iso.split('-').map(Number);
+  if (!anio || !mes || !dia) return iso;
+  const texto = `${dia} de ${MESES[mes - 1]}`;
+  return anio === Number(hoy.slice(0, 4)) ? texto : `${texto} de ${anio}`;
+}
+
 /** Días calendario entre dos fechas ISO (b - a). Negativo si b es anterior. */
 export function diasEntre(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / DIA_MS);
@@ -73,6 +104,26 @@ export function estaAtrasada(accion: AccionCalc, hoy = hoyArgentina()): boolean 
   return accion.fechaPrevista != null && accion.fechaPrevista < hoy;
 }
 
+/**
+ * Demorada = venció sin cerrarse, **o** quedó pendiente en una semana que ya
+ * pasó, tenga fecha prevista o no.
+ *
+ * La segunda mitad importa: `fechaPrevista` se puede borrar desde la ficha
+ * (`UpdateAccionSchema` la acepta nullable), y sin ella `estaAtrasada` nunca
+ * daba verdadero. Una acción de la semana 1 sin fecha, con el protocolo en la
+ * semana 5, no aparecía en ningún lado. Si la semana terminó y la acción sigue
+ * abierta, está demorada — la fecha es un detalle, no la definición.
+ */
+export function estaDemorada(
+  accion: AccionCalc,
+  semanaEnCurso: number,
+  hoy = hoyArgentina(),
+): boolean {
+  if (accion.estado === 'realizada' || accion.estado === 'no_corresponde') return false;
+  if (accion.semana < semanaEnCurso) return true;
+  return accion.fechaPrevista != null && accion.fechaPrevista < hoy;
+}
+
 export function calcularEmbudo(m: {
   consultas: number;
   consultasCalificadas: number;
@@ -109,14 +160,17 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
   const alertas: AlertaProtocolo[] = [];
   const semana = semanaActual(d.fechaInicio, hoy);
 
-  const atrasadas = d.acciones.filter((a) => estaAtrasada(a, hoy));
+  const atrasadas = d.acciones.filter((a) => estaDemorada(a, semana, hoy));
   if (atrasadas.length > 0) {
     // Se apunta a la semana más vieja con atraso: es por donde hay que empezar.
     const primera = Math.min(...atrasadas.map((a) => a.semana));
+    const una = atrasadas.length === 1;
     alertas.push({
       nivel: 'roja',
-      titulo: atrasadas.length === 1 ? '1 acción atrasada' : `${atrasadas.length} acciones atrasadas`,
-      detalle: 'Vencieron sin cerrarse. Revisá la semana correspondiente.',
+      titulo: una ? '1 acción atrasada' : `${atrasadas.length} acciones atrasadas`,
+      detalle: una
+        ? `Venció sin cerrarse. Es de la semana ${primera}.`
+        : `Vencieron sin cerrarse. La más antigua es de la semana ${primera}.`,
       semana: primera,
     });
   }
@@ -125,54 +179,51 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
     (a) => a.estado !== 'realizada' && a.estado !== 'no_corresponde' && a.fechaPrevista === hoy,
   );
   if (vencenHoy.length > 0) {
+    const una = vencenHoy.length === 1;
     alertas.push({
       nivel: 'ambar',
-      titulo: vencenHoy.length === 1 ? '1 acción vence hoy' : `${vencenHoy.length} acciones vencen hoy`,
-      detalle: 'Cerralas hoy para no arrastrar atraso a la semana siguiente.',
+      titulo: una ? '1 acción vence hoy' : `${vencenHoy.length} acciones vencen hoy`,
+      detalle: una ? 'Si no se cierra hoy, mañana queda atrasada.' : 'Si no se cierran hoy, mañana quedan atrasadas.',
       semana: Math.min(...vencenHoy.map((a) => a.semana)),
     });
   }
 
   if (d.vencimientoAutorizacion) {
     const restan = diasEntre(hoy, d.vencimientoAutorizacion);
+    const cuando = fechaEnPalabras(d.vencimientoAutorizacion, hoy);
     if (restan < 0) {
       alertas.push({
         nivel: 'roja',
         titulo: 'Autorización vencida',
-        detalle: `Venció el ${d.vencimientoAutorizacion}. Hay que renovarla con el propietario.`,
+        detalle: `Venció el ${cuando}. Hay que renovarla con el propietario para seguir comercializando.`,
         semana: null,
       });
     } else if (restan <= 10) {
       alertas.push({
         nivel: 'ambar',
         titulo: 'Autorización por vencer',
-        detalle: `Vence el ${d.vencimientoAutorizacion} (${restan} ${restan === 1 ? 'día' : 'días'}).`,
+        detalle:
+          restan === 0
+            ? `Vence hoy, ${cuando}. Conviene renovarla con el propietario.`
+            : `Vence el ${cuando}, en ${restan} ${restan === 1 ? 'día' : 'días'}. Conviene renovarla antes.`,
         semana: null,
       });
     }
   }
 
-  if (semana > 1) {
-    const pendientesPrevias = d.acciones.filter(
-      (a) => a.semana < semana && a.estado !== 'realizada' && a.estado !== 'no_corresponde',
-    );
-    if (pendientesPrevias.length > 0) {
-      alertas.push({
-        nivel: 'ambar',
-        titulo: 'Semana anterior incompleta',
-        detalle: `Quedan ${pendientesPrevias.length} acciones sin cerrar antes de la semana ${semana}.`,
-        semana: Math.min(...pendientesPrevias.map((a) => a.semana)),
-      });
-    }
-  }
+  // NO existe una alerta de "semana anterior incompleta". La había y era ruido:
+  // toda acción pendiente de una semana pasada ya venció —su fecha prevista es
+  // el último día de esa semana—, así que SIEMPRE estaba contenida en "N
+  // acciones atrasadas", que además apunta a la misma semana. Decir dos veces lo
+  // mismo con distinto color le resta autoridad a las dos.
 
   if (d.actualizadoEn) {
     const inactividad = diasEntre(d.actualizadoEn, hoy);
     if (inactividad >= 7) {
       alertas.push({
         nivel: 'ambar',
-        titulo: 'Sin actividad reciente',
-        detalle: `Pasaron ${inactividad} días desde la última actualización.`,
+        titulo: 'Sin movimiento hace más de una semana',
+        detalle: `Pasaron ${inactividad} días sin registrar avances en la ficha.`,
         semana: null,
       });
     }
@@ -181,8 +232,8 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
   if (semana >= TOTAL_SEMANAS && d.consultas === 0 && d.visitas === 0) {
     alertas.push({
       nivel: 'ambar',
-      titulo: 'Resultados comerciales sin cargar',
-      detalle: 'Completá consultas y visitas: son los datos que alimentan el informe del propietario.',
+      titulo: 'Faltan los resultados comerciales',
+      detalle: 'Sin consultas ni visitas cargadas, el informe al propietario queda sin respaldo.',
       semana: null,
     });
   }
@@ -191,7 +242,7 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
     alertas.push({
       nivel: 'verde',
       titulo: 'Protocolo listo para cierre',
-      detalle: 'Corresponde emitir el informe final y acordar la próxima estrategia.',
+      detalle: 'Se completaron las cinco semanas. Corresponde emitir el informe final y acordar con el propietario cómo sigue.',
       semana: TOTAL_SEMANAS,
     });
   }

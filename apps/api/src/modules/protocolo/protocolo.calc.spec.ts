@@ -7,6 +7,7 @@ import {
   diasEntre,
   diasPublicada,
   estaAtrasada,
+  fechaEnPalabras,
   fechaPrevistaDeSemana,
   prioridad,
   semanaActual,
@@ -183,18 +184,26 @@ describe('calcularAlertas', () => {
     expect(alertas.some((a) => a.titulo.startsWith('Autorización'))).toBe(false);
   });
 
-  it('avisa cuando quedó pendiente algo de una semana anterior', () => {
+  /**
+   * Antes esto lo cubría una alerta aparte, 'Semana anterior incompleta', que
+   * SIEMPRE decía lo mismo que 'N acciones atrasadas' y con otro color. Se
+   * eliminó: repetir el mismo hecho dos veces le resta autoridad a los dos
+   * avisos. Lo que sí se corrigió es el hueco que dejaba — una acción sin
+   * fecha prevista de una semana ya pasada no contaba como atrasada.
+   */
+  it('cuenta como atrasada la acción de una semana pasada aunque no tenga fecha', () => {
     // 2026-07-10 → semana 2; la acción es de la semana 1 y sigue pendiente.
     const alertas = calcularAlertas(
       { ...base, acciones: [accion({ semana: 1, fechaPrevista: null })] },
       '2026-07-10',
     );
-    expect(alertas.some((a) => a.titulo === 'Semana anterior incompleta')).toBe(true);
+    expect(alertas.some((a) => a.nivel === 'roja' && a.titulo === '1 acción atrasada')).toBe(true);
+    expect(alertas.some((a) => a.titulo === 'Semana anterior incompleta')).toBe(false);
   });
 
   it('avisa por inactividad de 7 días o más', () => {
     const alertas = calcularAlertas({ ...base, actualizadoEn: '2026-07-01' }, '2026-07-10');
-    expect(alertas.some((a) => a.titulo === 'Sin actividad reciente')).toBe(true);
+    expect(alertas.some((a) => a.titulo === 'Sin movimiento hace más de una semana')).toBe(true);
   });
 
   it('en la semana 5 reclama los resultados comerciales si están en cero', () => {
@@ -202,7 +211,7 @@ describe('calcularAlertas', () => {
       { ...base, consultas: 0, visitas: 0 },
       '2026-08-01', // semana 5
     );
-    expect(alertas.some((a) => a.titulo === 'Resultados comerciales sin cargar')).toBe(true);
+    expect(alertas.some((a) => a.titulo === 'Faltan los resultados comerciales')).toBe(true);
   });
 
   it('confirma en verde cuando la semana 5 está completa', () => {
@@ -259,5 +268,20 @@ describe('prioridad', () => {
 
   it('sin alertas, está al día', () => {
     expect(prioridad([])).toBe('verde');
+  });
+});
+
+describe('fechaEnPalabras', () => {
+  // Los mensajes mostraban la fecha ISO cruda ("Venció el 2026-07-20"), que en
+  // un informe para la dirección se lee como un dato de sistema.
+  it('escribe la fecha como la diría una persona', () => {
+    expect(fechaEnPalabras('2026-07-20', '2026-07-30')).toBe('20 de julio');
+    expect(fechaEnPalabras('2026-01-05', '2026-07-30')).toBe('5 de enero');
+  });
+
+  // El año solo cuando aporta: en un reporte semanal "de 2026" sobra, pero una
+  // autorización vencida el año pasado necesita decirlo.
+  it('agrega el año solo si no es el corriente', () => {
+    expect(fechaEnPalabras('2025-11-02', '2026-07-30')).toBe('2 de noviembre de 2025');
   });
 });

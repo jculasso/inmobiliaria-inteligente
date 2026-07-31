@@ -16,6 +16,14 @@
   --color-surface: #f4f5f7; /* fondo */
   --color-success: #1e9e5a; /* éxito / activo */
   --color-warning: #b7791f; /* en desarrollo / advertencia */
+
+  /* Urgencia. SEPARADO de --color-brand-red a propósito: la marca la pisa cada
+   * inmobiliaria (tenant-style.ts), la urgencia no. Jorgito tiene marca azul y
+   * las alertas críticas salían AZULES — nada resaltaba, y el reporte de la
+   * dirección parecía estar todo en orden. Con una marca verde, una alerta
+   * crítica se vería verde. Rojo = urge, siempre, sea cual sea la marca. */
+  --color-danger: #c1121f;
+  --color-danger-dark: #8f0d18;
   --color-inactive: #f0f0f2; /* fondo — módulo/estado "Próximamente" */
   --color-inactive-accent: #cbcbd0; /* acento — barra/ícono "Próximamente" */
 

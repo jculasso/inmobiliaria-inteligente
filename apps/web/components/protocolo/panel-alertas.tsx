@@ -54,7 +54,7 @@ export function PanelAlertas({ alertas }: { alertas: AlertaConPropiedad[] }) {
         {!sinAlertas && (
           <span className="flex shrink-0 items-center gap-2">
             {rojas > 0 && (
-              <span className="rounded-full bg-brand-red/10 px-2 py-0.5 text-xs font-extrabold text-brand-red">
+              <span className="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-extrabold text-danger">
                 {rojas}
               </span>
             )}

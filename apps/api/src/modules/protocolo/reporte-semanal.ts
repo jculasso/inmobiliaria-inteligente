@@ -2,7 +2,7 @@ import {
   SEMANAS,
   type AlertaProtocolo,
   type EstadoSemana,
-  type ItemDecision,
+  type ItemUrgente,
   type NivelAlerta,
   type PropiedadEnReporte,
   type ReporteSemanal,
@@ -13,7 +13,7 @@ import {
 import {
   avanceSemana,
   calcularAlertas,
-  estaAtrasada,
+  estaDemorada,
   hoyArgentina,
   prioridad,
   semanaActual,
@@ -86,9 +86,12 @@ function armarPropiedad(p: ProtocoloParaReporte, hoy: string): PropiedadEnReport
     return {
       semana,
       estado: estadoDeSemana(semana, enCurso, p.acciones),
-      atrasadas: aplicables.filter((a) => estaAtrasada(a, hoy)).length,
+      atrasadas: aplicables.filter((a) => estaDemorada(a, enCurso, hoy)).length,
       pendientes: aplicables.filter((a) => a.estado !== 'realizada').length,
-      alertas: alertas.filter((a) => a.semana === semana),
+      // El verde de cierre NO se repite acá: ya lo dice `listoParaCierre` con
+      // su frase, y ponerlo además como alerta al lado de una roja era
+      // justamente lo que se leía como contradicción.
+      alertas: alertas.filter((a) => a.semana === semana && a.titulo !== TITULO_CIERRE),
     };
   });
 
@@ -168,12 +171,12 @@ export function generarReporteSemanal(
   }
 
   // Regla 5: lo rojo primero, respetando el orden ya establecido.
-  const necesitaDecision: ItemDecision[] = [];
+  const urgencias: ItemUrgente[] = [];
   for (const grupo of porVendedor) {
     for (const propiedad of grupo.propiedades) {
       const rojas = rojasDe(propiedad);
       if (rojas.length > 0) {
-        necesitaDecision.push({
+        urgencias.push({
           vendedorNombre: grupo.vendedorNombre,
           direccion: propiedad.direccion,
           protocoloId: propiedad.protocoloId,
@@ -196,8 +199,8 @@ export function generarReporteSemanal(
   return {
     generadoEl: hoy,
     resumen,
-    necesitaAtencion: necesitaDecision.length > 0,
-    necesitaDecision,
+    hayUrgencias: urgencias.length > 0,
+    urgencias,
     porVendedor,
   };
 }

@@ -3,7 +3,9 @@ import type { AlertaProtocolo, NivelAlerta } from '@vacker/types';
 // Piezas visuales compartidas del módulo Protocolo.
 
 const CLASE_NIVEL: Record<NivelAlerta, string> = {
-  roja: 'border-brand-red/30 bg-brand-red/5 text-brand-red-dark',
+  // `danger`, no `brand-red`: la marca la pisa cada inmobiliaria y una
+  // alerta crítica terminaba pintada del color de la empresa.
+  roja: 'border-danger/30 bg-danger/5 text-danger-dark',
   ambar: 'border-warning/30 bg-warning/5 text-warning',
   verde: 'border-success/30 bg-success/5 text-success',
 };
