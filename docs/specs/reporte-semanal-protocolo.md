@@ -98,6 +98,37 @@ confusión que ya costó una vez entre vista y permiso
   existe aunque la persona ya no esté, y es justamente lo que la dirección
   necesita ver para reasignar.
 
+## Lo que sigue: comparar contra la semana pasada
+
+Acordado con la dirección el 30/07/2026, para cuando el mail ya esté
+circulando. Es la mejora de más valor y la única que necesita datos nuevos.
+
+**El problema que resuelve:** hoy el reporte dice *cómo está*; no dice *si va
+mejorando*. "Belgrano tiene 6 acciones atrasadas" es un estado. "Hace una
+semana tenía 3, hoy tiene 6" es información de conducción — y es lo que
+justifica que el reporte sea semanal y no una pantalla que se mira cuando uno
+se acuerda.
+
+**Lo que hace falta:** una foto semanal por protocolo, guardada al generar el
+reporte. Lo mínimo que alcanza:
+
+| Campo | Para qué |
+|---|---|
+| `protocolo_id`, `generado_el` | la clave |
+| `semana_actual`, `dias_transcurridos` | contexto |
+| `atrasadas`, `pendientes` | la comparación que importa |
+| `prioridad` | pasó de ámbar a roja, o al revés |
+
+Con eso el reporte puede decir, por propiedad, **empeoró / mejoró / igual**, y
+en la cabecera algo como "3 propiedades empeoraron respecto de la semana
+pasada".
+
+**Por qué no se hizo ya:** sin el mail circulando no hay serie que comparar, y
+guardar una foto semanal que nadie lee es inventar una tabla por adelantado.
+Primero el hábito, después la historia.
+
+---
+
 ## Fuera de alcance (por ahora)
 
 - Envío a team leaders y vendedores. El generador ya lo soporta —es el mismo
@@ -123,7 +154,10 @@ confusión que ya costó una vez entre vista y permiso
 | Contrato compartido en `@vacker/types` | **hecho** — `reporte-protocolo.ts` |
 | Cierre con tareas pendientes, explícito | **hecho** — regla 12 |
 | Endpoint a demanda | **hecho** — `GET /protocolo/reporte-semanal` |
-| Pantalla del reporte a demanda | pendiente |
+| Pantalla del reporte a demanda | **hecho** |
+| Foto, fecha de inicio y días transcurridos | **hecho** |
+| Precio publicado y frase de resumen | **hecho** |
+| Comparación contra la semana pasada | pendiente — ver arriba |
 | Marca "recibe el reporte" por usuario | pendiente |
 | Render del mail (HTML) | pendiente |
 | Proveedor de envío (Resend) + DNS | **DNS hecho** el 30/07/2026 — `avisos.inmobiliariainteligente.net` verificado, `RESEND_API_KEY` cargada en Render |
