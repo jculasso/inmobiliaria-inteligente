@@ -176,3 +176,10 @@ export const ResultadoEnvioSchema = z.object({
   motivo: z.string().optional(),
 });
 export type ResultadoEnvio = z.infer<typeof ResultadoEnvioSchema>;
+
+/** Quién tiene marcado que recibe el reporte, para poder mostrarlo ANTES de mandar. */
+export const DestinatarioReporteSchema = z.object({
+  nombre: z.string(),
+  email: z.string(),
+});
+export type DestinatarioReporte = z.infer<typeof DestinatarioReporteSchema>;

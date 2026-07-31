@@ -1,4 +1,4 @@
-import { Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { pdfResponse } from '../../../common/pdf-response';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ROLES_REPORTE_PROTOCOLO } from '@vacker/types';
@@ -19,6 +19,13 @@ export class InformeProtocoloController {
     private readonly reporteSemanal: ReporteSemanalPdfService,
     private readonly reporteMail: ReporteSemanalMailService,
   ) {}
+
+  @Get('reporte-semanal/destinatarios')
+  @Roles(...ROLES_REPORTE_PROTOCOLO)
+  @ApiOperation({ summary: 'Quiénes tienen marcado que reciben el reporte' })
+  destinatariosDelReporte(@CurrentUser() user: AuthPrincipal) {
+    return this.reporteMail.destinatarios(ctxDe(user));
+  }
 
   @Post('reporte-semanal/enviar')
   @Roles(...ROLES_REPORTE_PROTOCOLO)

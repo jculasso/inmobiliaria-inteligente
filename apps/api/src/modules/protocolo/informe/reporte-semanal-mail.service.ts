@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { DestinatarioReporte } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { enviarMail, MailError } from '../../../common/resend.client';
@@ -41,6 +42,23 @@ export class ReporteSemanalMailService {
     private readonly protocolos: ProtocolosService,
     private readonly pdf: ReporteSemanalPdfService,
   ) {}
+
+  /**
+   * A quiénes les va a llegar. Se consulta ANTES de mandar para poder
+   * mostrarlo en la confirmación: sin esto, la única forma de enterarse de
+   * que no había nadie marcado era mandar el mail y leer el motivo.
+   */
+  async destinatarios(ctx: TenantContext): Promise<DestinatarioReporte[]> {
+    return this.db.withTenant(
+      async (tx) =>
+        tx.usuario.findMany({
+          where: { recibeReporteSemanal: true, estado: 'activo' },
+          select: { nombre: true, email: true },
+          orderBy: { nombre: 'asc' },
+        }),
+      ctx,
+    );
+  }
 
   async enviar(ctx: TenantContext): Promise<ResultadoEnvio> {
     const { tenant, destinatarios } = await this.db.withTenant(async (tx) => {
