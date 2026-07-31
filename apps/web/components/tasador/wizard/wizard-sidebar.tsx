@@ -12,11 +12,16 @@ export const SECCIONES = [
 interface Props {
   activa: number;
   onCambiar: (seccion: number) => void;
-  error: string | null;
 }
 
-/** Sidebar del wizard: 6 secciones numeradas + indicador de progreso + banner de errores. */
-export function WizardSidebar({ activa, onCambiar, error }: Props) {
+/**
+ * Sidebar del wizard: 6 secciones numeradas + indicador de progreso.
+ *
+ * El banner de errores VIVIA acá y se mudó a la barra de abajo, pegado a los
+ * botones: en una sección larga el mensaje quedaba fuera de pantalla y el
+ * wizard parecía no responder.
+ */
+export function WizardSidebar({ activa, onCambiar }: Props) {
   const progreso = (activa / SECCIONES.length) * 100;
 
   return (
@@ -65,11 +70,6 @@ export function WizardSidebar({ activa, onCambiar, error }: Props) {
         {SECCIONES.find((s) => s.id === activa)?.nombre}
       </p>
 
-      {error && (
-        <div role="alert" className="rounded-brand border border-brand-red/30 bg-brand-red/5 p-3 text-xs text-brand-red">
-          {error}
-        </div>
-      )}
     </aside>
   );
 }

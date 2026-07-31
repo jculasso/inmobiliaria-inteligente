@@ -426,7 +426,7 @@ export function TasacionWizard({ tasacion }: Props) {
 
   return (
     <div className="flex flex-col overflow-hidden rounded-brand border border-line bg-white lg:min-h-[calc(100vh-8rem)] lg:flex-row">
-      <WizardSidebar activa={seccionActiva} onCambiar={irA} error={error} />
+      <WizardSidebar activa={seccionActiva} onCambiar={irA} />
 
       <div className="flex flex-1 flex-col">
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
@@ -549,30 +549,51 @@ export function TasacionWizard({ tasacion }: Props) {
           )}
         </div>
 
-        <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-white px-4 py-3 sm:px-6">
-          <Button type="button" variant="secondary" onClick={() => router.push('/tasador/tasaciones')}>
-            Cancelar
-          </Button>
-          <div className="flex flex-wrap items-center gap-2">
-            {seccionActiva > 1 && (
-              <Button type="button" variant="secondary" onClick={handleAnterior} disabled={guardando}>
-                ← Anterior
-              </Button>
-            )}
-            {seccionActiva < SECCIONES.length ? (
-              <Button type="button" variant="primary" onClick={handleSiguiente} disabled={guardando}>
-                {guardando ? 'Guardando…' : 'Siguiente →'}
-              </Button>
-            ) : (
-              <>
-                <Button type="button" variant="secondary" onClick={handleFinalizar} disabled={guardando}>
-                  {guardando ? 'Guardando…' : 'Guardar y salir'}
+        {/* El error va ACÁ, pegado al botón que lo provoca, y no arriba en la
+            barra lateral: en una sección larga —comparables con tres cargados—
+            hacías click en "Siguiente" abajo, el mensaje aparecía fuera de
+            pantalla y la pantalla parecía no hacer nada. Reportado el
+            30/07/2026: "no me dejaba pasar, no daba ningún mensaje". El mensaje
+            estaba; no se veía. */}
+        <div className="sticky bottom-0 border-t border-line bg-white">
+          {error && (
+            <div
+              role="alert"
+              className="border-b border-brand-red/20 bg-brand-red/5 px-4 py-2.5 text-xs font-semibold text-brand-red sm:px-6"
+            >
+              {error}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
+            <Button type="button" variant="secondary" onClick={() => router.push('/tasador/tasaciones')}>
+              Cancelar
+            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {seccionActiva > 1 && (
+                <Button type="button" variant="secondary" onClick={handleAnterior} disabled={guardando}>
+                  ← Anterior
                 </Button>
-                <Button type="button" variant="primary" onClick={handleGenerarInforme} disabled={generandoInforme}>
-                  {generandoInforme ? 'Generando…' : 'Generar informe (PDF)'}
+              )}
+              {seccionActiva < SECCIONES.length ? (
+                <Button type="button" variant="primary" onClick={handleSiguiente} disabled={guardando}>
+                  {guardando ? 'Guardando…' : 'Siguiente →'}
                 </Button>
-              </>
-            )}
+              ) : (
+                <>
+                  <Button type="button" variant="secondary" onClick={handleFinalizar} disabled={guardando}>
+                    {guardando ? 'Guardando…' : 'Guardar y salir'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleGenerarInforme}
+                    disabled={generandoInforme}
+                  >
+                    {generandoInforme ? 'Generando…' : 'Generar informe (PDF)'}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
