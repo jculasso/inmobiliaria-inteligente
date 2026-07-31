@@ -115,7 +115,9 @@ export function EnviarReporteModal({ onClose }: { onClose: () => void }) {
                     return (
                       <li
                         key={d.email}
-                        className={`rounded-brand border px-3 py-2 text-sm ${
+                        // `break-words`: un mail es un token sin espacios, y
+                        // uno largo se sale de la tarjeta en 375px.
+                        className={`break-words rounded-brand border px-3 py-2 text-sm ${
                           inalcanzable
                             ? 'border-warning/40 bg-warning/5'
                             : 'border-line bg-surface'
