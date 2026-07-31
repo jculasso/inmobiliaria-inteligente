@@ -201,19 +201,34 @@ describe('ProtocolosService — edición simultánea', () => {
     expect(tx.protocolo.update).toHaveBeenCalled();
   });
 
-  it('también protege el checklist', async () => {
+  /**
+   * REGRESIÓN. El checklist NO lleva control de versión, y no es un olvido.
+   *
+   * Lo llevaba, comparando contra `protocolo.updatedAt` — que este mismo método
+   * pisa al terminar, para alimentar la alerta de inactividad. Resultado:
+   * tildar dos acciones seguidas sin esperar a que volviera la primera mandaba
+   * la versión vieja en la segunda, y la API respondía "otra persona actualizó
+   * esta propiedad mientras la editabas". No había otra persona: era el mismo
+   * usuario, contra sí mismo. Reportado en producción el 30/07/2026.
+   *
+   * Además el candado estaba en la granularidad equivocada: dos personas
+   * tildando acciones DISTINTAS del mismo checklist no se pisan. Lo que sí hay
+   * que proteger son los contadores de la ficha, y eso sigue en `update()`.
+   */
+  it('el checklist NO se bloquea por versión: dos tildes seguidas pasan', async () => {
     const tx = makeTx();
     tx.protocoloAccion.findUnique = vi.fn().mockResolvedValue({
       protocoloId: 'p1',
       fechaRealizada: null,
-      protocolo: { agenteId: 'u1', updatedAt: VERSION },
+      protocolo: { agenteId: 'u1' },
     });
+    tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
-    await expect(
-      svc.updateAccion('p1', 'a1', { estado: 'realizada', version: '2026-01-01T00:00:00.000Z' }, CTX_VENDEDOR),
-    ).rejects.toThrow(ConflictException);
-    expect(tx.protocoloAccion.update).not.toHaveBeenCalled();
+    await svc.updateAccion('p1', 'a1', { estado: 'realizada' }, CTX_VENDEDOR);
+    await svc.updateAccion('p1', 'a2', { estado: 'realizada' }, CTX_VENDEDOR);
+
+    expect(tx.protocoloAccion.update).toHaveBeenCalledTimes(2);
   });
 
   it('sin versión no se controla (compatibilidad hacia atrás)', async () => {

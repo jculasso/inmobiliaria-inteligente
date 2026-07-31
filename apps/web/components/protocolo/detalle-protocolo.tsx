@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   DESCRIPCION_SEMANA,
@@ -63,6 +63,18 @@ export function DetalleProtocolo({
   const [error, setError] = useState<string | null>(null);
 
   /**
+   * La versión que la API ya nos devolvió, leída SIEMPRE desde acá y no desde
+   * `p`.
+   *
+   * `p` es el valor del render en que se hizo el click: si se guardan dos
+   * cambios seguidos sin esperar al primero, el segundo mandaría la versión
+   * vieja y la API lo rechazaría como si otra persona hubiera tocado la ficha.
+   * La ref se actualiza apenas vuelve la respuesta, antes de que React vuelva a
+   * pintar.
+   */
+  const version = useRef(inicial.version);
+
+  /**
    * Genera el PDF y lo abre en otra pestaña. Va por `abrirPdfEnPestana` para
    * que la pestaña se abra dentro del click: abrirla después de esperar la
    * respuesta hacía que el navegador la bloqueara como popup.
@@ -92,6 +104,7 @@ export function DetalleProtocolo({
     setError(null);
     try {
       const fresco = await fn(await getAccessToken());
+      version.current = fresco.version;
       setP({ ...fresco, propiedad: { ...fresco.propiedad, fotoUrl: previo.propiedad.fotoUrl } });
     } catch (err) {
       setP(previo); // revierte: el cambio no llegó a la base
@@ -101,21 +114,23 @@ export function DetalleProtocolo({
     }
   }
 
-  // `version` viaja en cada guardado: si otra persona tocó la ficha mientras
-  // tanto, la API rechaza el cambio en vez de pisarlo.
+  // Tildar una acción NO lleva versión: es una fila propia con campos
+  // explícitos, y dos personas marcando acciones distintas no se pisan.
   const cambiarAccion = (accionId: string, campos: Parameters<typeof updateAccion>[3]) =>
     guardar(
       (prev) => ({
         ...prev,
         acciones: prev.acciones.map((a) => (a.id === accionId ? { ...a, ...campos } : a)),
       }),
-      (t) => updateAccion(t, p.id, accionId, { ...campos, version: p.version }),
+      (t) => updateAccion(t, p.id, accionId, campos),
     );
 
+  // La ficha SÍ la lleva: los contadores viajan como valor absoluto y sin esto
+  // el último en guardar los hace retroceder sin que nadie se entere.
   const cambiarFicha = (campos: Parameters<typeof updateProtocolo>[2]) =>
     guardar(
       (prev) => ({ ...prev, ...campos, embudo: { ...prev.embudo, ...campos } }),
-      (t) => updateProtocolo(t, p.id, { ...campos, version: p.version }),
+      (t) => updateProtocolo(t, p.id, { ...campos, version: version.current }),
     );
 
   const deLaSemana = p.acciones.filter((a) => a.semana === semana);

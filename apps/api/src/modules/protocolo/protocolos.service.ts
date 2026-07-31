@@ -268,7 +268,7 @@ export class ProtocolosService {
         select: {
           protocoloId: true,
           fechaRealizada: true,
-          protocolo: { select: { agenteId: true, updatedAt: true } },
+          protocolo: { select: { agenteId: true } },
         },
       });
       if (!accion || accion.protocoloId !== id) {
@@ -278,7 +278,11 @@ export class ProtocolosService {
       if (scope.usuarioIds !== null && !scope.usuarioIds.includes(accion.protocolo.agenteId)) {
         throw new NotFoundException('Protocolo no encontrado.');
       }
-      this.exigirVersion(accion.protocolo.updatedAt, dto.version);
+      // SIN control de versión, a propósito — ver UpdateAccionSchema. Lo tenía
+      // y era un falso positivo constante: se comparaba contra
+      // `protocolo.updatedAt`, que este mismo método pisa cuatro líneas más
+      // abajo. Tildar dos acciones seguidas te acusaba de pisar a otra persona
+      // que no existía.
 
       const data: Prisma.ProtocoloAccionUpdateInput = {};
       if (dto.estado !== undefined) data.estado = dto.estado;
