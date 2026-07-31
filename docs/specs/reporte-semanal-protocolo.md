@@ -157,6 +157,7 @@ Primero el hábito, después la historia.
 | Pantalla del reporte a demanda | **hecho** |
 | Foto, fecha de inicio y días transcurridos | **hecho** |
 | Precio publicado y frase de resumen | **hecho** |
+| Reporte en PDF | **hecho** — `reporte-semanal.template.tsx` |
 | Comparación contra la semana pasada | pendiente — ver arriba |
 | Marca "recibe el reporte" por usuario | pendiente |
 | Render del mail (HTML) | pendiente |

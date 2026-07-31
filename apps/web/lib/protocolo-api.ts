@@ -74,6 +74,11 @@ export async function archivarProtocolo(accessToken: string, id: string, dto: Ar
   });
 }
 
+/** Genera el reporte semanal en PDF (el mismo que muestra la pantalla). */
+export async function generarReporteSemanalPdf(accessToken: string) {
+  return apiFetchPdf('/protocolo/reporte-semanal/pdf', { accessToken });
+}
+
 /** Genera el informe del propietario y devuelve el PDF. */
 export async function generarInformeProtocolo(accessToken: string, id: string) {
   return apiFetchPdf(`/protocolo/${id}/informe`, { accessToken });
