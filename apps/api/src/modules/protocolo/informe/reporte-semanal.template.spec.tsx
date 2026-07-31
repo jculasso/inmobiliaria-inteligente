@@ -2,7 +2,7 @@ import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { describe, expect, it } from 'vitest';
 import type { PropiedadEnReporte, ReporteSemanal } from '@vacker/types';
-import { streamsDePdf, textoDePdf } from '../../../common/texto-pdf';
+import { fuentesUsadasEnPdf, streamsDePdf, textoDePdf } from '../../../common/texto-pdf';
 import { ReporteSemanalDocument } from './reporte-semanal.template';
 
 const textoDe = textoDePdf;
@@ -155,5 +155,21 @@ describe('ReporteSemanalDocument', () => {
     expect(texto).toContain('Sin propiedades en comercialización');
     expect(texto).toContain('Todavía no hay propiedades en comercialización');
     expect(texto).not.toContain('DETALLE POR VENDEDOR');
+  });
+});
+
+/**
+ * Un informe de marca no puede llevar dos tipografías.
+ *
+ * react-pdf incrusta una fuente de respaldo (Helvetica) por CADA carácter que
+ * no encuentre en la familia registrada. Pasó con el ✓ de la tira de semanas:
+ * Montserrat no lo tiene, y el PDF terminaba con Helvetica-Bold adentro por una
+ * sola tilde. Este test lo detecta sin tener que abrir el archivo.
+ */
+describe('tipografía del PDF', () => {
+  it('solo dibuja con Montserrat: ningún carácter cae a una fuente de respaldo', async () => {
+    const familias = fuentesUsadasEnPdf(await renderToBuffer(doc(reporte())));
+
+    expect(familias.every((f) => f.startsWith('Montserrat'))).toBe(true);
   });
 });

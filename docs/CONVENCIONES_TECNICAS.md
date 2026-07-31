@@ -312,3 +312,47 @@ si la inmobiliaria fuera verde?** Si la respuesta es no, va `danger`.
 
 Reportado el 30/07/2026 por el usuario mirando el reporte semanal: "pone todo
 verde en las semanas". No estaba todo verde — lo rojo estaba azul.
+
+---
+
+## 14. Los PDF: el nombre del archivo y la tipografía
+
+Dos cosas que se descubren tarde, mirando un PDF ya generado.
+
+### El nombre solo llega por nuestro botón "Descargar"
+
+Los informes se generan con un `POST` autenticado, así que el navegador nunca
+navega a una URL del archivo: recibe los bytes y se arma una **URL `blob:`**,
+que es **opaca — no lleva nombre**.
+
+Si el usuario guarda desde el visor de PDF del navegador (el ícono de disquete
+que está DENTRO del iframe), el archivo sale como `98b7e19d-6834-….pdf`. Ese
+visor solo ve el `blob:`.
+
+El nombre real llega **únicamente** por el enlace `<a download="...">` que
+`abrir-pdf.ts` pone en la cabecera de la pestaña. Por eso ese botón está en
+estilo primario y tiene que seguir estándolo. La cabecera `Content-Disposition`
+que arma `pdf-response.ts` sirve para que el front sepa cómo llamar al archivo,
+no para que el visor lo respete.
+
+Reportado el 30/07/2026: llegó un PDF llamado con un UUID.
+
+### Un carácter que no está en Montserrat arrastra una segunda tipografía
+
+react-pdf incrusta **Helvetica por cada carácter** que no encuentre en la
+familia registrada. **Montserrat no tiene `✓` (U+2713) ni `→` (U+2192)**, entre
+otros símbolos. Un solo ✓ en la tira de semanas metía Helvetica-Bold dentro de
+un informe de marca.
+
+En pantalla el ✓ funciona —ahí manda el navegador— pero en el PDF no. Cuando
+haga falta un símbolo, revisar que exista en la fuente o usar un número.
+
+Lo fija **`fuentesUsadasEnPdf`** (`common/texto-pdf.ts`), con un test por
+informe. Mira lo que el PDF **dibuja**, no lo que declara: react-pdf emite un
+`/F1 Tf` seleccionando Helvetica hasta para un texto vacío, y contar eso sería
+denunciar un problema que no existe.
+
+Ese mismo archivo tiene **`textoDePdf`**, que devuelve el texto legible: el
+texto de un PDF no viaja como texto (la fuente va recortada y lo que se escribe
+son ids de glifo), así que sin esto solo se podía verificar que el archivo se
+generara, no qué decía.

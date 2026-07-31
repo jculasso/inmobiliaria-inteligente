@@ -168,8 +168,19 @@ function Tira({ propiedad, e }: { propiedad: PropiedadEnReporte; e: Estilos }) {
     <View style={e.tira}>
       {propiedad.semanas.map((s) => {
         const c = COLOR_SEMANA[s.estado];
+        /*
+         * En pantalla la semana completa muestra un ✓. Acá va un 0, y no es
+         * un descuido: **Montserrat no tiene el carácter ✓**. react-pdf, al no
+         * encontrarlo, incrusta Helvetica solo para ese glifo — una segunda
+         * tipografía en un informe de marca, por una tilde.
+         *
+         * El 0 dice lo mismo (cero pendientes), es coherente con las otras
+         * celdas —que también son números— y el color verde ya comunica que
+         * está cerrada. Hay un test que verifica que la ÚNICA familia
+         * incrustada sea Montserrat.
+         */
         const valor =
-          s.estado === 'futura' ? '·' : s.atrasadas > 0 ? String(s.atrasadas) : String(s.pendientes || '✓');
+          s.estado === 'futura' ? '·' : s.atrasadas > 0 ? String(s.atrasadas) : String(s.pendientes);
         return (
           <View key={s.semana} style={[e.celda, { backgroundColor: c.fondo, borderColor: c.borde }]}>
             <Text style={[e.celdaSemana, { color: c.texto }]}>S{s.semana}</Text>

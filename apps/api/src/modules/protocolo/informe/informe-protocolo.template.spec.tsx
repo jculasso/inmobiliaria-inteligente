@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { medirFotosPdf } from '../../../common/medir-fotos-pdf';
+import { fuentesUsadasEnPdf } from '../../../common/texto-pdf';
 import { describe, expect, it } from 'vitest';
 import { PLANTILLA_ACCIONES, type ProtocoloDto } from '@vacker/types';
 import { InformeProtocoloDocument } from './informe-protocolo.template';
@@ -189,4 +190,22 @@ describe('InformeProtocoloDocument — la foto no se recorta', () => {
       expect(Math.abs(cajaAlto - fotoAlto)).toBeLessThanOrEqual(1);
     }
   }, 20_000);
+});
+
+/**
+ * Un informe de marca no puede llevar dos tipografías.
+ *
+ * react-pdf incrusta Helvetica por CADA carácter que no encuentre en la familia
+ * registrada. Pasó en el reporte semanal con el ✓ de la tira de semanas:
+ * Montserrat no lo tiene, y el PDF terminaba con Helvetica adentro por una sola
+ * tilde. Este test lo detecta sin abrir el archivo.
+ */
+describe('tipografía del informe de comercialización', () => {
+  it('solo dibuja con Montserrat', async () => {
+    const familias = fuentesUsadasEnPdf(
+      await renderToBuffer(<InformeProtocoloDocument protocolo={protocolo()} tenantNombre="Vacker" />),
+    );
+
+    expect(familias.every((f) => f.startsWith('Montserrat'))).toBe(true);
+  });
 });

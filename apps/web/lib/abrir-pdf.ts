@@ -13,9 +13,17 @@ function esc(s: string): string {
  * hacía que no apareciera nada.
  *
  * Dentro se arma una página con el nombre del informe, un botón de descarga y
- * el PDF embebido. El botón hace falta porque las URLs `blob:` son opacas: sin
- * un enlace con `download`, el archivo se guarda con un identificador al azar
- * en vez del nombre del informe.
+ * el PDF embebido.
+ *
+ * **El botón "Descargar" es la acción principal, y tiene que seguir siéndolo.**
+ * Las URLs `blob:` son opacas: no llevan nombre de archivo. Si el usuario
+ * guarda desde el visor de PDF del navegador —el ícono de disquete que está
+ * DENTRO del iframe— el archivo sale con un identificador al azar
+ * (`98b7e19d-6834-….pdf`), porque el visor solo ve el `blob:`. El nombre real
+ * llega únicamente por nuestro enlace con `download`.
+ *
+ * Reportado el 30/07/2026: el usuario guardó desde el visor y recibió el UUID.
+ * Por eso "Descargar" quedó en estilo primario y "Enviar" pasó a secundario.
  */
 export async function abrirPdfEnPestana(
   generar: () => Promise<PdfGenerado>,
@@ -57,8 +65,8 @@ export async function abrirPdfEnPestana(
 <header>
   <button type="button" id="volver" class="btn sec">← Volver</button>
   <h1>${esc(archivo)}</h1>
-  <button type="button" id="compartir" class="btn" hidden>Enviar</button>
-  <a id="descargar" class="btn sec" href="${url}" download="${esc(archivo)}">Descargar</a>
+  <button type="button" id="compartir" class="btn sec" hidden>Enviar</button>
+  <a id="descargar" class="btn" href="${url}" download="${esc(archivo)}">Descargar</a>
 </header>
 <iframe src="${url}" title="${esc(nombre)}"></iframe>`);
     win.document.close();

@@ -79,10 +79,22 @@ Y si el cambio suma un archivo que el navegador pide **sin sesión** (íconos,
 
 ## 5. Verificar un PDF
 
-Los informes no se miran, se miden. `apps/api/src/common/medir-fotos-pdf.ts`
-parsea el PDF y devuelve, por foto, el alto de la caja de recorte y el alto
-dibujado. Si el dibujado supera a la caja, la foto está **recortada** — que no
-es lo mismo que estirada, y se arregla distinto.
+Los informes no se miran, se miden. En `apps/api/src/common/` hay tres
+herramientas, y ninguna necesita abrir el archivo:
+
+| Qué | Para qué |
+|---|---|
+| `medirFotosPdf` | El alto de la caja de recorte y el alto dibujado de cada foto. Si el dibujado supera a la caja, la foto está **recortada** — que no es lo mismo que estirada, y se arregla distinto |
+| `textoDePdf` | El texto legible. Hace falta porque el texto **no viaja como texto**: la fuente va recortada y lo que se escribe son ids de glifo |
+| `fuentesUsadasEnPdf` | Las tipografías con las que realmente se dibuja |
+
+**Dos trampas que ya costaron** (`CONVENCIONES_TECNICAS.md` §14):
+
+- **Un carácter que no está en Montserrat arrastra Helvetica.** No tiene `✓`
+  ni `→`. En pantalla funcionan —ahí manda el navegador—, en el PDF no.
+- **El nombre del archivo solo llega por nuestro botón "Descargar".** Las URLs
+  `blob:` son opacas; si se guarda desde el visor del navegador, el archivo
+  sale con un UUID.
 
 Al corregir un estilo de informe, escribí el test y **comprobá que falla con el
 estilo viejo** antes de darlo por bueno.
