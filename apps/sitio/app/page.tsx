@@ -26,6 +26,8 @@ function Modulo({
   titular,
   children,
   sale,
+  imagen,
+  alt,
 }: {
   numero: string;
   nombre: string;
@@ -33,34 +35,55 @@ function Modulo({
   titular: string;
   children: React.ReactNode;
   sale?: string;
+  /** Una pantalla del módulo. El To Do List no tiene, y por eso es opcional. */
+  imagen?: string;
+  alt?: string;
 }) {
   return (
-    <article className="border-t border-line pt-8">
-      <div className="flex items-baseline gap-3">
-        <span className="text-sm font-extrabold tabular-nums text-brand-red">{numero}</span>
-        <Kicker>{nombre}</Kicker>
+    <article className="grid gap-8 border-t border-line pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-12">
+      <div>
+        <div className="flex items-baseline gap-3">
+          <span className="text-sm font-extrabold tabular-nums text-brand-red">{numero}</span>
+          <Kicker>{nombre}</Kicker>
+        </div>
+        <h3 className="mt-3 max-w-2xl text-balance text-2xl font-extrabold leading-tight sm:text-3xl">
+          <Link href={ruta} className="transition-colors hover:text-brand-red">
+            {titular}
+          </Link>
+        </h3>
+        <div className="mt-4 max-w-2xl space-y-3 text-[15px] leading-relaxed text-muted sm:text-base">
+          {children}
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+          {sale && (
+            <p className="inline-flex flex-col gap-0.5 rounded-brand bg-surface px-4 py-3">
+              <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
+                Sale
+              </span>
+              <span className="text-[15px] font-bold text-ink">{sale}</span>
+            </p>
+          )}
+          <Link href={ruta} className="text-[15px] font-bold text-brand-red hover:underline">
+            Ver {nombre} →
+          </Link>
+        </div>
       </div>
-      <h3 className="mt-3 max-w-2xl text-balance text-2xl font-extrabold leading-tight sm:text-3xl">
-        <Link href={ruta} className="transition-colors hover:text-brand-red">
-          {titular}
+
+      {imagen && (
+        <Link
+          href={ruta}
+          className="block self-start overflow-hidden rounded-brand border border-line bg-surface transition-colors hover:border-brand-red"
+        >
+          <Image
+            src={imagen}
+            alt={alt ?? ''}
+            width={2560}
+            height={1600}
+            className="h-auto w-full"
+            sizes="(max-width: 1024px) 100vw, 420px"
+          />
         </Link>
-      </h3>
-      <div className="mt-4 max-w-2xl space-y-3 text-[15px] leading-relaxed text-muted sm:text-base">
-        {children}
-      </div>
-      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
-        {sale && (
-          <p className="inline-flex flex-col gap-0.5 rounded-brand bg-surface px-4 py-3">
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
-              Sale
-            </span>
-            <span className="text-[15px] font-bold text-ink">{sale}</span>
-          </p>
-        )}
-        <Link href={ruta} className="text-[15px] font-bold text-brand-red hover:underline">
-          Ver {nombre} →
-        </Link>
-      </div>
+      )}
     </article>
   );
 }
@@ -114,6 +137,27 @@ export default function Home() {
               <strong className="font-semibold text-ink">Vacker Negocios Inmobiliarios</strong>.
             </p>
           </div>
+
+          {/*
+            La pantalla va acá arriba y no más abajo. El titular dice que el
+            sistema avisa qué no se está haciendo; una captura donde se leen
+            tres alertas de verdad lo demuestra en un segundo, y ahorra los dos
+            párrafos que harían falta para explicarlo.
+          */}
+          <div className="mt-14 overflow-hidden rounded-brand border border-line bg-surface shadow-[0_24px_60px_-32px_rgba(29,29,31,0.45)]">
+            <Image
+              src="/capturas/protocolo-ficha.png"
+              alt="Ficha de la propiedad Alsina 3841 en semana 4 de 5, con tres alertas: seis acciones atrasadas, la autorización venciendo en tres días y doce días sin movimiento."
+              width={2560}
+              height={1600}
+              className="h-auto w-full"
+              sizes="(max-width: 1120px) 100vw, 1050px"
+              priority
+            />
+          </div>
+          <p className="mt-3 text-[13px] leading-relaxed text-muted">
+            Una propiedad en la semana 4. El sistema no espera a que alguien pregunte.
+          </p>
         </section>
 
         {/* ─────────── el problema ─────────── */}
@@ -161,6 +205,8 @@ export default function Home() {
             <Modulo
               numero="01"
               nombre="Tasador"
+              imagen="/capturas/tasador-wizard.png"
+              alt="Paso de comparables del Tasador: seis propiedades similares con su precio por metro cuadrado y un resumen automático de confianza."
               ruta="/tasador"
               titular="Llegue a la reunión con un informe, no con una carpeta."
               sale="Informe para el propietario"
@@ -179,6 +225,8 @@ export default function Home() {
             <Modulo
               numero="02"
               nombre="Protocolo 5 Semanas"
+              imagen="/capturas/protocolo-panel.png"
+              alt="Panel del Protocolo: cuatro propiedades en comercialización, dos con alertas críticas y 41% de avance promedio."
               ruta="/protocolo"
               titular="Lo que distingue a una inmobiliaria que trabaja de una que espera."
               sale="Informe de gestión — con esto se renueva la autorización"
@@ -202,6 +250,8 @@ export default function Home() {
             <Modulo
               numero="03"
               nombre="Tablero Comercial"
+              imagen="/capturas/tablero-kpis.png"
+              alt="Tablero Comercial con el volumen del mes y el acumulado del año, operaciones, ticket promedio, puntas y comisión."
               ruta="/tablero"
               titular="Cuánto se vendió, quién lo vendió y cuánto se cobra."
             >
@@ -231,23 +281,44 @@ export default function Home() {
 
         {/* ─────────── el reporte de los lunes ─────────── */}
         <section className="bg-brand-red py-16 text-white sm:py-24">
-          <div className={ANCHO}>
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70 sm:text-xs">
-              Transversal a todo el ciclo
-            </p>
-            <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
-              El lunes a la mañana, sin entrar a ningún lado.
-            </h2>
-            <div className="mt-7 max-w-2xl space-y-4 text-[15px] leading-relaxed text-white/85 sm:text-base">
-              <p>
-                La dirección recibe por correo el estado de todas las propiedades en
-                comercialización, agrupadas por vendedor: qué necesita atención, qué autorizaciones
-                están por vencer, qué está listo para cerrar.
+          <div className={`${ANCHO} grid gap-12 lg:grid-cols-[1fr_minmax(0,380px)] lg:items-center lg:gap-16`}>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70 sm:text-xs">
+                Transversal a todo el ciclo
               </p>
-              <p className="font-semibold text-white">
-                Si no hay nada urgente, el correo son cuatro líneas. Si hay algo que decidir, está
-                arriba de todo.
-              </p>
+              <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
+                El lunes a la mañana, sin entrar a ningún lado.
+              </h2>
+              <div className="mt-7 space-y-4 text-[15px] leading-relaxed text-white/85 sm:text-base">
+                <p>
+                  La dirección recibe por correo el estado de todas las propiedades en
+                  comercialización, agrupadas por vendedor: qué necesita atención, qué
+                  autorizaciones están por vencer, qué está listo para cerrar.
+                </p>
+                <p className="font-semibold text-white">
+                  Si no hay nada urgente, el correo son cuatro líneas. Si hay algo que decidir, está
+                  arriba de todo.
+                </p>
+              </div>
+              <Link
+                href="/protocolo"
+                className="mt-8 inline-block text-[15px] font-bold text-white underline underline-offset-4"
+              >
+                Ver el Protocolo 5 Semanas →
+              </Link>
+            </div>
+
+            {/* La página del reporte, no un ícono de sobre: lo que se promete
+                es un documento concreto, y acá se lee el titular de verdad. */}
+            <div className="overflow-hidden rounded-brand bg-white shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)]">
+              <Image
+                src="/capturas/protocolo-reporte-semanal.png"
+                alt="Reporte semanal en PDF encabezado por «2 de 4 necesitan atención: Belgrano 2087 y Alsina 3841», con los indicadores del período y el detalle por vendedor."
+                width={989}
+                height={1400}
+                className="h-auto w-full"
+                sizes="(max-width: 1024px) 100vw, 380px"
+              />
             </div>
           </div>
         </section>
