@@ -170,7 +170,7 @@ Cuando una regla se pueda convertir en test, convertila: un test rojo obliga a l
 
 ## 11. Skills: los procedimientos que se repiten
 
-En `.claude/skills/` viven siete procedimientos que ya se ejecutaron varias
+En `.claude/skills/` viven ocho procedimientos que ya se ejecutaron varias
 veces a mano y que conviene que salgan siempre igual. Se invocan por nombre.
 
 **Antes de codificar** — se encadenan, y para un cambio chico se puede entrar
@@ -189,6 +189,7 @@ directo por la última:
 |---|---|---|
 | **`sql-produccion`** | Antes de cualquier DELETE/UPDATE masivo en la base real | La purga del 28/07 que alcanzó a un tenant que nadie recordaba |
 | **`verificar-ui`** | Al tocar componentes, estilos, responsive o PWA | Dar por hecho algo que renderiza pero no se ve |
+| **`e2e`** | Al sumar cobertura de navegador o tocar `apps/web/e2e/` | Una prueba que alcance la base de producción; medir el desborde con el método que miente |
 | **`ship`** | Cuando un cambio está terminado y hay que publicarlo | Mergear antes de que CI reporte; saltear la definición de hecho |
 
 No reemplazan a `docs/CONVENCIONES_TECNICAS.md`: lo ejecutan. El documento
