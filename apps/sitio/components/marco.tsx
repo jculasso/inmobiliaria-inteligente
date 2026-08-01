@@ -87,12 +87,19 @@ export function Pie() {
         <div>
           <p className="text-sm font-bold text-ink">Inmobiliaria Inteligente</p>
           <p className="text-sm text-muted">Rosario, Argentina</p>
-          <a
-            href="mailto:contacto@inmobiliariainteligente.net"
+          {/*
+            Acá había una dirección de correo que todavía no existe. Una
+            dirección que rebota es peor que ninguna: el que escribe cree que
+            preguntó y nunca le contestan, y se va pensando que no le dimos
+            bola. El formulario, en cambio, entrega. Cuando la casilla exista,
+            vuelve.
+          */}
+          <Link
+            href="/#demostracion"
             className="mt-3 inline-block text-sm font-semibold text-brand-red hover:underline"
           >
-            contacto@inmobiliariainteligente.net
-          </a>
+            Pedir una demostración →
+          </Link>
         </div>
         <nav className="flex flex-col gap-2">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">Módulos</p>

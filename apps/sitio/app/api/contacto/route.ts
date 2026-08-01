@@ -18,6 +18,17 @@ const ConsultaSchema = z.object({
   telefono: z.string().trim().min(6).max(40),
 });
 
+/*
+ * Lo que ve el visitante cuando el envío falla. NO nombra ninguna casilla:
+ * `contacto@` todavía no existe, y mandar a alguien a escribir a una dirección
+ * que rebota es peor que no darle ninguna — cree que preguntó, nunca le
+ * contestan, y se va pensando que no le dimos bola. Pedirle que reintente es
+ * honesto: el error es nuestro y suele ser pasajero.
+ *
+ * Cuando la casilla exista, va acá.
+ */
+const MENSAJE_DE_ERROR = 'No pudimos enviar la consulta. Probá de nuevo en un momento.';
+
 const DESTINO = ['javier.culasso@icloud.com', 'bernardo_falconi@hotmail.com'];
 const REMITENTE = 'Sitio Inmobiliaria Inteligente <sitio@avisos.inmobiliariainteligente.net>';
 
@@ -48,7 +59,7 @@ export async function POST(req: Request) {
   if (!clave) {
     console.error('Falta RESEND_API_KEY: la consulta NO se envió.', { de: c.email });
     return NextResponse.json(
-      { mensaje: 'No pudimos enviar la consulta. Escribinos a contacto@inmobiliariainteligente.net.' },
+      { mensaje: MENSAJE_DE_ERROR },
       { status: 500 },
     );
   }
@@ -91,7 +102,7 @@ export async function POST(req: Request) {
     // proveedor que no le corresponde ver.
     console.error('Resend rechazó la consulta:', res.status, await res.text().catch(() => ''));
     return NextResponse.json(
-      { mensaje: 'No pudimos enviar la consulta. Escribinos a contacto@inmobiliariainteligente.net.' },
+      { mensaje: MENSAJE_DE_ERROR },
       { status: 502 },
     );
   }
