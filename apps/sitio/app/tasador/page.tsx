@@ -62,8 +62,10 @@ export default function Tasador() {
             </p>
           </Paso>
         </ol>
-        <CapturaPendiente que="Wizard del Tasador con los comparables cargados y el rango calculado — inmobiliaria de demostración, propiedad de Belgrano 2087. Escritorio, 1280px." />
-        <CapturaPendiente que="Primera página del informe de tasación en PDF, con la foto de portada y el rango." />
+        <CapturaPendiente archivo="tasador-wizard.png"
+          que="El paso de comparables, con tres cargados y el rango ya calculado. Escritorio a 1280px." />
+        <CapturaPendiente archivo="tasador-informe.png"
+          que="Primera página del informe en PDF: la foto de portada, los datos y el rango." />
       </Bloque>
 
       <Bloque kicker="Quién ve qué" titulo="Cada uno ve lo suyo, sin pedir permiso." fondo>

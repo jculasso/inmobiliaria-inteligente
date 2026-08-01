@@ -278,19 +278,9 @@ prospecto le aparezca un recuadro gris. Lo fija un test de navegador.
 Las capturas salen de la **inmobiliaria de demostración**. Nunca de Vacker:
 son datos de un cliente real y no van en material comercial.
 
-| Página | Captura |
-|---|---|
-| `/tasador` | Wizard con comparables cargados y el rango calculado (1280px) |
-| `/tasador` | Primera página del informe de tasación en PDF |
-| `/protocolo` | Ficha con la tira de cinco semanas y dos acciones atrasadas (1280px) |
-| `/protocolo` | La misma ficha en teléfono, marcando una acción |
-| `/protocolo` | Informe de gestión en PDF, el detalle semana por semana |
-| `/protocolo` | El correo de los lunes como llega al teléfono |
-| `/tablero` | KPIs del mes y ranking de vendedores (1280px) |
-| `/tablero` | Seguimiento de objetivos de un vendedor |
-| `/tablero` | El tablero en teléfono |
-| `/tareas` | Lista de tareas de la semana (1280px) |
-| `/tareas` | Las mismas tareas en el calendario del teléfono |
+La lista de las once, con el nombre de archivo de cada una y de qué propiedad
+sale, vive en **`apps/sitio/public/capturas/LEEME.md`** — al lado de donde van
+los archivos, para que no se desincronice de lo que el código espera.
 
 ## Una decisión de escritura
 

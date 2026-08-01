@@ -52,8 +52,10 @@ export default function Tareas() {
             </p>
           </Paso>
         </ol>
-        <CapturaPendiente que="Lista de tareas de la semana en el sistema — inmobiliaria de demostración. Escritorio, 1280px." />
-        <CapturaPendiente que="Las mismas tareas vistas en el calendario del teléfono." />
+        <CapturaPendiente archivo="tareas-semana.png"
+          que="La lista de tareas de la semana. Escritorio a 1280px." />
+        <CapturaPendiente archivo="tareas-calendario.png"
+          que="Las mismas tareas vistas en el calendario del celular." />
       </Bloque>
 
       <Bloque kicker="Quién ve qué" titulo="Cada uno ve lo suyo, sin pedir permiso." fondo>

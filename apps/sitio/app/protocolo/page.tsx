@@ -72,9 +72,12 @@ export default function Protocolo() {
             </p>
           </Paso>
         </ol>
-        <CapturaPendiente que="Ficha de una propiedad en el Protocolo, con la tira de cinco semanas y dos acciones atrasadas en rojo — inmobiliaria de demostración. Escritorio, 1280px." />
-        <CapturaPendiente que="La misma ficha en teléfono (375px), marcando una acción como hecha." />
-        <CapturaPendiente que="Informe de gestión en PDF, la página con el detalle semana por semana." />
+        <CapturaPendiente archivo="protocolo-ficha.png"
+          que="La ficha de ALSINA 3841 (Nicolás Vera): 23 días, 10 acciones hechas y 6 atrasadas. Es la que mejor muestra las dos cosas a la vez — el método avanzando y el sistema levantando la mano. Escritorio a 1280px." />
+        <CapturaPendiente archivo="protocolo-ficha-telefono.png"
+          que="La misma ficha desde el celular. Es donde el vendedor la usa de verdad." />
+        <CapturaPendiente archivo="protocolo-informe.png"
+          que="Informe de gestión en PDF — la página del detalle semana por semana. Sale de Belgrano 2087, que tiene 27 acciones hechas y se ve lleno." />
       </Bloque>
 
       <Bloque kicker="Los lunes" titulo="La dirección se entera sin entrar al sistema." fondo>
@@ -87,7 +90,8 @@ export default function Protocolo() {
           Si no hay nada urgente, el correo lo dice en una línea. Un reporte que siempre alarma deja
           de leerse a la tercera semana.
         </p>
-        <CapturaPendiente que="El correo de los lunes como llega al teléfono, con un vendedor y sus dos propiedades en alerta." />
+        <CapturaPendiente archivo="protocolo-correo-lunes.png"
+          que="El correo de los lunes como llega al celular. Si no tenés uno a mano, se genera a pedido desde el Protocolo." />
       </Bloque>
 
       <Bloque kicker="Quién ve qué" titulo="Cada uno ve lo suyo, sin pedir permiso.">
