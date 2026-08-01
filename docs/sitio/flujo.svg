@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 640" width="1240" height="640" font-family="Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="El ciclo de una propiedad en Inmobiliaria Inteligente: tasación, protocolo de cinco semanas y operación cerrada">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 760" width="1240" height="760" font-family="Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="El ciclo de una propiedad en Inmobiliaria Inteligente: se tasa, se capta y arranca el protocolo de cinco semanas, en la semana dos Tokko Broker la publica en Zonaprop, Mercado Libre y Argenprop, y al venderse entra al tablero">
   <title>El ciclo de una propiedad</title>
 
   <defs>
@@ -11,7 +11,7 @@
     </linearGradient>
   </defs>
 
-  <rect width="1240" height="640" fill="#F4F5F7"/>
+  <rect width="1240" height="760" fill="#F4F5F7"/>
 
   <!-- ─────────── encabezado ─────────── -->
   <text x="60" y="62" font-size="13" font-weight="700" fill="#6B6B6B" letter-spacing="2.4">EL CICLO DE UNA PROPIEDAD</text>
@@ -92,13 +92,39 @@
     <text x="1099" y="376" font-size="13" font-weight="800" fill="#1E9E5A" text-anchor="middle">Operación</text>
   </g>
 
-  <!-- ─────────── banda inferior · el reporte de los lunes ─────────── -->
+
+  <!-- ─────────── la publicación · ocurre dentro de la semana 2 ─────────── -->
+  <line x1="594" y1="434" x2="594" y2="450" stroke="#C9CACC" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#flecha)"/>
   <g>
-    <rect x="60" y="470" width="1120" height="110" rx="16" fill="url(#bandaCierre)"/>
-    <text x="100" y="512" font-size="12" font-weight="700" fill="#FFFFFF" opacity="0.75" letter-spacing="2">TRANSVERSAL A TODO EL CICLO</text>
-    <text x="100" y="548" font-size="22" font-weight="800" fill="#FFFFFF">El lunes a la mañana, la dirección recibe por correo qué necesita atención.</text>
-    <text x="1140" y="536" font-size="34" fill="#FFFFFF" opacity="0.85" text-anchor="end">✉</text>
+    <rect x="60" y="458" width="1120" height="116" rx="16" fill="#FFFFFF" stroke="#E6E6E6"/>
+
+    <text x="96" y="492" font-size="11" font-weight="700" fill="#6B6B6B" letter-spacing="1.6">SEMANA 2 · DIFUSIÓN</text>
+    <text x="96" y="521" font-size="19" font-weight="800" fill="#1D1D1F">La propiedad sale a los portales</text>
+    <text x="96" y="545" font-size="13" fill="#6B6B6B">Tokko Broker la publica. El sistema la lee de vuelta y la trae con</text>
+    <text x="96" y="562" font-size="13" fill="#6B6B6B">sus fotos, su precio y el vendedor que la captó.</text>
+
+    <rect x="660" y="496" width="132" height="40" rx="9" fill="#F4F5F7" stroke="#E6E6E6"/>
+    <text x="726" y="521" font-size="12.5" font-weight="800" fill="#1D1D1F" text-anchor="middle">Tokko Broker</text>
+
+    <line x1="800" y1="516" x2="826" y2="516" stroke="#C9CACC" stroke-width="2" marker-end="url(#flecha)"/>
+
+    <rect x="834" y="496" width="94" height="40" rx="9" fill="#FFFFFF" stroke="#E6E6E6"/>
+    <text x="881" y="521" font-size="12.5" font-weight="700" fill="#6B6B6B" text-anchor="middle">Zonaprop</text>
+
+    <rect x="936" y="496" width="118" height="40" rx="9" fill="#FFFFFF" stroke="#E6E6E6"/>
+    <text x="995" y="521" font-size="12.5" font-weight="700" fill="#6B6B6B" text-anchor="middle">Mercado Libre</text>
+
+    <rect x="1062" y="496" width="96" height="40" rx="9" fill="#FFFFFF" stroke="#E6E6E6"/>
+    <text x="1110" y="521" font-size="12.5" font-weight="700" fill="#6B6B6B" text-anchor="middle">Argenprop</text>
   </g>
 
-  <text x="60" y="614" font-size="12.5" fill="#6B6B6B">Todo se apoya sobre el CRM que la inmobiliaria ya usa. No lo reemplaza.</text>
+  <!-- ─────────── banda inferior · el reporte de los lunes ─────────── -->
+  <g>
+    <rect x="60" y="602" width="1120" height="110" rx="16" fill="url(#bandaCierre)"/>
+    <text x="100" y="644" font-size="12" font-weight="700" fill="#FFFFFF" opacity="0.75" letter-spacing="2">TRANSVERSAL A TODO EL CICLO</text>
+    <text x="100" y="680" font-size="22" font-weight="800" fill="#FFFFFF">El lunes a la mañana, la dirección recibe por correo qué necesita atención.</text>
+    <text x="1140" y="668" font-size="34" fill="#FFFFFF" opacity="0.85" text-anchor="end">✉</text>
+  </g>
+
+  <text x="60" y="746" font-size="12.5" fill="#6B6B6B">Todo se apoya sobre el CRM que la inmobiliaria ya usa —hoy, Tokko Broker—. No lo reemplaza.</text>
 </svg>
