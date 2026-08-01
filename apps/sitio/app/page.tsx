@@ -279,6 +279,85 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ─────────── en cualquier dispositivo ─────────── */}
+        <section className="border-y border-line bg-surface py-16 sm:py-24">
+          <div className={ANCHO}>
+            <Kicker>En cualquier dispositivo</Kicker>
+            <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
+              El vendedor no vuelve a la oficina para cargar nada.
+            </h2>
+            <div className="mt-7 max-w-2xl space-y-4 text-[15px] leading-relaxed text-muted sm:text-base">
+              <p>
+                Es la misma aplicación y se acomoda a la pantalla que haya adelante. En la visita,
+                el vendedor carga la tasación desde el teléfono con las fotos que acaba de sacar. En
+                la calle, marca las acciones del protocolo entre una visita y la siguiente. Y mira
+                cómo viene contra su objetivo sin pedirle el dato a nadie.
+              </p>
+              <p className="font-semibold text-ink">
+                Se instala en el teléfono como una aplicación más, con su ícono en la pantalla de
+                inicio. Sin pasar por App Store ni por Google Play.
+              </p>
+            </div>
+
+            {/*
+              Los tres a escala: el ancho de cada marco es proporcional al ancho
+              real de la pantalla que representa (1280 · 820 · 375). Dibujarlos
+              todos del mismo tamaño se leería como tres capturas sueltas; así
+              se lee como un solo sistema en tres tamaños.
+            */}
+            <div className="mt-12 grid gap-6 sm:flex sm:items-end sm:justify-center sm:gap-6">
+              <div className="overflow-hidden rounded-brand border border-line bg-white shadow-[0_20px_50px_-30px_rgba(29,29,31,0.5)] sm:w-[57%]">
+                <Image
+                  src="/capturas/protocolo-ficha.png"
+                  alt="El Protocolo 5 Semanas en una computadora, con la ficha de una propiedad y sus alertas."
+                  width={2560}
+                  height={1600}
+                  className="h-auto w-full"
+                  sizes="(max-width: 640px) 100vw, 600px"
+                />
+              </div>
+
+              {/* `sm:contents` disuelve esta fila en pantallas grandes y deja a
+                  la tablet y al teléfono como hermanos del monitor. */}
+              <div className="flex items-end gap-5 sm:contents">
+                <div className="overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_20px_50px_-30px_rgba(29,29,31,0.5)] sm:w-[24%]">
+                  <Image
+                    src="/capturas/protocolo-tablet.png"
+                    alt="La misma ficha del Protocolo en una tablet."
+                    width={820}
+                    height={1180}
+                    className="h-auto w-full"
+                    sizes="(max-width: 640px) 60vw, 260px"
+                  />
+                </div>
+                <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[13%]">
+                  <Image
+                    src="/capturas/tasador-telefono.png"
+                    alt="El Tasador en un teléfono, en el paso de comparables: el vendedor carga la tasación en la misma visita."
+                    width={750}
+                    height={1624}
+                    className="h-auto w-full"
+                    sizes="(max-width: 640px) 32vw, 140px"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <dl className="mt-12 grid gap-8 border-t border-line pt-8 sm:grid-cols-3">
+              {[
+                ['Computadora', 'La dirección y la administración: cargar operaciones, revisar la cartera, sacar informes.'],
+                ['Tablet', 'La reunión con el propietario, con el informe en pantalla en vez de en papel.'],
+                ['Teléfono', 'El vendedor en la calle: tasar, marcar acciones, ver su objetivo.'],
+              ].map(([donde, para]) => (
+                <div key={donde}>
+                  <dt className="text-[15px] font-extrabold text-ink">{donde}</dt>
+                  <dd className="mt-1.5 text-[15px] leading-relaxed text-muted">{para}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+
         {/* ─────────── el reporte de los lunes ─────────── */}
         <section className="bg-brand-red py-16 text-white sm:py-24">
           <div className={`${ANCHO} grid gap-12 lg:grid-cols-[1fr_minmax(0,380px)] lg:items-center lg:gap-16`}>

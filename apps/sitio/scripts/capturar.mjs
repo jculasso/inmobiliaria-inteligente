@@ -34,6 +34,8 @@ const ALSINA_TASACION = 'e7b49da5-b1cf-4beb-adcb-b454de2354db';
 
 const ESCRITORIO = { width: 1280, height: 800 };
 const TELEFONO = { width: 375, height: 812 };
+/* Una tablet en vertical. El vendedor que no usa el teléfono usa esto. */
+const TABLET = { width: 820, height: 1180 };
 
 /*
  * El Tablero abre en el mes en curso. Si se corre esto un día 1, sale todo en
@@ -110,6 +112,18 @@ const CAPTURAS = [
     ruta: `/tasador/tasaciones/${ALSINA_TASACION}/editar?seccion=4`,
     tamano: ESCRITORIO,
     espera: 'Progreso',
+  },
+  {
+    archivo: 'tasador-telefono.png',
+    ruta: `/tasador/tasaciones/${ALSINA_TASACION}/editar?seccion=4`,
+    tamano: TELEFONO,
+    espera: 'Progreso',
+  },
+  {
+    archivo: 'protocolo-tablet.png',
+    ruta: `/protocolo/${ALSINA}`,
+    tamano: TABLET,
+    espera: 'Semana',
   },
 ];
 
