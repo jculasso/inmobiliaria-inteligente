@@ -24,6 +24,6 @@ export default [
     },
   },
   {
-    ignores: ['.next/**', 'next-env.d.ts'],
+    ignores: ['.next/**', '.next-e2e/**', 'next-env.d.ts'],
   },
 ];

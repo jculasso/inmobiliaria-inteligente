@@ -43,3 +43,12 @@ apps/web/pdf/
 
 # Perfil del navegador que saca las capturas del sitio (tiene la sesión)
 apps/sitio/.perfil-capturas/
+
+# Build de los tests de navegador del sitio (separado para no pisar `next dev`)
+apps/sitio/.next-e2e/
+
+# Generado por Next en cada build. En apps/sitio hay DOS directorios de build
+# (.next y .next-e2e) y este archivo apunta al último que se usó, así que
+# rastrearlo dejaría el árbol sucio cada vez que se corren los tests de
+# navegador. `typecheck` no lo necesita.
+apps/sitio/next-env.d.ts

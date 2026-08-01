@@ -99,8 +99,11 @@ jobs:
       # estáticas y un formulario. Va aparte porque es lo primero que ve un
       # prospecto, y si en su teléfono se arrastra de costado la conversación
       # empieza perdida — ya pasó una vez con el botón del encabezado.
-      - name: Build sitio
-        run: pnpm turbo run build --filter=@vacker/sitio...
+      # Solo las dependencias (el `^` de turbo): el build del sitio en sí lo
+      # hace `test:e2e`, que compila en `.next-e2e` para no pisar un `next dev`
+      # abierto. Compilarlo acá también sería hacer el mismo trabajo dos veces.
+      - name: Build de las dependencias del sitio
+        run: pnpm turbo run build --filter=@vacker/sitio^...
 
       - name: End to end del sitio
         run: pnpm --filter @vacker/sitio test:e2e
