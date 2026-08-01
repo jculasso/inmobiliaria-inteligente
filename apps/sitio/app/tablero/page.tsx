@@ -69,13 +69,6 @@ export default function Tablero() {
           pie="El mes y el acumulado del año en la misma pantalla. Volumen, operaciones, ticket promedio, puntas compradoras y vendedoras, y la comisión ya calculada."
         />
         <Captura
-          src="/capturas/tablero-objetivos.png"
-          ancho={2560}
-          alto={1600}
-          alt="Seguimiento de vendedores con sus operaciones y su avance contra el objetivo del periodo."
-          pie="Cada vendedor contra su objetivo, mientras todavía se puede hacer algo. No en el cierre del mes."
-        />
-        <Captura
           src="/capturas/tablero-telefono.png"
           ancho={750}
           alto={1624}
