@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CapturaPendiente } from '../../components/marco';
+import { Captura } from '../../components/marco';
 import { Bloque, PaginaModulo, Paso, Rol } from '../../components/pagina-modulo';
 
 export const metadata: Metadata = {
@@ -61,12 +61,28 @@ export default function Tablero() {
             </p>
           </Paso>
         </ol>
-        <CapturaPendiente archivo="tablero-kpis.png"
-          que="Los KPIs del período y el ranking de vendedores. Hay 100 operaciones cargadas, así que se ve poblado. Escritorio a 1280px." />
-        <CapturaPendiente archivo="tablero-objetivos.png"
-          que="El seguimiento de objetivos: cuánto lleva cada vendedor contra su meta. Hay 5 objetivos cargados." />
-        <CapturaPendiente archivo="tablero-telefono.png"
-          que="El tablero desde el celular, que es donde lo mira un vendedor." />
+        <Captura
+          src="/capturas/tablero-kpis.png"
+          ancho={2560}
+          alto={1600}
+          alt="Tablero Comercial en julio de 2026: volumen de 3.060.000 dólares, ocho operaciones, ticket promedio, puntas y comisión, con el acumulado anual debajo."
+          pie="El mes y el acumulado del año en la misma pantalla. Volumen, operaciones, ticket promedio, puntas compradoras y vendedoras, y la comisión ya calculada."
+        />
+        <Captura
+          src="/capturas/tablero-objetivos.png"
+          ancho={2560}
+          alto={1600}
+          alt="Seguimiento de vendedores con sus operaciones y su avance contra el objetivo del periodo."
+          pie="Cada vendedor contra su objetivo, mientras todavía se puede hacer algo. No en el cierre del mes."
+        />
+        <Captura
+          src="/capturas/tablero-telefono.png"
+          ancho={750}
+          alto={1624}
+          alt="El Tablero Comercial visto en un teléfono, con los indicadores del mes apilados."
+          pie="El tablero en el teléfono, que es donde lo mira un vendedor para saber cómo viene."
+          telefono
+        />
       </Bloque>
 
       <Bloque kicker="Quién ve qué" titulo="Lo mismo que en el resto del sistema." fondo>

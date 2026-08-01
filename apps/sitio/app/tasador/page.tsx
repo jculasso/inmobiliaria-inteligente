@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CapturaPendiente } from '../../components/marco';
+import { Captura, CapturaPendiente } from '../../components/marco';
 import { Bloque, PaginaModulo, Paso, Rol } from '../../components/pagina-modulo';
 
 export const metadata: Metadata = {
@@ -62,8 +62,13 @@ export default function Tasador() {
             </p>
           </Paso>
         </ol>
-        <CapturaPendiente archivo="tasador-wizard.png"
-          que="El paso de comparables, con tres cargados y el rango ya calculado. Escritorio a 1280px." />
+        <Captura
+          src="/capturas/tasador-wizard.png"
+          ancho={2560}
+          alto={1600}
+          alt="Paso 4 de 6 del Tasador: seis comparables del mercado con su precio por metro cuadrado, uno marcado como atípico, y un resumen automático con 75% de confianza."
+          pie="El paso de comparables. Cada propiedad similar aporta su precio por metro cuadrado, el sistema marca los valores atípicos y calcula cuánta confianza merece el conjunto. De ahí sale el rango, y por eso se puede defender."
+        />
         <CapturaPendiente archivo="tasador-informe.png"
           que="Primera página del informe en PDF: la foto de portada, los datos y el rango." />
       </Bloque>
@@ -77,6 +82,13 @@ export default function Tasador() {
           />
           <Rol rol="Dirección" ve="Todas. Y qué se está tasando, que es el mejor anticipo de lo que se va a captar." />
         </div>
+        <Captura
+          src="/capturas/tasador-tasaciones.png"
+          ancho={2560}
+          alto={1600}
+          alt="Listado de tasaciones con su cliente, tipo de propiedad, superficie, vendedor y estado de captación."
+          pie="Todas las tasaciones de la inmobiliaria, con su estado de captación. La dirección ve cuántas se están haciendo, que es el mejor anticipo de lo que se va a captar."
+        />
       </Bloque>
 
       <Bloque kicker="Lo que sigue" titulo="La tasación no muere en el informe.">

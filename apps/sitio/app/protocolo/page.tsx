@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CapturaPendiente } from '../../components/marco';
+import { Captura, CapturaPendiente } from '../../components/marco';
 import { Bloque, PaginaModulo, Paso, Rol } from '../../components/pagina-modulo';
 
 export const metadata: Metadata = {
@@ -72,10 +72,21 @@ export default function Protocolo() {
             </p>
           </Paso>
         </ol>
-        <CapturaPendiente archivo="protocolo-ficha.png"
-          que="La ficha de ALSINA 3841 (Nicolás Vera): 23 días, 10 acciones hechas y 6 atrasadas. Es la que mejor muestra las dos cosas a la vez — el método avanzando y el sistema levantando la mano. Escritorio a 1280px." />
-        <CapturaPendiente archivo="protocolo-ficha-telefono.png"
-          que="La misma ficha desde el celular. Es donde el vendedor la usa de verdad." />
+        <Captura
+          src="/capturas/protocolo-ficha.png"
+          ancho={2560}
+          alto={1600}
+          alt="Ficha de la propiedad Alsina 3841 en semana 4 de 5, con tres alertas: seis acciones atrasadas, la autorización venciendo en tres días y doce días sin movimiento."
+          pie="Una propiedad en la semana 4. El sistema no espera a que alguien pregunte: avisa que hay seis acciones vencidas, que la autorización cae en tres días y que hace doce que no se registra un avance."
+        />
+        <Captura
+          src="/capturas/protocolo-ficha-telefono.png"
+          ancho={750}
+          alto={1624}
+          alt="La misma ficha vista en un teléfono, con la tira de cinco semanas y las alertas."
+          pie="La misma pantalla en el teléfono. Es donde el vendedor la usa: en la calle, entre visita y visita."
+          telefono
+        />
         <CapturaPendiente archivo="protocolo-informe.png"
           que="Informe de gestión en PDF — la página del detalle semana por semana. Sale de Belgrano 2087, que tiene 27 acciones hechas y se ve lleno." />
       </Bloque>
@@ -90,8 +101,28 @@ export default function Protocolo() {
           Si no hay nada urgente, el correo lo dice en una línea. Un reporte que siempre alarma deja
           de leerse a la tercera semana.
         </p>
-        <CapturaPendiente archivo="protocolo-correo-lunes.png"
-          que="El correo de los lunes como llega al celular. Si no tenés uno a mano, se genera a pedido desde el Protocolo." />
+        <Captura
+          src="/capturas/protocolo-correo-lunes.png"
+          ancho={750}
+          alto={1624}
+          alt="El reporte semanal del Protocolo visto en un teléfono, con las propiedades que necesitan atención agrupadas por vendedor."
+          pie="Lo que llega el lunes a la mañana, agrupado por vendedor. Si no hay nada urgente, lo dice en una línea: un reporte que siempre alarma deja de leerse."
+          telefono
+        />
+      </Bloque>
+
+      <Bloque kicker="La cartera entera" titulo="Y en una pantalla, todo lo que está en la calle.">
+        <p>
+          Cuántas propiedades están en comercialización, cuáles tienen atrasos, cuánto avanzó el
+          promedio, y cuáles se captaron pero todavía no arrancaron.
+        </p>
+        <Captura
+          src="/capturas/protocolo-panel.png"
+          ancho={2560}
+          alto={1600}
+          alt="Panel del Protocolo: cuatro propiedades en comercialización, dos con alertas críticas, 41% de avance promedio y tres captadas sin iniciar."
+          pie="El panel de la dirección. Cuatro propiedades en comercialización, dos con atrasos, y tres captadas que todavía no arrancaron su protocolo."
+        />
       </Bloque>
 
       <Bloque kicker="Quién ve qué" titulo="Cada uno ve lo suyo, sin pedir permiso.">

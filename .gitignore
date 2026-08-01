@@ -40,3 +40,6 @@ test-results/
 
 # PDF generados de la documentación del panel
 apps/web/pdf/
+
+# Perfil del navegador que saca las capturas del sitio (tiene la sesión)
+apps/sitio/.perfil-capturas/

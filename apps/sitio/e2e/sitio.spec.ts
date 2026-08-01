@@ -88,6 +88,45 @@ test('el ciclo se recorre entero saltando de módulo en módulo', async ({ page 
   await expect(page.locator('h1')).toContainText(/Llegue a la reunión/);
 });
 
+for (const { ruta } of PAGINAS) {
+  test(`${ruta}: todas las imágenes cargan`, async ({ page }) => {
+    await page.goto(ruta);
+    // Las capturas se ponen a mano y el nombre del archivo se escribe a mano:
+    // una letra de más y la imagen no aparece, sin error en ningún lado. Que
+    // el `<img>` exista en el HTML no prueba nada — hay que mirar si el
+    // navegador pudo decodificarla.
+    //
+    // Hay que llevar cada imagen a la vista antes de mirarla: Next las carga
+    // recién cuando entran en pantalla. Se recorren una por una y no bajando
+    // de a pantallas, porque cada imagen que carga estira la página y corre
+    // de lugar a las de abajo — así se salteaba justo la última.
+    const imagenes = page.locator('img');
+    for (let i = 0; i < (await imagenes.count()); i++) {
+      await imagenes.nth(i).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(150);
+    }
+    // `poll` y no una medición suelta: Next genera la versión optimizada de
+    // cada imagen la primera vez que se la pide, y la captura más pesada tarda
+    // unos segundos en estar lista. Sin reintentar, el test falla por lenta una
+    // imagen que está perfecta.
+    await expect
+      .poll(
+        () =>
+          page.locator('img').evaluateAll((imgs) =>
+            imgs
+              .filter(
+                (i) =>
+                  !(i as HTMLImageElement).complete ||
+                  (i as HTMLImageElement).naturalWidth === 0,
+              )
+              .map((i) => (i as HTMLImageElement).getAttribute('src') ?? '(sin src)'),
+          ),
+        { message: `imágenes que no cargaron en ${ruta}`, timeout: 20_000 },
+      )
+      .toEqual([]);
+  });
+}
+
 test('los recuadros de captura pendiente NO se ven en producción', async ({ page }) => {
   // Se ven trabajando en local, para no olvidarnos de sacarlas. Si alguna vez
   // aparecen en el sitio publicado, un prospecto lee "captura pendiente" en

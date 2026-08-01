@@ -124,19 +124,51 @@ export function Captura({
   alto,
   alt,
   pie,
+  telefono,
 }: {
   src: string;
   ancho: number;
   alto: number;
   alt: string;
   pie: string;
+  /** Marca las capturas sacadas de un celular. Ver abajo por qué importa. */
+  telefono?: boolean;
 }) {
+  /*
+   * Una captura de celular NO puede ocupar el ancho del texto. Estirada a 670px
+   * queda de 1451px de alto: el visitante se pasa cuatro pantallas rodando
+   * sobre una sola imagen, y además una pantalla de teléfono agrandada al
+   * triple no se lee como un teléfono. Se muestra a tamaño de teléfono, que es
+   * justamente lo que se quiere demostrar.
+   */
+  const marco = telefono
+    ? 'mx-auto w-full max-w-[280px] rounded-[28px] border-[6px] border-ink'
+    : 'rounded-brand border border-line';
+
   return (
     <figure className="mt-8">
-      <div className="overflow-hidden rounded-brand border border-line bg-surface">
-        <Image src={src} width={ancho} height={alto} alt={alt} className="h-auto w-full" />
+      <div className={`overflow-hidden bg-surface ${marco}`}>
+        <Image
+          src={src}
+          width={ancho}
+          height={alto}
+          alt={alt}
+          className="h-auto w-full"
+          /*
+           * Sin `sizes`, Next asume que la imagen puede llegar a ocupar toda la
+           * ventana y genera una versión de 3840px de ancho para mostrarla a
+           * 670. Eso es trabajo de servidor y megabytes de más por una imagen
+           * que nadie va a ver a ese tamaño. Acá se le dice cuánto mide de
+           * verdad: el ancho del texto en escritorio, la pantalla en teléfono.
+           */
+          sizes={telefono ? '280px' : '(max-width: 1024px) 100vw, 700px'}
+        />
       </div>
-      <figcaption className="mt-3 text-[13px] leading-relaxed text-muted">{pie}</figcaption>
+      <figcaption
+        className={`mt-3 text-[13px] leading-relaxed text-muted ${telefono ? 'mx-auto max-w-[420px] text-center' : ''}`}
+      >
+        {pie}
+      </figcaption>
     </figure>
   );
 }
