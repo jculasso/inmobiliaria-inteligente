@@ -37,7 +37,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm exec next start --port ${PUERTO}`,
+    command: `NEXT_DIST_DIR=.next-e2e pnpm exec next start --port ${PUERTO}`,
     url: `http://localhost:${PUERTO}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

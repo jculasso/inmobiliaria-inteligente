@@ -9,9 +9,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "pnpm build:e2e && playwright test",
     "capturas": "node scripts/capturar.mjs",
-    "imagen-compartir": "node scripts/imagen-compartir.mjs"
+    "imagen-compartir": "node scripts/imagen-compartir.mjs",
+    "build:e2e": "NEXT_DIST_DIR=.next-e2e next build"
   },
   "dependencies": {
     "@vacker/ui": "workspace:*",

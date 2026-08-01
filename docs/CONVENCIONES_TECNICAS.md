@@ -378,3 +378,50 @@ que dejarlo convencido de que la consulta entró.
 Lo fija `apps/sitio/app/api/contacto/route.test.ts`. El test no mira el código
 de respuesta: mira que **no se haya llamado a `fetch`**. Un 200 se puede
 devolver por accidente; un mail no enviado es la prueba real.
+
+---
+
+## 16. Compilar con `next dev` levantado deja el sitio sin estilos
+
+`next build` y `next dev` escriben los dos en `.next`. Compilar mientras el
+servidor de desarrollo está corriendo le pisa los archivos: **la página sigue
+respondiendo con 200, pero la hoja de estilos da 404.**
+
+El síntoma no se parece a la causa. Lo que se ve es el HTML crudo del
+navegador — enlaces azules subrayados, todo en Times New Roman, el logo suelto
+ocupando la pantalla entera. Parece que se rompió el diseño, o que una imagen
+quedó gigante. Pasó **tres veces el 01/08/2026** y las tres veces el primer
+diagnóstico fue el equivocado.
+
+**Cómo reconocerlo en un comando**, antes de tocar una línea de CSS:
+
+```bash
+curl -s localhost:3300/ | grep -oE '/_next/static/css/[^"?]*' | head -1
+# y pedir esa ruta: si da 404, es esto y no el diseño
+```
+
+**Cómo se arregló.** `apps/sitio/next.config.ts` toma el directorio de una
+variable:
+
+```ts
+distDir: process.env.NEXT_DIST_DIR ?? '.next'
+```
+
+`test:e2e` compila con `NEXT_DIST_DIR=.next-e2e`, así que los tests de
+navegador ya no tocan lo que está usando quien tiene el sitio abierto. En
+Vercel la variable no existe y se compila en `.next`, como siempre.
+
+Separar el directorio arrastra dos cosas que no son obvias, y las dos ya están
+resueltas:
+
+- **`tsconfig.json` lleva las DOS rutas** en `include` (`.next/types` y
+  `.next-e2e/types`). Next agrega la del build que corre, y si solo estuviera
+  una, cada compilación reescribiría el archivo y el árbol quedaría sucio. Con
+  las dos escritas, se estabiliza y ningún build lo vuelve a tocar.
+- **`apps/sitio/next-env.d.ts` no se rastrea.** Ese sí apunta a un solo
+  directorio —el del último build— así que rastrearlo garantizaba un archivo
+  modificado después de cada corrida de tests. Es un archivo generado que dice
+  en su propio encabezado que no se edita, y `typecheck` pasa sin él.
+
+`apps/web` todavía no tiene esta separación. Si algún día pasa lo mismo ahí, la
+solución es la misma.
