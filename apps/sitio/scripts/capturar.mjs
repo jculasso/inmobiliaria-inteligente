@@ -84,12 +84,14 @@ const CAPTURAS = [
     espera: 'Dashboard',
     antes: elegirMes,
   },
-  {
-    archivo: 'tablero-objetivos.png',
-    ruta: '/tablero/vendedores',
-    tamano: ESCRITORIO,
-    espera: 'endedor',
-  },
+  /*
+   * El listado de vendedores NO se captura. La inmobiliaria de demostración
+   * tiene entre sus vendedores a las dos personas que en el sitio figuran como
+   * los directores que hicieron el sistema, las dos con objetivo en $0. Verlos
+   * ahí como vendedores de la inmobiliaria de ejemplo confunde a quien está
+   * leyendo. Se puede volver a sumar cuando esos dos usuarios no estén en la
+   * demostración.
+   */
   /*
    * El To Do List no tiene captura y no es un olvido: la cuenta de la
    * demostración no tiene calendario vinculado, y vincular uno mostraría la
@@ -207,6 +209,20 @@ async function main() {
       await page.waitForTimeout(1200);
       // Al final de todo: cualquier navegación previa lo habría deshecho.
       await ocultarCorreo(page);
+
+      /*
+       * Antes de disparar: comprobar que no se esté fotografiando una pantalla
+       * de error. Ya pasó y llegó publicado — la captura principal del Tablero
+       * era el cartel "Algo salió mal", y el script la había dado por buena.
+       *
+       * El motivo es que `espera` busca un texto que también existe en la
+       * pantalla de error: el menú "Dashboard" se dibuja igual cuando el
+       * contenido falla. Un texto presente no prueba que la página cargó; que
+       * NO esté el cartel de error, sí.
+       */
+      if (await page.getByText(/Algo salió mal/i).count()) {
+        throw new Error('la página muestra "Algo salió mal" — no se captura');
+      }
 
       await page.screenshot({ path: `${DESTINO}/${c.archivo}` });
       const ancho = c.tamano.width;
