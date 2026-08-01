@@ -102,14 +102,21 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
+      # Las dependencias del sistema son paquetes de Ubuntu: no se cachean y
+      # hay que instalarlas siempre.
+      - name: Dependencias del sistema
+        run: pnpm --filter @vacker/web exec playwright install-deps chromium webkit
+
+      # La descarga de los navegadores, en cambio, se saltea entera cuando el
+      # caché acierta. Antes esto y el paso de arriba iban juntos en un
+      # `--with-deps`, y el caché no servía de nada porque el comando corría
+      # igual.
+      #
       # WebKit además de Chromium: el "baile" era un comportamiento propio de
       # Safari, así que probarlo solo en Chrome no habría servido de nada.
-      #
-      # Con caché se instalan igual, pero solo las dependencias del sistema
-      # (`--with-deps`), que son paquetes de Ubuntu y no se pueden cachear.
-      # Los navegadores en sí salen del caché y la descarga se saltea sola.
-      - name: Instalar navegadores
-        run: pnpm --filter @vacker/web exec playwright install --with-deps chromium webkit
+      - name: Descargar navegadores
+        if: steps.cache-navegadores.outputs.cache-hit != 'true'
+        run: pnpm --filter @vacker/web exec playwright install chromium webkit
 
       - name: End to end
         run: pnpm --filter @vacker/web test:e2e
