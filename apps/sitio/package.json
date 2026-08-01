@@ -1,0 +1,32 @@
+{
+  "name": "@vacker/sitio",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3300",
+    "build": "next build",
+    "start": "next start --port 3300",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vacker/ui": "workspace:*",
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@vacker/config": "workspace:*",
+    "eslint": "^9.18.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7"
+  }
+}

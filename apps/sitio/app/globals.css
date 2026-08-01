@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+@import '@vacker/ui/styles/tokens.css';
+
+/* Los tokens de marca viven en @vacker/ui: el sitio comercial y el producto
+   tienen que verse de la misma familia. Si el rojo del sitio no es el rojo de
+   la aplicación, la primera captura de pantalla lo delata. */
+@source '../../../packages/ui/src';
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

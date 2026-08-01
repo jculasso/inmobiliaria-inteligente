@@ -4,14 +4,32 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@vacker/web", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@vacker/web",
+        "dev"
+      ],
       "port": 3000
     },
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@vacker/api", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@vacker/api",
+        "dev"
+      ],
       "port": 3001
+    },
+    {
+      "name": "sitio",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@vacker/sitio",
+        "dev"
+      ],
+      "port": 3300
     }
   ]
 }

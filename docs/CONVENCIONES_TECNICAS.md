@@ -356,3 +356,25 @@ Ese mismo archivo tiene **`textoDePdf`**, que devuelve el texto legible: el
 texto de un PDF no viaja como texto (la fuente va recortada y lo que se escribe
 son ids de glifo), así que sin esto solo se podía verificar que el archivo se
 generara, no qué decía.
+
+---
+
+## 15. La trampa para robots se revisa ANTES de validar
+
+El formulario del sitio comercial lleva un campo oculto llamado `sitio`. Una
+persona no lo ve y nunca lo completa; un robot que rellena todo lo que
+encuentra, sí. Es la señal más barata que hay para descartar spam.
+
+La primera versión lo tenía al revés: el campo estaba en el esquema de Zod con
+`max(0)`, así que un `sitio` con contenido **fallaba la validación** y el
+endpoint devolvía 400 antes de llegar a la línea que revisa la trampa. El
+chequeo era código muerto y el robot se llevaba, justamente, la confirmación de
+que lo habíamos detectado.
+
+**El orden importa y es este:** leer el cuerpo → si la trampa vino llena,
+devolver `200 {ok:true}` sin enviar nada → recién entonces validar. Al robot hay
+que dejarlo convencido de que la consulta entró.
+
+Lo fija `apps/sitio/app/api/contacto/route.test.ts`. El test no mira el código
+de respuesta: mira que **no se haya llamado a `fetch`**. Un 200 se puede
+devolver por accidente; un mail no enviado es la prueba real.
