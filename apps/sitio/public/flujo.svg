@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 640" width="1240" height="640" font-family="Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="El ciclo de una propiedad en Inmobiliaria Inteligente: tasación, protocolo de cinco semanas y operación cerrada">
+  <title>El ciclo de una propiedad</title>
+
+  <defs>
+    <marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#C9CACC"/>
+    </marker>
+    <linearGradient id="bandaCierre" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#C1121F"/>
+      <stop offset="1" stop-color="#8F0D18"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1240" height="640" fill="#F4F5F7"/>
+
+  <!-- ─────────── encabezado ─────────── -->
+  <text x="60" y="62" font-size="13" font-weight="700" fill="#6B6B6B" letter-spacing="2.4">EL CICLO DE UNA PROPIEDAD</text>
+  <text x="60" y="104" font-size="30" font-weight="800" fill="#1D1D1F">Del primer llamado del propietario hasta la operación cerrada.</text>
+  <rect x="60" y="126" width="72" height="4" fill="#C1121F"/>
+
+  <!-- ─────────── etapa 1 · Tasador ─────────── -->
+  <g>
+    <rect x="60" y="176" width="292" height="238" rx="16" fill="#FFFFFF" stroke="#E6E6E6"/>
+    <circle cx="94" cy="212" r="15" fill="#C1121F"/>
+    <text x="94" y="217" font-size="14" font-weight="800" fill="#FFFFFF" text-anchor="middle">1</text>
+    <text x="122" y="217" font-size="12" font-weight="700" fill="#C1121F" letter-spacing="1.6">TASADOR</text>
+
+    <text x="88" y="262" font-size="21" font-weight="800" fill="#1D1D1F">Se tasa la propiedad</text>
+    <text x="88" y="294" font-size="14" fill="#6B6B6B">Comparables del mercado y un rango</text>
+    <text x="88" y="315" font-size="14" fill="#6B6B6B">de valores fundamentado.</text>
+
+    <rect x="88" y="340" width="236" height="46" rx="9" fill="#F4F5F7"/>
+    <text x="106" y="360" font-size="11" font-weight="700" fill="#6B6B6B" letter-spacing="1">SALE</text>
+    <text x="106" y="378" font-size="14" font-weight="700" fill="#1D1D1F">Informe para el propietario</text>
+  </g>
+
+  <line x1="366" y1="295" x2="410" y2="295" stroke="#C9CACC" stroke-width="2" marker-end="url(#flecha)"/>
+
+  <!-- ─────────── etapa 2 · Protocolo (la pieza central) ─────────── -->
+  <g>
+    <rect x="424" y="160" width="522" height="270" rx="16" fill="#FFFFFF" stroke="#C1121F" stroke-width="2"/>
+    <circle cx="458" cy="196" r="15" fill="#C1121F"/>
+    <text x="458" y="201" font-size="14" font-weight="800" fill="#FFFFFF" text-anchor="middle">2</text>
+    <text x="486" y="201" font-size="12" font-weight="700" fill="#C1121F" letter-spacing="1.6">PROTOCOLO 5 SEMANAS</text>
+
+    <text x="452" y="244" font-size="21" font-weight="800" fill="#1D1D1F">Captada, empieza el método</text>
+    <text x="452" y="270" font-size="14" fill="#6B6B6B">29 acciones concretas. El sistema avisa lo que se atrasa.</text>
+
+    <!-- la tira de semanas: el mismo lenguaje visual del producto -->
+    <g>
+      <rect x="452" y="292" width="88" height="54" rx="7" fill="#EAF6EF" stroke="#BFE3CE"/>
+      <text x="496" y="313" font-size="12" font-weight="700" fill="#1E9E5A" text-anchor="middle">S1</text>
+      <text x="496" y="334" font-size="11" fill="#1E9E5A" text-anchor="middle">Documentación</text>
+
+      <rect x="550" y="292" width="88" height="54" rx="7" fill="#EAF6EF" stroke="#BFE3CE"/>
+      <text x="594" y="313" font-size="12" font-weight="700" fill="#1E9E5A" text-anchor="middle">S2</text>
+      <text x="594" y="334" font-size="11" fill="#1E9E5A" text-anchor="middle">Difusión</text>
+
+      <rect x="648" y="292" width="88" height="54" rx="7" fill="#FBEAEC" stroke="#EFC2C7"/>
+      <text x="692" y="313" font-size="12" font-weight="700" fill="#C1121F" text-anchor="middle">S3</text>
+      <text x="692" y="334" font-size="11" fill="#C1121F" text-anchor="middle">2 atrasadas</text>
+
+      <rect x="746" y="292" width="88" height="54" rx="7" fill="#FBF3E4" stroke="#E8D3A8"/>
+      <text x="790" y="313" font-size="12" font-weight="700" fill="#B7791F" text-anchor="middle">S4</text>
+      <text x="790" y="334" font-size="11" fill="#B7791F" text-anchor="middle">Ajuste de precio</text>
+
+      <rect x="844" y="292" width="88" height="54" rx="7" fill="#F4F5F7" stroke="#E6E6E6"/>
+      <text x="888" y="313" font-size="12" font-weight="700" fill="#6B6B6B" text-anchor="middle">S5</text>
+      <text x="888" y="334" font-size="11" fill="#6B6B6B" text-anchor="middle">Cierre</text>
+    </g>
+
+    <rect x="452" y="362" width="480" height="46" rx="9" fill="#F4F5F7"/>
+    <text x="470" y="382" font-size="11" font-weight="700" fill="#6B6B6B" letter-spacing="1">SALE</text>
+    <text x="470" y="400" font-size="14" font-weight="700" fill="#1D1D1F">Informe de gestión — con esto se renueva la autorización</text>
+  </g>
+
+  <line x1="960" y1="295" x2="1004" y2="295" stroke="#C9CACC" stroke-width="2" marker-end="url(#flecha)"/>
+
+  <!-- ─────────── etapa 3 · Tablero ─────────── -->
+  <g>
+    <rect x="1018" y="176" width="162" height="238" rx="16" fill="#FFFFFF" stroke="#E6E6E6"/>
+    <circle cx="1052" cy="212" r="15" fill="#C1121F"/>
+    <text x="1052" y="217" font-size="14" font-weight="800" fill="#FFFFFF" text-anchor="middle">3</text>
+    <text x="1080" y="217" font-size="12" font-weight="700" fill="#C1121F" letter-spacing="1.6">TABLERO</text>
+
+    <text x="1046" y="262" font-size="21" font-weight="800" fill="#1D1D1F">Se vende</text>
+    <text x="1046" y="294" font-size="14" fill="#6B6B6B">Las dos puntas,</text>
+    <text x="1046" y="315" font-size="14" fill="#6B6B6B">las comisiones</text>
+    <text x="1046" y="336" font-size="14" fill="#6B6B6B">y los objetivos.</text>
+
+    <rect x="1046" y="356" width="106" height="30" rx="8" fill="#EAF6EF"/>
+    <text x="1099" y="376" font-size="13" font-weight="800" fill="#1E9E5A" text-anchor="middle">Operación</text>
+  </g>
+
+  <!-- ─────────── banda inferior · el reporte de los lunes ─────────── -->
+  <g>
+    <rect x="60" y="470" width="1120" height="110" rx="16" fill="url(#bandaCierre)"/>
+    <text x="100" y="512" font-size="12" font-weight="700" fill="#FFFFFF" opacity="0.75" letter-spacing="2">TRANSVERSAL A TODO EL CICLO</text>
+    <text x="100" y="548" font-size="22" font-weight="800" fill="#FFFFFF">El lunes a la mañana, la dirección recibe por correo qué necesita atención.</text>
+    <text x="1140" y="536" font-size="34" fill="#FFFFFF" opacity="0.85" text-anchor="end">✉</text>
+  </g>
+
+  <text x="60" y="614" font-size="12.5" fill="#6B6B6B">Todo se apoya sobre el CRM que la inmobiliaria ya usa. No lo reemplaza.</text>
+</svg>
