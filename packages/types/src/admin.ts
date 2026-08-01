@@ -103,3 +103,15 @@ export const ResetPasswordSchema = z.object({
   password: z.string().min(8, 'Mínimo 8 caracteres.'),
 });
 export type ResetPassword = z.infer<typeof ResetPasswordSchema>;
+
+/**
+ * Quién puede descargar todos los datos de la inmobiliaria.
+ *
+ * Solo la dirección y el admin del inquilino: el archivo trae la cartera
+ * entera, las comisiones de cada vendedor y los datos de los propietarios.
+ * No es información de trabajo diario.
+ *
+ * UNA sola definición, usada por el `@Roles` de la API y por el gate de la
+ * web — la lección de `ROLES_PUBLICACION`, donde las dos listas se separaron.
+ */
+export const ROLES_EXPORTACION = ['direccion', 'admin_tenant'] as const;

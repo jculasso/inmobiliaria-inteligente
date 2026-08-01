@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROLES_REPORTE_PROTOCOLO, RolSchema } from '@vacker/types';
+import { ROLES_EXPORTACION, ROLES_REPORTE_PROTOCOLO, RolSchema } from '@vacker/types';
 
 const ROL_KEYS = RolSchema.options;
 import {
@@ -9,6 +9,7 @@ import {
   puedeBorrarTasaciones,
   puedeGestionarVendedores,
   puedeUsarPublicacion,
+  puedeExportarDatos,
   puedeVerReporteProtocolo,
   puedeVerTodo,
   puedeVerVendedores,
@@ -203,5 +204,27 @@ describe('puedeVerReporteProtocolo', () => {
     for (const rol of ROLES_REPORTE_PROTOCOLO) {
       expect(puedeVerReporteProtocolo([rol])).toBe(true);
     }
+  });
+});
+
+describe('puedeExportarDatos', () => {
+  it('lo abre para dirección y admin del tenant', () => {
+    expect(puedeExportarDatos(['direccion'])).toBe(true);
+    expect(puedeExportarDatos(['admin_tenant'])).toBe(true);
+  });
+
+  /**
+   * El archivo trae la cartera entera, las comisiones de CADA vendedor y los
+   * datos de los propietarios. Un vendedor no puede bajarse lo que cobran sus
+   * compañeros.
+   */
+  it('no lo abre para vendedor ni team leader', () => {
+    expect(puedeExportarDatos(['vendedor'])).toBe(false);
+    expect(puedeExportarDatos(['team_leader'])).toBe(false);
+    expect(puedeExportarDatos(['vendedor', 'team_leader'])).toBe(false);
+  });
+
+  it('coincide con ROLES_EXPORTACION, la lista compartida con la API', () => {
+    for (const rol of ROLES_EXPORTACION) expect(puedeExportarDatos([rol])).toBe(true);
   });
 });

@@ -1,4 +1,9 @@
-import { ROLES_PUBLICACION, ROLES_REPORTE_PROTOCOLO, type Rol } from '@vacker/types';
+import {
+  ROLES_EXPORTACION,
+  ROLES_PUBLICACION,
+  ROLES_REPORTE_PROTOCOLO,
+  type Rol,
+} from '@vacker/types';
 
 export type AlcanceModulo = 'propio' | 'equipo' | 'total' | 'ver';
 
@@ -62,6 +67,17 @@ export function puedeUsarPublicacion(roles: Rol[]): boolean {
  */
 export function puedeVerReporteProtocolo(roles: Rol[]): boolean {
   return roles.some((r) => (ROLES_REPORTE_PROTOCOLO as readonly string[]).includes(r));
+}
+
+/**
+ * Descarga todos los datos de la inmobiliaria.
+ *
+ * Misma constante que el `@Roles` de la API. El archivo trae la cartera
+ * entera, las comisiones de cada vendedor y los datos de los propietarios: no
+ * es información de trabajo diario.
+ */
+export function puedeExportarDatos(roles: Rol[]): boolean {
+  return roles.some((r) => (ROLES_EXPORTACION as readonly string[]).includes(r));
 }
 
 /** Rol más privilegiado del usuario dentro del tenant (mismo orden que `alcanceDeModulo`). */
