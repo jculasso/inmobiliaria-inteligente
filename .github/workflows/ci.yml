@@ -87,8 +87,27 @@ jobs:
       - name: Build web
         run: pnpm turbo run build --filter=@vacker/web...
 
+      # Descargar Chromium y WebKit tarda ~50s, y era el paso más lento de todo
+      # el CI. La clave lleva la versión de Playwright dentro: cuando se
+      # actualiza la librería, los navegadores tienen que ser otros, y una clave
+      # fija serviría binarios viejos con una librería nueva.
+      - name: Versión de Playwright
+        id: playwright
+        run: echo "version=$(node -p "require('./apps/web/package.json').devDependencies['@playwright/test'].replace('^','')")" >> "$GITHUB_OUTPUT"
+
+      - name: Caché de navegadores
+        id: cache-navegadores
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
       # WebKit además de Chromium: el "baile" era un comportamiento propio de
       # Safari, así que probarlo solo en Chrome no habría servido de nada.
+      #
+      # Con caché se instalan igual, pero solo las dependencias del sistema
+      # (`--with-deps`), que son paquetes de Ubuntu y no se pueden cachear.
+      # Los navegadores en sí salen del caché y la descarga se saltea sola.
       - name: Instalar navegadores
         run: pnpm --filter @vacker/web exec playwright install --with-deps chromium webkit
 

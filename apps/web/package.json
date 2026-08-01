@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "pdf:docs": "tsx scripts/generar-pdfs-docs.tsx"
+    "pdf:docs": "tsx scripts/generar-pdfs-docs.tsx",
+    "pdf:tecnico": "node scripts/pdf-resumen-tecnico.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
