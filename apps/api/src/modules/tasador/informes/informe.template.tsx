@@ -305,7 +305,19 @@ export function InformeDocument({
             <Text style={styles.brandName}>{tenantNombre}</Text>
           </View>
           <View style={styles.docMeta}>
-            <Text style={styles.docMetaLabel}>DOCUMENTO INTERNO</Text>
+            {/*
+              Decía "DOCUMENTO INTERNO", heredado del prototipo. Es lo contrario
+              de lo que el módulo promete: este informe existe para llevarlo a
+              la reunión de captación y dejárselo al propietario. Un documento
+              que en el encabezado se declara interno no se le entrega a nadie.
+
+              La etiqueta es la misma que usa el informe del Protocolo, para que
+              los dos documentos que salen del sistema hacia el propietario se
+              presenten igual. El listado de tasaciones —reporte.template.tsx—
+              sí sigue diciendo DOCUMENTO INTERNO: ese es de la inmobiliaria y
+              muestra la cartera entera.
+            */}
+            <Text style={styles.docMetaLabel}>INFORME PARA EL PROPIETARIO</Text>
             <Text style={styles.docMetaValue}>{fechaHoy}</Text>
           </View>
         </View>

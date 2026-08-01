@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { medirFotosPdf } from '../../../common/medir-fotos-pdf';
-import { fuentesUsadasEnPdf } from '../../../common/texto-pdf';
+import { fuentesUsadasEnPdf, textoDePdf } from '../../../common/texto-pdf';
 import { describe, expect, it } from 'vitest';
 import type { TasacionDto } from '@vacker/types';
 import { InformeDocument } from './informe.template';
@@ -155,5 +155,28 @@ describe('tipografía del informe de tasación', () => {
     );
 
     expect(familias.every((f) => f.startsWith('Montserrat'))).toBe(true);
+  });
+});
+
+/**
+ * Este informe se lleva a la reunión de captación y se le deja al propietario:
+ * es el argumento entero del módulo. Durante meses el encabezado dijo
+ * "DOCUMENTO INTERNO", heredado del prototipo, y nadie lo miró — hasta que la
+ * captura salió en el sitio comercial al lado de una frase que prometía
+ * justamente lo contrario.
+ *
+ * El listado de tasaciones (reporte.template.tsx) sí es interno y sigue
+ * diciéndolo. Este no.
+ */
+describe('a quién dice estar dirigido el informe de tasación', () => {
+  it('se presenta como un informe para el propietario, no como uno interno', async () => {
+    const texto = await textoDePdf(
+      await renderToBuffer(
+        <InformeDocument tasacion={TASACION} tenantNombre="Vacker" logoUrl={null} />,
+      ),
+    );
+
+    expect(texto).toContain('INFORME PARA EL PROPIETARIO');
+    expect(texto).not.toContain('DOCUMENTO INTERNO');
   });
 });
