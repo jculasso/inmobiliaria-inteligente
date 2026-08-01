@@ -61,9 +61,12 @@ export default function Tablero() {
             </p>
           </Paso>
         </ol>
-        <CapturaPendiente que="Tablero Comercial con los KPIs del mes y el ranking de vendedores — inmobiliaria de demostración. Escritorio, 1280px." />
-        <CapturaPendiente que="Seguimiento de objetivos de un vendedor, mostrando cuánto lleva contra su meta." />
-        <CapturaPendiente que="El tablero en teléfono (375px), que es donde lo mira el vendedor." />
+        <CapturaPendiente archivo="tablero-kpis.png"
+          que="Los KPIs del período y el ranking de vendedores. Hay 100 operaciones cargadas, así que se ve poblado. Escritorio a 1280px." />
+        <CapturaPendiente archivo="tablero-objetivos.png"
+          que="El seguimiento de objetivos: cuánto lleva cada vendedor contra su meta. Hay 5 objetivos cargados." />
+        <CapturaPendiente archivo="tablero-telefono.png"
+          que="El tablero desde el celular, que es donde lo mira un vendedor." />
       </Bloque>
 
       <Bloque kicker="Quién ve qué" titulo="Lo mismo que en el resto del sistema." fondo>

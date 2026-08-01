@@ -152,14 +152,15 @@ export function Captura({
  * Cuando la captura exista, este componente se reemplaza por `Captura` — el
  * `que` de acá es literalmente la instrucción para sacarla.
  */
-export function CapturaPendiente({ que }: { que: string }) {
+export function CapturaPendiente({ archivo, que }: { archivo: string; que: string }) {
   if (process.env.NODE_ENV === 'production') return null;
   return (
     <div className="mt-8 rounded-brand border-2 border-dashed border-line bg-surface p-6">
       <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-warning">
         Captura pendiente · no se ve en producción
       </p>
-      <p className="mt-2 text-sm leading-relaxed text-muted">{que}</p>
+      <p className="mt-2 font-mono text-[13px] font-bold text-ink">public/capturas/{archivo}</p>
+      <p className="mt-1 text-sm leading-relaxed text-muted">{que}</p>
     </div>
   );
 }
