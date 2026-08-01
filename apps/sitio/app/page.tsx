@@ -149,9 +149,9 @@ export default function Home() {
           <figure className="mt-10 overflow-x-auto rounded-brand border border-line bg-surface p-3 sm:p-5">
             <Image
               src="/flujo.svg"
-              alt="El ciclo de una propiedad: se tasa, se capta y empieza el protocolo de cinco semanas, y al venderse entra al tablero. El lunes la dirección recibe por correo qué necesita atención."
+              alt="El ciclo de una propiedad: se tasa, se capta y empieza el protocolo de cinco semanas; en la semana dos Tokko Broker la publica en Zonaprop, Mercado Libre y Argenprop, y al venderse entra al tablero. El lunes la dirección recibe por correo qué necesita atención."
               width={1240}
-              height={640}
+              height={760}
               className="mx-auto h-auto w-full min-w-[760px] max-w-[1100px]"
               priority
             />

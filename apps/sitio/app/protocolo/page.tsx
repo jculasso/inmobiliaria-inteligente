@@ -72,6 +72,14 @@ export default function Protocolo() {
             </p>
           </Paso>
         </ol>
+        <p className="mt-8">
+          En la semana 2 la propiedad sale a los portales.{' '}
+          <strong className="font-semibold text-ink">Eso lo hace su CRM</strong> — hoy, en las
+          inmobiliarias con las que trabajamos, Tokko Broker: es el que publica en Zonaprop, Mercado
+          Libre y Argenprop. Nosotros nos conectamos con Tokko y traemos la propiedad de vuelta con
+          sus fotos, su precio y el vendedor que la captó, para que el protocolo arranque sin volver
+          a cargar nada.
+        </p>
         <Captura
           src="/capturas/protocolo-ficha.png"
           ancho={2560}
