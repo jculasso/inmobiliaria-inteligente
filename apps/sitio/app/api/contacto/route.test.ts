@@ -82,7 +82,11 @@ describe('POST /api/contacto', () => {
 
     const res = await POST(pedido(CONSULTA));
     expect(res.status).toBe(500);
-    expect((await res.json()).mensaje).toContain('contacto@inmobiliariainteligente.net');
+    const { mensaje } = await res.json();
+    expect(mensaje).toMatch(/de nuevo/i);
+    // Y que no mande a escribir a ninguna casilla: mientras `contacto@` no
+    // exista, nombrarla haría creer al visitante que tiene por dónde insistir.
+    expect(mensaje).not.toContain('@');
   });
 
   it('escapa el HTML de los datos del visitante', async () => {

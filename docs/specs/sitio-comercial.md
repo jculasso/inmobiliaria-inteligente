@@ -289,3 +289,28 @@ cuatro y que nadie va a comprar el sistema por él. Es deliberado: un sitio que
 presenta cuatro módulos como si los cuatro fueran igual de decisivos se lee
 como folleto. Reconocer cuál pesa menos hace más creíble lo que se dice de los
 otros tres.
+
+
+---
+
+# 10. La dirección de correo sale del sitio (1/08/2026)
+
+`contacto@inmobiliariainteligente.net` figuraba en el pie y en el mensaje de
+error del formulario. **La casilla nunca se creó**, así que era una dirección
+que rebota.
+
+Una dirección que rebota es peor que ninguna: el que escribe cree que preguntó,
+nunca le contestan, y se va convencido de que no le dieron bola. Justo el
+prospecto que se tomó el trabajo de escribir.
+
+Qué quedó en su lugar:
+
+- **En el pie**, un enlace al formulario: *"Pedir una demostración →"*. Es el
+  único canal que hoy entrega de verdad.
+- **En el mensaje de error del formulario**, pedirle que reintente y nada más.
+  No nombra ninguna casilla.
+
+**Contrapartida, que es real:** si el envío falla dos veces, el visitante se
+queda sin camino alternativo. Se aceptó a sabiendas — el envío por Resend ya
+está probado en producción y el fallo sería excepcional — y se revierte en una
+línea el día que la casilla exista, o si se decide publicar un teléfono.
