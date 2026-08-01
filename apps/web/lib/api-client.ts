@@ -198,3 +198,30 @@ function nombreDeDisposition(header: string | null): string {
   const ascii = /filename="([^"]+)"/i.exec(header);
   return ascii?.[1]?.replace(/\.pdf$/i, '') ?? fallback;
 }
+
+/**
+ * Igual que `apiFetchPdf`, para un ZIP. Comparte el camino porque el problema
+ * es el mismo: un archivo binario detrás de un token, cuyo nombre viaja en la
+ * cabecera `Content-Disposition`.
+ */
+export async function apiFetchZip(
+  path: string,
+  { accessToken }: { accessToken: string },
+): Promise<PdfGenerado> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) throw new ApiError('Falta NEXT_PUBLIC_API_URL en el entorno.');
+
+  const res = await fetch(new URL(`${apiUrl}${path}`), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
+    throw new ApiError(mensajeDeError(errorBody, `No se pudo generar el archivo (${res.status}).`), {
+      status: res.status,
+      code: errorBody?.error?.code,
+    });
+  }
+  return { blob: await res.blob(), nombre: nombreDeDisposition(res.headers.get('content-disposition')) };
+}

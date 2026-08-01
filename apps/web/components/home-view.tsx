@@ -1,12 +1,13 @@
 import type { ModuloKey, ModulosTenant, PlanTenant, Rol, TenantConfig } from '@vacker/types';
 import { Avatar, type BadgeVariant } from '@vacker/ui';
-import { alcanceDeModulo } from '../lib/rbac';
+import { puedeExportarDatos, alcanceDeModulo } from '../lib/rbac';
 import { tenantBrandStyle } from '../lib/tenant-style';
 import { ModuleCard } from './home/module-card';
 import { LoginPanel } from './home/login-panel';
 import { TableroVolumenPreview } from './home/tablero-volumen-preview';
 import { LogoutButton } from './logout-button';
 import { InstalarApp } from './pwa/instalar-app';
+import { BotonExportarDatos } from './boton-exportar-datos';
 
 interface Modulo {
   key: ModuloKey;
@@ -147,6 +148,15 @@ export function HomeView({ sesion }: HomeViewProps) {
             );
           })}
         </section>
+
+        {/* "Sus datos son suyos": va acá, al pie y discreto, no compitiendo con
+            los módulos. Solo para la dirección y el admin — el archivo trae la
+            cartera entera y las comisiones de cada vendedor. */}
+        {sesion && puedeExportarDatos(sesion.roles) && (
+          <div className="mt-10 border-t border-line pt-5">
+            <BotonExportarDatos />
+          </div>
+        )}
       </div>
     </main>
   );
