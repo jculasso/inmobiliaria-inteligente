@@ -102,10 +102,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
-      # Las dependencias del sistema son paquetes de Ubuntu: no se cachean y
-      # hay que instalarlas siempre.
-      - name: Dependencias del sistema
-        run: pnpm --filter @vacker/web exec playwright install-deps chromium webkit
+      # PRUEBA: sin `install-deps`. La imagen de ubuntu-latest ya trae la
+      # mayoría de las librerías que piden los navegadores; si alcanzan, se
+      # ahorran 37 segundos de apt-get en cada corrida. Si no alcanzan, los
+      # tests fallan al abrir el navegador y se restaura el paso.
 
       # La descarga de los navegadores, en cambio, se saltea entera cuando el
       # caché acierta. Antes esto y el paso de arriba iban juntos en un
