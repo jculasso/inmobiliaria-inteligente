@@ -13,7 +13,7 @@ export default function Tasador() {
     <PaginaModulo
       ruta="/tasador"
       titular="Llegue a la reunión con un informe, no con una carpeta."
-      bajada="La captación se gana o se pierde en la primera reunión con el propietario. El Tasador convierte esa reunión en una presentación profesional: un rango de valores fundamentado en comparables reales, en un documento con la marca de su inmobiliaria."
+      bajada="La captación se gana o se pierde en la primera reunión con el propietario. El Tasador convierte esa reunión en una presentación profesional: un rango de valores fundamentado en comparables reales, en un documento que el propietario se queda."
       sale="Informe de tasación en PDF, con la marca de su inmobiliaria"
     >
       <Bloque kicker="El problema" titulo="El precio se discute de memoria, y así se pierde la autorización." fondo>
@@ -58,8 +58,8 @@ export default function Tasador() {
           <Paso numero={4} titulo="Se descarga el informe">
             <p>
               Un PDF con la marca de su inmobiliaria: la propiedad, las fotos, los comparables que
-              se usaron, el rango y la estrategia de comercialización sugerida. Listo el mismo día
-              de la visita.
+              se usaron, el rango y la estrategia de comercialización sugerida. Se lo deja al
+              propietario el mismo día de la visita.
             </p>
           </Paso>
         </ol>
@@ -74,8 +74,8 @@ export default function Tasador() {
           src="/capturas/tasador-informe.png"
           ancho={989}
           alto={1400}
-          alt="Primera página del informe de tasación en PDF: resumen ejecutivo con el valor mínimo y el recomendado, la ficha completa de características y tres fotos de la propiedad."
-          pie="La primera página del informe. El valor recomendado, el escenario, el plazo estimado y la ficha completa — todo en un documento con la marca de la inmobiliaria."
+          alt="Primera página del informe de tasación en PDF, encabezada por «Informe para el propietario»: resumen ejecutivo con el valor mínimo, el recomendado, el escenario y el plazo estimado, la ficha completa de características y tres fotos."
+          pie="La primera página del informe, encabezada por «Informe para el propietario». El valor recomendado, el escenario, el plazo estimado y la ficha completa, con la marca de la inmobiliaria."
         />
       </Bloque>
 
