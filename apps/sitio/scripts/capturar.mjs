@@ -143,10 +143,6 @@ async function elegirMes(page) {
  */
 async function ocultarCorreo(page) {
   await page.evaluate(() => {
-    // Lo de adentro de `evaluate` corre en el navegador, no en Node: `document`
-    // y `NodeFilter` existen allá. ESLint analiza este archivo como Node y no
-    // tiene forma de saberlo.
-    /* eslint-disable-next-line no-undef */
     const paseador = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n = paseador.nextNode(); n; n = paseador.nextNode()) {
       if (n.nodeValue && n.nodeValue.includes('@')) {

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "capturas": "node scripts/capturar.mjs"
+    "capturas": "node scripts/capturar.mjs",
+    "imagen-compartir": "node scripts/imagen-compartir.mjs"
   },
   "dependencies": {
     "@vacker/ui": "workspace:*",
