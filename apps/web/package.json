@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "pdf:docs": "tsx scripts/generar-pdfs-docs.tsx",
-    "pdf:tecnico": "node scripts/pdf-resumen-tecnico.mjs"
+    "pdf:tecnico": "node scripts/pdf-doc.mjs Resumen_Tecnico.md Resumen-Tecnico-Inmobiliaria-Inteligente.pdf",
+    "pdf:costos": "node scripts/pdf-doc.mjs Costos_e_Infraestructura.md Costos-e-Infraestructura.pdf"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

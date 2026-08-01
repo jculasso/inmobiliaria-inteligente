@@ -4,9 +4,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Imprime `docs/Resumen_Tecnico.md` como PDF.
+ * Imprime un documento de `docs/` como PDF.
  *
  *     pnpm --filter @vacker/web pdf:tecnico
+ *     pnpm --filter @vacker/web pdf:costos
  *
  * El markdown es la ÚNICA fuente: se lee del repositorio y se convierte acá.
  * Tener el texto duplicado en un HTML aparte terminaría, tarde o temprano, en
@@ -24,8 +25,15 @@ import { fileURLToPath } from 'node:url';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../..');
-const ORIGEN = resolve(RAIZ, 'docs/Resumen_Tecnico.md');
-const SALIDA = resolve(RAIZ, 'apps/web/pdf/Resumen-Tecnico-Inmobiliaria-Inteligente.pdf');
+/* El documento y el nombre del PDF vienen por argumento: es el mismo molde
+   para todos, y agregar uno nuevo es una línea en package.json. */
+const [DOC, NOMBRE] = process.argv.slice(2);
+if (!DOC || !NOMBRE) {
+  console.error('  uso: node scripts/pdf-doc.mjs <archivo-en-docs.md> <nombre-del-pdf>');
+  process.exit(1);
+}
+const ORIGEN = resolve(RAIZ, 'docs', DOC);
+const SALIDA = resolve(RAIZ, 'apps/web/pdf', NOMBRE);
 const FUENTES = resolve(RAIZ, 'apps/api/src/modules/tasador/informes/fonts');
 
 const b64 = (a) => readFileSync(resolve(FUENTES, a)).toString('base64');
@@ -187,7 +195,7 @@ await page.pdf({
   displayHeaderFooter: true,
   headerTemplate: '<div></div>',
   footerTemplate: `<div style="width:100%;padding:0 20mm;font-family:sans-serif;font-size:7.5pt;color:#6B6B6B;display:flex;justify-content:space-between">
-      <span>Inmobiliaria Inteligente · Resumen técnico</span>
+      <span>Inmobiliaria Inteligente</span>
       <span class="pageNumber"></span>
     </div>`,
 });
