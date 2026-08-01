@@ -14,21 +14,46 @@ en material comercial.
 Las de escritorio, con la ventana a **1280px** de ancho. Las de teléfono, desde
 el celular. PNG.
 
-## Las once
+## Las de pantalla (las saca el script)
 
 | Archivo | Qué |
 |---|---|
-| `tasador-wizard.png` | El paso de comparables, con tres cargados y el rango calculado |
-| `tasador-informe.png` | Primera página del informe de tasación en PDF |
-| `protocolo-ficha.png` | **Alsina 3841** (Nicolás Vera): 23 días, 10 hechas, 6 atrasadas |
+| `tasador-wizard.png` | Paso de comparables, con el resumen automático |
+| `tasador-tasaciones.png` | El listado con el estado de captación |
+| `protocolo-ficha.png` | **Alsina 3841** — semana 4, 6 acciones atrasadas |
 | `protocolo-ficha-telefono.png` | La misma ficha desde el celular |
-| `protocolo-informe.png` | Informe de gestión en PDF, el detalle semana por semana — de **Belgrano 2087**, que tiene 27 acciones hechas |
-| `protocolo-correo-lunes.png` | El correo de los lunes como llega al celular |
-| `tablero-kpis.png` | KPIs del período y ranking de vendedores |
-| `tablero-objetivos.png` | Seguimiento de objetivos contra la meta |
+| `protocolo-panel.png` | El panel: 4 en comercialización, 2 con alertas |
+| `protocolo-correo-lunes.png` | El reporte semanal en pantalla, desde el celular |
+| `tablero-kpis.png` | KPIs del período y acumulado del año |
+| `tablero-objetivos.png` | Seguimiento contra la meta |
 | `tablero-telefono.png` | El tablero desde el celular |
-| `tareas-semana.png` | La lista de tareas de la semana |
-| `tareas-calendario.png` | Las mismas tareas en el calendario del celular |
+
+## Las de PDF (a mano, porque son descargas)
+
+Un PDF llega como archivo, no como pantalla, así que el script no las alcanza.
+Se descargan desde la aplicación y se convierten con las herramientas que ya
+trae macOS:
+
+```bash
+qlmanage -t -s 2000 -o . "Reporte-semanal-Alteva-Propiedades-2026-08-01.pdf"
+sips -Z 1400 "Reporte-….pdf.png" --out protocolo-reporte-semanal.png
+```
+
+El `-Z 1400` no es cosmético: sin achicar, cada página pesa unos 800 KB y se
+muestra a 700px. Con las cuatro páginas a tamaño completo, el optimizador de
+imágenes de Next tardaba tanto que los tests de navegador fallaban por
+timeout.
+
+| Archivo | De dónde |
+|---|---|
+| `tasador-informe.png` | Tasador → Tasaciones → **Ver** |
+| `protocolo-informe.png` | Protocolo → una propiedad → **Informe** |
+| `protocolo-reporte-semanal.png` | Protocolo → **Reporte** → descargar |
+
+## El To Do List no tiene captura
+
+No es un olvido: la cuenta de la demostración no tiene calendario vinculado, y
+vincular uno mostraría la agenda personal de alguien en un sitio público.
 
 ## Por qué Alsina 3841 y no Belgrano 2087
 

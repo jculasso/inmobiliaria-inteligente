@@ -121,7 +121,7 @@ for (const { ruta } of PAGINAS) {
               )
               .map((i) => (i as HTMLImageElement).getAttribute('src') ?? '(sin src)'),
           ),
-        { message: `imágenes que no cargaron en ${ruta}`, timeout: 20_000 },
+        { message: `imágenes que no cargaron en ${ruta}`, timeout: 45_000 },
       )
       .toEqual([]);
   });

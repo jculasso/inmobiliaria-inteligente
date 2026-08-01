@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Captura, CapturaPendiente } from '../../components/marco';
+import { Captura } from '../../components/marco';
 import { Bloque, PaginaModulo, Paso, Rol } from '../../components/pagina-modulo';
 
 export const metadata: Metadata = {
@@ -95,8 +95,13 @@ export default function Protocolo() {
           pie="La misma pantalla en el teléfono. Es donde el vendedor la usa: en la calle, entre visita y visita."
           telefono
         />
-        <CapturaPendiente archivo="protocolo-informe.png"
-          que="Informe de gestión en PDF — la página del detalle semana por semana. Sale de Belgrano 2087, que tiene 27 acciones hechas y se ve lleno." />
+        <Captura
+          src="/capturas/protocolo-informe.png"
+          ancho={989}
+          alto={1400}
+          alt="Primera página del informe de comercialización para el propietario: la propiedad, el asesor responsable, el período, y el resumen con semana en curso, avance del plan, días publicada, acciones realizadas, consultas, visitas, interesados y ofertas."
+          pie="El informe que recibe el propietario. Dice qué semana va, cuánto se avanzó del plan, cuántas consultas y visitas hubo. Es una conversación distinta a «estamos trabajando»."
+        />
       </Bloque>
 
       <Bloque kicker="Los lunes" titulo="La dirección se entera sin entrar al sistema." fondo>
@@ -110,11 +115,18 @@ export default function Protocolo() {
           de leerse a la tercera semana.
         </p>
         <Captura
+          src="/capturas/protocolo-reporte-semanal.png"
+          ancho={989}
+          alto={1400}
+          alt="Reporte semanal en PDF encabezado por «2 de 4 necesitan atención: Belgrano 2087 y Alsina 3841», con cuatro indicadores, la lista de las que necesitan atención y el detalle por vendedor con la tira de cinco semanas."
+          pie="El reporte de los lunes. Empieza diciendo cuáles necesitan atención y por qué; recién después viene el detalle por vendedor. La dirección se entera en el primer renglón."
+        />
+        <Captura
           src="/capturas/protocolo-correo-lunes.png"
           ancho={750}
           alto={1624}
           alt="El reporte semanal del Protocolo visto en un teléfono, con las propiedades que necesitan atención agrupadas por vendedor."
-          pie="Lo que llega el lunes a la mañana, agrupado por vendedor. Si no hay nada urgente, lo dice en una línea: un reporte que siempre alarma deja de leerse."
+          pie="El mismo reporte en el teléfono. Se lee sin entrar al sistema."
           telefono
         />
       </Bloque>

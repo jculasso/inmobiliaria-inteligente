@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Captura, CapturaPendiente } from '../../components/marco';
+import { Captura } from '../../components/marco';
 import { Bloque, PaginaModulo, Paso, Rol } from '../../components/pagina-modulo';
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export default function Tasador() {
     <PaginaModulo
       ruta="/tasador"
       titular="Llegue a la reunión con un informe, no con una carpeta."
-      bajada="La captación se gana o se pierde en la primera reunión con el propietario. El Tasador convierte esa reunión en una presentación profesional: un rango de valores fundamentado en comparables reales, en un documento que el propietario se queda."
+      bajada="La captación se gana o se pierde en la primera reunión con el propietario. El Tasador convierte esa reunión en una presentación profesional: un rango de valores fundamentado en comparables reales, en un documento con la marca de su inmobiliaria."
       sale="Informe de tasación en PDF, con la marca de su inmobiliaria"
     >
       <Bloque kicker="El problema" titulo="El precio se discute de memoria, y así se pierde la autorización." fondo>
@@ -58,7 +58,8 @@ export default function Tasador() {
           <Paso numero={4} titulo="Se descarga el informe">
             <p>
               Un PDF con la marca de su inmobiliaria: la propiedad, las fotos, los comparables que
-              se usaron y el rango. Se lo manda al propietario ese mismo día.
+              se usaron, el rango y la estrategia de comercialización sugerida. Listo el mismo día
+              de la visita.
             </p>
           </Paso>
         </ol>
@@ -69,8 +70,13 @@ export default function Tasador() {
           alt="Paso 4 de 6 del Tasador: seis comparables del mercado con su precio por metro cuadrado, uno marcado como atípico, y un resumen automático con 75% de confianza."
           pie="El paso de comparables. Cada propiedad similar aporta su precio por metro cuadrado, el sistema marca los valores atípicos y calcula cuánta confianza merece el conjunto. De ahí sale el rango, y por eso se puede defender."
         />
-        <CapturaPendiente archivo="tasador-informe.png"
-          que="Primera página del informe en PDF: la foto de portada, los datos y el rango." />
+        <Captura
+          src="/capturas/tasador-informe.png"
+          ancho={989}
+          alto={1400}
+          alt="Primera página del informe de tasación en PDF: resumen ejecutivo con el valor mínimo y el recomendado, la ficha completa de características y tres fotos de la propiedad."
+          pie="La primera página del informe. El valor recomendado, el escenario, el plazo estimado y la ficha completa — todo en un documento con la marca de la inmobiliaria."
+        />
       </Bloque>
 
       <Bloque kicker="Quién ve qué" titulo="Cada uno ve lo suyo, sin pedir permiso." fondo>
