@@ -95,10 +95,22 @@ jobs:
       - name: End to end
         run: pnpm --filter @vacker/web test:e2e
 
+      # El sitio comercial no necesita ni base ni secretos: son cinco páginas
+      # estáticas y un formulario. Va aparte porque es lo primero que ve un
+      # prospecto, y si en su teléfono se arrastra de costado la conversación
+      # empieza perdida — ya pasó una vez con el botón del encabezado.
+      - name: Build sitio
+        run: pnpm turbo run build --filter=@vacker/sitio...
+
+      - name: End to end del sitio
+        run: pnpm --filter @vacker/sitio test:e2e
+
       - name: Guardar el reporte si algo falla
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: apps/web/playwright-report/
+          path: |
+            apps/web/playwright-report/
+            apps/sitio/playwright-report/
           retention-days: 7

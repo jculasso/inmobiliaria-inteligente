@@ -236,3 +236,66 @@ de marca de largo plazo).
 4. **Módulo de contactos** (a futuro): cuando se sume, revisar la portada — hoy
    dice "no reemplazo su CRM" y un módulo de contactos empuja en la dirección
    contraria.
+
+---
+
+# 9. Las páginas de módulo (agregado el 1/08/2026)
+
+La primera versión resolvía el pedido a medias: era una sola página larga con
+los cuatro módulos resumidos adentro de la sección del ciclo. Lo pedido era
+"la landing explica el concepto **y luego una sección para cada módulo**".
+
+Ahora son **cinco páginas**:
+
+| Ruta | Módulo | Titular |
+|---|---|---|
+| `/` | — | Su CRM guarda las propiedades. Nosotros le decimos cómo va su negocio. |
+| `/tasador` | 01 | Llegue a la reunión con un informe, no con una carpeta. |
+| `/protocolo` | 02 | Lo que distingue a una inmobiliaria que trabaja de una que espera. |
+| `/tablero` | 03 | Cuánto se vendió, quién lo vendió y cuánto se cobra. |
+| `/tareas` | 04 | Lo que hay que hacer, donde ya lo está mirando. |
+
+En la portada los módulos quedan resumidos y cada uno enlaza a su página. Son
+páginas separadas y no anclas de la misma, por una razón comercial: se le
+manda a un prospecto **el enlace del módulo que le interesa**, y esa página
+tiene que abrir en el tema, no a mitad de un scroll.
+
+## Las cuatro cuentan lo mismo y en el mismo orden
+
+El problema que resuelve → cómo funciona (pasos numerados) → quién ve qué →
+qué sale del módulo. Un prospecto que mira dos páginas no tiene que volver a
+aprender dónde está cada cosa.
+
+Cada página cierra enlazando al **módulo siguiente del ciclo**, y la cuarta
+vuelve a la primera: el ciclo se cierra y nadie queda sin salida al final.
+
+## Las capturas: qué falta y de dónde sale
+
+`CapturaPendiente` marca dónde va cada una. **En producción no renderiza
+nada**, para que el sitio se pueda publicar en cualquier momento sin que a un
+prospecto le aparezca un recuadro gris. Lo fija un test de navegador.
+
+Las capturas salen de la **inmobiliaria de demostración**. Nunca de Vacker:
+son datos de un cliente real y no van en material comercial.
+
+| Página | Captura |
+|---|---|
+| `/tasador` | Wizard con comparables cargados y el rango calculado (1280px) |
+| `/tasador` | Primera página del informe de tasación en PDF |
+| `/protocolo` | Ficha con la tira de cinco semanas y dos acciones atrasadas (1280px) |
+| `/protocolo` | La misma ficha en teléfono, marcando una acción |
+| `/protocolo` | Informe de gestión en PDF, el detalle semana por semana |
+| `/protocolo` | El correo de los lunes como llega al teléfono |
+| `/tablero` | KPIs del mes y ranking de vendedores (1280px) |
+| `/tablero` | Seguimiento de objetivos de un vendedor |
+| `/tablero` | El tablero en teléfono |
+| `/tareas` | Lista de tareas de la semana (1280px) |
+| `/tareas` | Las mismas tareas en el calendario del teléfono |
+
+## Una decisión de escritura
+
+`/tareas` dice, con todas las letras, que es el módulo más simple de los
+cuatro y que nadie va a comprar el sistema por él. Es deliberado: un sitio que
+presenta cuatro módulos como si los cuatro fueran igual de decisivos se lee
+como folleto. Reconocer cuál pesa menos hace más creíble lo que se dice de los
+otros tres.
