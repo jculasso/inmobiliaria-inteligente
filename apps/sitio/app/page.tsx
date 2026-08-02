@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { FormularioContacto } from '../components/formulario-contacto';
-import { ANCHO, Encabezado, Kicker, Pie } from '../components/marco';
+import { ANCHO, CapturaSegunPantalla, Encabezado, Kicker, Pie } from '../components/marco';
 
 /*
  * Sitio comercial. El texto está acordado en docs/specs/sitio-comercial.md —
@@ -27,6 +27,7 @@ function Modulo({
   children,
   sale,
   imagen,
+  telefono,
   alt,
 }: {
   numero: string;
@@ -37,6 +38,8 @@ function Modulo({
   sale?: string;
   /** Una pantalla del módulo. El To Do List no tiene, y por eso es opcional. */
   imagen?: string;
+  /** La misma pantalla sacada desde un teléfono, si existe. */
+  telefono?: string;
   alt?: string;
 }) {
   return (
@@ -72,16 +75,20 @@ function Modulo({
       {imagen && (
         <Link
           href={ruta}
-          className="block self-start overflow-hidden rounded-brand border border-line bg-surface transition-colors hover:border-brand-red"
+          className="block self-start transition-opacity hover:opacity-90 sm:overflow-hidden sm:rounded-brand sm:border sm:border-line sm:bg-surface"
         >
-          <Image
-            src={imagen}
-            alt={alt ?? ''}
-            width={2560}
-            height={1600}
-            className="h-auto w-full"
-            sizes="(max-width: 1024px) 100vw, 420px"
-          />
+          {telefono ? (
+            <CapturaSegunPantalla escritorio={imagen} telefono={telefono} alt={alt ?? ''} />
+          ) : (
+            <Image
+              src={imagen}
+              alt={alt ?? ''}
+              width={2560}
+              height={1600}
+              className="h-auto w-full"
+              sizes="(max-width: 1024px) 100vw, 420px"
+            />
+          )}
         </Link>
       )}
     </article>
@@ -144,18 +151,15 @@ export default function Home() {
             tres alertas de verdad lo demuestra en un segundo, y ahorra los dos
             párrafos que harían falta para explicarlo.
           */}
-          <div className="mt-14 overflow-hidden rounded-brand border border-line bg-surface shadow-[0_24px_60px_-32px_rgba(29,29,31,0.45)]">
-            <Image
-              src="/capturas/protocolo-ficha.png"
+          <div className="mt-14">
+            <CapturaSegunPantalla
+              escritorio="/capturas/protocolo-ficha.png"
+              telefono="/capturas/protocolo-ficha-telefono.png"
               alt="Ficha de la propiedad Alsina 3841 en semana 4 de 5, con tres alertas: seis acciones atrasadas, la autorización venciendo en tres días y doce días sin movimiento."
-              width={2560}
-              height={1600}
-              className="h-auto w-full"
-              sizes="(max-width: 1120px) 100vw, 1050px"
-              priority
+              prioridad
             />
           </div>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted">
+          <p className="mt-3 text-center text-[13px] leading-relaxed text-muted sm:text-left">
             Una propiedad en la semana 4. El sistema no espera a que alguien pregunte.
           </p>
         </section>
@@ -206,6 +210,7 @@ export default function Home() {
               numero="01"
               nombre="Tasador"
               imagen="/capturas/tasador-wizard.png"
+              telefono="/capturas/tasador-telefono.png"
               alt="Paso de comparables del Tasador: seis propiedades similares con su precio por metro cuadrado y un resumen automático de confianza."
               ruta="/tasador"
               titular="Llegue a la reunión con un informe, no con una carpeta."
@@ -226,6 +231,7 @@ export default function Home() {
               numero="02"
               nombre="Protocolo 5 Semanas"
               imagen="/capturas/protocolo-panel.png"
+              telefono="/capturas/protocolo-ficha-telefono.png"
               alt="Panel del Protocolo: cuatro propiedades en comercialización, dos con alertas críticas y 41% de avance promedio."
               ruta="/protocolo"
               titular="Lo que distingue a una inmobiliaria que trabaja de una que espera."
@@ -251,6 +257,7 @@ export default function Home() {
               numero="03"
               nombre="Tablero Comercial"
               imagen="/capturas/tablero-kpis.png"
+              telefono="/capturas/tablero-telefono.png"
               alt="Tablero Comercial con el volumen del mes y el acumulado del año, operaciones, ticket promedio, puntas y comisión."
               ruta="/tablero"
               titular="Cuánto se vendió, quién lo vendió y cuánto se cobra."
@@ -390,13 +397,23 @@ export default function Home() {
             {/* La página del reporte, no un ícono de sobre: lo que se promete
                 es un documento concreto, y acá se lee el titular de verdad. */}
             <div className="overflow-hidden rounded-brand bg-white shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)]">
+              {/* En teléfono, el recorte de arriba: la hoja entera a 375px no
+                  deja leer ni el titular, que es todo el argumento. */}
+              <Image
+                src="/capturas/protocolo-reporte-recorte.png"
+                alt="Reporte semanal encabezado por «2 de 4 necesitan atención: Belgrano 2087 y Alsina 3841», con los cuatro indicadores del período."
+                width={1978}
+                height={1176}
+                className="h-auto w-full lg:hidden"
+                sizes="100vw"
+              />
               <Image
                 src="/capturas/protocolo-reporte-semanal.png"
                 alt="Reporte semanal en PDF encabezado por «2 de 4 necesitan atención: Belgrano 2087 y Alsina 3841», con los indicadores del período y el detalle por vendedor."
                 width={989}
                 height={1400}
-                className="h-auto w-full"
-                sizes="(max-width: 1024px) 100vw, 380px"
+                className="hidden h-auto w-full lg:block"
+                sizes="380px"
               />
             </div>
           </div>

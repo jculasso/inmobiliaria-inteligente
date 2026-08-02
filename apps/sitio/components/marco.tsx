@@ -28,9 +28,17 @@ export const MODULOS = [
   { ruta: '/tareas', nombre: 'To Do List', numero: '04' },
 ] as const;
 
+/*
+ * El fondo del encabezado es BLANCO SÓLIDO, no `bg-white/90 backdrop-blur`.
+ *
+ * Con la versión translúcida, en Safari el desenfoque no se aplica y lo que
+ * pasa por debajo se ve a través del encabezado: las capturas del producto
+ * atravesaban el menú y quedaba texto sobre texto. En un teléfono era lo
+ * primero que se veía al bajar. Un encabezado fijo tiene que tapar.
+ */
 export function Encabezado() {
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-line bg-white">
       <div className={`${ANCHO} flex h-16 items-center justify-between gap-4`}>
         {/* En teléfono las dos palabras se apilan: juntas miden ~175px y, al
             lado del botón, no entran en 375. Apiladas ocupan la mitad y el
@@ -64,18 +72,33 @@ export function Encabezado() {
         </Link>
       </div>
 
-      {/* En pantallas chicas los módulos van abajo, en una fila que se desliza. */}
-      <nav className="flex gap-5 overflow-x-auto border-t border-line px-6 py-2.5 lg:hidden">
-        {MODULOS.map((m) => (
-          <Link
-            key={m.ruta}
-            href={m.ruta}
-            className="whitespace-nowrap text-[13px] font-semibold text-muted"
-          >
-            {m.nombre}
-          </Link>
-        ))}
-      </nav>
+      {/*
+        En pantallas chicas los módulos van abajo, en una fila que se desliza.
+        El degradado del borde derecho no es decorativo: sin él, el último
+        nombre queda cortado contra el borde —"Tablero Comercia"— y se lee como
+        un error de maquetación en vez de como algo que continúa. El degradado
+        deja ver que hay más y no tapa ningún enlace.
+      */}
+      <div className="relative lg:hidden">
+        <nav className="flex gap-5 overflow-x-auto border-t border-line px-6 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {MODULOS.map((m) => (
+            <Link
+              key={m.ruta}
+              href={m.ruta}
+              className="whitespace-nowrap text-[13px] font-semibold text-muted"
+            >
+              {m.nombre}
+            </Link>
+          ))}
+          {/* Un respiro al final, para que el último nombre no termine debajo
+              del degradado cuando se llega al extremo. */}
+          <span aria-hidden className="w-4 shrink-0" />
+        </nav>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white to-transparent"
+        />
+      </div>
     </header>
   );
 }
@@ -132,6 +155,7 @@ export function Captura({
   alt,
   pie,
   telefono,
+  recorte,
 }: {
   src: string;
   ancho: number;
@@ -140,6 +164,14 @@ export function Captura({
   pie: string;
   /** Marca las capturas sacadas de un celular. Ver abajo por qué importa. */
   telefono?: boolean;
+  /**
+   * Un recorte de la parte que importa, para mostrar en pantallas chicas.
+   *
+   * Una página A4 completa metida en 375px es una mancha gris: no se lee ni el
+   * titular, que suele ser todo el argumento. Con el recorte se ve la parte
+   * que hace falta ver, y en pantalla grande sigue apareciendo la hoja entera.
+   */
+  recorte?: { src: string; ancho: number; alto: number };
 }) {
   /*
    * Una captura de celular NO puede ocupar el ancho del texto. Estirada a 670px
@@ -151,6 +183,34 @@ export function Captura({
   const marco = telefono
     ? 'mx-auto w-full max-w-[280px] rounded-[28px] border-[6px] border-ink'
     : 'rounded-brand border border-line';
+
+  if (recorte) {
+    return (
+      <figure className="mt-8">
+        <div className="overflow-hidden rounded-brand border border-line bg-white sm:hidden">
+          <Image
+            src={recorte.src}
+            width={recorte.ancho}
+            height={recorte.alto}
+            alt={alt}
+            className="h-auto w-full"
+            sizes="100vw"
+          />
+        </div>
+        <div className="hidden overflow-hidden rounded-brand border border-line bg-surface sm:block">
+          <Image
+            src={src}
+            width={ancho}
+            height={alto}
+            alt={alt}
+            className="h-auto w-full"
+            sizes="(max-width: 1024px) 100vw, 700px"
+          />
+        </div>
+        <figcaption className="mt-3 text-[13px] leading-relaxed text-muted">{pie}</figcaption>
+      </figure>
+    );
+  }
 
   return (
     <figure className="mt-8">
@@ -177,6 +237,57 @@ export function Captura({
         {pie}
       </figcaption>
     </figure>
+  );
+}
+
+/**
+ * Una captura del producto que cambia según el ancho de la pantalla.
+ *
+ * Una captura de escritorio —1280px de ancho— metida en un teléfono de 375
+ * queda al 29% de su tamaño: no se lee una sola palabra y el resultado es una
+ * mancha gris que hace parecer rota la página. Justo en el dispositivo desde
+ * el que la va a abrir la mayoría.
+ *
+ * Así que en teléfono se muestra la captura sacada DESDE un teléfono, dentro
+ * de un marco, y en pantallas grandes la de escritorio. Es la misma pantalla
+ * del producto; lo que cambia es desde dónde se la fotografió.
+ */
+export function CapturaSegunPantalla({
+  escritorio,
+  telefono,
+  alt,
+  prioridad,
+}: {
+  escritorio: string;
+  telefono: string;
+  alt: string;
+  prioridad?: boolean;
+}) {
+  return (
+    <>
+      <div className="mx-auto w-full max-w-[260px] overflow-hidden rounded-[22px] border-[5px] border-ink bg-white shadow-[0_18px_40px_-24px_rgba(29,29,31,0.55)] sm:hidden">
+        <Image
+          src={telefono}
+          alt={alt}
+          width={750}
+          height={1624}
+          className="h-auto w-full"
+          sizes="260px"
+          priority={prioridad}
+        />
+      </div>
+      <div className="hidden overflow-hidden rounded-brand border border-line bg-surface shadow-[0_24px_60px_-32px_rgba(29,29,31,0.45)] sm:block">
+        <Image
+          src={escritorio}
+          alt={alt}
+          width={2560}
+          height={1600}
+          className="h-auto w-full"
+          sizes="(max-width: 1120px) 100vw, 1050px"
+          priority={prioridad}
+        />
+      </div>
+    </>
   );
 }
 

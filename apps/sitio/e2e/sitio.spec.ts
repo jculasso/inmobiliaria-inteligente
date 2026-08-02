@@ -100,7 +100,11 @@ for (const { ruta } of PAGINAS) {
     // recién cuando entran en pantalla. Se recorren una por una y no bajando
     // de a pantallas, porque cada imagen que carga estira la página y corre
     // de lugar a las de abajo — así se salteaba justo la última.
-    const imagenes = page.locator('img');
+    // Solo las VISIBLES: la portada trae cada captura dos veces —la de
+    // escritorio y la sacada desde un teléfono— y muestra una u otra según el
+    // ancho. La que está oculta no tiene por qué cargar, y pedirle que se
+    // desplace a la vista rompe el test.
+    const imagenes = page.locator('img:visible');
     for (let i = 0; i < (await imagenes.count()); i++) {
       await imagenes.nth(i).scrollIntoViewIfNeeded();
       await page.waitForTimeout(150);
@@ -112,7 +116,7 @@ for (const { ruta } of PAGINAS) {
     await expect
       .poll(
         () =>
-          page.locator('img').evaluateAll((imgs) =>
+          page.locator('img:visible').evaluateAll((imgs) =>
             imgs
               .filter(
                 (i) =>
@@ -126,6 +130,37 @@ for (const { ruta } of PAGINAS) {
       .toEqual([]);
   });
 }
+
+test('el encabezado fijo tapa lo que pasa por debajo', async ({ page }) => {
+  // Estuvo publicado con `bg-white/90 backdrop-blur`. En Safari el desenfoque
+  // no se aplica, así que las capturas del producto se veían A TRAVÉS del
+  // menú: texto sobre texto, y en el teléfono era lo primero que aparecía al
+  // bajar. Un fondo translúcido en un encabezado fijo es un error, no un
+  // efecto — y sin este test se vuelve a colar en cualquier retoque de estilo.
+  await page.goto('/');
+  const fondo = await page
+    .locator('header')
+    .evaluate((h) => getComputedStyle(h).backgroundColor);
+
+  const canales = fondo.match(/[\d.]+/g)?.map(Number) ?? [];
+  const opacidad = canales.length === 4 ? canales[3]! : 1;
+  expect(opacidad, `el encabezado es translúcido (${fondo})`).toBe(1);
+});
+
+test('al pedir una demostración, el título no queda tapado por el menú', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Pedir una demostración' }).first().click();
+  await page.waitForTimeout(1200);
+
+  const alto = await page.locator('header').evaluate((h) => h.getBoundingClientRect().height);
+  const arriba = await page
+    .locator('#demostracion h2')
+    .evaluate((e) => e.getBoundingClientRect().top);
+
+  // El encabezado mide 106px en teléfono. Si el título arranca por encima de
+  // eso, el visitante toca el botón y ve el menú donde esperaba la sección.
+  expect(arriba, 'el título quedó debajo del encabezado').toBeGreaterThanOrEqual(alto);
+});
 
 test('los recuadros de captura pendiente NO se ven en producción', async ({ page }) => {
   // Se ven trabajando en local, para no olvidarnos de sacarlas. Si alguna vez

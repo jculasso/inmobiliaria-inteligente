@@ -16,3 +16,11 @@ html {
     scroll-behavior: auto;
   }
 }
+
+/* Cualquier ancla tiene que dejar aire para el encabezado fijo, que en
+   teléfono mide 106px. Sin esto, al tocar "Pedir una demostración" el título
+   de la sección queda tapado debajo del menú y parece que el enlace no
+   funcionó. */
+[id] {
+  scroll-margin-top: 7.5rem;
+}

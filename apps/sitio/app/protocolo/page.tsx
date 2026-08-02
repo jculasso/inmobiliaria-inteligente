@@ -120,6 +120,7 @@ export default function Protocolo() {
           alto={1400}
           alt="Reporte semanal en PDF encabezado por «2 de 4 necesitan atención: Belgrano 2087 y Alsina 3841», con cuatro indicadores, la lista de las que necesitan atención y el detalle por vendedor con la tira de cinco semanas."
           pie="El reporte de los lunes. Empieza diciendo cuáles necesitan atención y por qué; recién después viene el detalle por vendedor. La dirección se entera en el primer renglón."
+          recorte={{ src: '/capturas/protocolo-reporte-recorte.png', ancho: 1978, alto: 1176 }}
         />
         <Captura
           src="/capturas/protocolo-correo-lunes.png"
