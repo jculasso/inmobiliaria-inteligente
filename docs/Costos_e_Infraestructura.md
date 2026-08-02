@@ -222,74 +222,49 @@ aparecen en el horizonte de este negocio.
 
 ---
 
-## 8. Sobre mover la API a Lightsail
+## 8. La API se queda en Render — decidido
 
-La pregunta es si conviene hacerlo ahora o al vender la segunda inmobiliaria.
+**Decisión tomada el 1 de agosto de 2026: no se migra a un servidor propio.**
+Ni ahora ni al vender la segunda inmobiliaria.
 
-**Mi recomendación: ninguna de las dos. Todavía no.**
+El motivo no es el costo. Lightsail sale más barato por unidad de memoria — dos
+gigas por doce dólares contra veinticinco en Render — y está en São Paulo, que
+bajaría la latencia. El motivo es **quién hace el trabajo**.
 
-### Qué se compraría
+Lightsail es un servidor vacío. Pasarían a ser trabajo propio el despliegue en
+cada cambio, el certificado HTTPS y su renovación, las actualizaciones de
+seguridad del sistema operativo, reiniciar el proceso si se cae y enterarse de
+que se cayó, y los registros cuando algo falla. Hoy Render hace todo eso.
 
-| Opción | Costo | Memoria |
-| --- | --- | --- |
-| Render Free (hoy) | $0 | 512 MB, se duerme |
-| Render Starter | $7 | 512 MB |
-| Render Standard | $25 | 2 GB |
-| Lightsail São Paulo | $12 | 2 GB |
-| Lightsail São Paulo | $24 | 4 GB |
+Trece dólares de ahorro mensual contra una responsabilidad operativa
+permanente. Con dos personas —y una de ellas vendiendo— ese cambio se paga con
+el tiempo de la persona más cara. **El criterio queda fijado: mientras el
+equipo sean dos, la infraestructura se contrata administrada.**
 
-Lightsail da **más máquina por menos plata** — dos gigas por doce dólares
-contra dos gigas por veinticinco. Y, sobre todo, **está en São Paulo**: la
-latencia contra usuarios argentinos baja mucho respecto de un servidor en
-Estados Unidos.
+### Lo que esta decisión deja abierto
 
-### Qué se pagaría a cambio
+**Render no tiene región en Sudamérica.** Sus regiones son Oregon, Ohio,
+Virginia, Frankfurt y Singapur. Quedarse en Render significa que la API sigue
+corriendo en Estados Unidos, y **la latencia contra usuarios argentinos queda
+como está**.
 
-Render es un servicio administrado: se publica solo desde la rama principal,
-renueva los certificados, reinicia si el proceso muere, y guarda los registros.
-Lightsail es **un servidor vacío**. Pasan a ser trabajo propio:
+Hoy eso no molesta: está mitigada por código y nadie se quejó. Pero conviene
+tenerlo claro porque **cambia cuál es el plan si algún día molesta**. La
+respuesta ya no es Lightsail.
 
-- El despliegue en cada cambio, que hoy es automático.
-- El certificado HTTPS y su renovación.
-- Las actualizaciones de seguridad del sistema operativo.
-- Reiniciar el proceso si se cae, y enterarse de que se cayó.
-- Los registros, y dónde mirarlos cuando algo falla.
+### Si la latencia llegara a molestar
 
-Trece dólares de ahorro mensual contra varias horas de puesta a punto y una
-responsabilidad operativa permanente. **Con dos personas, y una de ellas
-vendiendo, ese cambio se paga con el tiempo de la persona más cara.**
+Primero **medir**, no mudarse. Confirmar que la demora es la distancia y no una
+consulta lenta o una pantalla que pide de más — que es lo más probable, y se
+arregla sin tocar infraestructura.
 
-### Y la latencia, que es el motivo real
+Si de verdad fuera la distancia, la salida coherente con la decisión de arriba
+es **otra plataforma administrada que sí tenga São Paulo**, no un servidor
+propio. Google Cloud Run está en `southamerica-east1` y es igual de
+administrada que Render: se paga por uso y no hay servidor que mantener.
 
-Es un motivo legítimo, pero conviene medir antes de mudarse. La latencia hoy
-está mitigada por código, y **ningún usuario se quejó**. Mover la infraestructura
-por un problema que nadie está reportando es optimizar a ciegas.
-
-### Cuándo sí
-
-Tres disparadores concretos. Cualquiera alcanza:
-
-1. **Alguien se queja de que el sistema va lento**, y al medir se confirma que
-   es la distancia y no otra cosa.
-2. **La factura de Render pasa los $25** — a esa altura Lightsail da el doble
-   de máquina por la mitad, y el ahorro empieza a justificar el trabajo. Pasa
-   alrededor de las veinte inmobiliarias.
-3. **Hay una tercera persona en el equipo** que pueda hacerse cargo de la
-   operación.
-
-Ninguno se cumple hoy. La segunda inmobiliaria vendida no es un disparador: no
-cambia ni la latencia ni la carga.
-
-### Lo que sí hay que hacer ya
-
-**Contratar Supabase Pro. Veinticinco dólares.** No por rendimiento: por las
-copias de seguridad. Es el único riesgo del que hoy no hay vuelta atrás, y no
-tiene nada que ver con Lightsail.
-
-Después, Render Starter por siete dólares para que la API deje de dormirse. Los
-dos juntos cuestan **treinta y dos dólares** y resuelven lo que sí es urgente.
-
----
+La comparación se hace en ese momento y con el problema medido. Lo que queda
+descartado, por decisión y no por precio, es administrar un servidor.
 
 ## 9. Los límites que hay que levantar antes de crecer
 
