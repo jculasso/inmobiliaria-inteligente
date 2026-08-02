@@ -245,12 +245,45 @@ equipo sean dos, la infraestructura se contrata administrada.**
 
 **Render no tiene región en Sudamérica.** Sus regiones son Oregon, Ohio,
 Virginia, Frankfurt y Singapur. Quedarse en Render significa que la API sigue
-corriendo en Estados Unidos, y **la latencia contra usuarios argentinos queda
-como está**.
+corriendo en Estados Unidos, y **la latencia queda como está**.
 
-Hoy eso no molesta: está mitigada por código y nadie se quejó. Pero conviene
-tenerlo claro porque **cambia cuál es el plan si algún día molesta**. La
-respuesta ya no es Lightsail.
+Y acá hay una precisión que la primera versión de este documento no hacía. El
+problema no es solo que el usuario esté lejos del servidor: **la API está lejos
+de su propia base de datos.** La base está en São Paulo (`sa-east-1`); la API,
+en Estados Unidos.
+
+Medido desde Rosario el 1/08/2026:
+
+| Destino | Ida y vuelta |
+| --- | --- |
+| Base de datos — Supabase, São Paulo | ~40 ms |
+| API — Render, Estados Unidos | ~235 ms, a un pedido que no hace nada |
+
+Una sola pantalla dispara varias consultas, y hoy **cada una cruza el
+continente y vuelve**. Ese viaje repetido pesa más que el del usuario al
+servidor, que ocurre una vez por pantalla.
+
+Hoy no molesta: está mitigado por código y nadie se quejó. Pero cambia cuál es
+el plan si algún día molesta — y lo hace más chico de lo que parecía.
+
+### La base NO se mueve
+
+Podría pensarse en traer la base a Estados Unidos, al lado de la API. **Sería
+un error**, por tres motivos en orden de peso:
+
+1. **Lo que importa es que estén juntas**, y eso se consigue de las dos formas.
+   El viaje entre ambas pasa de ~110 ms a menos de 1 ms en cualquiera de los
+   dos casos. Ese es el grueso de la mejora.
+2. **Elegido el lugar, São Paulo le gana por seis veces.** Los usuarios están
+   en Argentina: 40 ms contra 235. Llevar todo a Estados Unidos arreglaría el
+   viaje interno y empeoraría el del usuario.
+3. **La API no guarda nada; la base sí.** Mover la API es volver a publicarla,
+   y si sale mal se revierte en minutos. Mover la base es migrar los datos, los
+   usuarios de autenticación con sus contraseñas y los archivos de Storage, con
+   corte de servicio y —hoy— sin copias de seguridad. No se parecen ni en
+   riesgo ni en esfuerzo.
+
+**La base está donde tiene que estar. La API es la pieza descolocada.**
 
 ### Si la latencia llegara a molestar
 
