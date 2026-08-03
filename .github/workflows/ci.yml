@@ -96,13 +96,20 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter @vacker/api exec prisma generate
 
-      # En Supabase el rol `authenticated` viene de fábrica; en un Postgres
-      # pelado no existe, y las migraciones le hacen GRANT. Sin esto, la primera
-      # migración falla.
-      - name: Crear el rol authenticated
+      # Supabase trae `anon` y `authenticated` de fábrica; un Postgres pelado no.
+      # Las migraciones les hacen GRANT y REVOKE, así que sin esto la segunda
+      # migración falla con 'role "anon" does not exist'.
+      #
+      # `authenticated` es el rol de runtime: es el que la aplicación asume al
+      # bajar privilegios, y el único bajo el que RLS realmente filtra. `anon`
+      # solo aparece en los REVOKE del lockdown, pero tiene que existir para que
+      # el REVOKE no explote.
+      - name: Crear los roles de Supabase
         run: |
-          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d pruebas \
-            -c "CREATE ROLE authenticated NOLOGIN;"
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d pruebas -v ON_ERROR_STOP=1 <<'EOF'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          EOF
 
       - name: Aplicar migraciones
         run: pnpm --filter @vacker/api exec prisma migrate deploy
