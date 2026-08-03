@@ -428,7 +428,7 @@ solución es la misma.
 
 ---
 
-## 16. El aislamiento se prueba por la ruta real, y corre en CI
+## 17. El aislamiento se prueba por la ruta real, y corre en CI
 
 El test de aislamiento se escribió el 16/07/2026, junto con el núcleo
 multi-tenant. Estuvo en el repositorio **sin ejecutarse en CI durante los
