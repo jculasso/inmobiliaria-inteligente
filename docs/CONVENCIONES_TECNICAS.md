@@ -430,9 +430,11 @@ solución es la misma.
 
 ## 16. El aislamiento se prueba por la ruta real, y corre en CI
 
-Durante meses el test de aislamiento estuvo en el repositorio **sin ejecutarse
-en CI**. El job de calidad no escribe `.env`, y sin `DIRECT_URL` la suite se
-salteaba sola: once comprobaciones en verde que nunca habían corrido. Lo
+El test de aislamiento se escribió el 16/07/2026, junto con el núcleo
+multi-tenant. Estuvo en el repositorio **sin ejecutarse en CI durante los
+dieciocho días siguientes**, incluida la salida a producción con quince
+vendedores: el job de calidad no escribe `.env`, y sin `DIRECT_URL` la suite se
+salteaba sola. Once comprobaciones en verde que nunca habían corrido. Lo
 descubrió una auditoría, no un merge roto.
 
 **Una protección que no se ejecuta no protege.** Por eso ahora hay un job
@@ -470,13 +472,16 @@ Las tres aparecieron construyéndolo, y las tres darían verde sin probar nada:
 
 ### Qué hacer al agregar una tabla
 
-Tres cosas, y las tres las exige CI:
+Dos cosas:
 
-1. `ENABLE ROW LEVEL SECURITY` y su policy `tenant_isolation` en la migración,
-   más el `GRANT` a `authenticated`.
+1. En la migración: `ENABLE ROW LEVEL SECURITY`, su policy `tenant_isolation` y
+   el `GRANT` a `authenticated`. Sin el `GRANT`, las consultas fallan por
+   permisos y el error se confunde con un problema de aislamiento.
 2. Sumarla a `TABLAS` en `apps/api/test/aislamiento.fixtures.ts`.
-3. Nada más: si falta cualquiera de las dos, falla `rls-habilitada.e2e-spec.ts`
-   nombrando la tabla.
+
+**No hace falta acordarse de ninguna de las dos**, y ese es el punto: si falta
+la primera, falla la guardia nombrando la tabla; si falta la segunda, falla la
+comprobación que compara el esquema contra esa lista. Las dos rompen el merge.
 
 ### Verificado rompiéndolo
 
