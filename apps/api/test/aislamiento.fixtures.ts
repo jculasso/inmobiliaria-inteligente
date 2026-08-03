@@ -146,6 +146,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'usuario_rol',
     modelo: 'usuarioRol',
     claveId: 'usuario',
+    campoTenant: 'tenantId',
     campoEditable: 'rol',
     fila: (t, i) => ({ usuarioId: i.usuario, rol: 'vendedor', tenantId: t }),
     // Su clave primaria es (usuario_id, rol), así que la fila intrusa reusa el
