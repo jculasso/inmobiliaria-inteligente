@@ -29,6 +29,17 @@ export interface IdsDeTenant {
   googleCuenta: string;
   protocolo: string;
   protocoloAccion: string;
+  /**
+   * Un segundo usuario y una segunda tasación por inmobiliaria.
+   *
+   * `google_cuenta.usuario_id` y `protocolo.tasacion_id` son campos ÚNICOS: una
+   * segunda fila apuntando al mismo usuario o a la misma tasación es imposible
+   * aunque RLS la dejara pasar. Sin estas dos filas de repuesto, la prueba de
+   * inserción intrusa fallaría por la restricción única y daría verde sin haber
+   * ejercido el aislamiento.
+   */
+  usuarioSecundario: string;
+  tasacionSecundaria: string;
   /** Parte numérica única, para no chocar con los índices únicos por tenant. */
   n: number;
 }
@@ -50,6 +61,8 @@ export function nuevosIds(n: number): IdsDeTenant {
     googleCuenta: randomUUID(),
     protocolo: randomUUID(),
     protocoloAccion: randomUUID(),
+    usuarioSecundario: randomUUID(),
+    tasacionSecundaria: randomUUID(),
     n,
   };
 }
@@ -82,6 +95,12 @@ export interface TablaBajoPrueba {
   filaIntrusa?: (tenantId: string, ids: IdsDeTenant) => Record<string, unknown>;
   /** Un campo cualquiera que se pueda escribir en el UPDATE de prueba. */
   campoEditable: string;
+  /**
+   * Motivo por el que esta tabla no puede tener el control de inserción (la
+   * comprobación de que la fila intrusa SÍ entra desde su propio tenant).
+   * Si está presente, ese caso se saltea con la razón a la vista.
+   */
+  sinControlDeInsercion?: string;
 }
 
 const HOY = new Date('2026-01-15T12:00:00.000Z');
@@ -92,6 +111,10 @@ export const TABLAS: TablaBajoPrueba[] = [
     modelo: 'tenant',
     claveId: 'tenant',
     campoEditable: 'nombre',
+    // Su policy es `id = app.tenant_id`: una inmobiliaria no puede crear otra
+    // inmobiliaria desde su propio contexto, ni siquiera legítimamente. No hay
+    // inserción válida contra la que contrastar.
+    sinControlDeInsercion: 'la policy exige que el id sea el del tenant actual',
     fila: (_t, i) => ({ id: i.tenant, nombre: `Aislamiento ${i.n}`, slug: `aisl-${i.tenant}` }),
   },
   {
@@ -264,6 +287,14 @@ export const TABLAS: TablaBajoPrueba[] = [
       usuarioId: i.usuario,
       refreshTokenEnc: 'cifrado-de-mentira',
     }),
+    // `usuario_id` es único: hay que apuntar al usuario de repuesto o la fila
+    // chocaría con la que ya existe, sin llegar a ejercer RLS.
+    filaIntrusa: (t, i) => ({
+      id: randomUUID(),
+      tenantId: t,
+      usuarioId: i.usuarioSecundario,
+      refreshTokenEnc: 'cifrado-de-mentira',
+    }),
   },
   {
     tabla: 'protocolo',
@@ -274,6 +305,15 @@ export const TABLAS: TablaBajoPrueba[] = [
       id: i.protocolo,
       tenantId: t,
       tasacionId: i.tasacion,
+      agenteId: i.usuario,
+      fechaInicio: HOY,
+    }),
+    // `tasacion_id` es único: una propiedad tiene un solo protocolo. Se usa la
+    // tasación de repuesto por el mismo motivo que en google_cuenta.
+    filaIntrusa: (t, i) => ({
+      id: randomUUID(),
+      tenantId: t,
+      tasacionId: i.tasacionSecundaria,
       agenteId: i.usuario,
       fechaInicio: HOY,
     }),
@@ -294,6 +334,28 @@ export const TABLAS: TablaBajoPrueba[] = [
     }),
   },
 ];
+
+/**
+ * Arma los identificadores de una fila intrusa a partir de los de la víctima.
+ *
+ * Cambia DOS cosas y nada más:
+ *
+ * - la clave primaria de la fila, para que no choque con la que ya existe;
+ * - `n`, del que salen los campos con restricción única por inmobiliaria
+ *   (`operacion.codigo`, `propiedad.tokko_id`, `integracion_credencial.proveedor`,
+ *   `objetivo.anio`).
+ *
+ * Todo lo demás —las claves foráneas— sigue apuntando a filas reales de la
+ * víctima. Esa es la única forma de que la fila sea válida en todo salvo en el
+ * tenant al que pertenece, que es lo que se quiere probar. Si se regeneraran
+ * todos los identificadores, el INSERT fallaría por integridad referencial y el
+ * test daría verde sin haber ejercido RLS.
+ */
+let contador = 0;
+export function idsIntrusos(base: IdsDeTenant, clave: keyof IdsDeTenant): IdsDeTenant {
+  contador += 1;
+  return { ...base, [clave]: randomUUID(), n: 100_000 + contador };
+}
 
 /** Un valor válido para el UPDATE de prueba de cada tabla. */
 export function valorEditable(t: TablaBajoPrueba): unknown {
@@ -319,6 +381,29 @@ export async function sembrar(db: PrismaClient, ids: IdsDeTenant): Promise<void>
     if (!delegado) throw new Error(`No existe el delegado de Prisma "${t.modelo}"`);
     await delegado.create({ data: datos });
   }
+
+  // Las de repuesto, para las tablas con campo único (ver `IdsDeTenant`).
+  await db.usuario.create({
+    data: {
+      id: ids.usuarioSecundario,
+      tenantId: ids.tenant,
+      nombre: `Usuario secundario ${ids.n}`,
+      email: `aisl-${ids.usuarioSecundario}@ejemplo.test`,
+    },
+  });
+  await db.tasacion.create({
+    data: {
+      id: ids.tasacionSecundaria,
+      tenantId: ids.tenant,
+      agenteId: ids.usuario,
+      cliente: `Cliente secundario ${ids.n}`,
+      fecha: HOY,
+      direccion: `Tasación secundaria ${ids.n}`,
+      tipoOperacion: 'Venta',
+      tipoPropiedad: 'Casa',
+      superficieTotal: 100,
+    },
+  });
 }
 
 /** Borra todo lo que sembró. `tenant` cae en cascada sobre el resto. */

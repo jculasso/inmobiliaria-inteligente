@@ -1,12 +1,17 @@
-import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import type { ClsService } from 'nestjs-cls';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import type { TenantContext } from '../src/prisma/tenant-context';
-import type { IdsDeTenant } from './aislamiento.fixtures';
-import { TABLAS, limpiar, nuevosIds, sembrar, valorEditable } from './aislamiento.fixtures';
+import {
+  TABLAS,
+  idsIntrusos,
+  limpiar,
+  nuevosIds,
+  sembrar,
+  valorEditable,
+} from './aislamiento.fixtures';
 
 /**
  * Aislamiento entre inmobiliarias, POR LA RUTA REAL.
@@ -124,10 +129,9 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
        * B. Si se regeneraran todas, el INSERT fallaría por integridad
        * referencial y este test daría verde sin haber ejercido RLS ni una vez.
        */
-      const idsIntrusos: IdsDeTenant = { ...idsB, [t.claveId]: randomUUID() };
       const fila = t.filaIntrusa
         ? t.filaIntrusa(idsB.tenant, idsB)
-        : t.fila(idsB.tenant, idsIntrusos);
+        : t.fila(idsB.tenant, idsIntrusos(idsB, t.claveId));
 
       await expect(
         tenantPrisma.withTenant(async (tx) => {
@@ -136,7 +140,9 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
       ).rejects.toThrow();
     });
 
-    it('la fila intrusa SÍ entra desde su propio tenant (o el test anterior no probaría RLS)', async () => {
+    it.skipIf(Boolean(t.sinControlDeInsercion))(
+      'la fila intrusa SÍ entra desde su propio tenant (o el test anterior no probaría RLS)',
+      async () => {
       /*
        * Control de la prueba de arriba. Sin esto, un INSERT que falle por
        * cualquier otro motivo —una columna faltante, una clave foránea rota, un
@@ -144,17 +150,17 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
        * misma fila, desde el contexto de su dueño, entra sin problemas: lo
        * único que cambia entre los dos casos es el tenant del contexto.
        */
-      const idsIntrusos: IdsDeTenant = { ...idsB, [t.claveId]: randomUUID() };
-      const fila = t.filaIntrusa
-        ? t.filaIntrusa(idsB.tenant, idsB)
-        : t.fila(idsB.tenant, idsIntrusos);
+        const fila = t.filaIntrusa
+          ? t.filaIntrusa(idsB.tenant, idsB)
+          : t.fila(idsB.tenant, idsIntrusos(idsB, t.claveId));
 
-      await expect(
-        tenantPrisma.withTenant(async (tx) => {
-          return delegado(tx, t.modelo).create({ data: fila });
-        }, ctxB),
-      ).resolves.toBeDefined();
-    });
+        await expect(
+          tenantPrisma.withTenant(async (tx) => {
+            return delegado(tx, t.modelo).create({ data: fila });
+          }, ctxB),
+        ).resolves.toBeDefined();
+      },
+    );
 
     it('desde el tenant A, un UPDATE sobre una fila del B afecta cero filas', async () => {
       const afectadas = await tenantPrisma.withTenant(async (tx) => {
@@ -200,7 +206,8 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
         // Retiene la conexión un rato para que las demás transacciones estén
         // vivas al mismo tiempo. Sin esto podrían ejecutarse en serie y el test
         // no probaría nada.
-        await tx.$queryRawUnsafe('SELECT pg_sleep(0.05)');
+        // `::text` porque pg_sleep devuelve void y Prisma no lo sabe deserializar.
+        await tx.$queryRawUnsafe('SELECT pg_sleep(0.05)::text AS dormido');
 
         const filas = (await tx.usuario.findMany({
           where: { tenantId: { in: [idsA.tenant, idsB.tenant] } },
