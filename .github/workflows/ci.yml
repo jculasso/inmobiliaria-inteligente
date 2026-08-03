@@ -40,6 +40,117 @@ jobs:
       - name: Test
         run: pnpm test
 
+  # ===========================================================================
+  # Aislamiento multi-tenant. Job aparte y con base de datos de verdad.
+  #
+  # Antes, el test de aislamiento vivía en el repo pero NO corría en CI: el job
+  # de calidad no escribe .env, y sin DIRECT_URL la suite se saltaba sola. Once
+  # comprobaciones en verde sin haberse ejecutado nunca. Una protección que no
+  # se ejecuta no protege, y por eso esto es un job propio y bloqueante.
+  #
+  # La base es un Postgres descartable levantado acá. NUNCA la productiva: el
+  # test siembra y borra filas, y el propio spec rechaza cualquier URL que
+  # apunte a Supabase.
+  # ===========================================================================
+  aislamiento:
+    name: Aislamiento multi-tenant
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pruebas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # Directa (5432): migraciones, siembra y limpieza.
+      TEST_DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/pruebas
+      # Por el pooler (6543) y en modo transaction, que es como se conecta la
+      # API en producción. Es la mitad del punto de este job.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:6543/pruebas?pgbouncer=true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @vacker/api exec prisma generate
+
+      # En Supabase el rol `authenticated` viene de fábrica; en un Postgres
+      # pelado no existe, y las migraciones le hacen GRANT. Sin esto, la primera
+      # migración falla.
+      - name: Crear el rol authenticated
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d pruebas \
+            -c "CREATE ROLE authenticated NOLOGIN;"
+
+      - name: Aplicar migraciones
+        run: pnpm --filter @vacker/api exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.TEST_DIRECT_URL }}
+          DIRECT_URL: ${{ env.TEST_DIRECT_URL }}
+
+      # El pooler en modo transaction. Va con un lote chico a propósito
+      # (default_pool_size = 5): con 20 transacciones en paralelo, garantiza que
+      # varias compartan la misma conexión física. Es justamente lo que hace que
+      # el test de concurrencia signifique algo — si cada transacción tuviera su
+      # propia conexión, no probaría que `is_local` limpia lo que dejó la
+      # anterior.
+      - name: Levantar PgBouncer en modo transaction
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq pgbouncer
+          mkdir -p /tmp/pgb
+          cat > /tmp/pgb/pgbouncer.ini <<'EOF'
+          [databases]
+          pruebas = host=127.0.0.1 port=5432 dbname=pruebas user=postgres password=postgres
+
+          [pgbouncer]
+          listen_addr = 127.0.0.1
+          listen_port = 6543
+          auth_type = trust
+          auth_file = /tmp/pgb/userlist.txt
+          pool_mode = transaction
+          max_client_conn = 200
+          default_pool_size = 5
+          logfile = /tmp/pgb/pgbouncer.log
+          pidfile = /tmp/pgb/pgbouncer.pid
+          ignore_startup_parameters = extra_float_digits,search_path,options
+          EOF
+          echo '"postgres" "postgres"' > /tmp/pgb/userlist.txt
+          pgbouncer -d /tmp/pgb/pgbouncer.ini
+          for i in $(seq 1 20); do
+            PGPASSWORD=postgres psql -h 127.0.0.1 -p 6543 -U postgres -d pruebas -c 'select 1' >/dev/null 2>&1 && break
+            sleep 1
+          done
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 6543 -U postgres -d pruebas -c 'select 1'
+
+      - name: Aislamiento entre inmobiliarias y guardia de RLS
+        run: pnpm --filter @vacker/api exec vitest run test/aislamiento.e2e-spec.ts test/rls-habilitada.e2e-spec.ts
+
+      - name: Registro de PgBouncer si algo falla
+        if: failure()
+        run: cat /tmp/pgb/pgbouncer.log || true
+
   e2e:
     name: End to end
     runs-on: ubuntu-latest
