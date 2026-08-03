@@ -425,3 +425,63 @@ resueltas:
 
 `apps/web` todavía no tiene esta separación. Si algún día pasa lo mismo ahí, la
 solución es la misma.
+
+---
+
+## 16. El aislamiento se prueba por la ruta real, y corre en CI
+
+Durante meses el test de aislamiento estuvo en el repositorio **sin ejecutarse
+en CI**. El job de calidad no escribe `.env`, y sin `DIRECT_URL` la suite se
+salteaba sola: once comprobaciones en verde que nunca habían corrido. Lo
+descubrió una auditoría, no un merge roto.
+
+**Una protección que no se ejecuta no protege.** Por eso ahora hay un job
+propio y bloqueante (`Aislamiento multi-tenant`) que levanta un Postgres
+descartable, crea los roles `anon` y `authenticated` —que en Supabase vienen de
+fábrica y en un Postgres pelado no existen—, aplica las migraciones y pone
+PgBouncer en modo transaction delante.
+
+### Por qué el pooler y por qué Prisma
+
+La versión vieja se conectaba con el cliente `pg` crudo al puerto 5432 y
+**reimplementaba a mano** el `set_config` de la aplicación. Eso verifica que las
+policies estén bien escritas; no verifica el mecanismo que corre en producción.
+Si alguien rompía `TenantPrismaService`, el test seguía en verde.
+
+El test de hoy importa `TenantPrismaService` de `src/` y se conecta por el
+pooler. **No hay una copia del `set_config` en el test**: si cambia lo que corre
+en producción, cambia el test o falla.
+
+### Las tres trampas que hacen que un test de aislamiento mienta
+
+Las tres aparecieron construyéndolo, y las tres darían verde sin probar nada:
+
+1. **Un INSERT rechazado no prueba RLS por sí solo.** Puede haber fallado por
+   una columna faltante, una clave foránea rota o un índice único. Por eso cada
+   rechazo lleva su control: **la misma fila entrando desde su propio tenant**.
+   Si el control no pasa, el rechazo no significaba nada.
+2. **La fila intrusa tiene que ser válida en todo salvo el tenant.** Regenerar
+   todos los identificadores rompe las claves foráneas. Se regenera solo la
+   clave primaria y el discriminante de los índices únicos; las foráneas siguen
+   apuntando a filas reales de la víctima.
+3. **`tenant` no tiene columna `tenant_id`.** Se identifica por su propio `id`,
+   y una consulta genérica falla ahí por columna inexistente — un error que se
+   lee como si el aislamiento hubiera bloqueado algo.
+
+### Qué hacer al agregar una tabla
+
+Tres cosas, y las tres las exige CI:
+
+1. `ENABLE ROW LEVEL SECURITY` y su policy `tenant_isolation` en la migración,
+   más el `GRANT` a `authenticated`.
+2. Sumarla a `TABLAS` en `apps/api/test/aislamiento.fixtures.ts`.
+3. Nada más: si falta cualquiera de las dos, falla `rls-habilitada.e2e-spec.ts`
+   nombrando la tabla.
+
+### Verificado rompiéndolo
+
+El 3/08/2026 se comprobó que la guardia muerde: en una rama descartable se quitó
+la bajada de rol de `TenantPrismaService` y se agregó una tabla sin RLS.
+Resultado: **53 casos en rojo**, incluido el de concurrencia, y la guardia
+nombrando la tabla abierta. Un test de seguridad que nunca se vio fallar es una
+suposición, no una prueba.
