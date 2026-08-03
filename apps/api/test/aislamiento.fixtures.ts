@@ -93,6 +93,15 @@ export interface TablaBajoPrueba {
    * `usuario_rol`, que es la única.
    */
   filaIntrusa?: (tenantId: string, ids: IdsDeTenant) => Record<string, unknown>;
+  /**
+   * Columna por la que la tabla dice a qué inmobiliaria pertenece.
+   *
+   * Es `tenantId` en las quince tablas de negocio y `id` en `tenant`, que se
+   * identifica a sí misma. Sin esta distinción, las consultas genéricas del
+   * test fallan sobre `tenant` por una columna que no existe — y ese error se
+   * lee como si RLS hubiera bloqueado algo.
+   */
+  campoTenant: 'tenantId' | 'id';
   /** Un campo cualquiera que se pueda escribir en el UPDATE de prueba. */
   campoEditable: string;
   /**
@@ -110,6 +119,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'tenant',
     modelo: 'tenant',
     claveId: 'tenant',
+    campoTenant: 'id',
     campoEditable: 'nombre',
     // Su policy es `id = app.tenant_id`: una inmobiliaria no puede crear otra
     // inmobiliaria desde su propio contexto, ni siquiera legítimamente. No hay
@@ -121,6 +131,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'usuario',
     modelo: 'usuario',
     claveId: 'usuario',
+    campoTenant: 'tenantId',
     campoEditable: 'nombre',
     fila: (t, i) => ({
       id: i.usuario,
@@ -147,6 +158,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'operacion',
     modelo: 'operacion',
     claveId: 'operacion',
+    campoTenant: 'tenantId',
     campoEditable: 'direccion',
     fila: (t, i) => ({
       id: i.operacion,
@@ -163,6 +175,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'operacion_punta',
     modelo: 'operacionPunta',
     claveId: 'operacionPunta',
+    campoTenant: 'tenantId',
     campoEditable: 'lado',
     fila: (t, i) => ({
       id: i.operacionPunta,
@@ -176,6 +189,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'objetivo',
     modelo: 'objetivo',
     claveId: 'objetivo',
+    campoTenant: 'tenantId',
     campoEditable: 'anio',
     fila: (t, i) => ({
       id: i.objetivo,
@@ -183,11 +197,20 @@ export const TABLAS: TablaBajoPrueba[] = [
       usuarioId: i.usuario,
       anio: 2026,
     }),
+    // Único por (tenant, usuario, año): la fila intrusa apunta al usuario de
+    // repuesto para no chocar con el objetivo que ya tiene el usuario principal.
+    filaIntrusa: (t, i) => ({
+      id: randomUUID(),
+      tenantId: t,
+      usuarioId: i.usuarioSecundario,
+      anio: 2026,
+    }),
   },
   {
     tabla: 'tasacion',
     modelo: 'tasacion',
     claveId: 'tasacion',
+    campoTenant: 'tenantId',
     campoEditable: 'cliente',
     fila: (t, i) => ({
       id: i.tasacion,
@@ -205,6 +228,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'tasacion_comparable',
     modelo: 'tasacionComparable',
     claveId: 'tasacionComparable',
+    campoTenant: 'tenantId',
     campoEditable: 'direccion',
     fila: (t, i) => ({
       id: i.tasacionComparable,
@@ -219,6 +243,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'tasacion_foto',
     modelo: 'tasacionFoto',
     claveId: 'tasacionFoto',
+    campoTenant: 'tenantId',
     campoEditable: 'url',
     fila: (t, i) => ({
       id: i.tasacionFoto,
@@ -231,6 +256,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'tasacion_estado_historial',
     modelo: 'tasacionEstadoHistorial',
     claveId: 'tasacionEstadoHistorial',
+    campoTenant: 'tenantId',
     campoEditable: 'estadoNuevo',
     fila: (t, i) => ({
       id: i.tasacionEstadoHistorial,
@@ -244,6 +270,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'informe_generado',
     modelo: 'informeGenerado',
     claveId: 'informeGenerado',
+    campoTenant: 'tenantId',
     campoEditable: 'url',
     fila: (t, i) => ({
       id: i.informeGenerado,
@@ -256,6 +283,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'integracion_credencial',
     modelo: 'integracionCredencial',
     claveId: 'integracionCredencial',
+    campoTenant: 'tenantId',
     campoEditable: 'ultimos4',
     fila: (t, i) => ({
       id: i.integracionCredencial,
@@ -269,6 +297,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'propiedad',
     modelo: 'propiedad',
     claveId: 'propiedad',
+    campoTenant: 'tenantId',
     campoEditable: 'titulo',
     fila: (t, i) => ({
       id: i.propiedad,
@@ -280,6 +309,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'google_cuenta',
     modelo: 'googleCuenta',
     claveId: 'googleCuenta',
+    campoTenant: 'tenantId',
     campoEditable: 'googleEmail',
     fila: (t, i) => ({
       id: i.googleCuenta,
@@ -300,6 +330,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'protocolo',
     modelo: 'protocolo',
     claveId: 'protocolo',
+    campoTenant: 'tenantId',
     campoEditable: 'observacionArchivo',
     fila: (t, i) => ({
       id: i.protocolo,
@@ -322,6 +353,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     tabla: 'protocolo_accion',
     modelo: 'protocoloAccion',
     claveId: 'protocoloAccion',
+    campoTenant: 'tenantId',
     campoEditable: 'titulo',
     fila: (t, i) => ({
       id: i.protocoloAccion,

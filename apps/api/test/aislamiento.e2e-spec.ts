@@ -112,13 +112,15 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     it('desde el tenant A, un SELECT no trae filas del tenant B', async () => {
       const visibles = await tenantPrisma.withTenant(async (tx) => {
         return (await delegado(tx, t.modelo).findMany({
-          where: { tenantId: { in: [idsA.tenant, idsB.tenant] } },
-          select: { tenantId: true },
-        })) as { tenantId: string }[];
+          where: { [t.campoTenant]: { in: [idsA.tenant, idsB.tenant] } },
+          select: { [t.campoTenant]: true },
+        })) as Record<string, string>[];
       }, ctxA);
 
+      // Que devuelva algo importa tanto como el filtro: si viniera vacío por
+      // cualquier otro motivo, "no ve las del otro" sería cierto y vacío.
       expect(visibles.length).toBeGreaterThan(0);
-      expect(visibles.every((f) => f.tenantId === idsA.tenant)).toBe(true);
+      expect(visibles.every((f) => f[t.campoTenant] === idsA.tenant)).toBe(true);
     });
 
     it('desde el tenant A, un INSERT con el tenant_id del B es rechazado', async () => {
@@ -165,7 +167,7 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     it('desde el tenant A, un UPDATE sobre una fila del B afecta cero filas', async () => {
       const afectadas = await tenantPrisma.withTenant(async (tx) => {
         const r = (await delegado(tx, t.modelo).updateMany({
-          where: { tenantId: idsB.tenant },
+          where: { [t.campoTenant]: idsB.tenant },
           data: { [t.campoEditable]: valorEditable(t) },
         })) as { count: number };
         return r.count;
