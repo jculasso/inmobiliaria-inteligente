@@ -6,7 +6,7 @@ Este documento explica de qué está construido el sistema, dónde corre cada
 pieza y por qué se eligió así. Está escrito para leerlo de corrido, no para
 consultarlo: las decisiones importan tanto como la lista de tecnologías.
 
-Es la foto al **1 de agosto de 2026**, con el sistema en producción en Vacker
+Es la foto al **3 de agosto de 2026**, con el sistema en producción en Vacker
 Negocios Inmobiliarios y quince vendedores usándolo todos los días.
 
 ---
@@ -127,8 +127,72 @@ trabajando, y la base no devuelve una sola fila que no le corresponda.
 Es defensa en profundidad: el código filtra igual, pero si falla, hay una
 segunda barrera que no depende de que alguien se acuerde.
 
-Hay una prueba automática que lo verifica en cada cambio: intenta leer datos
-de otra inmobiliaria y falla si lo consigue.
+### Cómo se verifica que eso sea cierto
+
+Esta parte del documento decía, hasta el 3 de agosto de 2026, que «hay una
+prueba automática que lo verifica en cada cambio». Era optimista: la prueba
+existía, pero **no se ejecutaba en integración continua** y comprobaba las
+policies por un camino distinto del que usa la aplicación. Hoy sí es cierto, y
+conviene ser preciso sobre qué se verifica.
+
+**Se prueban las 16 tablas, por la ruta real.** El test se conecta con el mismo
+cliente que la API (Prisma), a través del mismo pooler en modo transaction, y
+usa el mismo servicio que declara la inmobiliaria antes de consultar — no una
+copia. Si ese servicio cambia, el test cambia con él o falla.
+
+Por cada tabla, tres comprobaciones:
+
+- una consulta desde una inmobiliaria no trae ni una fila de la otra;
+- insertar una fila con la inmobiliaria ajena es rechazado;
+- modificar filas de la otra afecta cero registros.
+
+Cada rechazo lleva su **control**: la misma fila entrando desde su propia
+inmobiliaria. Sin eso, un rechazo por cualquier otro motivo —una columna
+faltante, una restricción única— se leería como «el aislamiento funcionó».
+
+**Y una prueba de concurrencia**, que es la que no se podía hacer antes:
+veinte transacciones de dos inmobiliarias distintas, solapadas a propósito
+sobre un lote de cinco conexiones compartidas. Es la verificación empírica de
+que el contexto de una no sobrevive para que lo herede la siguiente cuando el
+pooler recicla la conexión.
+
+**Más una guardia sobre el esquema**: un test recorre el catálogo de PostgreSQL
+y falla nombrando cualquier tabla que no tenga RLS habilitada, o que la tenga
+sin su política. Es lo que evita que la tabla número diecisiete nazca abierta
+sin que nadie lo note.
+
+Todo eso corre en integración continua contra una base descartable levantada
+para cada corrida, y **bloquea la fusión**: la rama principal tiene una regla
+que exige pull request y los tres controles en verde, sin excepciones para
+nadie. Un intento de escribir directamente sobre ella es rechazado por el
+servidor.
+
+Se comprobó rompiéndolo a propósito: al quitar la bajada de privilegios,
+53 comprobaciones se ponen en rojo.
+
+### Lo que todavía falta
+
+Tres cosas, y ninguna es urgente hoy, pero omitirlas daría una imagen mejor que
+la real:
+
+**Las tablas no tienen `FORCE ROW LEVEL SECURITY`.** RLS no se aplica al dueño
+de la tabla, y las dieciséis pertenecen al mismo rol con el que se conecta la
+API. Hoy eso no abre ningún agujero, porque la aplicación baja sus privilegios
+antes de consultar y ahí deja de ser el dueño. Pero es una red de contención
+que no está puesta: si mañana una consulta se escribe sin pasar por ese camino,
+nada la detiene.
+
+**Hay dos lugares que consultan sin bajar privilegios**, y los dos son
+deliberados: `auth.guard.ts:78`, que busca al usuario para averiguar a qué
+inmobiliaria pertenece —todavía no hay inmobiliaria que declarar—, y
+`tareas.service.ts:45,57`, el proceso del reporte semanal, que recorre todas
+las inmobiliarias sin sesión de nadie. Ninguno es una fuga. El problema es que
+heredan ese permiso por ser dueños de la tabla, en vez de tenerlo concedido de
+forma explícita y acotada.
+
+**La base sigue sin copias de seguridad automáticas.** Es la exposición más
+seria del sistema y no tiene nada que ver con el aislamiento: se resuelve
+pagando el plan Pro de Supabase.
 
 ### Prisma
 
@@ -258,22 +322,38 @@ decisión de alcance, no una limitación.
 
 ## 10. Las pruebas y la publicación
 
-**559 pruebas automáticas** de unidad e integración, más las de navegador.
+**559 pruebas automáticas** de unidad e integración, más las de navegador y las
+de aislamiento.
 
 | Tipo | Herramienta | Qué cubre |
 | --- | --- | --- |
 | Unidad e integración | Vitest | Cálculos, permisos, plantillas de PDF, correos |
-| API | Supertest | Los endpoints de punta a punta, incluido el aislamiento |
+| API | Supertest | Los endpoints de punta a punta |
 | Navegador | Playwright | Lo que se ve, en Chromium y **WebKit** |
+| Aislamiento | Vitest + Postgres + PgBouncer | Las 16 tablas por la ruta real (ver sección 4) |
 
 WebKit —el motor de Safari— está incluido a propósito: el problema del zoom en
 iOS solo aparece ahí. Probar en un solo navegador no lo habría detectado.
 
 Cada cambio pasa por **integración continua** antes de llegar a la rama
 principal: una máquina limpia baja el proyecto, revisa el estilo del código,
-verifica los tipos, corre todas las pruebas y abre navegadores de verdad. Si
-algo falla, no se publica. La rama principal está siempre lista para desplegar,
-y de ahí Render y Vercel publican solos.
+verifica los tipos, corre todas las pruebas, abre navegadores de verdad y
+levanta una base de datos descartable para comprobar el aislamiento.
+
+**Y no es una recomendación: es un bloqueo.** La rama principal tiene una regla
+que exige pull request, los tres controles en verde, y la rama al día respecto
+de lo último que se fusionó. Sin excepciones para nadie, ni para el dueño del
+repositorio. Un intento de escribir directamente sobre ella lo rechaza el
+servidor:
+
+```
+remote: - Changes must be made through a pull request.
+remote: - 3 of 3 required status checks are expected.
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+```
+
+La rama principal está siempre lista para desplegar, y de ahí Render y Vercel
+publican solos.
 
 Las pruebas de navegador **nunca** tocan la base productiva: corren con
 variables de entorno falsas a propósito. La base no tiene copias automáticas;
@@ -316,4 +396,4 @@ operación de hoy.
 
 ---
 
-*Inmobiliaria Inteligente · Resumen técnico · 1 de agosto de 2026*
+*Inmobiliaria Inteligente · Resumen técnico · 3 de agosto de 2026*
