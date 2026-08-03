@@ -42,8 +42,7 @@ export class TenantPrismaService {
         // Parametrizado → sin inyección. A partir de acá RLS aplica.
         await tx.$executeRawUnsafe(
           `SELECT set_config('app.tenant_id', $1, true),
-                  set_config('app.user_id', $2, true),
-                  set_config('role', 'authenticated', true)`,
+                  set_config('app.user_id', $2, true)`,
           context.tenantId,
           context.userId,
         );
