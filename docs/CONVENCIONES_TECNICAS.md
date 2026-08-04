@@ -490,3 +490,97 @@ la bajada de rol de `TenantPrismaService` y se agregó una tabla sin RLS.
 Resultado: **53 casos en rojo**, incluido el de concurrencia, y la guardia
 nombrando la tabla abierta. Un test de seguridad que nunca se vio fallar es una
 suposición, no una prueba.
+
+---
+
+## 18. Que `withTenant` aísle no significa que el código lo use
+
+La convención 17 cubre una mitad: `TenantPrismaService.withTenant` aísla, y hay
+setenta casos que lo comprueban por la ruta real. La otra mitad no la cubría
+nadie. **Nada obligaba a pasar por ahí.**
+
+Un servicio nuevo que consulte con `PrismaService` directo compila, pasa el
+typecheck, devuelve datos y se ve correcto en pantalla. Lo único que cambia es
+que devuelve los de **todas** las inmobiliarias. No hay error, no hay log, no
+hay pantalla rota: es la clase de falla que se descubre cuando un cliente ve el
+dato de otro.
+
+Lo que frenaría eso estructuralmente es `FORCE ROW LEVEL SECURITY` — que RLS
+aplique incluso al dueño de la tabla. No se puede aplicar hasta tener copias de
+seguridad (§20.6 del documento de arquitectura, punto 2). Mientras tanto está
+`apps/api/test/acceso-directo.e2e-spec.ts`, que recorre el código y falla si
+encuentra un acceso sin contexto.
+
+### Por qué con el compilador y no con grep
+
+Un `grep "prisma\."` da falsos positivos y falsos negativos, y los negativos son
+los que importan. **Pasó al escribir este test:** el primer barrido a mano buscó
+`prisma: PrismaService` y encontró tres archivos. El análisis con tipos encontró
+tres más — la consola de plataforma y `password.service` — que el grep no vio
+por un motivo tonto: la propiedad se llama `db`, no `prisma`.
+
+La distinción no se hace por nombre sino por **tipo**. Prisma declara el cliente
+transaccional como `Omit<PrismaClient, '$transaction' | '$connect' | …>`:
+
+```
+this.prisma.operacion   → receptor PrismaService      → tiene $transaction
+tx.operacion            → receptor TransactionClient  → NO tiene
+```
+
+Preguntarle al checker por `$transaction` separa los dos casos sin mantener
+ninguna lista de nombres. Y como el tipo viaja con la variable, `const db =
+this.prisma` y `function f(p: PrismaService)` caen igual: **la indirección no lo
+esquiva.** Eso es exactamente lo que un grep no puede hacer.
+
+Se descartó una regla de ESLint porque la config compartida no es *type-aware*
+(`packages/config/eslint.config.mjs` usa `tseslint.configs.recommended`, sin
+`project`). Habría que encender linting con tipos en todo el monorepo para
+resolver un problema de un paquete.
+
+### Lo que NO detecta
+
+Está verificado, no supuesto: se escribieron los tres casos y **pasaron en
+verde**. Conviene leerlo antes de confiar en este test más de lo que da.
+
+1. **Contexto forjado.** `withTenant(fn, { tenantId: otro })` usa el camino
+   correcto, tipa bien, y lee otra inmobiliaria. Es el agujero más grande y es
+   estructural: ningún análisis estático distingue un contexto legítimo de uno
+   inventado.
+2. **Tipo borrado.** `as any`, un parámetro `any`, `(this as any).prisma`. El
+   análisis sigue el tipo; si se borra, queda ciego.
+3. **Clave dinámica.** `cliente[nombreVariable].findMany()`. Con literal
+   (`cliente['operacion']`) sí lo agarra; con variable, no.
+4. **Un `where` mal armado.** Usar `withTenant` con un `tenantId` que viene de la
+   request es otra clase de bug y este test no la toca.
+5. **Los `.spec.ts` de `src/`**, excluidos a propósito: usan dobles y no se
+   despliegan.
+
+### La lista blanca
+
+Se ancla por **archivo + función**, nunca por número de línea: las líneas se
+corren con cualquier import que se agregue arriba y la exención terminaría
+apuntando a otro lado. Si alguien renombra la función, el test se pone rojo — es
+la falla correcta, obliga a mirar. Hay además una comprobación de que ninguna
+entrada quedó huérfana, para que la lista no acumule exenciones muertas que
+aparentan cobertura.
+
+Hay dos clases de excepción y no valen lo mismo:
+
+- **Cross-tenant por diseño** (`src/admin/*`, el cron de `tareas.service.ts`, el
+  `resolvePrincipal` del guard). `withTenant` sería incorrecto: o no hay un
+  tenant al que acotarse, o la consulta es justamente la que lo resuelve. Los de
+  admin llevan comodín de archivo porque lo son de punta a punta, y todos sus
+  endpoints cuelgan de `@Roles('admin_plataforma')`.
+- **Seguro por corrección, no por diseño** (`me/password.service.ts`). Podría
+  usar `withTenant` y se eligió no hacerlo; es seguro porque filtra por el
+  `userId` del token verificado. Va anotado por función y sin comodín, para que
+  un método nuevo en ese archivo tenga que justificarse solo.
+
+### Verificado rompiéndolo
+
+Rama descartable con un servicio que consultaba directo, uno con
+`$queryRawUnsafe` sobre el cliente dueño, uno con `const alias = this.db`, y uno
+que lo pasaba como parámetro a una función suelta. **Los seis accesos salieron
+en rojo**, cada uno con su archivo, línea, método y regla. Después se probaron
+los tres puntos ciegos de arriba y pasaron en verde, que es como se confirma que
+el límite documentado es el límite real.
