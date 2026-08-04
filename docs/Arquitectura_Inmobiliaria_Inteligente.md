@@ -500,6 +500,17 @@ Las listas traen como máximo **500 filas** y los KPIs se suman **en memoria** e
 
    *Orden.* **Va después de tener backups** (punto 1). Es exactamente el tipo de cambio que se hace con red y no sin ella.
 
+   *Lo que `FORCE` NO cubre, y conviene no volver a confundirlo.* Son **dos problemas distintos** y ninguno de los dos tapa al otro:
+
+   | | consulta sin declarar tenant | contexto forjado |
+   |---|---|---|
+   | **Qué pasa** | Un servicio consulta con `PrismaService` directo. No declara ninguna inmobiliaria. | Un servicio pasa por `withTenant`, pero con el `tenantId` de otro. |
+   | **Qué ve** | Todas las inmobiliarias. | Exactamente una: la equivocada. |
+   | **¿`FORCE` lo frena?** | **Sí.** Sin `app.tenant_id` la policy no deja pasar nada. | **No.** El contexto *es* el valor por el que RLS filtra; la base hace lo que se le pide. |
+   | **Qué lo frena hoy** | La regla A/B/C de `acceso-directo.e2e-spec.ts` | La regla D del mismo test. |
+
+   Contra el contexto forjado no hay defensa en la base, porque para la base no es un ataque: es una consulta legítima con otro parámetro. La defensa real es **arquitectónica** — que el contexto se derive siempre del token verificado y nunca se construya a mano. Hoy solo cuatro lugares de toda la API pueden fabricarlo (el guard, la fábrica `ctxDe`, el callback de OAuth y el cron), y la regla D falla si aparece un quinto. Eso no lo hace imposible: lo hace visible en el diff, que es lo máximo que da un análisis estático. Ver `docs/CONVENCIONES_TECNICAS.md` §18.
+
 3. **Paginación real y KPIs como agregados SQL.** **Disparador: tener Supabase Pro** — no una fecha. Reemplazar el tope de 500 filas y la suma en memoria toca las consultas de las que dependen todas las pantallas, y hay que verificar la implementación nueva contra datos reales antes de retirar la vieja: es un cambio que se hace con backups, no sin ellos. Quedó fuera del sábado 1 de agosto por ese motivo y espera al punto 1.
 4. ~~**Migración de infraestructura** — Lightsail en São Paulo + Supabase Pro, según 19.6.~~ **Revisado el 1/08/2026: la parte de Lightsail queda DESCARTADA.** Lo que se decidió es un criterio, no un proveedor: *mientras el equipo sean dos personas, la infraestructura se contrata administrada.* Un servidor propio ahorra unos trece dólares al mes y a cambio suma despliegues, certificados, actualizaciones del sistema y monitoreo — se paga con el tiempo de la persona más cara. **Supabase Pro sigue en pie y es lo urgente**, por las copias de seguridad. Consecuencia a tener presente: Render no tiene región en Sudamérica (Oregon, Ohio, Virginia, Frankfurt, Singapur), así que la latencia de 19.6 **queda sin resolver por ahora**. Si algún día molesta, primero medir; y la salida coherente sería otra plataforma administrada con región en São Paulo — Google Cloud Run tiene `southamerica-east1` —, no un servidor propio. Ver `docs/Costos_e_Infraestructura.md` §8.
 5. **Consola de plataforma — disparador: la segunda inmobiliaria en producción.** Con un solo cliente, administrar es recordar; con dos deja de serlo. Alcance mínimo acordado: ver todas las inmobiliarias productivas con sus módulos contratados, su monto mensual y si están al día, más un registro de pagos cargado a mano. **No** es un sistema de facturación: la emisión, AFIP y el cobro automático siguen siendo la decisión abierta de la sección 17, y se resuelven cuando cargar los pagos a mano moleste, no antes.

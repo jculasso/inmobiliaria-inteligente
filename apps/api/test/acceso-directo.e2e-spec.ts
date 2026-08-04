@@ -77,11 +77,14 @@ interface Excepcion {
 const PERMITIDOS: Excepcion[] = [
   {
     archivo: 'src/auth/auth.guard.ts',
-    funciones: ['constructor', 'resolvePrincipal'],
+    funciones: ['constructor', 'resolvePrincipal', 'canActivate'],
     motivo:
-      'Busca al usuario por authUserId para averiguar de qué inmobiliaria es. ' +
-      'Es la consulta que RESUELVE el tenant: todavía no hay ninguno que declarar, ' +
-      'así que no puede pasar por withTenant sin caer en un círculo.',
+      'Busca al usuario por authUserId para averiguar de qué inmobiliaria es. Es la ' +
+      'consulta que RESUELVE el tenant: todavía no hay ninguno que declarar, así que ' +
+      'no puede pasar por withTenant sin caer en un círculo. Y es además EL ORIGEN de ' +
+      'todo contexto legítimo: `canActivate` arma el TenantContext a partir del token ' +
+      'ya verificado y lo deja en el CLS. Si algún lugar tiene que poder fabricarlo, ' +
+      'es este.',
   },
   {
     archivo: 'src/modules/tareas/tareas.service.ts',
@@ -89,7 +92,29 @@ const PERMITIDOS: Excepcion[] = [
     motivo:
       'El cron del reporte semanal recorre TODAS las inmobiliarias, por diseño y ' +
       'sin sesión de nadie. Lee la lista de tenants y un usuario de cada uno; a ' +
-      'partir de ahí cada reporte sí se arma dentro de withTenant con ese contexto.',
+      'partir de ahí cada reporte sí se arma dentro de withTenant con ese contexto. ' +
+      'Ese contexto lo construye a mano (regla D) y NO hay forma de distinguir su ' +
+      'forma de la de uno forjado: son los dos un objeto literal. Lo que lo hace ' +
+      'legítimo es de dónde salen los valores —un tenant que acaba de leer y un ' +
+      'usuario de dirección de ESE tenant—, y eso no se comprueba estáticamente.',
+  },
+  {
+    archivo: 'src/modules/tablero/tablero.util.ts',
+    funciones: ['ctxDe'],
+    motivo:
+      'La fábrica sancionada: proyecta el TenantContext desde el AuthPrincipal que ' +
+      'el guard ya dejó en la request. No inventa nada, solo copia tres campos del ' +
+      'principal verificado. Es la que usan casi todos los controllers, y que exista ' +
+      'una sola es justamente lo que hace que esta lista sea corta.',
+  },
+  {
+    archivo: 'src/modules/todo/todo.service.ts',
+    funciones: ['handleCallback'],
+    motivo:
+      'Callback público de OAuth de Google: vuelve sin sesión y sin CLS, así que el ' +
+      'contexto no puede salir del request. Sale del `state`, que este mismo servicio ' +
+      'firmó antes de mandar al usuario a Google (ver decodeState). La confianza está ' +
+      'en la firma, no en el parámetro.',
   },
   {
     archivo: 'src/admin/admin-tenants.service.ts',
@@ -131,7 +156,7 @@ interface Hallazgo {
   archivo: string;
   linea: number;
   funcion: string;
-  regla: 'A' | 'B' | 'C';
+  regla: 'A' | 'B' | 'C' | 'D';
   detalle: string;
 }
 
@@ -234,6 +259,46 @@ function analizar(): { hallazgos: Hallazgo[]; archivosVistos: number; usadas: Se
           esClienteCrudo(checker.getTypeAtLocation(nodo.expression.expression))
         ) {
           anotar(nodo, 'C', `ejecuta \`${metodo}\` con el cliente crudo (esquiva RLS entera)`);
+        }
+      }
+
+      // ── Regla D · un contexto de tenant construido a mano ──
+      //
+      // `withTenant(fn, { tenantId: elDeOtro })` usa el camino correcto, tipa
+      // bien, y lee otra inmobiliaria. RLS no puede frenarlo: el contexto ES el
+      // valor por el que RLS filtra, así que la base hace exactamente lo que se
+      // le pide. La única defensa es que el contexto se derive del token
+      // verificado y no se arme a mano.
+      //
+      // Se marca la CONSTRUCCIÓN, no el uso. Si se miraran solo las llamadas a
+      // `withTenant`, un contexto forjado en un servicio y pasado a otro se
+      // escaparía: al llegar al `withTenant` ya es un parámetro y se ve
+      // inocente. Es exactamente la forma que tiene el cron, que sí es legítimo.
+      if (ts.isObjectLiteralExpression(nodo)) {
+        // El tipo contextual puede ser una unión, y hay que abrirla: el segundo
+        // parámetro de `withTenant` es `ctx?: TenantContext`, o sea
+        // `TenantContext | undefined`. Una unión no tiene símbolo propio, así
+        // que preguntarle el nombre directo devuelve undefined y el literal
+        // pasado inline —la forma más obvia de forjar— se escapaba.
+        const contextual = checker.getContextualType(nodo);
+        const partes = contextual
+          ? contextual.isUnion()
+            ? contextual.types
+            : [contextual]
+          : [];
+        const tipo = partes
+          .map((t) => t.getSymbol()?.getName())
+          .find((n) => n === 'TenantContext' || n === 'AuthPrincipal');
+        // `AuthPrincipal` va junto con `TenantContext`: `ctxDe(principal)`
+        // deriva uno del otro, así que forjar el principal alcanzaría para
+        // forjar el contexto. Cubrirlo hoy no cuesta nada — no hay ni un sitio
+        // que lo arme fuera del guard.
+        if (tipo) {
+          anotar(
+            nodo,
+            'D',
+            `arma un \`${tipo}\` a mano; la identidad tiene que venir del token verificado`,
+          );
         }
       }
 

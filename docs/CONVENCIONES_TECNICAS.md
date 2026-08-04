@@ -542,17 +542,13 @@ resolver un problema de un paquete.
 Está verificado, no supuesto: se escribieron los tres casos y **pasaron en
 verde**. Conviene leerlo antes de confiar en este test más de lo que da.
 
-1. **Contexto forjado.** `withTenant(fn, { tenantId: otro })` usa el camino
-   correcto, tipa bien, y lee otra inmobiliaria. Es el agujero más grande y es
-   estructural: ningún análisis estático distingue un contexto legítimo de uno
-   inventado.
+1. **Un `where` mal armado dentro de `withTenant`.** El camino es correcto y el
+   contexto también; lo que filtra mal es la consulta. Otra clase de bug.
 2. **Tipo borrado.** `as any`, un parámetro `any`, `(this as any).prisma`. El
    análisis sigue el tipo; si se borra, queda ciego.
 3. **Clave dinámica.** `cliente[nombreVariable].findMany()`. Con literal
    (`cliente['operacion']`) sí lo agarra; con variable, no.
-4. **Un `where` mal armado.** Usar `withTenant` con un `tenantId` que viene de la
-   request es otra clase de bug y este test no la toca.
-5. **Los `.spec.ts` de `src/`**, excluidos a propósito: usan dobles y no se
+4. **Los `.spec.ts` de `src/`**, excluidos a propósito: usan dobles y no se
    despliegan.
 
 ### La lista blanca
@@ -584,3 +580,53 @@ que lo pasaba como parámetro a una función suelta. **Los seis accesos salieron
 en rojo**, cada uno con su archivo, línea, método y regla. Después se probaron
 los tres puntos ciegos de arriba y pasaron en verde, que es como se confirma que
 el límite documentado es el límite real.
+
+### El contexto forjado: por qué no lo cubre `FORCE`, y qué lo cubre
+
+La primera versión de este test daba el contexto forjado por incerrable. No lo
+es del todo, y sobre todo **no es el mismo problema** que resuelve `FORCE ROW
+LEVEL SECURITY`. Vale distinguirlos porque es fácil creer que uno tapa al otro:
+
+- **Consulta que no declara tenant** — un `PrismaService` directo. Ve *todas*
+  las inmobiliarias. `FORCE` la frena: sin `app.tenant_id`, la policy no deja
+  pasar nada.
+- **Contexto forjado** — `withTenant(fn, { tenantId: elDeOtro })`. Ve *una*: la
+  equivocada. **`FORCE` no la frena ni podría**, porque el contexto es el valor
+  por el que RLS filtra. La base hace exactamente lo que se le pide.
+
+Contra el segundo no hay defensa en la base. La defensa es arquitectónica: que
+el contexto se derive del token verificado y no se arme a mano. La **regla D**
+del test marca la *construcción* de un `TenantContext` o un `AuthPrincipal`, no
+su uso — si mirara solo las llamadas a `withTenant`, un contexto forjado en un
+servicio y pasado a otro llegaría como parámetro y se vería inocente. Es
+exactamente la forma que tiene el cron del reporte semanal, que sí es legítimo.
+
+Hoy solo cuatro lugares de la API pueden fabricar una identidad:
+
+| dónde | de dónde sale |
+|---|---|
+| `auth.guard.ts` (`canActivate`, `resolvePrincipal`) | del token verificado — es el origen de todos |
+| `tablero.util.ts` (`ctxDe`) | proyección del `AuthPrincipal` que dejó el guard |
+| `todo.service.ts` (`handleCallback`) | del `state` que el propio servicio firmó |
+| `tareas.service.ts` (el cron) | de un tenant recién leído y un usuario de dirección de ESE tenant |
+
+**Los dos últimos son indistinguibles de un forjado** — los cuatro son un objeto
+literal. Lo que los hace legítimos es de dónde salen los valores, y eso no se
+comprueba estáticamente. Por eso están en la lista blanca con el motivo escrito,
+y por eso lo que importa es que la lista sea corta: la regla no vuelve imposible
+forjar un contexto, vuelve **visible en el diff** que alguien agregó un quinto
+lugar donde se fabrica una identidad.
+
+Se cubre también `AuthPrincipal` y no solo `TenantContext`, porque `ctxDe` deriva
+uno del otro: forjar el principal alcanzaría. Hoy no cuesta nada — no hay ningún
+sitio que lo arme fuera del guard.
+
+**El sabotaje encontró un agujero en la primera versión de la regla.** El literal
+pasado inline —`withTenant(fn, { … })`, o sea la forma más obvia— **no se
+detectaba**. El segundo parámetro es `ctx?: TenantContext`, así que su tipo
+contextual es la unión `TenantContext | undefined`, y una unión no tiene símbolo
+propio: preguntarle el nombre devolvía `undefined`. Hay que abrir la unión y
+mirar cada miembro. Las otras tres formas —const anotada, posición de `return`, y
+forjar el `AuthPrincipal`— sí caían desde el principio. Si no se hubiera probado
+rompiéndolo, la regla habría quedado publicada anunciando que cubre justo el caso
+que no cubría.
