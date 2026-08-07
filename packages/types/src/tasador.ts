@@ -244,6 +244,61 @@ export const TasacionFotoDtoSchema = z.object({
 });
 export type TasacionFotoDto = z.infer<typeof TasacionFotoDtoSchema>;
 
+/**
+ * Servicios del inmueble. Lista cerrada: se tildan, no se escriben.
+ *
+ * El orden es el que se muestra en pantalla y en el informe. Alfabético a
+ * propósito — con diecinueve opciones en grilla, buscar una por orden temático
+ * es más lento que por abecedario.
+ */
+export const ServicioSchema = z.enum([
+  'Agua corriente',
+  'Agua potable',
+  'Alumbrado público',
+  'Cable',
+  'Cloaca',
+  'Electricidad',
+  'Encargado',
+  'Energía trifásica',
+  'Garagistas',
+  'Gas natural',
+  'Instalación eléctrica subterránea',
+  'Internet',
+  'Losa radiante general',
+  'Pavimento',
+  'Red de desagües pluviales',
+  'Teléfono',
+  'Televisión satelital',
+  'TV Cable en el edificio',
+  'Wifi',
+]);
+export type Servicio = z.infer<typeof ServicioSchema>;
+export const SERVICIOS = ServicioSchema.options;
+
+/**
+ * Amenities del EDIFICIO, no de la unidad.
+ *
+ * La distinción importa y es la razón de que `piscina` siga existiendo aparte
+ * como característica: una casa con pileta propia y un departamento en una
+ * torre con pileta compartida no son lo mismo para tasar. La característica
+ * describe la unidad; esto describe lo que comparte el edificio.
+ */
+export const AmenitySchema = z.enum([
+  'Piscina',
+  'Gimnasio',
+  'Sala de juegos',
+  'Hidromasaje',
+  'Sauna seco',
+  'Sauna húmedo',
+  'Tenis',
+  'Cancha de fútbol',
+  'SUM',
+  'Parrilla',
+  'Laundry',
+]);
+export type Amenity = z.infer<typeof AmenitySchema>;
+export const AMENITIES = AmenitySchema.options;
+
 // --- CRUD: secciones 1 (Datos del informe), 2 (Características), 3+5+6
 // (análisis comercial, valores, estrategia) y comparables. ---
 
@@ -267,6 +322,23 @@ const TasacionCaracteristicasFields = {
   patio: z.boolean().default(false),
   lavadero: z.boolean().default(false),
   piscina: z.boolean().default(false),
+  altillo: z.boolean().default(false),
+  baulera: z.boolean().default(false),
+  biblioteca: z.boolean().default(false),
+  escritorio: z.boolean().default(false),
+  jardin: z.boolean().default(false),
+  vestidor: z.boolean().default(false),
+  servicios: z.array(ServicioSchema).default([]),
+  tieneAmenities: z.boolean().default(false),
+  /**
+   * Sigue siendo `string[]` y NO `AmenitySchema[]` a propósito.
+   *
+   * Antes esto era un campo de texto libre separado por comas, y hay tasaciones
+   * cargadas con valores que no están en la lista nueva. Si acá se exigiera el
+   * enum, editar una de esas tasaciones fallaría al guardar y la única salida
+   * sería tirar lo que alguien escribió. La lista cerrada la impone la pantalla;
+   * el tipo tolera lo viejo para que nada se pierda.
+   */
   amenities: z.array(z.string()).default([]),
   detalleAmenities: z.string().nullish(),
   expensas: z.number().nonnegative().nullish(),
@@ -377,6 +449,23 @@ export const TasacionDtoSchema = z.object({
   patio: z.boolean(),
   lavadero: z.boolean(),
   piscina: z.boolean(),
+  /*
+   * Campos agregados el 7/08/2026, con `.default()` y no a secas.
+   *
+   * La web valida con este schema lo que devuelve la API, y las dos se
+   * despliegan por separado (Vercel y Render, cada una por su lado). Si la web
+   * saliera primero y exigiera estos campos, TODA la pantalla de tasaciones
+   * fallaría hasta que saliera la API — no la parte nueva: toda. Con el default
+   * la web tolera una API vieja y el orden de despliegue deja de importar.
+   */
+  altillo: z.boolean().default(false),
+  baulera: z.boolean().default(false),
+  biblioteca: z.boolean().default(false),
+  escritorio: z.boolean().default(false),
+  jardin: z.boolean().default(false),
+  vestidor: z.boolean().default(false),
+  servicios: z.array(z.string()).default([]),
+  tieneAmenities: z.boolean().default(false),
   amenities: z.array(z.string()),
   detalleAmenities: z.string().nullable(),
   expensas: z.number().nullable(),

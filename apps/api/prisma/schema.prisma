@@ -231,7 +231,21 @@ model Tasacion {
   terraza          Boolean  @default(false)
   patio            Boolean  @default(false)
   lavadero         Boolean  @default(false)
+  /// Pileta PROPIA de la unidad. La compartida del edificio va en `amenities`.
   piscina          Boolean  @default(false)
+  altillo          Boolean  @default(false)
+  baulera          Boolean  @default(false)
+  biblioteca       Boolean  @default(false)
+  escritorio       Boolean  @default(false)
+  jardin           Boolean  @default(false)
+  vestidor         Boolean  @default(false)
+  /// ServicioSchema[] — lista cerrada, ver packages/types/src/tasador.ts
+  servicios        String[] @default([])
+  /// El "¿tiene amenities?" del formulario. Se guarda aparte de la lista para
+  /// distinguir "dijo que no" de "no lo completó".
+  tieneAmenities   Boolean  @default(false) @map("tiene_amenities")
+  /// AmenitySchema[], pero sin constraint: antes era texto libre y hay
+  /// tasaciones cargadas con valores fuera de la lista. Se conservan.
   amenities        String[] @default([])
   detalleAmenities String?  @map("detalle_amenities")
   expensas         Decimal? @db.Decimal(10, 2)

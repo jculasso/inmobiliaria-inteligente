@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 
 export class ApiError extends Error {
   status?: number;
@@ -46,10 +46,18 @@ function mensajeDeError(errorBody: ApiErrorBody | null, fallback: string): strin
   return errorBody?.error?.message ?? fallback;
 }
 
-/** Cliente HTTP tipado contra apps/api, con validación de respuesta vía Zod. */
+/**
+ * Cliente HTTP tipado contra apps/api, con validación de respuesta vía Zod.
+ *
+ * El tercer parámetro de `ZodType` es el tipo de ENTRADA, y va en `unknown` a
+ * propósito: así `T` queda atado a la SALIDA del schema. Con `ZodType<T>` a
+ * secas, entrada y salida se unifican, y cualquier schema con `.default()`
+ * —donde el campo es opcional al entrar y obligatorio al salir— hacía que el
+ * tipo devuelto tuviera los campos opcionales, aunque `parse` ya los completó.
+ */
 export async function apiFetch<T>(
   path: string,
-  schema: ZodType<T>,
+  schema: ZodType<T, ZodTypeDef, unknown>,
   { accessToken, method = 'GET', body, searchParams }: ApiFetchOptions,
 ): Promise<T> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -99,7 +107,7 @@ function detalleZod(error: { issues: { path: PropertyKey[]; message: string }[] 
 /** Variante de `apiFetch` para subir un archivo (`multipart/form-data`) — sin forzar `Content-Type: json`. */
 export async function apiFetchForm<T>(
   path: string,
-  schema: ZodType<T>,
+  schema: ZodType<T, ZodTypeDef, unknown>,
   { accessToken, file }: { accessToken: string; file: File },
 ): Promise<T> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;

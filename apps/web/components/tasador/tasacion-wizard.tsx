@@ -16,6 +16,7 @@ import type {
   Orientacion,
   PerfilComprador,
   PlazoEstimado,
+  Servicio,
   TasacionDto,
   TasacionFotoDto,
   TipoOperacion,
@@ -34,6 +35,7 @@ import {
   OrientacionSchema,
   PerfilCompradorSchema,
   PlazoEstimadoSchema,
+  SERVICIOS,
   TipoPropiedadSchema,
 } from '@vacker/types';
 import { z } from 'zod';
@@ -124,7 +126,15 @@ export function TasacionWizard({ tasacion }: Props) {
   const [patio, setPatio] = useState(tasacion?.patio ?? false);
   const [lavadero, setLavadero] = useState(tasacion?.lavadero ?? false);
   const [piscina, setPiscina] = useState(tasacion?.piscina ?? false);
-  const [amenities, setAmenities] = useState(tasacion?.amenities.join(', ') ?? '');
+  const [altillo, setAltillo] = useState(tasacion?.altillo ?? false);
+  const [baulera, setBaulera] = useState(tasacion?.baulera ?? false);
+  const [biblioteca, setBiblioteca] = useState(tasacion?.biblioteca ?? false);
+  const [escritorio, setEscritorio] = useState(tasacion?.escritorio ?? false);
+  const [jardin, setJardin] = useState(tasacion?.jardin ?? false);
+  const [vestidor, setVestidor] = useState(tasacion?.vestidor ?? false);
+  const [servicios, setServicios] = useState<string[]>(tasacion?.servicios ?? []);
+  const [tieneAmenities, setTieneAmenities] = useState(tasacion?.tieneAmenities ?? false);
+  const [amenities, setAmenities] = useState<string[]>(tasacion?.amenities ?? []);
   const [detalleAmenities, setDetalleAmenities] = useState(tasacion?.detalleAmenities ?? '');
   const [expensas, setExpensas] = useState(String(tasacion?.expensas ?? ''));
   const [aptoCredito, setAptoCredito] = useState<AptoCredito | ''>(opcionValida(AptoCreditoSchema, tasacion?.aptoCredito));
@@ -245,10 +255,21 @@ export function TasacionWizard({ tasacion }: Props) {
       patio,
       lavadero,
       piscina,
-      amenities: amenities
-        .split(',')
-        .map((a) => a.trim())
-        .filter(Boolean),
+      altillo,
+      baulera,
+      biblioteca,
+      escritorio,
+      jardin,
+      vestidor,
+      // La grilla trabaja con `string[]` para poder mostrar también los valores
+      // viejos de amenities. Acá se estrecha al enum: la pantalla solo ofrece
+      // opciones válidas, así que en la práctica no descarta nada — pero deja
+      // el contrato con la API estricto en vez de castearlo.
+      servicios: servicios.filter((s): s is Servicio =>
+        (SERVICIOS as readonly string[]).includes(s),
+      ),
+      tieneAmenities,
+      amenities,
       detalleAmenities: detalleAmenities || null,
       expensas: expensas ? Number(expensas) : null,
       aptoCredito: aptoCredito || null,
@@ -487,6 +508,22 @@ export function TasacionWizard({ tasacion }: Props) {
               setLavadero={setLavadero}
               piscina={piscina}
               setPiscina={setPiscina}
+              altillo={altillo}
+              setAltillo={setAltillo}
+              baulera={baulera}
+              setBaulera={setBaulera}
+              biblioteca={biblioteca}
+              setBiblioteca={setBiblioteca}
+              escritorio={escritorio}
+              setEscritorio={setEscritorio}
+              jardin={jardin}
+              setJardin={setJardin}
+              vestidor={vestidor}
+              setVestidor={setVestidor}
+              servicios={servicios}
+              setServicios={setServicios}
+              tieneAmenities={tieneAmenities}
+              setTieneAmenities={setTieneAmenities}
               amenities={amenities}
               setAmenities={setAmenities}
               detalleAmenities={detalleAmenities}
