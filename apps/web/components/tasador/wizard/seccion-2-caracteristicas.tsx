@@ -1,11 +1,13 @@
 'use client';
 
 import {
+  AMENITIES,
   AptoCreditoSchema,
   DisposicionSchema,
   DocumentacionSchema,
   EstadoInmuebleSchema,
   OrientacionSchema,
+  SERVICIOS,
   TipoPropiedadSchema,
   type AptoCredito,
   type Disposicion,
@@ -25,6 +27,62 @@ const DISPOSICIONES = DisposicionSchema.options;
 const ORIENTACIONES = OrientacionSchema.options;
 const DOCUMENTACIONES = DocumentacionSchema.options;
 const APTOS_CREDITO = AptoCreditoSchema.options;
+
+/**
+ * Grilla de tildes para las listas cerradas (Servicios, Amenities).
+ *
+ * Muestra además cualquier valor elegido que NO esté en la lista: las
+ * tasaciones viejas guardaban amenities como texto libre, y esconder lo que
+ * alguien escribió sería perderlo en el primer guardado. Se puede destildar
+ * —así se limpia lo que ya no aplique— pero no se ofrece agregar más.
+ */
+function GrillaTildes({
+  titulo,
+  opciones,
+  elegidas,
+  onChange,
+}: {
+  titulo: string;
+  opciones: readonly string[];
+  elegidas: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const fuera = elegidas.filter((e) => !opciones.includes(e));
+  const alternar = (opcion: string, tildado: boolean) =>
+    onChange(tildado ? [...elegidas, opcion] : elegidas.filter((e) => e !== opcion));
+
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-semibold text-ink">{titulo}</legend>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {[...opciones, ...fuera].map((opcion) => {
+          const tildado = elegidas.includes(opcion);
+          return (
+            <label
+              key={opcion}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                tildado ? 'border-red/30 bg-red/5 text-ink' : 'border-line bg-bg text-muted'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={tildado}
+                onChange={(e) => alternar(opcion, e.target.checked)}
+                className="size-4 shrink-0 accent-red"
+              />
+              <span>
+                {opcion}
+                {fuera.includes(opcion) && (
+                  <span className="ml-1 text-xs text-muted">(cargado antes)</span>
+                )}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
 
 interface Props {
   tipoPropiedad: TipoPropiedad;
@@ -66,8 +124,24 @@ interface Props {
   setLavadero: (v: boolean) => void;
   piscina: boolean;
   setPiscina: (v: boolean) => void;
-  amenities: string;
-  setAmenities: (v: string) => void;
+  altillo: boolean;
+  setAltillo: (v: boolean) => void;
+  baulera: boolean;
+  setBaulera: (v: boolean) => void;
+  biblioteca: boolean;
+  setBiblioteca: (v: boolean) => void;
+  escritorio: boolean;
+  setEscritorio: (v: boolean) => void;
+  jardin: boolean;
+  setJardin: (v: boolean) => void;
+  vestidor: boolean;
+  setVestidor: (v: boolean) => void;
+  servicios: string[];
+  setServicios: (v: string[]) => void;
+  tieneAmenities: boolean;
+  setTieneAmenities: (v: boolean) => void;
+  amenities: string[];
+  setAmenities: (v: string[]) => void;
   detalleAmenities: string;
   setDetalleAmenities: (v: string) => void;
   expensas: string;
@@ -122,6 +196,22 @@ export function Seccion2Caracteristicas(props: Props) {
     setLavadero,
     piscina,
     setPiscina,
+    altillo,
+    setAltillo,
+    baulera,
+    setBaulera,
+    biblioteca,
+    setBiblioteca,
+    escritorio,
+    setEscritorio,
+    jardin,
+    setJardin,
+    vestidor,
+    setVestidor,
+    servicios,
+    setServicios,
+    tieneAmenities,
+    setTieneAmenities,
     amenities,
     setAmenities,
     detalleAmenities,
@@ -297,6 +387,12 @@ export function Seccion2Caracteristicas(props: Props) {
             ['Patio', patio, setPatio],
             ['Lavadero', lavadero, setLavadero],
             ['Piscina', piscina, setPiscina],
+            ['Altillo', altillo, setAltillo],
+            ['Baulera', baulera, setBaulera],
+            ['Biblioteca', biblioteca, setBiblioteca],
+            ['Escritorio', escritorio, setEscritorio],
+            ['Jardín', jardin, setJardin],
+            ['Vestidor', vestidor, setVestidor],
           ] as [string, boolean, (v: boolean) => void][]
         ).map(([label, value, setValue]) => (
           <label key={label} className="flex items-center gap-1.5 text-ink">
@@ -306,16 +402,40 @@ export function Seccion2Caracteristicas(props: Props) {
         ))}
       </div>
 
-      <Campo label="Amenities">
+      <GrillaTildes
+        titulo="Servicios"
+        opciones={SERVICIOS}
+        elegidas={servicios}
+        onChange={setServicios}
+      />
+
+      <Campo label="¿Tiene amenities?">
         <select
-          value={amenities ? 'Sí' : 'No'}
-          onChange={(e) => setAmenities(e.target.value === 'Sí' ? 'Sí' : '')}
+          value={tieneAmenities ? 'Sí' : 'No'}
+          onChange={(e) => {
+            const si = e.target.value === 'Sí';
+            setTieneAmenities(si);
+            // Al decir que no, la lista se vacía: dejar tildes escondidas
+            // detrás de un "No" es la forma de que el informe muestre un
+            // amenity que la pantalla no está mostrando.
+            if (!si) setAmenities([]);
+          }}
           className={inputClass}
         >
           <option>No</option>
           <option>Sí</option>
         </select>
       </Campo>
+
+      {tieneAmenities && (
+        <GrillaTildes
+          titulo="Amenities del edificio"
+          opciones={AMENITIES}
+          elegidas={amenities}
+          onChange={setAmenities}
+        />
+      )}
+
       <Campo label="Detalle de amenities">
         <textarea
           value={detalleAmenities}

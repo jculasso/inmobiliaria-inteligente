@@ -344,6 +344,14 @@ function datosCaracteristicas(
   if (dto.patio !== undefined) data.patio = dto.patio;
   if (dto.lavadero !== undefined) data.lavadero = dto.lavadero;
   if (dto.piscina !== undefined) data.piscina = dto.piscina;
+  if (dto.altillo !== undefined) data.altillo = dto.altillo;
+  if (dto.baulera !== undefined) data.baulera = dto.baulera;
+  if (dto.biblioteca !== undefined) data.biblioteca = dto.biblioteca;
+  if (dto.escritorio !== undefined) data.escritorio = dto.escritorio;
+  if (dto.jardin !== undefined) data.jardin = dto.jardin;
+  if (dto.vestidor !== undefined) data.vestidor = dto.vestidor;
+  if (dto.servicios !== undefined) data.servicios = dto.servicios;
+  if (dto.tieneAmenities !== undefined) data.tieneAmenities = dto.tieneAmenities;
   if (dto.amenities !== undefined) data.amenities = dto.amenities;
   if (dto.detalleAmenities !== undefined) data.detalleAmenities = dto.detalleAmenities ?? null;
   if (dto.expensas !== undefined) data.expensas = dto.expensas ?? null;
@@ -456,6 +464,14 @@ export function toDto(row: TasacionRow) {
     patio: row.patio,
     lavadero: row.lavadero,
     piscina: row.piscina,
+    altillo: row.altillo,
+    baulera: row.baulera,
+    biblioteca: row.biblioteca,
+    escritorio: row.escritorio,
+    jardin: row.jardin,
+    vestidor: row.vestidor,
+    servicios: row.servicios,
+    tieneAmenities: row.tieneAmenities,
     amenities: row.amenities,
     detalleAmenities: row.detalleAmenities,
     expensas: row.expensas == null ? null : decToNum(row.expensas),

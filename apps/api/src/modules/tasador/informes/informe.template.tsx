@@ -228,7 +228,21 @@ function caracteristicas(t: TasacionDto): { label: string; value: string }[] {
   siVerdadero('Patio', t.patio);
   siVerdadero('Lavadero', t.lavadero);
   siVerdadero('Piscina', t.piscina);
-  if (t.amenities.length > 0) items.push({ label: 'Amenities', value: t.detalleAmenities ? `Sí — ${t.detalleAmenities}` : 'Sí' });
+  siVerdadero('Altillo', t.altillo);
+  siVerdadero('Baulera', t.baulera);
+  siVerdadero('Biblioteca', t.biblioteca);
+  siVerdadero('Escritorio', t.escritorio);
+  siVerdadero('Jardín', t.jardin);
+  siVerdadero('Vestidor', t.vestidor);
+  if (t.servicios.length > 0) items.push({ label: 'Servicios', value: t.servicios.join(', ') });
+  // Amenities: la lista tildada manda, y el detalle libre se agrega detrás si
+  // lo hay. Las tasaciones viejas no tienen lista pero sí detalle — por eso
+  // `tieneAmenities` alcanza para mostrar la fila, aunque la lista esté vacía.
+  if (t.tieneAmenities || t.amenities.length > 0 || t.detalleAmenities) {
+    const lista = t.amenities.join(', ');
+    const valor = [lista, t.detalleAmenities].filter(Boolean).join(' — ');
+    items.push({ label: 'Amenities', value: valor || 'Sí' });
+  }
   if (t.expensas != null && t.expensas > 0) items.push({ label: 'Expensas', value: `ARS ${t.expensas.toLocaleString('es-AR')}` });
   texto('Documentación', t.documentacion);
   return items;
