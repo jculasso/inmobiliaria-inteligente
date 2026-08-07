@@ -54,13 +54,26 @@ function GrillaTildes({
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm font-semibold text-ink">{titulo}</legend>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {/*
+       * Dos columnas ya en móvil, no una.
+       *
+       * A 375px, diecinueve servicios a lo ancho completo ocupaban 894px —
+       * casi una pantalla y media de scroll para una sola sección, y otro
+       * tanto para amenities. Los vendedores cargan tasaciones desde el
+       * celular, así que ese scroll es el costo real. Con dos columnas alguna
+       * etiqueta larga envuelve, que molesta mucho menos que la tirada.
+       */}
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
         {[...opciones, ...fuera].map((opcion) => {
           const tildado = elegidas.includes(opcion);
           return (
             <label
               key={opcion}
-              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              // `py-3` en móvil y `py-2` de ahí para arriba: con el dedo, la
+              // tarjeta queda en 44px de alto, que es el mínimo que pide iOS
+              // para un blanco táctil. En escritorio se apunta con el mouse y
+              // esos 8px de más solo estirarían la grilla.
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm transition-colors sm:py-2 ${
                 tildado ? 'border-red/30 bg-red/5 text-ink' : 'border-line bg-bg text-muted'
               }`}
             >
