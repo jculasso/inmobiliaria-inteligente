@@ -64,6 +64,16 @@ function crearEstilos(red: string, redDark: string) {
     },
     fichaLineaLabel: { color: MUTED, fontSize: 9 },
     fichaLineaValue: { fontWeight: 700, fontSize: 9 },
+    // Fila a lo ancho para las listas (servicios, amenities): la etiqueta
+    // arriba y el valor debajo, para que pueda envolver en varias líneas sin
+    // montarse encima de nada.
+    listaLargaRow: {
+      paddingVertical: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: LINE,
+    },
+    listaLargaLabel: { color: MUTED, fontSize: 9, marginBottom: 2 },
+    listaLargaValue: { fontWeight: 700, fontSize: 9, lineHeight: 1.4 },
     paragraph: { lineHeight: 1.5, color: INK, fontSize: 9.5 },
     paragraphMuted: { lineHeight: 1.4, color: MUTED, fontSize: 8.5, fontStyle: 'italic' },
     fotos: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 4 },
@@ -234,17 +244,31 @@ function caracteristicas(t: TasacionDto): { label: string; value: string }[] {
   siVerdadero('Escritorio', t.escritorio);
   siVerdadero('Jardín', t.jardin);
   siVerdadero('Vestidor', t.vestidor);
-  if (t.servicios.length > 0) items.push({ label: 'Servicios', value: t.servicios.join(', ') });
-  // Amenities: la lista tildada manda, y el detalle libre se agrega detrás si
-  // lo hay. Las tasaciones viejas no tienen lista pero sí detalle — por eso
-  // `tieneAmenities` alcanza para mostrar la fila, aunque la lista esté vacía.
-  if (t.tieneAmenities || t.amenities.length > 0 || t.detalleAmenities) {
-    const lista = t.amenities.join(', ');
-    const valor = [lista, t.detalleAmenities].filter(Boolean).join(' — ');
-    items.push({ label: 'Amenities', value: valor || 'Sí' });
-  }
   if (t.expensas != null && t.expensas > 0) items.push({ label: 'Expensas', value: `ARS ${t.expensas.toLocaleString('es-AR')}` });
   texto('Documentación', t.documentacion);
+  return items;
+}
+
+/**
+ * Servicios y amenities NO van en la grilla de dos columnas.
+ *
+ * Esas filas son `label` y `value` en una línea con `space-between`, pensadas
+ * para valores cortos ("Sí", "2", "Frente"). Una lista de cinco servicios no
+ * entra: el texto no envuelve, se sale de la columna y termina montado encima
+ * de la etiqueta. Van abajo, a lo ancho, con la etiqueta arriba y el valor
+ * envolviendo debajo.
+ */
+function listasLargas(t: TasacionDto): { label: string; value: string }[] {
+  const items: { label: string; value: string }[] = [];
+  if (t.servicios.length > 0) items.push({ label: 'Servicios', value: t.servicios.join(' · ') });
+  // La lista tildada manda y el detalle libre se agrega detrás. Las tasaciones
+  // viejas no tienen lista pero sí detalle — por eso `tieneAmenities` alcanza
+  // para mostrar la fila aunque la lista esté vacía.
+  if (t.tieneAmenities || t.amenities.length > 0 || t.detalleAmenities) {
+    const lista = t.amenities.join(' · ');
+    const valor = [lista, t.detalleAmenities].filter(Boolean).join(' — ');
+    items.push({ label: 'Amenities del edificio', value: valor || 'Sí' });
+  }
   return items;
 }
 
@@ -397,6 +421,12 @@ export function InformeDocument({
             </View>
           );
         })()}
+        {listasLargas(t).map((it) => (
+          <View key={it.label} style={styles.listaLargaRow}>
+            <Text style={styles.listaLargaLabel}>{it.label}</Text>
+            <Text style={styles.listaLargaValue}>{it.value}</Text>
+          </View>
+        ))}
         </View>
 
         {t.fotos.length > 0 && (

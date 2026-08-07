@@ -29,6 +29,65 @@ const DOCUMENTACIONES = DocumentacionSchema.options;
 const APTOS_CREDITO = AptoCreditoSchema.options;
 
 /**
+ * Una tilde. El rectángulo importa: sin él el blanco táctil es la casilla de
+ * 16px, y con él es la tarjeta entera. Lo usan las tres grillas de la sección
+ * —características, servicios y amenities— para que se vean iguales.
+ */
+function TildeCard({
+  etiqueta,
+  nota,
+  tildado,
+  onChange,
+}: {
+  etiqueta: string;
+  nota?: string;
+  tildado: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label
+      // `py-3` en móvil y `py-2` de ahí para arriba: con el dedo, la tarjeta
+      // queda en 44px de alto, que es el mínimo que pide iOS para un blanco
+      // táctil. En escritorio se apunta con el mouse y esos 8px de más solo
+      // estirarían la grilla.
+      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm transition-colors sm:py-2 ${
+        tildado ? 'border-red/30 bg-red/5 text-ink' : 'border-line bg-bg text-muted'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={tildado}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-4 shrink-0 accent-red"
+      />
+      <span>
+        {etiqueta}
+        {nota && <span className="ml-1 text-xs text-muted">{nota}</span>}
+      </span>
+    </label>
+  );
+}
+
+/** El contenedor de las tres grillas: mismo título, mismas columnas. */
+function Grilla({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-semibold text-ink">{titulo}</legend>
+      {/*
+       * Dos columnas ya en móvil, no una.
+       *
+       * A 375px, diecinueve servicios a lo ancho completo ocupaban 894px —
+       * casi una pantalla y media de scroll para una sola sección, y otro
+       * tanto para amenities. Los vendedores cargan tasaciones desde el
+       * celular, así que ese scroll es el costo real. Con dos columnas alguna
+       * etiqueta larga envuelve, que molesta mucho menos que la tirada.
+       */}
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">{children}</div>
+    </fieldset>
+  );
+}
+
+/**
  * Grilla de tildes para las listas cerradas (Servicios, Amenities).
  *
  * Muestra además cualquier valor elegido que NO esté en la lista: las
@@ -52,48 +111,17 @@ function GrillaTildes({
     onChange(tildado ? [...elegidas, opcion] : elegidas.filter((e) => e !== opcion));
 
   return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-ink">{titulo}</legend>
-      {/*
-       * Dos columnas ya en móvil, no una.
-       *
-       * A 375px, diecinueve servicios a lo ancho completo ocupaban 894px —
-       * casi una pantalla y media de scroll para una sola sección, y otro
-       * tanto para amenities. Los vendedores cargan tasaciones desde el
-       * celular, así que ese scroll es el costo real. Con dos columnas alguna
-       * etiqueta larga envuelve, que molesta mucho menos que la tirada.
-       */}
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-        {[...opciones, ...fuera].map((opcion) => {
-          const tildado = elegidas.includes(opcion);
-          return (
-            <label
-              key={opcion}
-              // `py-3` en móvil y `py-2` de ahí para arriba: con el dedo, la
-              // tarjeta queda en 44px de alto, que es el mínimo que pide iOS
-              // para un blanco táctil. En escritorio se apunta con el mouse y
-              // esos 8px de más solo estirarían la grilla.
-              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm transition-colors sm:py-2 ${
-                tildado ? 'border-red/30 bg-red/5 text-ink' : 'border-line bg-bg text-muted'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={tildado}
-                onChange={(e) => alternar(opcion, e.target.checked)}
-                className="size-4 shrink-0 accent-red"
-              />
-              <span>
-                {opcion}
-                {fuera.includes(opcion) && (
-                  <span className="ml-1 text-xs text-muted">(cargado antes)</span>
-                )}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
+    <Grilla titulo={titulo}>
+      {[...opciones, ...fuera].map((opcion) => (
+        <TildeCard
+          key={opcion}
+          etiqueta={opcion}
+          nota={fuera.includes(opcion) ? '(cargado antes)' : undefined}
+          tildado={elegidas.includes(opcion)}
+          onChange={(v) => alternar(opcion, v)}
+        />
+      ))}
+    </Grilla>
   );
 }
 
@@ -391,7 +419,7 @@ export function Seccion2Caracteristicas(props: Props) {
         </select>
       </Campo>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm sm:grid-cols-3">
+      <Grilla titulo="Características">
         {(
           [
             ['Cochera', cochera, setCochera],
@@ -408,12 +436,9 @@ export function Seccion2Caracteristicas(props: Props) {
             ['Vestidor', vestidor, setVestidor],
           ] as [string, boolean, (v: boolean) => void][]
         ).map(([label, value, setValue]) => (
-          <label key={label} className="flex items-center gap-1.5 text-ink">
-            <input type="checkbox" checked={value} onChange={(e) => setValue(e.target.checked)} />
-            {label}
-          </label>
+          <TildeCard key={label} etiqueta={label} tildado={value} onChange={setValue} />
         ))}
-      </div>
+      </Grilla>
 
       <GrillaTildes
         titulo="Servicios"

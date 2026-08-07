@@ -188,3 +188,81 @@ describe('a quién dice estar dirigido el informe de tasación', () => {
     expect(texto).not.toContain('DOCUMENTO INTERNO');
   });
 });
+
+describe('servicios y amenities en el informe', () => {
+  /*
+   * Van en una fila a lo ancho, con la etiqueta arriba y la lista debajo, y no
+   * en la grilla de dos columnas.
+   *
+   * La primera versión los metió en esa grilla, donde cada fila es
+   * `label`/`value` en una sola línea con `space-between`. Con nueve servicios
+   * el valor no envolvía: se salía de la columna y quedaba montado encima de la
+   * etiqueta. Se vio recién al mirar un PDF de verdad, no en ningún test.
+   *
+   * Se afirma sobre los VALORES y no sobre las etiquetas. Las etiquetas se
+   * dibujan con el peso regular de Montserrat y ese subconjunto no sobrevive a
+   * la extracción de glifos — "Servicios" sale como "6kSdHuHIN". Los valores van
+   * en negrita, que sí decodifica. Ver `textoDePdf` y la convención 14.
+   */
+  const SERVICIOS_LARGOS = [
+    'Agua corriente',
+    'Cable',
+    'Cloaca',
+    'Encargado',
+    'Gas natural',
+    'Internet',
+    'Teléfono',
+    'Pavimento',
+  ];
+  const AMENITIES = ['Piscina', 'Cancha de fútbol', 'SUM', 'Sauna seco', 'Gimnasio'];
+
+  it('lista entera los servicios y los amenities elegidos', async () => {
+    const texto = await textoDePdf(
+      await renderToBuffer(
+        <InformeDocument
+          tasacion={{ ...TASACION, servicios: SERVICIOS_LARGOS, amenities: AMENITIES }}
+          tenantNombre="Vacker"
+          logoUrl={null}
+        />,
+      ),
+    );
+
+    // El último de cada lista importa tanto como el primero: es el que se pierde
+    // si el texto se corta en vez de envolver.
+    for (const s of SERVICIOS_LARGOS) expect(texto, `falta el servicio ${s}`).toContain(s);
+    for (const a of AMENITIES) expect(texto, `falta el amenity ${a}`).toContain(a);
+  });
+
+  it('no arrastra nada cuando no hay servicios ni amenities cargados', async () => {
+    const texto = await textoDePdf(
+      await renderToBuffer(
+        <InformeDocument
+          tasacion={{
+            ...TASACION,
+            servicios: [],
+            amenities: [],
+            tieneAmenities: false,
+            detalleAmenities: null,
+          }}
+          tenantNombre="Vacker"
+          logoUrl={null}
+        />,
+      ),
+    );
+
+    /*
+     * Acá solo cadenas LARGAS, y no la lista entera.
+     *
+     * `textoDePdf` decodifica cada texto con todos los CMaps y devuelve las
+     * lecturas juntas: la correcta más ruido. Para `toContain` eso da igual,
+     * pero al revés no — "SUM", de tres letras, aparecía por casualidad dentro
+     * del ruido y el test fallaba con la fila correctamente ausente.
+     */
+    for (const s of ['Agua corriente', 'Gas natural', 'Pavimento']) {
+      expect(texto, `no debería estar el servicio ${s}`).not.toContain(s);
+    }
+    for (const a of ['Cancha de fútbol', 'Sauna seco']) {
+      expect(texto, `no debería estar el amenity ${a}`).not.toContain(a);
+    }
+  });
+});
