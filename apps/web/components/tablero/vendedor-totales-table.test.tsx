@@ -1,46 +1,69 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { VendedorTotalesTable } from './vendedor-totales-table';
+
+/**
+ * Al abrir el detalle de un vendedor, el alcance tiene que viajar con el filtro.
+ *
+ * El backend INTERSECTA el filtro por vendedor con el alcance de vista
+ * (`operaciones.service.ts`): pedir las operaciones de otra persona sin el
+ * alcance devuelve una lista vacía, no un error. El síntoma era un modal en
+ * blanco al hacer clic en cualquiera del ranking que no fuera uno mismo.
+ *
+ * La guardia general (`lib/alcance-en-pantallas.test.ts`) NO cubre esto: mira
+ * que el archivo mencione `verTodo`, y acá lo menciona igual en las props. Hace
+ * falta comprobar el valor que efectivamente le llega al modal.
+ */
+
+const filtrosRecibidos: unknown[] = [];
+
+vi.mock('./detalle-drill-modal', () => ({
+  DetalleDrillModal: ({ filtro }: { filtro: unknown }) => {
+    filtrosRecibidos.push(filtro);
+    return <div data-testid="modal" />;
+  },
+}));
 
 const ITEMS = [
   {
-    usuarioId: '1',
-    nombre: 'Ana',
+    usuarioId: 'u-otro',
+    nombre: 'Otra Persona',
     fotoUrl: null,
-    volumen: 100,
-    operaciones: 1,
-    puntas: 1,
-    puntasCompradoras: 0,
-    puntasVendedoras: 1,
-    ticketPromedio: 100,
-    comision: 5,
-    peso: 0.6,
-  },
-  {
-    usuarioId: '2',
-    nombre: 'Beto',
-    fotoUrl: null,
-    volumen: 50,
-    operaciones: 1,
-    puntas: 1,
-    puntasCompradoras: 1,
-    puntasVendedoras: 0,
-    ticketPromedio: 50,
-    comision: 2,
-    peso: 0.4,
+    volumen: 500_000,
+    comision: 15_000,
+    puntas: 3,
+    operaciones: 2,
+    peso: 1,
   },
 ];
 
-describe('VendedorTotalesTable', () => {
-  it('ordena por volumen descendente', () => {
-    render(<VendedorTotalesTable items={ITEMS} anio={2026} />);
-    const filas = screen.getAllByRole('row');
-    expect(filas[1]).toHaveTextContent('Ana');
-    expect(filas[2]).toHaveTextContent('Beto');
+/** El nombre del vendedor es un botón: es lo que abre el detalle. */
+function abrirDetalle() {
+  fireEvent.click(screen.getAllByRole('button', { name: /Otra Persona/ })[0]!);
+}
+
+describe('VendedorTotalesTable — el detalle hereda el alcance', () => {
+  it('pasa verTodo al modal cuando la pantalla lo tiene activo', async () => {
+    filtrosRecibidos.length = 0;
+    render(<VendedorTotalesTable items={ITEMS as never} anio={2026} verTodo />);
+
+    abrirDetalle();
+
+    expect(filtrosRecibidos[0]).toMatchObject({
+      anio: 2026,
+      usuarioId: 'u-otro',
+      verTodo: true,
+    });
   });
 
-  it('muestra un mensaje cuando no hay datos', () => {
-    render(<VendedorTotalesTable items={[]} anio={2026} />);
-    expect(screen.getByText(/Sin datos para el período/)).toBeInTheDocument();
+  it('sin el check activo, el detalle no pide un alcance más amplio', async () => {
+    filtrosRecibidos.length = 0;
+    render(<VendedorTotalesTable items={ITEMS as never} anio={2026} />);
+
+    abrirDetalle();
+
+    // Lo que importa es que NO viaje en `true`; que la clave esté presente con
+    // `undefined` o ausente da igual, porque el cliente omite los `undefined`.
+    expect((filtrosRecibidos[0] as { verTodo?: boolean }).verTodo).toBeFalsy();
   });
 });

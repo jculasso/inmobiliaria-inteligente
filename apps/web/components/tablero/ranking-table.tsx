@@ -120,7 +120,7 @@ export function RankingTable({ anio, mesSeleccionado, verTodo, inicial }: Props)
           {loading ? (
             <p className="px-5 py-6 text-sm text-muted">Cargando…</p>
           ) : (
-            <VendedorTotalesTable items={items} anio={anio} />
+            <VendedorTotalesTable items={items} anio={anio} verTodo={verTodo} />
           )}
         </div>
       )}

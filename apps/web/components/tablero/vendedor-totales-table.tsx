@@ -10,7 +10,24 @@ import { DetalleDrillModal } from './detalle-drill-modal';
 const MEDALLAS = ['🥇', '🥈', '🥉'];
 
 /** Tabla "Totales por vendedor": la usan tanto el Ranking como el Resumen acumulado. */
-export function VendedorTotalesTable({ items, anio }: { items: RankingItem[]; anio: number }) {
+/**
+ * `verTodo` viaja hasta el modal de detalle a propósito.
+ *
+ * El backend INTERSECTA el filtro por vendedor con el alcance de vista
+ * (`operaciones.service.ts`): pedir las operaciones de otra persona sin el
+ * alcance devuelve vacío, no un error. O sea que el ranking listaba a todo el
+ * equipo y al hacer clic en cualquiera que no fuera uno mismo, el modal se
+ * abría en blanco.
+ */
+export function VendedorTotalesTable({
+  items,
+  anio,
+  verTodo,
+}: {
+  items: RankingItem[];
+  anio: number;
+  verTodo?: boolean;
+}) {
   const [drill, setDrill] = useState<RankingItem | null>(null);
   const ordenado = [...items].sort((a, b) => b.volumen - a.volumen);
   const maxPeso = Math.max(...ordenado.map((i) => i.peso), 0.0001);
@@ -131,7 +148,7 @@ export function VendedorTotalesTable({ items, anio }: { items: RankingItem[]; an
         <DetalleDrillModal
           titulo={drill.nombre}
           subtitulo={`Vendedor · Año ${anio}`}
-          filtro={{ anio, usuarioId: drill.usuarioId }}
+          filtro={{ anio, usuarioId: drill.usuarioId, verTodo }}
           onClose={() => setDrill(null)}
         />
       )}
