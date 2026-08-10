@@ -14,6 +14,7 @@ import {
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtUSD } from '../../lib/format';
 import { detalleEstado } from '../../lib/tasacion-estado';
+import { ToggleVerTodo } from '../tablero/toggle-ver-todo';
 import { EstadoDistribucion } from './estado-distribucion';
 import { RankingCaptaciones } from './ranking-captaciones';
 
@@ -28,7 +29,24 @@ const PERIODOS: { key: Periodo; label: string }[] = [
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const ESTADOS = EstadoTasacionSchema.options;
 
-export function ReporteView({ anioInicial }: { anioInicial: number }) {
+/**
+ * `verTodo` llega desde la URL (lo pone `ToggleVerTodo`) y NO es estado local:
+ * así el reporte comparte el mismo mecanismo que el resto de las pantallas y
+ * un enlace copiado conserva lo que se estaba mirando.
+ *
+ * Sin esto, el reporte pedía siempre el alcance por defecto —lo propio— y un
+ * usuario de dirección que no fuera admin veía solo SUS tasaciones, sin ninguna
+ * forma de expandir. Es la única pantalla del Tasador que no tenía el check.
+ */
+export function ReporteView({
+  anioInicial,
+  verTodo = false,
+  puedeVerTodo = false,
+}: {
+  anioInicial: number;
+  verTodo?: boolean;
+  puedeVerTodo?: boolean;
+}) {
   const [periodo, setPeriodo] = useState<Periodo>('anual');
   const [anio] = useState(anioInicial);
   const hoy = new Date();
@@ -43,12 +61,15 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // `verTodo` va DENTRO del filtro y no aparte: el mismo objeto alimenta las
+  // tres consultas y el PDF, así que la pantalla y el informe descargado no
+  // pueden terminar mostrando alcances distintos.
   const filtro: TasadorKpiFiltro =
     periodo === 'mensual'
-      ? { anio, periodo, mes }
+      ? { anio, periodo, mes, verTodo }
       : periodo === 'trimestral'
-        ? { anio, periodo, trimestre }
-        : { anio, periodo };
+        ? { anio, periodo, trimestre, verTodo }
+        : { anio, periodo, verTodo };
 
   const periodoLabel =
     periodo === 'mensual' ? `${MESES[mes - 1]} ${anio}` : periodo === 'trimestral' ? `Trimestre ${trimestre} · ${anio}` : `Año ${anio}`;
@@ -62,7 +83,11 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
         Promise.all([
           getKpisResumenTasador(accessToken, filtro),
           getRankingCaptaciones(accessToken, filtro),
-          listTasacionesResumen(accessToken, { anio, mes: periodo === 'mensual' ? mes : undefined }),
+          listTasacionesResumen(accessToken, {
+            anio,
+            mes: periodo === 'mensual' ? mes : undefined,
+            verTodo,
+          }),
         ]),
       )
       .then(([r, rk, t]) => {
@@ -81,7 +106,7 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
       cancelado = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio, periodo, trimestre, mes]);
+  }, [anio, periodo, trimestre, mes, verTodo]);
 
   async function handleGenerarPdf() {
     setGenerando(true);
@@ -102,6 +127,7 @@ export function ReporteView({ anioInicial }: { anioInicial: number }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-ink">Reporte de tasaciones</h2>
         <div className="flex flex-wrap items-center gap-2">
+          {puedeVerTodo && <ToggleVerTodo />}
           <div className="flex gap-1 rounded-brand border border-line p-1">
             {PERIODOS.map((p) => (
               <button
