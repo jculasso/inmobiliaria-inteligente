@@ -3,7 +3,11 @@ import {
   createTasacion,
   deleteTasacion,
   generarInforme,
+  generarInformeReporte,
+  getKpisResumenTasador,
+  getRankingCaptaciones,
   listTasaciones,
+  listTasacionesResumen,
   updateTasacion,
 } from './tasador-api';
 
@@ -166,5 +170,60 @@ describe('tasador-api', () => {
     expect(options.method).toBe('POST');
     expect(result.blob).toBe(pdf);
     expect(result.nombre).toBe(nombre);
+  });
+});
+
+/**
+ * El PDF del reporte tiene que pedir el MISMO alcance que la pantalla.
+ *
+ * `generarInformeReporte` armaba sus query params campo por campo y se olvidaba
+ * de `verTodo`. Resultado: la pantalla mostraba toda la inmobiliaria y el PDF
+ * salía con el alcance por defecto —lo propio—. A Berni Falconi, que es
+ * dirección y no tiene tasaciones propias, el reporte le salía en cero.
+ *
+ * El test compara los params de las CUATRO llamadas entre sí en vez de
+ * afirmar sobre cada una por separado: lo que importa no es que el PDF mande
+ * `verTodo`, es que mande lo mismo que las otras tres.
+ */
+describe('el reporte y su PDF piden el mismo alcance', () => {
+  const filtro = { anio: 2026, periodo: 'anual', verTodo: true } as const;
+
+  /* Cada endpoint valida su respuesta con su propio schema, así que el doble
+     tiene que devolver la forma que espera cada uno. */
+  const RESUMEN = { total: 0, tasaCaptacion: 0, distribucionEstado: [] };
+
+  async function paramsDe(fn: () => Promise<unknown>, json: unknown) {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => json,
+      blob: async () => new Blob(),
+      headers: new Headers({ 'content-disposition': 'attachment; filename="r.pdf"' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await fn();
+    const [url] = fetchMock.mock.calls[0]!;
+    return new URL(String(url)).searchParams;
+  }
+
+  it('las cuatro llamadas mandan verTodo', async () => {
+    const llamadas: [string, () => Promise<unknown>, unknown][] = [
+      ['kpis', () => getKpisResumenTasador('token', filtro), RESUMEN],
+      ['ranking', () => getRankingCaptaciones('token', filtro), []],
+      ['listado', () => listTasacionesResumen('token', filtro), []],
+      ['pdf', () => generarInformeReporte('token', filtro), null],
+    ];
+
+    for (const [nombre, fn, json] of llamadas) {
+      const params = await paramsDe(fn, json);
+      expect(params.get('verTodo'), `${nombre} no manda verTodo`).toBe('1');
+    }
+  });
+
+  it('sin verTodo, ninguna lo manda', async () => {
+    const params = await paramsDe(
+      () => generarInformeReporte('token', { anio: 2026, periodo: 'anual' }),
+      null,
+    );
+    expect(params.get('verTodo')).toBeNull();
   });
 });

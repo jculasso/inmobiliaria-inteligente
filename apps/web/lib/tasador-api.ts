@@ -100,29 +100,40 @@ export async function eliminarFotoTasacion(accessToken: string, tasacionId: stri
 
 // --- KPIs / dashboard ---
 
+/**
+ * Traduce el filtro del Tasador a query params, en UN solo lugar.
+ *
+ * Antes cada función armaba el objeto campo por campo, y `generarInformeReporte`
+ * se olvidaba de `verTodo`: la pantalla mostraba toda la inmobiliaria y el PDF
+ * salía con el alcance por defecto —lo propio—. A un usuario de dirección sin
+ * tasaciones propias le salía el reporte en cero.
+ *
+ * Que el mapeo esté acá es lo que impide que vuelvan a divergir: no hay dónde
+ * olvidarse un campo.
+ */
+function paramsDelFiltro(filtro: TasadorKpiFiltro) {
+  return {
+    anio: filtro.anio,
+    periodo: filtro.periodo,
+    mes: filtro.mes,
+    trimestre: filtro.trimestre,
+    // `apiFetch` no acepta booleanos en los params; el backend lo lee con
+    // `z.coerce.boolean()`, para el que `1` es true y la ausencia es false.
+    verTodo: filtro.verTodo ? (1 as const) : undefined,
+  };
+}
+
 export async function getKpisResumenTasador(accessToken: string, filtro: TasadorKpiFiltro) {
   return apiFetch('/tasador/kpis/resumen', ResumenTasadorKpiSchema, {
     accessToken,
-    searchParams: {
-      anio: filtro.anio,
-      periodo: filtro.periodo,
-      mes: filtro.mes,
-      trimestre: filtro.trimestre,
-      verTodo: filtro.verTodo ? 1 : undefined,
-    },
+    searchParams: paramsDelFiltro(filtro),
   });
 }
 
 export async function getRankingCaptaciones(accessToken: string, filtro: TasadorKpiFiltro) {
   return apiFetch('/tasador/kpis/ranking', z.array(RankingCaptacionItemSchema), {
     accessToken,
-    searchParams: {
-      anio: filtro.anio,
-      periodo: filtro.periodo,
-      mes: filtro.mes,
-      trimestre: filtro.trimestre,
-      verTodo: filtro.verTodo ? 1 : undefined,
-    },
+    searchParams: paramsDelFiltro(filtro),
   });
 }
 
@@ -139,6 +150,6 @@ export async function getKpisMensualTasador(accessToken: string, anio: number, v
 export async function generarInformeReporte(accessToken: string, filtro: TasadorKpiFiltro) {
   return apiFetchPdf('/tasador/reporte/informe', {
     accessToken,
-    searchParams: { anio: filtro.anio, periodo: filtro.periodo, mes: filtro.mes, trimestre: filtro.trimestre },
+    searchParams: paramsDelFiltro(filtro),
   });
 }
