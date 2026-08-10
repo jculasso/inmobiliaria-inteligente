@@ -145,7 +145,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
                 👥 Totales por vendedor <span className="text-xs font-normal text-muted">({datos.ranking.length} vendedores)</span>
               </p>
               <div className="rounded-brand border border-line">
-                <VendedorTotalesTable items={datos.ranking} anio={anio} />
+                <VendedorTotalesTable items={datos.ranking} anio={anio} verTodo={verTodo} />
               </div>
             </div>
           </div>

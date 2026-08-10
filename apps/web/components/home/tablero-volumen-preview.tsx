@@ -18,7 +18,11 @@ export function TableroVolumenPreview({ anio, alcance }: { anio: number; alcance
   useEffect(() => {
     let cancelado = false;
     getAccessToken()
-      .then((token) => getKpisResumen(token, { anio }))
+      // El alcance que dice la etiqueta y el que se pide tienen que ser el
+      // mismo. Sin `verTodo`, el backend devuelve solo lo del usuario y la card
+      // mostraba un número propio rotulado "Total" — una cifra que no era la
+      // que el rótulo prometía.
+      .then((token) => getKpisResumen(token, { anio, verTodo: alcance !== 'propio' }))
       .then((r) => {
         if (!cancelado) setVolumen(r.anual.volumen);
       })
@@ -28,7 +32,7 @@ export function TableroVolumenPreview({ anio, alcance }: { anio: number; alcance
     return () => {
       cancelado = true;
     };
-  }, [anio]);
+  }, [anio, alcance]);
 
   return (
     <div className="rounded-lg bg-surface px-3 py-2 text-xs">
