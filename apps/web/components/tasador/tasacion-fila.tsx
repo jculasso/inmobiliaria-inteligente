@@ -30,8 +30,17 @@ export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar
 
   return (
     <div className="grid grid-cols-1 gap-2 border-t border-surface py-3 first:border-t-0 sm:grid-cols-[2fr_1fr_130px_auto] sm:items-center sm:gap-3.5">
-      <div>
-        <div className="text-sm font-bold text-ink">{t.direccion}</div>
+      <div className="min-w-0">
+        {/*
+          La ciudad va PEGADA a la dirección y no en una línea nueva: en el
+          historial hay decenas de filas y una línea más por fila multiplica el
+          scroll en el celular. Como sufijo liviano se lee de un vistazo y, si
+          no entra, envuelve sola.
+        */}
+        <div className="text-sm font-bold text-ink">
+          {t.direccion}
+          {t.ciudad && <span className="font-medium text-muted"> · {t.ciudad}</span>}
+        </div>
         <div className="mt-0.5 text-xs text-muted">
           {t.cliente} · {t.tipoPropiedad} · {fmtNum(t.superficieTotal)} m² · {t.agente.nombre}
         </div>

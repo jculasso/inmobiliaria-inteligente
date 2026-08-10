@@ -502,6 +502,13 @@ export const TasacionResumenDtoSchema = z.object({
   fecha: z.string(),
   direccion: z.string(),
   barrio: z.string().nullable(),
+  /*
+   * Con `.default(null)` y no a secas: la web valida con este schema lo que
+   * devuelve la API, y las dos se despliegan por separado. Si la web saliera
+   * primero exigiendo el campo, TODO el listado de tasaciones fallaría hasta
+   * que saliera la API — no la columna nueva: el listado entero.
+   */
+  ciudad: z.string().nullable().default(null),
   tipoPropiedad: TipoPropiedadSchema,
   superficieTotal: z.number(),
   valorRecomendado: z.number().nullable(),

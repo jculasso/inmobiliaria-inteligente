@@ -38,6 +38,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
       (t) =>
         t.cliente.toLowerCase().includes(q) ||
         t.direccion.toLowerCase().includes(q) ||
+        (t.ciudad?.toLowerCase().includes(q) ?? false) ||
         t.agente.nombre.toLowerCase().includes(q),
     );
   }, [visibles, busqueda]);
@@ -64,7 +65,7 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por cliente, dirección o agente…"
+          placeholder="Buscar por cliente, dirección, ciudad o agente…"
           className="h-9 w-full max-w-sm rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red"
         />
         <div className="flex items-center gap-3">
