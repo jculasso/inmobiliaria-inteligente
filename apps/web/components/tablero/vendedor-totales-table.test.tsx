@@ -56,21 +56,22 @@ describe('VendedorTotalesTable — el detalle hereda el alcance', () => {
     });
   });
 
-  it('el detalle se acota a ventas, que es de lo que habla el ranking', () => {
+  it('el detalle se acota a lo mismo que compone el ranking', () => {
     /*
-     * El ranking suma SOLO ventas (volumen, puntas y comisión salen de
-     * `kpis.service.ts` con `tipo: 'venta'`). Sin este filtro, el detalle
-     * mezclaba alquileres y la lista no cuadraba con el número clickeado.
+     * El ranking se arma con `ventas(tx, anio, 'escriturada')`: solo ventas, y
+     * solo escrituradas. El detalle tiene que pedir EXACTAMENTE eso o los dos
+     * números no cierran.
      *
-     * Lo reportó Javier sobre Rocío Aguilar: el detalle traía seis alquileres
-     * que el ranking nunca había contado.
+     * Con datos reales de Alteva, Rocío Aguilar: el ranking contaba 12
+     * operaciones y el detalle traía 30 — seis alquileres y doce ventas en
+     * otros estados que el ranking nunca había sumado.
      */
     filtrosRecibidos.length = 0;
     render(<VendedorTotalesTable items={ITEMS as never} anio={2026} verTodo />);
 
     abrirDetalle();
 
-    expect(filtrosRecibidos[0]).toMatchObject({ tipo: 'venta' });
+    expect(filtrosRecibidos[0]).toMatchObject({ tipo: 'venta', estado: 'escriturada' });
   });
 
   it('sin el check activo, el detalle no pide un alcance más amplio', async () => {

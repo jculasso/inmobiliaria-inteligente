@@ -19,10 +19,11 @@ const MEDALLAS = ['🥇', '🥈', '🥉'];
  * equipo y al hacer clic en cualquiera que no fuera uno mismo, el modal se
  * abría en blanco.
  *
- * El detalle se acota además a VENTAS. Este ranking se arma solo con ventas
- * (`kpis.service.ts` filtra `tipo: 'venta'` para volumen, puntas y comisión),
- * así que abrir el detalle sin ese filtro mostraba una lista que no cuadraba
- * con el número sobre el que se hizo clic.
+ * El detalle se acota además a VENTAS ESCRITURADAS, que es exactamente de lo
+ * que habla este ranking: `kpis.service.ts` lo arma con
+ * `ventas(tx, anio, 'escriturada')`. Sin esos dos filtros el panel listaba
+ * alquileres y ventas señadas que el ranking nunca había contado — para Rocío
+ * Aguilar eran 30 operaciones contra las 12 del ranking.
  */
 export function VendedorTotalesTable({
   items,
@@ -152,8 +153,8 @@ export function VendedorTotalesTable({
       {drill && (
         <DetalleDrillModal
           titulo={drill.nombre}
-          subtitulo={`Ventas · Año ${anio}`}
-          filtro={{ anio, usuarioId: drill.usuarioId, verTodo, tipo: 'venta' }}
+          subtitulo={`Ventas escrituradas · Año ${anio}`}
+          filtro={{ anio, usuarioId: drill.usuarioId, verTodo, tipo: 'venta', estado: 'escriturada' }}
           onClose={() => setDrill(null)}
         />
       )}

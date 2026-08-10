@@ -21,6 +21,16 @@ interface Props {
  * muestra las operaciones crudas detrás de un KPI/fila, con fila de totales.
  * Reusa `listOperaciones` (mismo endpoint que Ventas/Alquileres), sin acciones
  * de editar/borrar.
+ *
+ * ── La comisión que se muestra depende de desde dónde se abrió ──────────────
+ *
+ * Si el filtro trae `usuarioId` —se entró desde la fila de un vendedor en el
+ * ranking— la columna muestra SU parte, no la comisión completa de la
+ * operación. En una venta compartida entre dos, `comTotal` incluye la punta del
+ * otro: el ranking decía 63.210 para Rocío y el detalle sumaba 251.430.
+ *
+ * El ranking suma `punta.comision` (ver `kpis.calc.ts`), así que este panel
+ * tiene que sumar lo mismo o los dos números nunca cierran.
  */
 export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props) {
   const [operaciones, setOperaciones] = useState<Awaited<ReturnType<typeof listOperaciones>> | null>(null);
@@ -48,8 +58,17 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
   }, [JSON.stringify(filtro)]);
 
   const esVenta = filtro.tipo !== 'alquiler';
+  /**
+   * La comisión atribuible a esta vista. Con `usuarioId` en el filtro es la
+   * punta de esa persona; sin él, la comisión completa de la operación.
+   */
+  const comisionDe = (op: { comTotal: number; puntas: { usuarioId: string; comision: number }[] }) =>
+    filtro.usuarioId
+      ? op.puntas.filter((p) => p.usuarioId === filtro.usuarioId).reduce((s, p) => s + p.comision, 0)
+      : op.comTotal;
+
   const sumPrecio = operaciones?.reduce((s, op) => s + (op.precio ?? op.valorMensual ?? 0), 0) ?? 0;
-  const sumComision = operaciones?.reduce((s, op) => s + op.comTotal, 0) ?? 0;
+  const sumComision = operaciones?.reduce((s, op) => s + comisionDe(op), 0) ?? 0;
 
   return (
     <Modal title={titulo} subtitle={subtitulo} onClose={onClose} size="xl">
@@ -84,7 +103,7 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
                       <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>
                         {fmtUSD(op.precio ?? op.valorMensual ?? 0)}
                       </CampoTarjeta>
-                      <CampoTarjeta etiqueta="Comisión">{fmtUSD(op.comTotal)}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Comisión">{fmtUSD(comisionDe(op))}</CampoTarjeta>
                       {esVenta && <CampoTarjeta etiqueta="Vendedora">{vend?.nombre ?? '—'}</CampoTarjeta>}
                       {esVenta && <CampoTarjeta etiqueta="Compradora">{comp?.nombre ?? '—'}</CampoTarjeta>}
                     </CamposTarjeta>
@@ -141,7 +160,7 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
                       </td>
                       {esVenta && <td className="px-3 py-2.5">{vend?.nombre ?? '—'}</td>}
                       {esVenta && <td className="px-3 py-2.5">{comp?.nombre ?? '—'}</td>}
-                      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">{fmtUSD(op.comTotal)}</td>
+                      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">{fmtUSD(comisionDe(op))}</td>
                       <td className="px-3 py-2.5">
                         <span className={estadoBadgeClass(op.estado)}>{estadoLabel(op.estado)}</span>
                       </td>
