@@ -18,6 +18,11 @@ const MEDALLAS = ['🥇', '🥈', '🥉'];
  * alcance devuelve vacío, no un error. O sea que el ranking listaba a todo el
  * equipo y al hacer clic en cualquiera que no fuera uno mismo, el modal se
  * abría en blanco.
+ *
+ * El detalle se acota además a VENTAS. Este ranking se arma solo con ventas
+ * (`kpis.service.ts` filtra `tipo: 'venta'` para volumen, puntas y comisión),
+ * así que abrir el detalle sin ese filtro mostraba una lista que no cuadraba
+ * con el número sobre el que se hizo clic.
  */
 export function VendedorTotalesTable({
   items,
@@ -147,8 +152,8 @@ export function VendedorTotalesTable({
       {drill && (
         <DetalleDrillModal
           titulo={drill.nombre}
-          subtitulo={`Vendedor · Año ${anio}`}
-          filtro={{ anio, usuarioId: drill.usuarioId, verTodo }}
+          subtitulo={`Ventas · Año ${anio}`}
+          filtro={{ anio, usuarioId: drill.usuarioId, verTodo, tipo: 'venta' }}
           onClose={() => setDrill(null)}
         />
       )}

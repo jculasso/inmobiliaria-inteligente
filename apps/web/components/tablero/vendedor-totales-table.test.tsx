@@ -56,6 +56,23 @@ describe('VendedorTotalesTable — el detalle hereda el alcance', () => {
     });
   });
 
+  it('el detalle se acota a ventas, que es de lo que habla el ranking', () => {
+    /*
+     * El ranking suma SOLO ventas (volumen, puntas y comisión salen de
+     * `kpis.service.ts` con `tipo: 'venta'`). Sin este filtro, el detalle
+     * mezclaba alquileres y la lista no cuadraba con el número clickeado.
+     *
+     * Lo reportó Javier sobre Rocío Aguilar: el detalle traía seis alquileres
+     * que el ranking nunca había contado.
+     */
+    filtrosRecibidos.length = 0;
+    render(<VendedorTotalesTable items={ITEMS as never} anio={2026} verTodo />);
+
+    abrirDetalle();
+
+    expect(filtrosRecibidos[0]).toMatchObject({ tipo: 'venta' });
+  });
+
   it('sin el check activo, el detalle no pide un alcance más amplio', async () => {
     filtrosRecibidos.length = 0;
     render(<VendedorTotalesTable items={ITEMS as never} anio={2026} />);
