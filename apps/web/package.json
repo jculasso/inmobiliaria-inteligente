@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "pdf:docs": "tsx scripts/generar-pdfs-docs.tsx",
     "pdf:tecnico": "node scripts/pdf-doc.mjs Resumen_Tecnico.md Resumen-Tecnico-Inmobiliaria-Inteligente.pdf",
-    "pdf:costos": "node scripts/pdf-doc.mjs Costos_e_Infraestructura.md Costos-e-Infraestructura.pdf"
+    "pdf:costos": "node scripts/pdf-doc.mjs Costos_e_Infraestructura.md Costos-e-Infraestructura.pdf",
+    "pdf:meta": "node scripts/pdf-doc.mjs Meta_Tramite_WhatsApp.md Meta-Tramite-WhatsApp-Vacker.pdf"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
