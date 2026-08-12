@@ -12,7 +12,7 @@ import {
   listTasacionesResumen,
 } from '../../lib/tasador-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { fmtUSD } from '../../lib/format';
+import { fmtFecha, fmtUSD } from '../../lib/format';
 import { detalleEstado } from '../../lib/tasacion-estado';
 import { ToggleVerTodo } from '../tablero/toggle-ver-todo';
 import { EstadoDistribucion } from './estado-distribucion';
@@ -247,7 +247,13 @@ export function ReporteView({
                   ) : (
                     tasacionesFiltradas.map((t) => (
                       <tr key={t.id} className="border-b border-line last:border-0">
-                        <td className="px-4 py-2">{t.fecha}</td>
+                        {/*
+                          `whitespace-nowrap` además del formato: la columna es
+                          angosta y el navegador partía `2026-08-07` por el
+                          guión, dejando la fecha en dos líneas y desalineando
+                          toda la fila.
+                        */}
+                        <td className="whitespace-nowrap px-4 py-2">{fmtFecha(t.fecha)}</td>
                         <td className="px-4 py-2">
                           {t.direccion}
                           {t.barrio ? ` · ${t.barrio}` : ''}

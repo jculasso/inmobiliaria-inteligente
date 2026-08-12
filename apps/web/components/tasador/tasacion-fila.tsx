@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TasacionResumenDto } from '@vacker/types';
-import { fmtNum, fmtUSD } from '../../lib/format';
+import { fmtFecha, fmtNum, fmtUSD } from '../../lib/format';
 import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 
@@ -29,7 +29,7 @@ export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar
   const [aBorrar, setABorrar] = useState(false);
 
   return (
-    <div className="grid grid-cols-1 gap-2 border-t border-surface py-3 first:border-t-0 sm:grid-cols-[2fr_1fr_130px_auto] sm:items-center sm:gap-3.5">
+    <div className="grid grid-cols-1 gap-2 border-t border-surface py-3 first:border-t-0 sm:grid-cols-[2fr_92px_1fr_130px_auto] sm:items-center sm:gap-3.5">
       <div className="min-w-0">
         {/*
           La ciudad va PEGADA a la dirección y no en una línea nueva: en el
@@ -45,7 +45,17 @@ export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar
           {t.cliente} · {t.tipoPropiedad} · {fmtNum(t.superficieTotal)} m² · {t.agente.nombre}
         </div>
       </div>
-      <div className="text-sm font-bold text-brand-red">{fmtUSD(t.valorRecomendado)}</div>
+      {/*
+        Fecha y precio: dos columnas en escritorio, UNA sola línea en el celular.
+        `sm:contents` hace desaparecer este envoltorio a partir de `sm`, así los
+        dos hijos vuelven a ser celdas de la grilla. Sin esto, en el celular la
+        fecha se llevaba una línea entera para sí sola —unos 24px por fila— y
+        con veinte tasaciones eso es media pantalla de scroll de más.
+      */}
+      <div className="flex items-baseline gap-2.5 sm:contents">
+        <div className="text-xs text-muted sm:whitespace-nowrap">{fmtFecha(t.fecha)}</div>
+        <div className="text-sm font-bold text-brand-red">{fmtUSD(t.valorRecomendado)}</div>
+      </div>
       <div className="flex flex-col items-center gap-1">
         <button
           type="button"

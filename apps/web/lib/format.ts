@@ -19,3 +19,21 @@ export function fmtK(n: number | null | undefined): string {
   }
   return String(Math.round(v));
 }
+
+/**
+ * Fecha ISO (`2026-08-07`) a `07/08/2026`.
+ *
+ * Se parte el string en vez de usar `new Date()`: las fechas del Tasador vienen
+ * como día calendario sin hora, y `new Date('2026-08-07')` las interpreta en UTC
+ * — en Argentina eso las corre un día para atrás y la tasación aparece con la
+ * fecha del día anterior.
+ *
+ * Sale siempre con el mismo ancho, que es lo que permite que no se parta en dos
+ * líneas dentro de una celda angosta.
+ */
+export function fmtFecha(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const [anio, mes, dia] = iso.slice(0, 10).split('-');
+  if (!anio || !mes || !dia) return iso;
+  return `${dia}/${mes}/${anio}`;
+}
