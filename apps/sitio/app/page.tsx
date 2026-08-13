@@ -19,6 +19,27 @@ import { ANCHO, CapturaSegunPantalla, Encabezado, Kicker, Pie } from '../compone
  * /tablero. La portada tiene que dejar entender el conjunto en una lectura; el
  * que quiere profundizar en uno, entra.
  */
+/**
+ * El título de cada sección: la PREGUNTA que se hace el dueño de la
+ * inmobiliaria, con su número.
+ *
+ * El sitio dice exactamente lo mismo que la presentación comercial y en el
+ * mismo orden — «¿Qué es?», «¿Para qué sirve?», «¿Por qué contratarlo?»,
+ * «¿Cómo se contrata?», «¿Quiénes somos?»—. Quien vio la reunión y después
+ * entra acá tiene que reconocer el recorrido; y quien llega al sitio primero
+ * llega a la reunión con las mismas preguntas ya ordenadas.
+ */
+function Pregunta({ numero, children }: { numero: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-4">
+      <span className="text-sm font-extrabold tabular-nums text-line">{numero}</span>
+      <h2 className="text-balance text-3xl font-extrabold leading-tight text-plataforma sm:text-[2.6rem]">
+        {children}
+      </h2>
+    </div>
+  );
+}
+
 function Modulo({
   numero,
   nombre,
@@ -185,13 +206,13 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ─────────── el ciclo ─────────── */}
+        {/* ─────────── 01 · ¿Qué es? ─────────── */}
         <section className={`${ANCHO} py-16 sm:py-24`}>
-          <Kicker>Cómo funciona</Kicker>
-          <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
-            Dos módulos: el que origina el negocio y el que lo mide.
-          </h2>
-          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-muted sm:text-base">
+          <Pregunta numero="01">¿Qué es?</Pregunta>
+          <p className="mt-5 max-w-3xl text-lg font-bold leading-snug text-ink sm:text-xl">
+            Un tablero de control y un CRM de tasaciones, montados sobre el sistema que ya usa.
+          </p>
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted sm:text-base">
             El negocio empieza cuando se capta una propiedad, y se capta con una tasación bien
             hecha. Termina cuando la operación se firma y hay que saber cuánto dejó, y a quién.
           </p>
@@ -245,25 +266,85 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ─────────── en cualquier dispositivo ─────────── */}
+        {/* ─────────── 02 · ¿Para qué sirve? ─────────── */}
         <section className="border-y border-line bg-surface py-16 sm:py-24">
           <div className={ANCHO}>
-            <Kicker>En cualquier dispositivo</Kicker>
-            <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
-              El vendedor no vuelve a la oficina para cargar nada.
-            </h2>
-            <div className="mt-7 max-w-2xl space-y-4 text-[15px] leading-relaxed text-muted sm:text-base">
-              <p>
-                Es la misma aplicación y se acomoda a la pantalla que haya adelante. En la visita,
-                el vendedor carga la tasación desde el teléfono con las fotos que acaba de sacar. Y
-                mira cómo viene contra su objetivo sin pedirle el dato a nadie. La dirección abre el
-                tablero desde donde esté.
-              </p>
-              <p className="font-semibold text-ink">
-                Se instala en el teléfono como una aplicación más, con su ícono en la pantalla de
-                inicio. Sin pasar por App Store ni por Google Play.
+            <Pregunta numero="02">¿Para qué sirve?</Pregunta>
+            <p className="mt-5 max-w-3xl text-lg font-bold leading-snug text-ink sm:text-xl">
+              Para tomar cinco decisiones con el número delante, y no con la impresión de la semana.
+            </p>
+
+            <dl className="mt-11 grid gap-x-12 gap-y-8 sm:grid-cols-2">
+              {[
+                [
+                  'Cómo viene el año',
+                  'La proyección anual y trimestral, contra el mismo período del año pasado.',
+                ],
+                [
+                  'Dónde está el margen',
+                  'La comisión real por operación y por punta, no solamente el volumen facturado.',
+                ],
+                [
+                  'Quién produce',
+                  'Operaciones, puntas y comisión de cada vendedor, en un mismo ranking.',
+                ],
+                [
+                  'Toda la captación junta',
+                  'Cada tasación con su estado y su responsable, sin planillas paralelas.',
+                ],
+                [
+                  'La tasa de captación',
+                  'Cuántas tasaciones terminan en captación, y por qué se pierden las otras. Es la que casi nadie mide: dice si el equipo está tasando bien o nada más juntando visitas.',
+                ],
+              ].map(([que, para]) => (
+                <div key={que} className="border-t border-line pt-5">
+                  <dt className="text-[17px] font-extrabold leading-snug text-ink">{que}</dt>
+                  <dd className="mt-2 text-[15px] leading-relaxed text-muted">{para}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+
+        {/* ─────────── 03 · ¿Por qué contratarlo? ─────────── */}
+        <section className={`${ANCHO} py-16 sm:py-24`}>
+          <Pregunta numero="03">¿Por qué contratarlo?</Pregunta>
+          <p className="mt-5 max-w-3xl text-lg font-bold leading-snug text-ink sm:text-xl">
+            Porque hoy esas respuestas cuestan una semana de planilla, y llegan tarde.
+          </p>
+
+          <div className="mt-11 grid gap-10 sm:grid-cols-2 sm:gap-12">
+            <div className="border-t-2 border-plataforma pt-6">
+              <h3 className="text-xl font-extrabold leading-snug">
+                Más eficiencia, más rentabilidad.
+              </h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-muted">
+                El margen deja de ser una estimación: se ve la comisión real por operación, por
+                punta y por vendedor, y qué parte de lo vendido todavía no se cobró. Con eso se
+                decide dónde poner el equipo y qué negocio conviene tomar.
               </p>
             </div>
+            <div className="border-t-2 border-plataforma pt-6">
+              <h3 className="text-xl font-extrabold leading-snug">
+                La información sensible del negocio, con usted.
+              </h3>
+              <p className="mt-3 text-[15px] leading-relaxed text-muted">
+                Se instala en el teléfono como una aplicación más, con su ícono en la pantalla de
+                inicio y sin pasar por App Store ni por Google Play. Y deja de haber una planilla
+                con la facturación dando vueltas por WhatsApp: cada uno ve lo suyo y la dirección
+                ve todo.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-10 max-w-2xl space-y-4 text-[15px] leading-relaxed text-muted sm:text-base">
+            <p>
+              Es la misma aplicación y se acomoda a la pantalla que haya adelante. En la visita, el
+              vendedor carga la tasación desde el teléfono con las fotos que acaba de sacar. Y mira
+              cómo viene contra su objetivo sin pedirle el dato a nadie. La dirección abre el
+              tablero desde donde esté.
+            </p>
+          </div>
 
             {/*
               Los tres a escala: el ancho de cada marco es proporcional al ancho
@@ -321,10 +402,9 @@ export default function Home() {
                 </div>
               ))}
             </dl>
-          </div>
         </section>
 
-        {/* ─────────── el reporte de los lunes ─────────── */}
+        {/* ─────────── el informe de tasación ─────────── */}
         <section className="bg-plataforma py-16 text-white sm:py-24">
           <div className={`${ANCHO} grid gap-12 lg:grid-cols-[1fr_minmax(0,380px)] lg:items-center lg:gap-16`}>
             <div>
@@ -368,13 +448,86 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ─────────── quiénes lo hacen ─────────── */}
+        {/* ─────────── 04 · ¿Cómo se contrata? ─────────── */}
         <section className={`${ANCHO} py-16 sm:py-24`}>
-          <Kicker>Quiénes lo hacen</Kicker>
-          <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
+          <Pregunta numero="04">¿Cómo se contrata?</Pregunta>
+          <p className="mt-5 max-w-3xl text-lg font-bold leading-snug text-ink sm:text-xl">
+            Tres pasos y una firma.
+          </p>
+
+          <div className="mt-11 grid gap-12 lg:grid-cols-[1fr_minmax(0,420px)] lg:gap-16">
+            <ol className="space-y-7">
+              {[
+                ['Implementación', 'Dos sesiones personalizadas de dos horas.'],
+                ['Puesta en marcha', 'Onboarding de la dirección y de los vendedores.'],
+                ['Acuerdo de confidencialidad', 'Recíproco: sus datos y los nuestros.'],
+              ].map(([paso, detalle], i) => (
+                <li key={paso} className="flex gap-5 border-t border-line pt-5">
+                  <span className="text-sm font-extrabold tabular-nums text-plataforma">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div>
+                    <h3 className="text-[17px] font-extrabold leading-snug text-ink">{paso}</h3>
+                    <p className="mt-1.5 text-[15px] leading-relaxed text-muted">{detalle}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            {/*
+              Los importes NO van en el sitio; en la presentación sí. La regla
+              está acordada en docs/specs/sitio-comercial.md y el porqué es
+              simple: en una reunión hay alguien que explica qué incluye cada
+              línea y hace la cuenta para el tamaño de esa inmobiliaria. En una
+              página, un número suelto se compara contra el de cualquier otro
+              sin saber contra qué se está comparando.
+
+              Se muestran igual los TRES conceptos: lo que no se publica es el
+              monto, no la estructura. Que el prospecto sepa que se cobra por
+              usuario y no por módulo es información que juega a favor.
+            */}
+            <div className="self-start rounded-brand border border-line bg-surface p-7">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">
+                Precios
+              </p>
+              <dl className="mt-5 space-y-4">
+                {[
+                  ['Implementación', 'Por única vez · dos sesiones'],
+                  ['Mensual', 'Incluye dos perfiles de dirección'],
+                  ['Por vendedor', 'Mensual, por cada uno'],
+                ].map(([que, detalle], i) => (
+                  <div
+                    key={que}
+                    className={`flex items-baseline justify-between gap-4 ${i > 0 ? 'border-t border-line pt-4' : ''}`}
+                  >
+                    <div>
+                      <dt className="text-[15px] font-bold text-ink">{que}</dt>
+                      <dd className="text-[13px] leading-snug text-muted">{detalle}</dd>
+                    </div>
+                    <span className="shrink-0 text-[15px] font-extrabold text-plataforma">
+                      Consultar
+                    </span>
+                  </div>
+                ))}
+              </dl>
+              <a
+                href="#demostracion"
+                className="mt-7 block rounded-brand bg-plataforma px-5 py-3 text-center text-[15px] font-bold text-white transition-colors hover:bg-plataforma-dark"
+              >
+                Pedir una demostración
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────── 05 · ¿Quiénes somos? ─────────── */}
+        <section className="border-t border-line bg-surface py-16 sm:py-24">
+          <div className={ANCHO}>
+          <Pregunta numero="05">¿Quiénes somos?</Pregunta>
+          <p className="mt-5 max-w-3xl text-lg font-bold leading-snug text-ink sm:text-xl">
             Dos directores de sistemas que trabajan juntos desde hace treinta años.
-          </h2>
-          <p className="mt-7 max-w-2xl text-[15px] leading-relaxed text-muted sm:text-base">
+          </p>
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted sm:text-base">
             Se conocieron en Minetti y Cía. a principios de los noventa. Los dos pasaron por Cargill.
             Después cada uno siguió su camino — uno hacia el comercio electrónico en México, el otro
             hacia la dirección de sistemas de una operación industrial de miles de clientes. Vuelven
@@ -435,10 +588,11 @@ export default function Home() {
               Un sistema para una inmobiliaria necesita las dos cosas.
             </strong>
           </p>
+          </div>
         </section>
 
         {/* ─────────── sus datos son suyos ─────────── */}
-        <section className="border-y border-line bg-surface py-16 sm:py-24">
+        <section className="border-y border-line bg-white py-16 sm:py-24">
           <div className={ANCHO}>
             <Kicker>Sus datos</Kicker>
             <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
