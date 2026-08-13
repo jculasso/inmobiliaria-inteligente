@@ -438,7 +438,7 @@ export default function Home() {
             <div className="overflow-hidden rounded-brand bg-white shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)]">
               <Image
                 src="/capturas/tasador-informe.png"
-                alt="Informe de tasación en PDF: la propiedad con sus fotos, los comparables del mercado y el rango de valores propuesto."
+                alt="Primera hoja del informe de tasación: la propiedad, el resumen ejecutivo con el valor recomendado de 130.000 dólares y el plazo estimado, y el detalle de características, servicios y amenities."
                 width={989}
                 height={1400}
                 className="h-auto w-full"
