@@ -1,7 +1,7 @@
 import type { ModuloKey, ModulosTenant, PlanTenant, Rol, TenantConfig } from '@vacker/types';
 import { Avatar, type BadgeVariant } from '@vacker/ui';
 import { puedeExportarDatos, alcanceDeModulo } from '../lib/rbac';
-import { tenantBrandStyle } from '../lib/tenant-style';
+import { marcaPlataformaStyle, tenantBrandStyle } from '../lib/tenant-style';
 import { ModuleCard } from './home/module-card';
 import { LoginPanel } from './home/login-panel';
 import { TableroVolumenPreview } from './home/tablero-volumen-preview';
@@ -72,21 +72,61 @@ export function HomeView({ sesion }: HomeViewProps) {
   const modulos = sesion?.tenant.modulos;
   const nombreMarca = sesion ? (config?.nombreCorto ?? sesion.tenant.nombre) : 'Inmobiliaria Inteligente';
 
+  /*
+   * Sin sesión manda la marca de la PLATAFORMA, no la de un cliente.
+   *
+   * Antes, sin tenant, todo caía al rojo por defecto —el de Vacker— y lo
+   * primero que veía alguien de otra inmobiliaria era la marca de un
+   * competidor. Con sesión sí vale la del tenant: ahí ya se sabe quién es.
+   */
+  const marca = sesion ? tenantBrandStyle(config) : marcaPlataformaStyle();
+
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8" style={tenantBrandStyle(config)}>
+    <main
+      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8"
+      style={marca}
+    >
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {config?.logoUrl ? (
             <Avatar nombre={nombreMarca} fotoUrl={config.logoUrl} size="lg" />
           ) : (
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-red to-brand-red-dark shadow-lg shadow-brand-red/20 sm:h-14 sm:w-14">
-              <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>
-                <path d="M10 12 H90 V88 L50 66 L10 88 Z" fill="#fff" />
-              </svg>
+              {/*
+                Sin sesión el cuadrado representa a la plataforma, así que lleva
+                su marca —el techo sobre las barras, el mismo del ícono de la
+                aplicación—. Con sesión y sin logo cargado está haciendo de la
+                inmobiliaria, y ahí queda el marcador genérico.
+              */}
+              {sesion ? (
+                <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>
+                  <path d="M10 12 H90 V88 L50 66 L10 88 Z" fill="#fff" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 100 100" className="h-8 w-8" aria-hidden>
+                  <path
+                    d="M22 50 L50 27 L78 50"
+                    fill="none"
+                    stroke="#fff"
+                    strokeWidth="9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <rect x="31" y="58" width="9" height="15" rx="3" fill="#fff" opacity=".65" />
+                  <rect x="45.5" y="52" width="9" height="21" rx="3" fill="#fff" opacity=".82" />
+                  <rect x="60" y="45" width="9" height="28" rx="3" fill="#fff" />
+                </svg>
+              )}
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-red sm:text-xs">
+            {/*
+              Este rótulo es el nombre de la PLATAFORMA, no el de la
+              inmobiliaria —ese va abajo, en el `h1`—. Va siempre en azul, con
+              sesión y sin ella: es la única línea de la pantalla que no cambia
+              de un cliente a otro.
+            */}
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-plataforma sm:text-xs">
               Inmobiliaria Inteligente
             </p>
             <h1 className="text-xl font-extrabold leading-tight text-ink break-words sm:text-2xl">

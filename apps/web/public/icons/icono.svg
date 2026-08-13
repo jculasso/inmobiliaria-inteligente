@@ -2,11 +2,13 @@
   <!--
     Ícono de la plataforma (NO de una inmobiliaria en particular): un techo
     sobre tres barras ascendentes — propiedades + datos, que son las dos
-    palabras del nombre. Fondo a sangre y sin transparencia, como pide iOS:
+    palabras del nombre. Va en el AZUL de la plataforma (#173F6B) y no en el
+    rojo de Vacker: es un solo ícono para todas las inmobiliarias, y el de la
+    pestaña del navegador es lo primero que ve un cliente nuevo. Fondo a sangre y sin transparencia, como pide iOS:
     el sistema le aplica su propia máscara redondeada.
     Fuente única de todos los tamaños (ver scripts/generar-iconos.md).
   -->
-  <rect width="100" height="100" fill="#C1121F"/>
+  <rect width="100" height="100" fill="#173F6B"/>
   <path d="M22 50 L50 27 L78 50" fill="none" stroke="#fff" stroke-width="9"
         stroke-linecap="round" stroke-linejoin="round"/>
   <rect x="31" y="58" width="9" height="15" rx="3" fill="#fff" opacity=".65"/>

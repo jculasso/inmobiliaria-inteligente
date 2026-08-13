@@ -128,3 +128,93 @@ describe('HomeView · modo logueado', () => {
     expect(screen.queryByText('preview-volumen')).not.toBeInTheDocument();
   });
 });
+
+/**
+ * De quién es la marca en esta pantalla.
+ *
+ * Sin sesión no hay tenant, así que el override de marca no se aplicaba y todo
+ * caía al valor por defecto de `--color-brand-red`, que es el rojo de Vacker: el
+ * botón «Ingresar», el filete de la tarjeta y el rótulo «ACCESO» salían rojos. A
+ * un cliente nuevo lo primero que le mostrábamos era la marca de otro.
+ *
+ * El riesgo del arreglo es el opuesto —pisar la marca del cliente que sí pagó
+ * por verla—, y eso es lo que cuidan estos cuatro casos.
+ */
+describe('HomeView · de quién es la marca', () => {
+  const marcaDe = (contenedor: HTMLElement) =>
+    contenedor.querySelector('main')!.getAttribute('style') ?? '';
+
+  it('sin sesión, la marca es la de la plataforma', () => {
+    const { container } = render(<HomeView sesion={null} />);
+    expect(marcaDe(container)).toContain('--color-plataforma');
+  });
+
+  it('con sesión, el color del cliente le gana a la plataforma', () => {
+    const conColor = {
+      ...tenant(),
+      config: { colorPrimario: '#C1121F', colorPrimarioOscuro: '#8F0D18' },
+    };
+    const { container } = render(
+      <HomeView
+        sesion={{
+          email: 'demo@vacker.com',
+          nombre: 'Demo',
+          fotoUrl: null,
+          roles: ['vendedor'],
+          tenant: conColor,
+        }}
+      />,
+    );
+    const marca = marcaDe(container);
+    expect(marca).toContain('#C1121F');
+    expect(marca, 'la marca del cliente quedó pisada por la de la plataforma').not.toContain(
+      '--color-plataforma',
+    );
+  });
+
+  it('con sesión y sin color propio, no fuerza el azul de la plataforma', () => {
+    // El tenant que no cargó su color se queda con el valor por defecto del
+    // sistema de diseño. Meterle el azul acá sería decidir por él.
+    const { container } = render(
+      <HomeView
+        sesion={{
+          email: 'demo@vacker.com',
+          nombre: 'Demo',
+          fotoUrl: null,
+          roles: ['vendedor'],
+          tenant: tenant(),
+        }}
+      />,
+    );
+    expect(marcaDe(container)).not.toContain('--color-plataforma');
+  });
+
+  it('el rótulo «Inmobiliaria Inteligente» va en azul con sesión y sin ella', () => {
+    // Es el nombre de la plataforma, no el de la inmobiliaria: es la única
+    // línea de la pantalla que no cambia de un cliente a otro.
+    //
+    // Se busca el <p> y no por texto: sin sesión el nombre de la inmobiliaria
+    // TAMBIÉN es «Inmobiliaria Inteligente», así que hay dos coincidencias.
+    const rotulo = (contenedor: HTMLElement) =>
+      [...contenedor.querySelectorAll('p')].find(
+        (e) => e.textContent?.trim() === 'Inmobiliaria Inteligente',
+      );
+
+    const sinSesion = render(<HomeView sesion={null} />);
+    expect(rotulo(sinSesion.container)).toHaveClass('text-plataforma');
+    sinSesion.unmount();
+
+    const conSesion = render(
+      <HomeView
+        sesion={{
+          email: 'demo@vacker.com',
+          nombre: 'Demo',
+          fotoUrl: null,
+          roles: ['vendedor'],
+          tenant: { ...tenant(), config: { colorPrimario: '#C1121F' } },
+        }}
+      />,
+    );
+    expect(rotulo(conSesion.container)).toHaveClass('text-plataforma');
+  });
+});
