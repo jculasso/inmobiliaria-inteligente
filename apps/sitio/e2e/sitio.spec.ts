@@ -1,19 +1,21 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Las cinco páginas del sitio, en un navegador de verdad.
+ * Las tres páginas del sitio, en un navegador de verdad.
  *
  * Lo que se comprueba es lo que un prospecto nota en los primeros diez
  * segundos: que la página cargue, que se entienda de qué se trata, que se
  * pueda navegar entre módulos y que en el teléfono no se arrastre de costado.
  */
 
+/*
+ * Tres y no cinco: se comercializan DOS módulos. El Protocolo 5 Semanas y el
+ * To Do List salieron del sitio — ver el porqué en `MODULOS`, en marco.tsx.
+ */
 const PAGINAS = [
   { ruta: '/', titular: /Su CRM guarda las propiedades/ },
   { ruta: '/tasador', titular: /Llegue a la reunión con un informe/ },
-  { ruta: '/protocolo', titular: /una inmobiliaria que trabaja/ },
   { ruta: '/tablero', titular: /Cuánto se vendió/ },
-  { ruta: '/tareas', titular: /Lo que hay que hacer/ },
 ];
 
 for (const { ruta, titular } of PAGINAS) {
@@ -66,9 +68,9 @@ for (const { ruta, titular } of PAGINAS) {
   });
 }
 
-test('desde la portada se llega a los cuatro módulos', async ({ page }) => {
+test('desde la portada se llega a los dos módulos', async ({ page }) => {
   await page.goto('/');
-  for (const ruta of ['/tasador', '/protocolo', '/tablero', '/tareas']) {
+  for (const ruta of ['/tasador', '/tablero']) {
     // `.first()` no sirve: el encabezado trae los mismos enlaces dos veces, uno
     // para escritorio y otro para teléfono, y en cada ancho uno de los dos está
     // oculto. Hay que exigir que AL MENOS uno se vea.
@@ -78,12 +80,10 @@ test('desde la portada se llega a los cuatro módulos', async ({ page }) => {
 
 test('el ciclo se recorre entero saltando de módulo en módulo', async ({ page }) => {
   await page.goto('/tasador');
-  for (const siguiente of ['Protocolo 5 Semanas', 'Tablero Comercial', 'To Do List']) {
-    await page.getByRole('link', { name: `${siguiente} →` }).click();
-    await expect(page.locator('h1')).toBeVisible();
-  }
+  await page.getByRole('link', { name: 'Tablero Comercial →' }).click();
+  await expect(page.locator('h1')).toBeVisible();
   // El último vuelve al primero: el ciclo se cierra y no deja al visitante sin
-  // salida al final de la cuarta página.
+  // salida al final de la segunda página.
   await page.getByRole('link', { name: 'Tasador →' }).click();
   await expect(page.locator('h1')).toContainText(/Llegue a la reunión/);
 });
@@ -166,8 +166,10 @@ test('los recuadros de captura pendiente NO se ven en producción', async ({ pag
   // Se ven trabajando en local, para no olvidarnos de sacarlas. Si alguna vez
   // aparecen en el sitio publicado, un prospecto lee "captura pendiente" en
   // lugar de una pantalla del producto.
-  await page.goto('/protocolo');
-  await expect(page.locator('.border-dashed')).toHaveCount(0);
+  for (const { ruta } of PAGINAS) {
+    await page.goto(ruta);
+    await expect(page.locator('.border-dashed'), ruta).toHaveCount(0);
+  }
 });
 
 test('el formulario rechaza datos incompletos sin recargar la página', async ({ page }) => {

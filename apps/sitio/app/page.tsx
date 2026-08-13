@@ -14,10 +14,10 @@ import { ANCHO, CapturaSegunPantalla, Encabezado, Kicker, Pie } from '../compone
  */
 
 /*
- * Acá los módulos van resumidos y cada uno enlaza a su página. El detalle —el
- * problema que resuelve, cómo funciona, quién ve qué— vive en /tasador,
- * /protocolo, /tablero y /tareas. La portada tiene que dejar entender el
- * conjunto en una lectura; el que quiere profundizar en uno, entra.
+ * Acá los dos módulos van resumidos y cada uno enlaza a su página. El detalle
+ * —el problema que resuelve, cómo funciona, quién ve qué— vive en /tasador y
+ * /tablero. La portada tiene que dejar entender el conjunto en una lectura; el
+ * que quiere profundizar en uno, entra.
  */
 function Modulo({
   numero,
@@ -36,7 +36,7 @@ function Modulo({
   titular: string;
   children: React.ReactNode;
   sale?: string;
-  /** Una pantalla del módulo. El To Do List no tiene, y por eso es opcional. */
+  /** Una pantalla del módulo. */
   imagen?: string;
   /** La misma pantalla sacada desde un teléfono, si existe. */
   telefono?: string;
@@ -127,8 +127,8 @@ export default function Home() {
 
           <p className="mt-7 max-w-2xl text-lg leading-relaxed text-muted">
             Inmobiliaria Inteligente es la capa de conducción que se apoya sobre el sistema que ya
-            usa. No lo reemplaza: le agrega lo que le falta — saber, cada semana, qué se está
-            haciendo y qué no.
+            usa. No lo reemplaza: le agrega lo que le falta — el número que dice cómo viene el
+            año, y el informe con el que se gana una captación.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -146,21 +146,21 @@ export default function Home() {
           </div>
 
           {/*
-            La pantalla va acá arriba y no más abajo. El titular dice que el
-            sistema avisa qué no se está haciendo; una captura donde se leen
-            tres alertas de verdad lo demuestra en un segundo, y ahorra los dos
-            párrafos que harían falta para explicarlo.
+            La pantalla va acá arriba y no más abajo. El titular promete decirle
+            cómo va su negocio; una captura donde se leen los números de verdad
+            lo demuestra en un segundo, y ahorra los dos párrafos que harían
+            falta para explicarlo.
           */}
           <div className="mt-14">
             <CapturaSegunPantalla
-              escritorio="/capturas/protocolo-ficha.png"
-              telefono="/capturas/protocolo-ficha-telefono.png"
-              alt="Ficha de la propiedad Alsina 3841 en semana 4 de 5, con tres alertas: seis acciones atrasadas, la autorización venciendo en tres días y doce días sin movimiento."
+              escritorio="/capturas/tablero-kpis.png"
+              telefono="/capturas/tablero-telefono.png"
+              alt="Tablero Comercial: el volumen del mes y el acumulado del año, con operaciones, ticket promedio, puntas, comisión y lo que queda pendiente de cobro."
               prioridad
             />
           </div>
           <p className="mt-3 text-center text-[13px] leading-relaxed text-muted sm:text-left">
-            Una propiedad en la semana 4. El sistema no espera a que alguien pregunte.
+            El mes y el año, en la misma pantalla. Sin pedirle el número a nadie.
           </p>
         </section>
 
@@ -169,17 +169,17 @@ export default function Home() {
           <div className={ANCHO}>
             <Kicker>El problema</Kicker>
             <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
-              Usted sabe cuánto vendió. No sabe qué se está dejando de hacer.
+              Usted sabe cuánto vendió. No sabe cuánto le dejó, ni quién.
             </h2>
             <div className="mt-7 max-w-2xl space-y-4 text-[15px] leading-relaxed text-muted sm:text-base">
               <p>
-                El CRM le muestra las propiedades cargadas y los contactos. Pero no le dice que una
-                captación lleva 43 días sin movimiento, que una autorización vence el martes, o que
-                la propiedad que su vendedor marcó como publicada nunca llegó a los portales.
+                El CRM le muestra las propiedades cargadas y los contactos. Pero no le dice cuánto
+                deja cada operación, cómo viene el trimestre contra el del año pasado, ni cuál de
+                sus vendedores está tasando mucho y captando poco.
               </p>
               <p className="font-semibold text-ink">
-                Eso se descubre tarde: cuando el propietario llama enojado, o cuando la autorización
-                ya venció.
+                Esas respuestas hoy salen de una planilla que alguien actualiza a mano, o de la
+                memoria de la última reunión.
               </p>
             </div>
           </div>
@@ -189,23 +189,14 @@ export default function Home() {
         <section className={`${ANCHO} py-16 sm:py-24`}>
           <Kicker>Cómo funciona</Kicker>
           <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
-            Del primer contacto con el propietario hasta la operación cerrada.
+            Dos módulos: el que origina el negocio y el que lo mide.
           </h2>
+          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-muted sm:text-base">
+            El negocio empieza cuando se capta una propiedad, y se capta con una tasación bien
+            hecha. Termina cuando la operación se firma y hay que saber cuánto dejó, y a quién.
+          </p>
 
-          {/* El diagrama usa el lenguaje visual del producto — la tira de cinco
-              semanas es la misma que se ve en el sistema. */}
-          <figure className="mt-10 overflow-x-auto rounded-brand border border-line bg-surface p-3 sm:p-5">
-            <Image
-              src="/flujo.svg"
-              alt="El ciclo de una propiedad: se tasa, se capta y empieza el protocolo de cinco semanas; en la semana dos Tokko Broker la publica en Zonaprop, Mercado Libre y Argenprop, y al venderse entra al tablero. El lunes la dirección recibe por correo qué necesita atención."
-              width={1240}
-              height={760}
-              className="mx-auto h-auto w-full min-w-[760px] max-w-[1100px]"
-              priority
-            />
-          </figure>
-
-          <div className="mt-14 space-y-12">
+          <div className="mt-12 space-y-12">
             <Modulo
               numero="01"
               nombre="Tasador"
@@ -223,38 +214,13 @@ export default function Home() {
               <p>
                 La diferencia no es el número: es llegar con un documento profesional cuando el de al
                 lado llega con una estimación de memoria. Y cuando la captación se concreta, la
-                tasación pasa al Protocolo sin volver a cargar nada.
+                propiedad queda cargada: los datos, las fotos y el valor ya están, y la operación
+                entra al tablero sin escribir nada dos veces.
               </p>
             </Modulo>
 
             <Modulo
               numero="02"
-              nombre="Protocolo 5 Semanas"
-              imagen="/capturas/protocolo-panel.png"
-              telefono="/capturas/protocolo-ficha-telefono.png"
-              alt="Panel del Protocolo: cuatro propiedades en comercialización, dos con alertas críticas y 41% de avance promedio."
-              ruta="/protocolo"
-              titular="Lo que distingue a una inmobiliaria que trabaja de una que espera."
-              sale="Informe de gestión — con esto se renueva la autorización"
-            >
-              <p>
-                Captada la propiedad, arranca un procedimiento de cinco semanas con 29 acciones
-                concretas: documentación, fotos, publicación, difusión, seguimiento, ajuste de precio,
-                informe al propietario.
-              </p>
-              <p>
-                Cada semana muestra qué se hizo y qué quedó pendiente. El sistema avisa cuando algo
-                vence, cuando una autorización está por caer, cuando una propiedad lleva demasiado
-                tiempo sin movimiento.
-              </p>
-              <p className="font-semibold text-ink">
-                Ese informe es la herramienta más subestimada del negocio: es con lo que se renueva
-                una autorización sin bajar el precio.
-              </p>
-            </Modulo>
-
-            <Modulo
-              numero="03"
               nombre="Tablero Comercial"
               imagen="/capturas/tablero-kpis.png"
               telefono="/capturas/tablero-telefono.png"
@@ -270,17 +236,10 @@ export default function Home() {
                 Cada persona ve lo suyo; el team leader, lo de su equipo; la dirección, todo. No hay
                 planilla paralela ni versiones distintas del mismo número.
               </p>
-            </Modulo>
-
-            <Modulo
-              numero="04"
-              nombre="To Do List"
-              ruta="/tareas"
-              titular="Lo que hay que hacer, donde ya lo está mirando."
-            >
               <p>
-                Las tareas del equipo, sincronizadas con el calendario que ya usan. Sin pedirle a
-                nadie que aprenda una aplicación más.
+                La facturación bruta —anual, trimestral y mensual— de la inmobiliaria y de cada
+                vendedor, el ticket promedio, las operaciones y la cantidad de puntas. Y lo que
+                todavía está pendiente de cobro.
               </p>
             </Modulo>
           </div>
@@ -296,9 +255,9 @@ export default function Home() {
             <div className="mt-7 max-w-2xl space-y-4 text-[15px] leading-relaxed text-muted sm:text-base">
               <p>
                 Es la misma aplicación y se acomoda a la pantalla que haya adelante. En la visita,
-                el vendedor carga la tasación desde el teléfono con las fotos que acaba de sacar. En
-                la calle, marca las acciones del protocolo entre una visita y la siguiente. Y mira
-                cómo viene contra su objetivo sin pedirle el dato a nadie.
+                el vendedor carga la tasación desde el teléfono con las fotos que acaba de sacar. Y
+                mira cómo viene contra su objetivo sin pedirle el dato a nadie. La dirección abre el
+                tablero desde donde esté.
               </p>
               <p className="font-semibold text-ink">
                 Se instala en el teléfono como una aplicación más, con su ícono en la pantalla de
@@ -313,38 +272,38 @@ export default function Home() {
               se lee como un solo sistema en tres tamaños.
             */}
             <div className="mt-12 grid gap-6 sm:flex sm:items-end sm:justify-center sm:gap-6">
-              <div className="overflow-hidden rounded-brand border border-line bg-white shadow-[0_20px_50px_-30px_rgba(29,29,31,0.5)] sm:w-[57%]">
+              <div className="overflow-hidden rounded-brand border border-line bg-white shadow-[0_20px_50px_-30px_rgba(29,29,31,0.5)] sm:w-[62%]">
                 <Image
-                  src="/capturas/protocolo-ficha.png"
-                  alt="El Protocolo 5 Semanas en una computadora, con la ficha de una propiedad y sus alertas."
+                  src="/capturas/tasador-wizard.png"
+                  alt="El Tasador en una computadora, en el paso de comparables, con el resumen automático de confianza."
                   width={2560}
                   height={1600}
                   className="h-auto w-full"
-                  sizes="(max-width: 640px) 100vw, 600px"
+                  sizes="(max-width: 640px) 100vw, 650px"
                 />
               </div>
 
               {/* `sm:contents` disuelve esta fila en pantallas grandes y deja a
-                  la tablet y al teléfono como hermanos del monitor. */}
-              <div className="flex items-end gap-5 sm:contents">
-                <div className="overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_20px_50px_-30px_rgba(29,29,31,0.5)] sm:w-[24%]">
+                  los dos teléfonos como hermanos del monitor. */}
+              <div className="flex items-end justify-center gap-5 sm:contents">
+                <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[14%]">
                   <Image
-                    src="/capturas/protocolo-tablet.png"
-                    alt="La misma ficha del Protocolo en una tablet."
-                    width={820}
-                    height={1180}
+                    src="/capturas/tablero-telefono.png"
+                    alt="El Tablero Comercial en un teléfono: la dirección mira los números desde donde esté."
+                    width={750}
+                    height={1624}
                     className="h-auto w-full"
-                    sizes="(max-width: 640px) 60vw, 260px"
+                    sizes="(max-width: 640px) 34vw, 150px"
                   />
                 </div>
-                <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[13%]">
+                <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[14%]">
                   <Image
                     src="/capturas/tasador-telefono.png"
                     alt="El Tasador en un teléfono, en el paso de comparables: el vendedor carga la tasación en la misma visita."
                     width={750}
                     height={1624}
                     className="h-auto w-full"
-                    sizes="(max-width: 640px) 32vw, 140px"
+                    sizes="(max-width: 640px) 34vw, 150px"
                   />
                 </div>
               </div>
@@ -353,8 +312,8 @@ export default function Home() {
             <dl className="mt-12 grid gap-8 border-t border-line pt-8 sm:grid-cols-3">
               {[
                 ['Computadora', 'La dirección y la administración: cargar operaciones, revisar la cartera, sacar informes.'],
-                ['Tablet', 'La reunión con el propietario, con el informe en pantalla en vez de en papel.'],
-                ['Teléfono', 'El vendedor en la calle: tasar, marcar acciones, ver su objetivo.'],
+                ['Tablet', 'La reunión con el propietario, con el informe de tasación en pantalla en vez de en papel.'],
+                ['Teléfono', 'El vendedor en la calle: tasar en la visita y ver cómo viene contra su objetivo.'],
               ].map(([donde, para]) => (
                 <div key={donde}>
                   <dt className="text-[15px] font-extrabold text-ink">{donde}</dt>
@@ -370,50 +329,40 @@ export default function Home() {
           <div className={`${ANCHO} grid gap-12 lg:grid-cols-[1fr_minmax(0,380px)] lg:items-center lg:gap-16`}>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70 sm:text-xs">
-                Transversal a todo el ciclo
+                Lo que se lleva el propietario
               </p>
               <h2 className="mt-4 max-w-3xl text-balance text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
-                El lunes a la mañana, sin entrar a ningún lado.
+                La captación se gana antes de hablar de precio.
               </h2>
               <div className="mt-7 space-y-4 text-[15px] leading-relaxed text-white/85 sm:text-base">
                 <p>
-                  La dirección recibe por correo el estado de todas las propiedades en
-                  comercialización, agrupadas por vendedor: qué necesita atención, qué
-                  autorizaciones están por vencer, qué está listo para cerrar.
+                  Terminada la visita, el sistema arma el informe: la propiedad con sus fotos, los
+                  comparables del mercado que respaldan el número, el rango de valores y la
+                  estrategia comercial propuesta.
                 </p>
                 <p className="font-semibold text-white">
-                  Si no hay nada urgente, el correo son cuatro líneas. Si hay algo que decidir, está
-                  arriba de todo.
+                  El de al lado llega con una cifra de memoria. Su vendedor deja un documento con el
+                  nombre de la inmobiliaria arriba.
                 </p>
               </div>
               <Link
-                href="/protocolo"
+                href="/tasador"
                 className="mt-8 inline-block text-[15px] font-bold text-white underline underline-offset-4"
               >
-                Ver el Protocolo 5 Semanas →
+                Ver el Tasador →
               </Link>
             </div>
 
-            {/* La página del reporte, no un ícono de sobre: lo que se promete
-                es un documento concreto, y acá se lee el titular de verdad. */}
+            {/* El documento, no un ícono de hoja: lo que se promete es algo
+                concreto, y acá se ve de verdad. */}
             <div className="overflow-hidden rounded-brand bg-white shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)]">
-              {/* En teléfono, el recorte de arriba: la hoja entera a 375px no
-                  deja leer ni el titular, que es todo el argumento. */}
               <Image
-                src="/capturas/protocolo-reporte-recorte.png"
-                alt="Reporte semanal encabezado por «2 de 4 necesitan atención: Belgrano 2087 y Alsina 3841», con los cuatro indicadores del período."
-                width={1978}
-                height={1176}
-                className="h-auto w-full lg:hidden"
-                sizes="100vw"
-              />
-              <Image
-                src="/capturas/protocolo-reporte-semanal.png"
-                alt="Reporte semanal en PDF encabezado por «2 de 4 necesitan atención: Belgrano 2087 y Alsina 3841», con los indicadores del período y el detalle por vendedor."
+                src="/capturas/tasador-informe.png"
+                alt="Informe de tasación en PDF: la propiedad con sus fotos, los comparables del mercado y el rango de valores propuesto."
                 width={989}
                 height={1400}
-                className="hidden h-auto w-full lg:block"
-                sizes="380px"
+                className="h-auto w-full"
+                sizes="(max-width: 1024px) 100vw, 380px"
               />
             </div>
           </div>

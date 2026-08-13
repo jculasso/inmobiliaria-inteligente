@@ -314,3 +314,48 @@ Qué quedó en su lugar:
 queda sin camino alternativo. Se aceptó a sabiendas — el envío por Resend ya
 está probado en producción y el fallo sería excepcional — y se revierte en una
 línea el día que la casilla exista, o si se decide publicar un teléfono.
+
+---
+
+# 11. El sitio pasa a vender DOS módulos (13/08/2026)
+
+**La decisión:** se comercializan **Tasador** y **Tablero Comercial**. Nada más.
+
+El **Protocolo 5 Semanas** sale del sitio. No porque no funcione —está andando en
+Vacker— sino porque hoy está muy hecho a la medida de Vacker: las 29 acciones,
+los plazos y el informe son los de ellos. Vendérselo a otra inmobiliaria
+significaría rehacerlo por cliente. Vuelve cuando esté para vender.
+
+El **To Do List** también sale. Depende de que cada inmobiliaria vincule un
+calendario de Google, y la aplicación todavía no está verificada ante Google —
+el permiso se cae cada siete días.
+
+**Lo que se conserva:** el texto de las secciones 3.2 y 3.4 y el de la sección 4
+—el reporte de los lunes— quedan en este documento tal como estaban. Las páginas
+`/protocolo` y `/tareas` se borraron del sitio, pero están en el historial de
+git. Reponer el Protocolo es volver a agregarlo a `MODULOS` y recuperar su
+página.
+
+## Lo que cambió en las páginas
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| Portada, la captura de arriba | La ficha del Protocolo con sus alertas | El Tablero: el mes y el año |
+| Portada, el subtítulo | «saber, cada semana, qué se está haciendo y qué no» | «el número que dice cómo viene el año, y el informe con el que se gana una captación» |
+| El problema, el titular | «No sabe qué se está dejando de hacer» | «No sabe cuánto le dejó, ni quién» |
+| El ciclo | Diagrama de cinco semanas y cuatro módulos | Dos módulos, sin diagrama |
+| La franja azul | El reporte de los lunes | El informe de tasación |
+| En cualquier dispositivo | Protocolo en monitor, tablet y teléfono | Tasador en monitor, y los dos módulos en teléfono |
+
+El diagrama `flujo.svg` **no se borró**, pero ya no se muestra: describe el ciclo
+de cinco semanas. Cuando vuelva el Protocolo, vuelve el diagrama.
+
+## Lo que NO cambió, y hay que decidir
+
+**Los precios siguen sin aparecer en el sitio.** La regla de la sección
+«Reglas que aplican a todo el texto» dice que no van, y esa regla no se tocó.
+La presentación comercial **sí** los lleva, porque se muestra en una reunión
+donde hay alguien para explicarlos.
+
+Si se decide publicarlos, hay que cambiar primero esa regla acá arriba y después
+el sitio. No al revés.
