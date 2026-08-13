@@ -4,7 +4,7 @@
     el encabezado de la aplicación. A 16px se pierde todo detalle, así que el
     trazo es grueso y la figura una sola — un techo se reconoce por su silueta.
   -->
-  <rect width="100" height="100" rx="22" fill="#C1121F"/>
+  <rect width="100" height="100" rx="22" fill="#173F6B"/>
   <path d="M22 52 L50 27 L78 52" fill="none" stroke="#FFFFFF" stroke-width="11"
         stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M31 56 L31 74 L69 74 L69 56" fill="none" stroke="#FFFFFF" stroke-width="11"

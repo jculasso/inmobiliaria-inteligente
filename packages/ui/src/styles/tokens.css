@@ -1,5 +1,10 @@
 /* ============================================================================
- * @vacker/ui — Tokens de marca Vacker (CLAUDE.md §6).
+ * @vacker/ui — Tokens de marca (CLAUDE.md §6).
+ *
+ * OJO con los tres niveles, que es fácil confundirlos:
+ *   `brand-red`   → la marca de CADA inmobiliaria. La pisa el tenant.
+ *   `plataforma`  → la nuestra. Azul, fija, nadie la pisa.
+ *   `danger`      → urgencia. Roja siempre, sea cual sea la marca.
  *
  * Este archivo se importa DESPUÉS de `@import "tailwindcss";` en la app.
  * Tailwind v4 lee el bloque @theme y genera utilidades a partir de estos
@@ -24,6 +29,17 @@
    * crítica se vería verde. Rojo = urge, siempre, sea cual sea la marca. */
   --color-danger: #c1121f;
   --color-danger-dark: #8f0d18;
+
+  /* Marca de la PLATAFORMA. Igual que la urgencia, va SEPARADA de
+   * --color-brand-red y por el mismo motivo: `brand-red` lo pisa cada
+   * inmobiliaria (tenant-style.ts), así que nuestra propia firma terminaba
+   * pintada del color del cliente — dentro de Alteva, que es verde, el
+   * logotipo "Inmobiliaria Inteligente" salía verde.
+   *
+   * Esto es lo nuestro: el sitio comercial y la firma dentro de la
+   * aplicación. Nunca lo del cliente. */
+  --color-plataforma: #173f6b;
+  --color-plataforma-dark: #0f2a4a;
   --color-inactive: #f0f0f2; /* fondo — módulo/estado "Próximamente" */
   --color-inactive-accent: #cbcbd0; /* acento — barra/ícono "Próximamente" */
 
