@@ -181,16 +181,42 @@ export function OperacionesTable({
         )}
       </div>
 
-      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
+      {/*
+        Altura acotada y scroll DENTRO de la tabla, en vez de dejar crecer la
+        página.
+
+        Con los 39 alquileres de una inmobiliaria real la página medía 2,4
+        pantallas y los títulos de columna se iban arriba: a la altura de la
+        fila 20 ya no se sabía si esa cifra era el valor mensual o la comisión.
+
+        No alcanzaba con hacer el `thead` fijo. Este contenedor tiene
+        `overflow-x-auto` para las pantallas angostas, y CSS obliga a que
+        entonces el eje vertical también sea `auto`: eso lo convierte en área de
+        scroll, y el `sticky` pasa a referirse a él y no a la página — con lo
+        cual nunca se activaba. Dándole altura propia, el área de scroll es la
+        tabla y el encabezado sí se queda.
+
+        60vh y no un cálculo contra el alto del encabezado: arriba hay barra de
+        módulo, navegación, título y buscador, y esa suma cambia entre pantallas.
+        Un porcentaje no se pasa nunca.
+      */}
+      <div className="hidden max-h-[60vh] overflow-x-auto overflow-y-auto overscroll-contain rounded-brand border border-line bg-white sm:block">
         <table className="w-full text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+            {/*
+              La línea va en cada celda y no en la fila: al quedarse fija, la
+              fila no se mueve pero sus celdas sí, y el borde se pierde — las
+              filas terminan pegadas contra los títulos.
+            */}
+            <tr className="text-left text-xs uppercase tracking-wide text-muted [&>th]:border-b [&>th]:border-line">
               <EncabezadoOrdenable
                 columna="codigo"
-                // Si la ventana obliga a desplazar de costado, el código queda
-                // fijo: sin esto se va de pantalla y no se sabe qué fila se
-                // está mirando, que era el problema real del scroll.
-                thClass="sticky left-0 z-10 bg-white"
+                // La esquina: fija en los dos ejes a la vez. Si la ventana
+                // obliga a desplazar de costado, el código queda a la vista, y
+                // al bajar por la lista el nombre de la columna también.
+                // z-30 porque tiene que pasar por encima tanto del resto del
+                // encabezado (z-20) como de la columna de código (z-10).
+                thClass="sticky left-0 top-0 z-30 bg-white"
                 activa={ordenLocal.orden === 'codigo'}
                 dir={ordenLocal.dir}
                 enMemoria={!hayMas}
@@ -200,6 +226,7 @@ export function OperacionesTable({
               </EncabezadoOrdenable>
               <EncabezadoOrdenable
                 columna="fechaFirma"
+                thClass="sticky top-0 z-20 bg-white"
                 activa={ordenLocal.orden === 'fechaFirma'}
                 dir={ordenLocal.dir}
                 enMemoria={!hayMas}
@@ -207,20 +234,20 @@ export function OperacionesTable({
               >
                 Firma
               </EncabezadoOrdenable>
-              <th className="px-2 py-2">Dirección</th>
+              <th className="sticky top-0 z-20 bg-white px-2 py-2">Dirección</th>
               {tipo === 'venta' ? (
                 <>
-                  <th className="px-2 py-2">Precio</th>
-                  <th className="px-2 py-2">Ptas</th>
-                  <th className="px-2 py-2">Vendedora</th>
-                  <th className="px-2 py-2">Compradora</th>
+                  <th className="sticky top-0 z-20 bg-white px-2 py-2">Precio</th>
+                  <th className="sticky top-0 z-20 bg-white px-2 py-2">Ptas</th>
+                  <th className="sticky top-0 z-20 bg-white px-2 py-2">Vendedora</th>
+                  <th className="sticky top-0 z-20 bg-white px-2 py-2">Compradora</th>
                 </>
               ) : (
-                <th className="px-2 py-2">Valor/mes</th>
+                <th className="sticky top-0 z-20 bg-white px-2 py-2">Valor/mes</th>
               )}
-              <th className="px-2 py-2">Comisión</th>
-              <th className="px-2 py-2">Estado</th>
-              {puedeEscribir && <th className="sticky right-0 bg-white px-2 py-2" />}
+              <th className="sticky top-0 z-20 bg-white px-2 py-2">Comisión</th>
+              <th className="sticky top-0 z-20 bg-white px-2 py-2">Estado</th>
+              {puedeEscribir && <th className="sticky right-0 top-0 z-30 bg-white px-2 py-2" />}
             </tr>
           </thead>
           <tbody>
