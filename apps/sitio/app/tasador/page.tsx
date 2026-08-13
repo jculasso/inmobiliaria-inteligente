@@ -100,12 +100,13 @@ export default function Tasador() {
       <Bloque kicker="Lo que sigue" titulo="La tasación no muere en el informe.">
         <p>
           Cuando la captación se concreta, la propiedad{' '}
-          <strong className="font-semibold text-ink">pasa al Protocolo 5 Semanas sin volver a
-          cargar nada</strong>: los datos, las fotos y el valor ya están.
+          <strong className="font-semibold text-ink">ya está cargada</strong>: los datos, las fotos
+          y el valor no se vuelven a escribir. Firmada la operación, entra al Tablero Comercial con
+          sus puntas y su comisión.
         </p>
         <p>
           Ese es el punto del sistema. Cada módulo le deja el trabajo hecho al siguiente, en vez de
-          pedir la misma información tres veces.
+          pedir la misma información dos veces.
         </p>
       </Bloque>
     </PaginaModulo>

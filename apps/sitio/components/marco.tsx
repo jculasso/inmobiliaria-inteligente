@@ -20,12 +20,23 @@ export function Kicker({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** El orden es el del ciclo del negocio, no el de importancia. */
+/**
+ * El orden es el del ciclo del negocio, no el de importancia: primero se tasa,
+ * después se mide.
+ *
+ * Son DOS y no cuatro. El Protocolo 5 Semanas y el To Do List existen y están
+ * funcionando en Vacker, pero no se comercializan todavía: el Protocolo está
+ * muy hecho a la medida de Vacker, y el To Do depende de un calendario de
+ * Google que cada inmobiliaria tendría que vincular. Un sitio que muestra
+ * cuatro módulos y una presentación que vende dos se contradicen delante del
+ * prospecto.
+ *
+ * Cuando el Protocolo esté para vender, vuelve acá y vuelve su página — el
+ * texto sigue en `docs/specs/sitio-comercial.md` y la página, en el historial.
+ */
 export const MODULOS = [
   { ruta: '/tasador', nombre: 'Tasador', numero: '01' },
-  { ruta: '/protocolo', nombre: 'Protocolo 5 Semanas', numero: '02' },
-  { ruta: '/tablero', nombre: 'Tablero Comercial', numero: '03' },
-  { ruta: '/tareas', nombre: 'To Do List', numero: '04' },
+  { ruta: '/tablero', nombre: 'Tablero Comercial', numero: '02' },
 ] as const;
 
 /*

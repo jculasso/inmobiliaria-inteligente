@@ -5,6 +5,11 @@ falten, las páginas marcan el hueco con `CapturaPendiente`, que **no renderiza
 nada en producción**: el sitio se puede publicar en cualquier momento sin que a
 un prospecto le aparezca un recuadro gris.
 
+> **Desde el 13/08/2026 el sitio muestra solo dos módulos.** Las capturas del
+> Protocolo 5 Semanas siguen acá y el script las sigue sacando: no se muestran
+> en ninguna página, pero se mantienen frescas para cuando el módulo vuelva a
+> venderse. Si molestan, se comentan en `scripts/capturar.mjs`.
+
 ## De dónde salen
 
 De la **inmobiliaria de demostración** (Alteva Propiedades), entrando con un
