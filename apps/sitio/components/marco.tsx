@@ -48,7 +48,7 @@ export function Encabezado() {
           className="shrink-0 text-[13px] font-extrabold leading-[1.15] text-ink sm:text-[15px] sm:leading-none"
         >
           Inmobiliaria{' '}
-          <span className="block text-brand-red sm:inline">Inteligente</span>
+          <span className="block text-plataforma sm:inline">Inteligente</span>
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex">
@@ -65,7 +65,7 @@ export function Encabezado() {
 
         <Link
           href="/#demostracion"
-          className="shrink-0 rounded-brand bg-brand-red px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-brand-red-dark sm:text-sm"
+          className="shrink-0 rounded-brand bg-plataforma px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-plataforma-dark sm:text-sm"
         >
           <span className="sm:hidden">Demostración</span>
           <span className="hidden sm:inline">Pedir una demostración</span>
@@ -119,7 +119,7 @@ export function Pie() {
           */}
           <Link
             href="/#demostracion"
-            className="mt-3 inline-block text-sm font-semibold text-brand-red hover:underline"
+            className="mt-3 inline-block text-sm font-semibold text-plataforma hover:underline"
           >
             Pedir una demostración →
           </Link>

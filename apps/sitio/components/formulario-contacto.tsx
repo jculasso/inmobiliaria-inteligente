@@ -69,7 +69,7 @@ export function FormularioContacto() {
               min={c.type === 'number' ? 1 : undefined}
               // 16px: por debajo de eso iOS hace zoom al enfocar el campo y
               // arrastra la pantalla entera.
-              className="w-full rounded-brand border border-line bg-white px-3.5 py-2.5 text-base text-ink outline-none transition-colors focus:border-brand-red"
+              className="w-full rounded-brand border border-line bg-white px-3.5 py-2.5 text-base text-ink outline-none transition-colors focus:border-plataforma"
             />
           </label>
         ))}
@@ -95,7 +95,7 @@ export function FormularioContacto() {
         <button
           type="submit"
           disabled={estado === 'enviando'}
-          className="mt-1 rounded-brand bg-brand-red px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-brand-red-dark disabled:opacity-60"
+          className="mt-1 rounded-brand bg-plataforma px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-plataforma-dark disabled:opacity-60"
         >
           {estado === 'enviando' ? 'Enviando…' : 'Pedir una demostración'}
         </button>

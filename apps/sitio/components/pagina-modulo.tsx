@@ -49,7 +49,7 @@ export function Paso({
 }) {
   return (
     <li className="flex gap-5 border-t border-line pt-6">
-      <span className="mt-0.5 shrink-0 text-sm font-extrabold tabular-nums text-brand-red">
+      <span className="mt-0.5 shrink-0 text-sm font-extrabold tabular-nums text-plataforma">
         {String(numero).padStart(2, '0')}
       </span>
       <div>
@@ -95,7 +95,7 @@ export function PaginaModulo({
       <main>
         <section className={`${ANCHO} pb-4 pt-14 sm:pt-20`}>
           <div className="flex items-baseline gap-3">
-            <span className="text-sm font-extrabold tabular-nums text-brand-red">
+            <span className="text-sm font-extrabold tabular-nums text-plataforma">
               {actual.numero}
             </span>
             <Kicker>{actual.nombre}</Kicker>
@@ -119,10 +119,10 @@ export function PaginaModulo({
         <section className={`${ANCHO} py-16 sm:py-20`}>
           <Link
             href={siguiente.ruta}
-            className="group block rounded-brand border border-line p-7 transition-colors hover:border-brand-red sm:p-9"
+            className="group block rounded-brand border border-line p-7 transition-colors hover:border-plataforma sm:p-9"
           >
             <Kicker>Sigue el ciclo</Kicker>
-            <p className="mt-3 text-2xl font-extrabold text-ink group-hover:text-brand-red sm:text-3xl">
+            <p className="mt-3 text-2xl font-extrabold text-ink group-hover:text-plataforma sm:text-3xl">
               {siguiente.nombre} →
             </p>
           </Link>
