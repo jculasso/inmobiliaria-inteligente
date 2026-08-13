@@ -196,11 +196,18 @@ export function OperacionesTable({
         cual nunca se activaba. Dándole altura propia, el área de scroll es la
         tabla y el encabezado sí se queda.
 
-        60vh y no un cálculo contra el alto del encabezado: arriba hay barra de
-        módulo, navegación, título y buscador, y esa suma cambia entre pantallas.
-        Un porcentaje no se pasa nunca.
+        Un porcentaje y no un cálculo contra el alto del encabezado: arriba hay
+        barra de módulo, navegación, título y buscador, y esa suma cambia entre
+        pantallas.
+
+        Pero un porcentaje solo no alcanza, y esto se vio midiendo: el celular
+        apoyado de costado mide 375px de alto y ya pasa el ancho a partir del
+        cual se muestra la tabla, así que 60vh dejaba 4 filas a la vista —
+        volvía el problema que este arreglo viene a resolver. De ahí el piso de
+        20rem. El techo de 48rem es para los monitores altos, donde 60vh son
+        veinte filas y la tabla se come la pantalla.
       */}
-      <div className="hidden max-h-[60vh] overflow-x-auto overflow-y-auto overscroll-contain rounded-brand border border-line bg-white sm:block">
+      <div className="hidden max-h-[clamp(20rem,60vh,48rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-brand border border-line bg-white sm:block">
         <table className="w-full text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
             {/*

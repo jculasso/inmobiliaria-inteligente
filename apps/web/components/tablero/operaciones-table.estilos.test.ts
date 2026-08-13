@@ -19,7 +19,17 @@ describe('operaciones-table · el scroll del listado', () => {
   const contenedor = fuente.match(/<div className="hidden [^"]*sm:block"/)?.[0] ?? '';
 
   it('la tabla tiene altura propia, para que no crezca la página', () => {
-    expect(contenedor).toMatch(/max-h-\[\d+vh\]/);
+    expect(contenedor).toMatch(/max-h-\[[^\]]+\]/);
+  });
+
+  it('esa altura tiene un piso, o de costado el celular muestra cuatro filas', () => {
+    // Medido: un celular apoyado de costado son 812x375, y 812 ya pasa el ancho
+    // a partir del cual se muestra la tabla. Con 60vh pelado quedaban 4 filas
+    // visibles — exactamente el problema que este arreglo viene a resolver.
+    const altura = contenedor.match(/max-h-\[([^\]]+)\]/)?.[1] ?? '';
+    expect(altura).toMatch(/^clamp\(/);
+    const piso = altura.match(/^clamp\((\d+(?:\.\d+)?)rem/)?.[1];
+    expect(Number(piso)).toBeGreaterThanOrEqual(18);
   });
 
   it('el scroll vertical queda dentro de la tabla', () => {
