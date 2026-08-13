@@ -51,7 +51,7 @@ timeout.
 
 | Archivo | De dónde |
 |---|---|
-| `tasador-informe.png` | Tasador → Tasaciones → **Ver** |
+| `tasador-informe.png` | Tasador → Tasaciones → **Ver**. La de Belgrano 2087, que es la única de la demostración con fotos, servicios y amenities cargados |
 | `protocolo-informe.png` | Protocolo → una propiedad → **Informe** |
 | `protocolo-reporte-semanal.png` | Protocolo → **Reporte** → descargar |
 
