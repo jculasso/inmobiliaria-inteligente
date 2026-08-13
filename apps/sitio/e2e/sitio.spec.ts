@@ -178,3 +178,40 @@ test('el formulario rechaza datos incompletos sin recargar la página', async ({
   // Los campos son `required`: el navegador frena el envío y la página sigue ahí.
   await expect(page.locator('form')).toBeVisible();
 });
+
+test('la portada hace las cinco preguntas de la presentación, en orden', async ({ page }) => {
+  // El sitio y la presentación comercial cuentan lo mismo. Si en la reunión se
+  // muestran cinco preguntas y el sitio ordena el contenido de otra manera, el
+  // prospecto que entra después no reconoce nada.
+  await page.goto('/');
+  const preguntas = await page
+    .locator('h2')
+    .evaluateAll((hs) => hs.map((h) => h.textContent?.trim()).filter((t) => t?.startsWith('¿')));
+  expect(preguntas).toEqual([
+    '¿Qué es?',
+    '¿Para qué sirve?',
+    '¿Por qué contratarlo?',
+    '¿Cómo se contrata?',
+    '¿Quiénes somos?',
+  ]);
+});
+
+test('en el sitio no aparece ningún importe', async ({ page }) => {
+  // La regla está acordada en docs/specs/sitio-comercial.md: los precios se
+  // dicen en una reunión, donde hay alguien que explica qué incluye cada línea
+  // y hace la cuenta para el tamaño de esa inmobiliaria. Un número suelto en
+  // una página se compara contra el de cualquier otro sin saber contra qué.
+  //
+  // El riesgo real es el copiar y pegar: la presentación SÍ los lleva, y el
+  // texto de las dos sale del mismo lugar.
+  for (const ruta of ['/', '/tasador', '/tablero']) {
+    await page.goto(ruta);
+    const texto = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+    expect(texto, `hay un importe en ${ruta}`).not.toMatch(/AR\$|US\$|\$\s?\d/);
+  }
+
+  // Y que los tres conceptos sigan estando: lo que no se publica es el monto,
+  // no la estructura. Que se cobra por usuario y no por módulo juega a favor.
+  await page.goto('/');
+  await expect(page.getByText('Consultar')).toHaveCount(3);
+});

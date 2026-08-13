@@ -359,3 +359,60 @@ donde hay alguien para explicarlos.
 
 Si se decide publicarlos, hay que cambiar primero esa regla acá arriba y después
 el sitio. No al revés.
+
+---
+
+# 12. El sitio dice lo mismo que la presentación (13/08/2026)
+
+**La decisión:** el sitio y la presentación comercial cuentan lo mismo, en el
+mismo orden y con las mismas palabras. El sitio se reordena en las **cinco
+preguntas** que se hace el dueño de una inmobiliaria:
+
+| | Pregunta | La respuesta, en una línea |
+|---|---|---|
+| 01 | **¿Qué es?** | Un tablero de control y un CRM de tasaciones, montados sobre el sistema que ya usa. |
+| 02 | **¿Para qué sirve?** | Para tomar cinco decisiones con el número delante, y no con la impresión de la semana. |
+| 03 | **¿Por qué contratarlo?** | Porque hoy esas respuestas cuestan una semana de planilla, y llegan tarde. |
+| 04 | **¿Cómo se contrata?** | Tres pasos y una firma. |
+| 05 | **¿Quiénes somos?** | Dos directores de sistemas que trabajan juntos desde hace treinta años. |
+
+Quien vio la reunión y después entra al sitio tiene que reconocer el recorrido.
+Y quien llega al sitio primero llega a la reunión con las preguntas ya
+ordenadas. Un test de navegador comprueba que las cinco estén, en ese orden.
+
+## El vocabulario
+
+Se escribe en el idioma del dueño, no en el de sistemas: **facturación bruta,
+ticket promedio, puntas, margen, comisión, pendiente de cobro, tasa de
+captación**. Nada de «KPIs», «dashboards» ni «métricas».
+
+Dos frases que valen la pena conservar porque son las que enganchan:
+
+- **«La tasa de captación es la que casi nadie mide: dice si el equipo está
+  tasando bien o nada más juntando visitas.»**
+- **«Deja de haber una planilla con la facturación dando vueltas por WhatsApp.»**
+
+## Los precios: la regla se mantiene, con una excepción de forma
+
+**Los importes siguen sin publicarse.** La regla de la sección «Reglas que
+aplican a todo el texto» no se toca, y ahora la protege un test que recorre las
+tres páginas buscando cualquier cifra en pesos o en dólares.
+
+**Lo que sí aparece es la estructura**, con la palabra **«Consultar»** en lugar
+del monto:
+
+| Concepto | En el sitio | En la presentación |
+|---|---|---|
+| Implementación · por única vez, dos sesiones | Consultar | AR$ 300.000 |
+| Mensual · incluye dos perfiles de dirección | Consultar | AR$ 150.000 |
+| Por vendedor · mensual | Consultar | AR$ 10.000 |
+
+El porqué: en una reunión hay alguien que explica qué incluye cada línea y hace
+la cuenta para el tamaño de esa inmobiliaria; en una página, un número suelto se
+compara contra el de cualquier otro sin saber contra qué. Pero **que se cobre
+por usuario y no por módulo sí conviene publicarlo** — es lo que distingue la
+propuesta de una licencia cerrada.
+
+**El riesgo concreto que cuida el test es el copiar y pegar:** el texto del sitio
+y el de la presentación salen del mismo lugar, y la presentación sí lleva los
+montos.
