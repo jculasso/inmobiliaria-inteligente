@@ -46,11 +46,11 @@ function Modulo({
     <article className="grid gap-8 border-t border-line pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-12">
       <div>
         <div className="flex items-baseline gap-3">
-          <span className="text-sm font-extrabold tabular-nums text-brand-red">{numero}</span>
+          <span className="text-sm font-extrabold tabular-nums text-plataforma">{numero}</span>
           <Kicker>{nombre}</Kicker>
         </div>
         <h3 className="mt-3 max-w-2xl text-balance text-2xl font-extrabold leading-tight sm:text-3xl">
-          <Link href={ruta} className="transition-colors hover:text-brand-red">
+          <Link href={ruta} className="transition-colors hover:text-plataforma">
             {titular}
           </Link>
         </h3>
@@ -66,7 +66,7 @@ function Modulo({
               <span className="text-[15px] font-bold text-ink">{sale}</span>
             </p>
           )}
-          <Link href={ruta} className="text-[15px] font-bold text-brand-red hover:underline">
+          <Link href={ruta} className="text-[15px] font-bold text-plataforma hover:underline">
             Ver {nombre} →
           </Link>
         </div>
@@ -104,7 +104,7 @@ export default function Home() {
         <section className={`${ANCHO} pb-16 pt-16 sm:pb-24 sm:pt-24`}>
           <div className="flex items-center gap-2">
             <svg viewBox="0 0 100 100" className="h-5 w-5" aria-hidden>
-              <rect width="100" height="100" rx="22" fill="#C1121F" />
+              <rect width="100" height="100" rx="22" fill="#173F6B" />
               <path
                 d="M22 50 L50 27 L78 50"
                 fill="none"
@@ -114,7 +114,7 @@ export default function Home() {
                 strokeLinejoin="round"
               />
             </svg>
-            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-brand-red">
+            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-plataforma">
               Inmobiliaria Inteligente
             </span>
           </div>
@@ -122,7 +122,7 @@ export default function Home() {
           <h1 className="mt-10 max-w-4xl text-balance text-[2.15rem] font-extrabold leading-[1.08] tracking-tight sm:text-6xl">
             Su CRM guarda las propiedades.
             <br className="hidden sm:block" />{' '}
-            <span className="text-brand-red">Nosotros le decimos cómo va su negocio.</span>
+            <span className="text-plataforma">Nosotros le decimos cómo va su negocio.</span>
           </h1>
 
           <p className="mt-7 max-w-2xl text-lg leading-relaxed text-muted">
@@ -134,7 +134,7 @@ export default function Home() {
           <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
             <a
               href="#demostracion"
-              className="rounded-brand bg-brand-red px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-brand-red-dark"
+              className="rounded-brand bg-plataforma px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-plataforma-dark"
             >
               Pedir una demostración
             </a>
@@ -366,7 +366,7 @@ export default function Home() {
         </section>
 
         {/* ─────────── el reporte de los lunes ─────────── */}
-        <section className="bg-brand-red py-16 text-white sm:py-24">
+        <section className="bg-plataforma py-16 text-white sm:py-24">
           <div className={`${ANCHO} grid gap-12 lg:grid-cols-[1fr_minmax(0,380px)] lg:items-center lg:gap-16`}>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70 sm:text-xs">
@@ -433,7 +433,7 @@ export default function Home() {
           </p>
 
           <div className="mt-12 grid gap-10 sm:grid-cols-2 sm:gap-12">
-            <div className="border-t-2 border-brand-red pt-6">
+            <div className="border-t-2 border-plataforma pt-6">
               <h3 className="text-xl font-extrabold">Javier Culasso</h3>
               <p className="mt-2 text-[15px] font-bold leading-snug text-ink">
                 CIO del Año de Argentina, 1999
@@ -456,7 +456,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <div className="border-t-2 border-brand-red pt-6">
+            <div className="border-t-2 border-plataforma pt-6">
               <h3 className="text-xl font-extrabold">Bernardo Falconi</h3>
               <p className="mt-2 text-[15px] font-bold leading-snug text-ink">
                 Veintiún años en Cargill

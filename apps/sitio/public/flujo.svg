@@ -6,8 +6,8 @@
       <path d="M0 0 L10 5 L0 10 z" fill="#C9CACC"/>
     </marker>
     <linearGradient id="bandaCierre" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#C1121F"/>
-      <stop offset="1" stop-color="#8F0D18"/>
+      <stop offset="0" stop-color="#173F6B"/>
+      <stop offset="1" stop-color="#0F2A4A"/>
     </linearGradient>
   </defs>
 
@@ -16,14 +16,14 @@
   <!-- ─────────── encabezado ─────────── -->
   <text x="60" y="62" font-size="13" font-weight="700" fill="#6B6B6B" letter-spacing="2.4">EL CICLO DE UNA PROPIEDAD</text>
   <text x="60" y="104" font-size="30" font-weight="800" fill="#1D1D1F">Del primer llamado del propietario hasta la operación cerrada.</text>
-  <rect x="60" y="126" width="72" height="4" fill="#C1121F"/>
+  <rect x="60" y="126" width="72" height="4" fill="#173F6B"/>
 
   <!-- ─────────── etapa 1 · Tasador ─────────── -->
   <g>
     <rect x="60" y="176" width="292" height="238" rx="16" fill="#FFFFFF" stroke="#E6E6E6"/>
-    <circle cx="94" cy="212" r="15" fill="#C1121F"/>
+    <circle cx="94" cy="212" r="15" fill="#173F6B"/>
     <text x="94" y="217" font-size="14" font-weight="800" fill="#FFFFFF" text-anchor="middle">1</text>
-    <text x="122" y="217" font-size="12" font-weight="700" fill="#C1121F" letter-spacing="1.6">TASADOR</text>
+    <text x="122" y="217" font-size="12" font-weight="700" fill="#173F6B" letter-spacing="1.6">TASADOR</text>
 
     <text x="88" y="262" font-size="21" font-weight="800" fill="#1D1D1F">Se tasa la propiedad</text>
     <text x="88" y="294" font-size="14" fill="#6B6B6B">Comparables del mercado y un rango</text>
@@ -38,10 +38,10 @@
 
   <!-- ─────────── etapa 2 · Protocolo (la pieza central) ─────────── -->
   <g>
-    <rect x="424" y="160" width="522" height="270" rx="16" fill="#FFFFFF" stroke="#C1121F" stroke-width="2"/>
-    <circle cx="458" cy="196" r="15" fill="#C1121F"/>
+    <rect x="424" y="160" width="522" height="270" rx="16" fill="#FFFFFF" stroke="#173F6B" stroke-width="2"/>
+    <circle cx="458" cy="196" r="15" fill="#173F6B"/>
     <text x="458" y="201" font-size="14" font-weight="800" fill="#FFFFFF" text-anchor="middle">2</text>
-    <text x="486" y="201" font-size="12" font-weight="700" fill="#C1121F" letter-spacing="1.6">PROTOCOLO 5 SEMANAS</text>
+    <text x="486" y="201" font-size="12" font-weight="700" fill="#173F6B" letter-spacing="1.6">PROTOCOLO 5 SEMANAS</text>
 
     <text x="452" y="244" font-size="21" font-weight="800" fill="#1D1D1F">Captada, empieza el método</text>
     <text x="452" y="270" font-size="14" fill="#6B6B6B">29 acciones concretas. El sistema avisa lo que se atrasa.</text>
@@ -57,8 +57,8 @@
       <text x="594" y="334" font-size="11" fill="#1E9E5A" text-anchor="middle">Difusión</text>
 
       <rect x="648" y="292" width="88" height="54" rx="7" fill="#FBEAEC" stroke="#EFC2C7"/>
-      <text x="692" y="313" font-size="12" font-weight="700" fill="#C1121F" text-anchor="middle">S3</text>
-      <text x="692" y="334" font-size="11" fill="#C1121F" text-anchor="middle">2 atrasadas</text>
+      <text x="692" y="313" font-size="12" font-weight="700" fill="#173F6B" text-anchor="middle">S3</text>
+      <text x="692" y="334" font-size="11" fill="#173F6B" text-anchor="middle">2 atrasadas</text>
 
       <rect x="746" y="292" width="88" height="54" rx="7" fill="#FBF3E4" stroke="#E8D3A8"/>
       <text x="790" y="313" font-size="12" font-weight="700" fill="#B7791F" text-anchor="middle">S4</text>
@@ -79,9 +79,9 @@
   <!-- ─────────── etapa 3 · Tablero ─────────── -->
   <g>
     <rect x="1018" y="176" width="162" height="238" rx="16" fill="#FFFFFF" stroke="#E6E6E6"/>
-    <circle cx="1052" cy="212" r="15" fill="#C1121F"/>
+    <circle cx="1052" cy="212" r="15" fill="#173F6B"/>
     <text x="1052" y="217" font-size="14" font-weight="800" fill="#FFFFFF" text-anchor="middle">3</text>
-    <text x="1080" y="217" font-size="12" font-weight="700" fill="#C1121F" letter-spacing="1.6">TABLERO</text>
+    <text x="1080" y="217" font-size="12" font-weight="700" fill="#173F6B" letter-spacing="1.6">TABLERO</text>
 
     <text x="1046" y="262" font-size="21" font-weight="800" fill="#1D1D1F">Se vende</text>
     <text x="1046" y="294" font-size="14" fill="#6B6B6B">Las dos puntas,</text>

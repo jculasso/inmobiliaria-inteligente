@@ -1,10 +1,22 @@
 @import 'tailwindcss';
 @import '@vacker/ui/styles/tokens.css';
 
-/* Los tokens de marca viven en @vacker/ui: el sitio comercial y el producto
-   tienen que verse de la misma familia. Si el rojo del sitio no es el rojo de
-   la aplicación, la primera captura de pantalla lo delata. */
+/* Los tokens de marca viven en @vacker/ui, pero el sitio NO usa el mismo color
+   ni la misma letra que el producto, y es a propósito.
+
+   El comentario anterior decía que si el rojo del sitio no era el rojo de la
+   aplicación, la primera captura lo delataba. Esa premisa ya no vale: el color
+   del producto lo pone CADA inmobiliaria (Vacker rojo, Alteva verde), así que
+   no hay un solo rojo con el que coincidir. Lo que la captura tiene que mostrar
+   es justamente eso — el sistema toma la marca del cliente, no la nuestra.
+
+   Acá manda la marca de la PLATAFORMA: azul `--color-plataforma` y Figtree.
+   Montserrat es la tipografía de Vacker y se queda en el producto. */
 @source '../../../packages/ui/src';
+
+@theme {
+  --font-sans: 'Figtree', var(--font-figtree), system-ui, -apple-system, sans-serif;
+}
 
 html {
   scroll-behavior: smooth;
