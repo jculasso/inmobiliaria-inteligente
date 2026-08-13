@@ -21,6 +21,12 @@ import { fileURLToPath } from 'node:url';
  * La tipografía va incrustada desde los .ttf del repositorio, los mismos que
  * usan los informes: Montserrat no está instalada en la máquina y el navegador
  * la reemplazaría por otra sin avisar.
+ *
+ * El acento es el AZUL de la plataforma (#173F6B), no el rojo de Vacker. Estos
+ * documentos los firma Inmobiliaria Inteligente y algunos van a manos de un
+ * prospecto: llevar el color de un cliente sería presentarse con la marca de
+ * otro. Es la misma razón por la que existe el token `plataforma` en el
+ * sistema de diseño.
  */
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -143,7 +149,7 @@ const HTML = `<!doctype html>
 
   h1 { font-size: 27pt; font-weight: 800; line-height: 1.14; margin: 0 0 4pt; letter-spacing: -0.4pt; }
   h2 { font-size: 15pt; font-weight: 800; margin: 22pt 0 7pt; line-height: 1.25;
-       padding-top: 9pt; border-top: 2px solid #C1121F; break-after: avoid; }
+       padding-top: 9pt; border-top: 2px solid #173F6B; break-after: avoid; }
   h1 + h2 { border-top: 0; padding-top: 0; margin-top: 3pt; font-size: 13pt;
             font-weight: 700; color: #6B6B6B; }
   h3 { font-size: 11.5pt; font-weight: 700; margin: 15pt 0 5pt; break-after: avoid; }
@@ -157,13 +163,13 @@ const HTML = `<!doctype html>
   li { margin-bottom: 4pt; }
 
   blockquote { margin: 10pt 0; padding: 9pt 12pt; background: #F4F5F7;
-               border-left: 3px solid #C1121F; font-size: 10pt; }
+               border-left: 3px solid #173F6B; font-size: 10pt; }
   blockquote p { margin: 0; }
 
   table { width: 100%; border-collapse: collapse; margin: 9pt 0 12pt;
           font-size: 9.5pt; break-inside: avoid; }
   th { text-align: left; font-weight: 700; font-size: 8pt; letter-spacing: 0.7pt;
-       text-transform: uppercase; color: #6B6B6B; border-bottom: 1.5px solid #C1121F;
+       text-transform: uppercase; color: #6B6B6B; border-bottom: 1.5px solid #173F6B;
        padding: 5pt 8pt 5pt 0; }
   td { padding: 6pt 8pt 6pt 0; border-bottom: 1px solid #E6E6E6; vertical-align: top; }
 
