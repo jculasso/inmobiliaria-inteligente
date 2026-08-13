@@ -45,7 +45,9 @@ export const metadata: Metadata = {
 
 /** Color de la barra del navegador y del sistema al abrir la app instalada. */
 export const viewport: Viewport = {
-  themeColor: '#C1121F',
+  // El azul de la plataforma, no el rojo de Vacker: pinta la barra del
+  // navegador en el celular y es una sola app para todas las inmobiliarias.
+  themeColor: '#173F6B',
 };
 
 export default function RootLayout({
