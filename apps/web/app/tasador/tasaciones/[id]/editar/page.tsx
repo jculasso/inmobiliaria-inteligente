@@ -9,5 +9,16 @@ export default async function EditarTasacionPage({ params }: { params: Promise<{
   const { id } = await params;
   const tasacion = await getTasacion(ctx.accessToken, id);
 
-  return <TasacionWizard tasacion={tasacion} />;
+  // Editar NO reabre el criterio: se usa el que la tasación tiene congelado,
+  // para que corregirle una coma al nombre del cliente no le cambie el total a
+  // un informe ya entregado.
+  return (
+    <TasacionWizard
+      tasacion={tasacion}
+      coeficientes={{
+        semicubierta: tasacion.coefSemicubierta,
+        descubierta: tasacion.coefDescubierta,
+      }}
+    />
+  );
 }

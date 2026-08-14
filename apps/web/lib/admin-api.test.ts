@@ -18,7 +18,7 @@ const TENANT = {
   plan: 'basico',
   modulos: { tablero: true, tasador: false, todo: false, protocolo: false, publicacion: false },
   estado: 'activo',
-  config: {},
+  config: { coefSemicubierta: 1, coefDescubierta: 0.3 },
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 

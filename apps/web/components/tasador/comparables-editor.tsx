@@ -12,7 +12,7 @@ import {
   type TipoPrecioComparable,
   type TipoPropiedad,
 } from '@vacker/types';
-import { valuationSurface, type AnalisisComparables } from '@vacker/domain';
+import { valuationSurface, type AnalisisComparables, type Coeficientes } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { ConfianzaBadge } from './confianza-badge';
@@ -51,19 +51,23 @@ interface Props {
   onChange: (comparables: ComparableInput[]) => void;
   /** Análisis (USD/m² ponderado, similitud por comparable, confianza) calculado en el wizard. */
   analisis: AnalisisComparables;
+  /** El criterio de la tasación: el comparable se mide con la misma vara que la propiedad. */
+  coeficientes: Coeficientes;
 }
 
 /** Editor de comparables (0, o entre 3 y 6). USD/m², similitud, ponderación y confianza en vivo. */
-export function ComparablesEditor({ comparables, onChange, analisis }: Props) {
+export function ComparablesEditor({ comparables, onChange, analisis, coeficientes }: Props) {
   function actualizar(i: number, cambios: Partial<ComparableInput>) {
     onChange(
       comparables.map((c, idx) => {
         if (idx !== i) return c;
         const next = { ...c, ...cambios };
-        // La superficie de valuación se deriva del desglose (cubierta + semi + descubierta×0.3, o terreno según el tipo).
+        // La superficie de valuación sale del desglose, con los coeficientes de
+        // la tasación (o del terreno, según el tipo).
         next.superficie = valuationSurface(
           { supCubierta: next.supCubierta, supSemi: next.supSemi, supDescubierta: next.supDescubierta, supTerreno: next.supTerreno },
           next.tipoComp,
+          coeficientes,
         );
         return next;
       }),

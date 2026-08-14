@@ -1,4 +1,4 @@
-import { MODULO_KEYS } from '@vacker/types';
+import { MODULO_KEYS, configPorDefecto } from '@vacker/types';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -14,7 +14,7 @@ const TENANT: TenantDto = {
   plan: 'enterprise',
   modulos: { tablero: true, tasador: true, todo: false, protocolo: false, publicacion: false },
   estado: 'activo',
-  config: {},
+  config: configPorDefecto(),
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 

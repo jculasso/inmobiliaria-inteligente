@@ -24,12 +24,21 @@ export const TenantDtoSchema = z.object({
 });
 export type TenantDto = z.infer<typeof TenantDtoSchema>;
 
+/*
+ * `config` va PARCIAL al escribir y completa al leer.
+ *
+ * El servicio mergea la configuración contra la guardada, justamente para que
+ * el admin pueda mandar solo el campo que edita —el que sube un logo no manda
+ * los colores ni el criterio de tasación—. Exigir el objeto entero al escribir
+ * obligaría a cada llamador a repetir lo que no está cambiando, que es la
+ * manera más segura de pisar algo sin querer.
+ */
 export const CreateTenantSchema = z.object({
   nombre: z.string().trim().min(1),
   slug: SlugSchema,
   plan: PlanTenantSchema.default('basico'),
   modulos: ModulosTenantSchema.optional(),
-  config: TenantConfigSchema.optional(),
+  config: TenantConfigSchema.partial().optional(),
 });
 export type CreateTenant = z.infer<typeof CreateTenantSchema>;
 
@@ -40,7 +49,8 @@ export const UpdateTenantSchema = z
     plan: PlanTenantSchema,
     modulos: ModulosTenantSchema,
     estado: z.enum(['activo', 'suspendido']),
-    config: TenantConfigSchema,
+    /** Parcial: se mergea contra la guardada. Ver el comentario de arriba. */
+    config: TenantConfigSchema.partial(),
   })
   .partial();
 export type UpdateTenant = z.infer<typeof UpdateTenantSchema>;

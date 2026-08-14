@@ -28,6 +28,11 @@ const TASACION = {
   supDescubierta: 0,
   supTerreno: null,
   superficieTotal: 80,
+  // La API no los manda en este fixture y el schema les pone su valor por
+  // defecto: el criterio de Vacker. Que el esperado los traiga es la prueba de
+  // que una respuesta vieja de la API no deja la pantalla sin criterio.
+  coefSemicubierta: 1,
+  coefDescubierta: 0.3,
   dormitorios: null,
   banos: null,
   toilette: null,

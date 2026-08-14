@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MODULOS_DEFAULT, type ModulosTenant } from '@vacker/types';
+import { MODULOS_DEFAULT, type ModulosTenant, configPorDefecto } from '@vacker/types';
 import { HomeView } from './home-view';
 
 vi.mock('./logout-button', () => ({ LogoutButton: () => <button>Cerrar sesión</button> }));
@@ -15,7 +15,7 @@ function tenant(modulos: Partial<ModulosTenant> = { tasador: true, todo: true },
     nombre,
     plan: 'enterprise' as const,
     modulos: { ...MODULOS_DEFAULT, ...modulos },
-    config: {},
+    config: configPorDefecto(),
   };
 }
 
@@ -152,7 +152,7 @@ describe('HomeView · de quién es la marca', () => {
   it('con sesión, el color del cliente le gana a la plataforma', () => {
     const conColor = {
       ...tenant(),
-      config: { colorPrimario: '#C1121F', colorPrimarioOscuro: '#8F0D18' },
+      config: { ...configPorDefecto(), colorPrimario: '#C1121F', colorPrimarioOscuro: '#8F0D18' },
     };
     const { container } = render(
       <HomeView
@@ -211,7 +211,7 @@ describe('HomeView · de quién es la marca', () => {
           nombre: 'Demo',
           fotoUrl: null,
           roles: ['vendedor'],
-          tenant: { ...tenant(), config: { colorPrimario: '#C1121F' } },
+          tenant: { ...tenant(), config: { ...configPorDefecto(), colorPrimario: '#C1121F' } },
         }}
       />,
     );

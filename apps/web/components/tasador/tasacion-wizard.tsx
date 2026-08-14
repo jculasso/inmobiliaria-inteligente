@@ -39,7 +39,7 @@ import {
   TipoPropiedadSchema,
 } from '@vacker/types';
 import { z } from 'zod';
-import { analizarComparables, superficieTotal, valoresSugeridos, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
+import { analizarComparables, superficieTotal, valoresSugeridos, type Coeficientes, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTasacion, generarInforme, updateTasacion } from '../../lib/tasador-api';
@@ -70,9 +70,19 @@ function opcionesValidas<T extends string>(schema: z.ZodType<T>, values: readonl
 
 interface Props {
   tasacion?: TasacionDto;
+  /**
+   * Cuánto pesa cada metro semicubierto y descubierto.
+   *
+   * Al crear vienen de la inmobiliaria; al editar, de la tasación —que los
+   * tiene congelados desde el día que se hizo—. La página decide cuál pasa, y
+   * por eso la prop es obligatoria: si tuviera un valor por defecto, una
+   * inmobiliaria con otro criterio vería en pantalla el total de Vacker
+   * mientras el servidor guarda el suyo, y los dos números no coincidirían.
+   */
+  coeficientes: Coeficientes;
 }
 
-export function TasacionWizard({ tasacion }: Props) {
+export function TasacionWizard({ tasacion, coeficientes }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tasacionId, setTasacionId] = useState<string | null>(tasacion?.id ?? null);
@@ -186,11 +196,14 @@ export function TasacionWizard({ tasacion }: Props) {
     tasacion?.estrategiaComercial?.observacionesEstrategia ?? '',
   );
 
-  const superficieTotalPreview = superficieTotal({
-    cubierta: Number(supCubierta) || 0,
-    semicubierta: Number(supSemicubierta) || 0,
-    descubierta: Number(supDescubierta) || 0,
-  });
+  const superficieTotalPreview = superficieTotal(
+    {
+      cubierta: Number(supCubierta) || 0,
+      semicubierta: Number(supSemicubierta) || 0,
+      descubierta: Number(supDescubierta) || 0,
+    },
+    coeficientes,
+  );
 
   const analisisComparables = useMemo(() => {
     const propiedad: PropiedadCalc = {
@@ -205,8 +218,8 @@ export function TasacionWizard({ tasacion }: Props) {
       cochera,
     };
     const comps: ComparableCalc[] = comparables.map((c) => ({ ...c, cocheraComp: c.cochera ? 'Sí' : 'No' }));
-    return analizarComparables(comps, propiedad);
-  }, [comparables, tipoPropiedad, supCubierta, supSemicubierta, supDescubierta, supTerreno, dormitorios, banos, estadoInmueble, cochera]);
+    return analizarComparables(comps, propiedad, coeficientes);
+  }, [coeficientes, comparables, tipoPropiedad, supCubierta, supSemicubierta, supDescubierta, supTerreno, dormitorios, banos, estadoInmueble, cochera]);
 
   // La sugerencia usa la referencia PONDERADA (no el promedio simple), como el prototipo.
   const sugerencia = useMemo(() => {
@@ -479,6 +492,7 @@ export function TasacionWizard({ tasacion }: Props) {
               setSupDescubierta={setSupDescubierta}
               superficieTotalPreview={superficieTotalPreview}
               supTerreno={supTerreno}
+              coeficientes={coeficientes}
               setSupTerreno={setSupTerreno}
               dormitorios={dormitorios}
               setDormitorios={setDormitorios}
@@ -556,7 +570,12 @@ export function TasacionWizard({ tasacion }: Props) {
             />
           )}
           {seccionActiva === 4 && (
-            <Seccion4Comparables comparables={comparables} setComparables={setComparables} analisis={analisisComparables} />
+            <Seccion4Comparables
+              comparables={comparables}
+              setComparables={setComparables}
+              analisis={analisisComparables}
+              coeficientes={coeficientes}
+            />
           )}
           {seccionActiva === 5 && (
             <Seccion5Valores

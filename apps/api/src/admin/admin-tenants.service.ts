@@ -99,6 +99,8 @@ export class AdminTenantsService {
     const path = `${id}/logo${ext}`;
     const logoUrl = await this.storage.upload(LOGO_BUCKET, path, file.buffer, file.mimetype);
 
+    // Solo el logo: el resto de la configuración —colores, criterio de
+    // tasación— se conserva. `update` mergea contra lo que ya está guardado.
     return this.update(id, { config: { logoUrl } });
   }
 

@@ -39,6 +39,16 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
   const [colorPrimario, setColorPrimario] = useState(tenant?.config.colorPrimario ?? '');
   const [colorPrimarioOscuro, setColorPrimarioOscuro] = useState(tenant?.config.colorPrimarioOscuro ?? '');
   const [nombreCorto, setNombreCorto] = useState(tenant?.config.nombreCorto ?? '');
+  /*
+   * En PORCENTAJE y no en 0..1: quien carga esto piensa «la descubierta al
+   * 30%», no «0,3». La conversión se hace al guardar, en un solo lugar.
+   */
+  const [pctSemicubierta, setPctSemicubierta] = useState(
+    String(Math.round((tenant?.config.coefSemicubierta ?? 1) * 100)),
+  );
+  const [pctDescubierta, setPctDescubierta] = useState(
+    String(Math.round((tenant?.config.coefDescubierta ?? 0.3) * 100)),
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,6 +66,10 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
         colorPrimario: colorPrimario || null,
         colorPrimarioOscuro: colorPrimarioOscuro || null,
         nombreCorto: nombreCorto || null,
+        // Vacío se lee como el criterio de siempre, no como cero: dejar el
+        // campo en blanco no puede significar «la semicubierta no cuenta».
+        coefSemicubierta: (Number(pctSemicubierta) || 100) / 100,
+        coefDescubierta: (Number(pctDescubierta) || 0) / 100,
       };
       if (tenant) {
         await updateTenant(accessToken, tenant.id, { nombre, slug, plan, modulos, estado, config });
@@ -195,6 +209,47 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
               </div>
             </Campo>
           </div>
+        </Seccion>
+
+        <Seccion titulo="Criterio de tasación" icono="📐" full>
+          <p className="mb-3 text-xs leading-relaxed text-muted">
+            Cuánto pesa cada metro que no es cubierto, al calcular la superficie de una tasación. El
+            metro cubierto siempre cuenta entero. Vacker usa <strong>100%</strong> y{' '}
+            <strong>30%</strong>; si esta inmobiliaria usa otro criterio, se carga acá.
+          </p>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <Campo label="Semicubierta (%)" hint="Balcones, galerías, cocheras cubiertas.">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={pctSemicubierta}
+                onChange={(e) => setPctSemicubierta(e.target.value)}
+                placeholder="100"
+                className={inputClass}
+              />
+            </Campo>
+            <Campo label="Descubierta (%)" hint="Patios, jardines, terrazas sin techo.">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={pctDescubierta}
+                onChange={(e) => setPctDescubierta(e.target.value)}
+                placeholder="30"
+                className={inputClass}
+              />
+            </Campo>
+          </div>
+          {/*
+            El aviso importa: es la diferencia entre «esto cambia lo que viene»
+            y «esto reescribe lo que ya entregué».
+          */}
+          <p className="mt-3 rounded-brand bg-surface px-3 py-2 text-xs leading-relaxed text-muted">
+            Cambiarlo afecta a las tasaciones <strong>nuevas</strong>. Las que ya existen conservan
+            el criterio con el que se hicieron, para que un informe ya entregado al propietario siga
+            diciendo lo mismo.
+          </p>
         </Seccion>
 
         {error && (

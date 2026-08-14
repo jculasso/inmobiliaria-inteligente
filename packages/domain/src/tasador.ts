@@ -8,9 +8,54 @@ export interface SuperficiesInput {
   descubierta: number;
 }
 
-/** Superficie total = cubierta + semicubierta (100%) + descubierta (30%). */
-export function superficieTotal({ cubierta, semicubierta, descubierta }: SuperficiesInput): number {
-  return cubierta + semicubierta + descubierta * 0.3;
+/**
+ * Con cuánto pesa cada metro que no es cubierto.
+ *
+ * No es una constante universal: cada inmobiliaria tasa con su criterio. Vacker
+ * cuenta la semicubierta entera y la descubierta al 30%; otras usan otros
+ * números, y el que se equivoca no se entera hasta que un colega le discute la
+ * valuación.
+ */
+export interface Coeficientes {
+  /** 0..1 — cuánto de cada metro semicubierto cuenta. Vacker: 1 (el 100%). */
+  semicubierta: number;
+  /** 0..1 — cuánto de cada metro descubierto cuenta. Vacker: 0,3 (el 30%). */
+  descubierta: number;
+}
+
+/**
+ * El criterio de Vacker, que es el que tenía escrito el sistema antes de que
+ * esto fuera configurable.
+ *
+ * Sirve para dos cosas y para nada más: el valor por defecto de una
+ * inmobiliaria nueva, y el relleno de las tasaciones que ya existían. NO se usa
+ * como respaldo cuando falta el dato — ver abajo por qué.
+ */
+export const COEFICIENTES_POR_DEFECTO: Coeficientes = { semicubierta: 1, descubierta: 0.3 };
+
+/**
+ * Superficie total = cubierta + semicubierta×coef + descubierta×coef.
+ *
+ * `coef` es OBLIGATORIO a propósito, aunque incomode. Si tuviera un valor por
+ * defecto, el que se olvide de pasarlo obtendría el criterio de Vacker en
+ * silencio y con la cuenta bien hecha — el error solo aparecería en el número
+ * final de una tasación de otra inmobiliaria, meses después. Siendo
+ * obligatorio, TypeScript no compila hasta que cada lugar decida cuál usar.
+ */
+export function superficieTotal(
+  { cubierta, semicubierta, descubierta }: SuperficiesInput,
+  coef: Coeficientes,
+): number {
+  return cubierta + semicubierta * coef.semicubierta + descubierta * coef.descubierta;
+}
+
+/** «cubierta + semicubierta + 30% descubierta», armado con los coeficientes reales. */
+export function formulaEnPalabras(coef: Coeficientes): string {
+  const parte = (nombre: string, c: number) =>
+    c === 1 ? nombre : c === 0 ? null : `${Math.round(c * 100)}% ${nombre}`;
+  return ['cubierta', parte('semicubierta', coef.semicubierta), parte('descubierta', coef.descubierta)]
+    .filter(Boolean)
+    .join(' + ');
 }
 
 export interface Comparable {

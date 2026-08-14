@@ -218,6 +218,11 @@ model Tasacion {
   supDescubierta   Decimal  @default(0) @map("sup_descubierta") @db.Decimal(10, 2)
   supTerreno       Decimal? @map("sup_terreno") @db.Decimal(10, 2)
   superficieTotal  Decimal  @map("superficie_total") @db.Decimal(10, 2) // derivada (@vacker/domain), recalculada en cada write
+  // El criterio con el que se calculó ESTA tasación, congelado al crearla.
+  // No se lee de la inmobiliaria cada vez: si mañana cambia su criterio, un
+  // informe ya entregado al propietario tiene que seguir diciendo lo mismo.
+  coefSemicubierta Decimal  @default(1) @map("coef_semicubierta") @db.Decimal(4, 3)
+  coefDescubierta  Decimal  @default(0.3) @map("coef_descubierta") @db.Decimal(4, 3)
   dormitorios      Int?
   banos            Int?
   toilette         Int?

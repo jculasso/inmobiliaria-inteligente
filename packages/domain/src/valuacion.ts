@@ -1,6 +1,11 @@
 // Análisis de comparables y valuación ponderada. Portado 1:1 del prototipo
 // (Tasador_de_Propiedades_Vacker_Personal_Final_Corregido.html) — puro y
 // compartido back/front. Trabaja con números (no strings de formulario).
+//
+// Los coeficientes de superficie vienen de la inmobiliaria: acá se mide el
+// comparable y en `tasador.ts` la propiedad, y de dividir uno por otro sale el
+// USD/m². Tienen que medirse con la misma vara.
+import type { Coeficientes } from './tasador';
 
 function num(v: number | null | undefined): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : 0;
@@ -53,17 +58,26 @@ export interface Superficies {
   superficie?: number | null;
 }
 
-/** Superficie construida ponderada: cubierta + semi + descubierta×0.3 (o el legacy si no hay desglose). */
-function constructedSurface(s: Superficies): number {
-  const built = num(s.supCubierta) + num(s.supSemi) + num(s.supDescubierta) * 0.3;
+/**
+ * Superficie construida ponderada, con los coeficientes de la inmobiliaria (o
+ * el valor legacy si no hay desglose).
+ *
+ * Los MISMOS coeficientes que `superficieTotal`, y esa es toda la gracia: acá
+ * se mide el comparable y allá la propiedad, y de dividir uno por otro sale el
+ * USD/m². Medidos con criterios distintos, el precio por metro sale mal sin que
+ * nada falle.
+ */
+function constructedSurface(s: Superficies, coef: Coeficientes): number {
+  const built =
+    num(s.supCubierta) + num(s.supSemi) * coef.semicubierta + num(s.supDescubierta) * coef.descubierta;
   return round2(built > 0 ? built : num(s.superficie));
 }
 
 /** Superficie de valuación según el tipo: Terreno usa el terreno; Cochera la construida o el terreno; resto la construida. */
-export function valuationSurface(s: Superficies, tipo: string): number {
-  if (tipo === 'Terreno') return round2(num(s.supTerreno) || constructedSurface(s));
-  if (tipo === 'Cochera') return round2(constructedSurface(s) || num(s.supTerreno));
-  return constructedSurface(s);
+export function valuationSurface(s: Superficies, tipo: string, coef: Coeficientes): number {
+  if (tipo === 'Terreno') return round2(num(s.supTerreno) || constructedSurface(s, coef));
+  if (tipo === 'Cochera') return round2(constructedSurface(s, coef) || num(s.supTerreno));
+  return constructedSurface(s, coef);
 }
 
 export interface ComparableCalc extends Superficies {
@@ -91,9 +105,14 @@ export interface PropiedadCalc extends Superficies {
 }
 
 /** Puntaje de similitud 0-100 entre un comparable y la propiedad tasada. */
-export function comparableSimilarity(c: ComparableCalc, data: PropiedadCalc, targetSurface: number): number {
+export function comparableSimilarity(
+  c: ComparableCalc,
+  data: PropiedadCalc,
+  targetSurface: number,
+  coef: Coeficientes,
+): number {
   let score = 0;
-  const cSurface = valuationSurface(c, c.tipoComp);
+  const cSurface = valuationSurface(c, c.tipoComp, coef);
   if ((c.tipoComp || '') === (data.tipoPropiedad || '')) score += 30;
   else if (['Casa', 'PH'].includes(c.tipoComp) && ['Casa', 'PH'].includes(data.tipoPropiedad)) score += 18;
   if (targetSurface > 0 && cSurface > 0) score += Math.max(0, 30 - (Math.abs(cSurface - targetSurface) / targetSurface) * 60);
@@ -140,16 +159,20 @@ export interface AnalisisComparables {
  * Análisis de los comparables: USD/m² ponderado (referencia de mercado),
  * mediana, dispersión, outliers y nivel de confianza. Fiel al prototipo.
  */
-export function analizarComparables(comparables: ComparableCalc[], propiedad: PropiedadCalc): AnalisisComparables {
-  const targetSurface = valuationSurface(propiedad, propiedad.tipoPropiedad);
+export function analizarComparables(
+  comparables: ComparableCalc[],
+  propiedad: PropiedadCalc,
+  coef: Coeficientes,
+): AnalisisComparables {
+  const targetSurface = valuationSurface(propiedad, propiedad.tipoPropiedad, coef);
 
   const entries = comparables
     .map((c, index) => {
-      const surface = valuationSurface(c, c.tipoComp);
+      const surface = valuationSurface(c, c.tipoComp, coef);
       const price = num(c.precio);
       const usdM2 = surface > 0 && price > 0 ? price / surface : 0;
       const sourceWeight = c.fuente === 'Cierre real' || c.tipoPrecio === 'Cierre' ? 1.25 : c.fuente === 'Colega' ? 1.08 : 1;
-      const similarity = comparableSimilarity(c, propiedad, targetSurface);
+      const similarity = comparableSimilarity(c, propiedad, targetSurface, coef);
       return { c, index, surface, price, usdM2, similarity, sourceWeight, outlier: false, weight: 0 };
     })
     .filter((e) => e.price > 0 && e.surface > 0 && e.usdM2 > 0);

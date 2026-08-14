@@ -17,6 +17,7 @@ import {
   type TasacionFotoDto,
   type TipoPropiedad,
 } from '@vacker/types';
+import { formulaEnPalabras, type Coeficientes } from '@vacker/domain';
 import { fmtNum } from '../../../lib/format';
 import { FotosUploader } from '../fotos-uploader';
 import { Campo, PasoHeader, inputClass } from './campo';
@@ -136,6 +137,7 @@ interface Props {
   setSupDescubierta: (v: string) => void;
   superficieTotalPreview: number;
   supTerreno: string;
+  coeficientes: Coeficientes;
   setSupTerreno: (v: string) => void;
   dormitorios: string;
   setDormitorios: (v: string) => void;
@@ -207,6 +209,7 @@ export function Seccion2Caracteristicas(props: Props) {
     supDescubierta,
     setSupDescubierta,
     superficieTotalPreview,
+    coeficientes,
     supTerreno,
     setSupTerreno,
     dormitorios,
@@ -319,7 +322,13 @@ export function Seccion2Caracteristicas(props: Props) {
       <div className="rounded-brand bg-surface px-3 py-2 text-sm">
         <span className="font-medium text-ink">Superficie total: </span>
         <span className="font-bold text-brand-red">{fmtNum(superficieTotalPreview)} m²</span>
-        <span className="ml-1 text-xs text-muted">(cubierta + semicubierta + 30% descubierta)</span>
+        {/*
+          La fórmula se arma con el criterio de la inmobiliaria y no está
+          escrita a mano: hasta ahora decía «30% descubierta» siempre, y a una
+          inmobiliaria con otro criterio le mentiría en la cara mientras el
+          número de al lado está bien calculado.
+        */}
+        <span className="ml-1 text-xs text-muted">({formulaEnPalabras(coeficientes)})</span>
       </div>
       <Campo label="Sup. terreno (m²)">
         <input

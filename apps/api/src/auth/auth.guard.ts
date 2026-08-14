@@ -107,7 +107,12 @@ export class AuthGuard implements CanActivate {
         nombre: usuario.tenant.nombre,
         plan: plan.success ? plan.data : 'basico',
         modulos: modulos.success ? modulos.data : MODULOS_DEFAULT,
-        config: config.success ? config.data : {},
+        // `TenantConfigSchema.parse({})` y no `{}` a secas: desde que la
+        // configuración tiene coeficientes de tasación con valor por defecto,
+        // un objeto vacío ya no es una configuración completa. Parsearlo
+        // devuelve los valores por defecto, que es lo que este `else` quiso
+        // decir siempre.
+        config: config.success ? config.data : TenantConfigSchema.parse({}),
       },
     };
     this.principalCache.set(token, principal);

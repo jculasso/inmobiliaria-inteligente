@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { LIMITE_LISTA_CON_SONDA } from '@vacker/types';
-import { superficieTotal, usdM2 } from '@vacker/domain';
+import { LIMITE_LISTA_CON_SONDA, TenantConfigSchema } from '@vacker/types';
+import { superficieTotal, usdM2, type Coeficientes } from '@vacker/domain';
 import type { CambiarEstado, ComparableInput, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
 import { DomainEventsService } from '../../../common/domain-events.service';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
@@ -23,6 +23,25 @@ export const tasacionInclude = {
 export type TasacionRow = Prisma.TasacionGetPayload<{ include: typeof tasacionInclude }>;
 
 /**
+ * El criterio de tasación de una inmobiliaria, leído de su configuración.
+ *
+ * Va por el schema de Zod y no leyendo el JSON a mano: así una inmobiliaria que
+ * nunca lo configuró recibe los valores por defecto —los de Vacker— en lugar de
+ * `undefined`, y no hay que repetir ese default en cada lugar que lo lea.
+ */
+async function coeficientesDe(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+): Promise<Coeficientes> {
+  const tenant = await tx.tenant.findUniqueOrThrow({
+    where: { id: tenantId },
+    select: { config: true },
+  });
+  const config = TenantConfigSchema.parse(tenant.config ?? {});
+  return { semicubierta: config.coefSemicubierta, descubierta: config.coefDescubierta };
+}
+
+/**
  * Select mínimo para el pre-check de scope/existencia + las superficies
  * actuales (únicos campos que `update()`/`remove()`/`cambiarEstado()` leen
  * de la fila antes de escribir) — evita el JOIN de comparables/fotos que
@@ -37,6 +56,12 @@ const tasacionScopeSelect = {
   supCubierta: true,
   supSemicubierta: true,
   supDescubierta: true,
+  // El criterio con el que nació esta tasación. Al editarla se recalcula el
+  // total, y tiene que recalcularse con el SUYO y no con el de la inmobiliaria
+  // hoy: si no, un informe ya entregado cambiaría de número al corregirle una
+  // coma al nombre del cliente.
+  coefSemicubierta: true,
+  coefDescubierta: true,
 } satisfies Prisma.TasacionSelect;
 
 const tasacionResumenSelect = {
@@ -168,8 +193,13 @@ export class TasacionesService {
    */
   async create(dto: CreateTasacion, ctx: TenantContext): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
+      // El criterio de la inmobiliaria se copia a la fila y no se vuelve a
+      // consultar: a partir de acá esta tasación mide con el suyo, para siempre.
+      const coef = await coeficientesDe(tx, ctx.tenantId);
       const data = {
         tenantId: ctx.tenantId,
+        coefSemicubierta: coef.semicubierta,
+        coefDescubierta: coef.descubierta,
         agenteId: ctx.userId,
         cliente: dto.cliente,
         fecha: toDate(dto.fecha)!,
@@ -177,7 +207,7 @@ export class TasacionesService {
         barrio: dto.barrio ?? null,
         ciudad: dto.ciudad ?? null,
         tipoOperacion: dto.tipoOperacion,
-        ...datosCaracteristicas(dto),
+        ...datosCaracteristicas(dto, coef),
         ...datosValoresYComercial(dto),
         ...(dto.comparables !== undefined
           ? { comparables: { create: dto.comparables.map((c) => comparableCreate(c, ctx.tenantId)) } }
@@ -217,7 +247,16 @@ export class TasacionesService {
       if (dto.barrio !== undefined) data.barrio = dto.barrio ?? null;
       if (dto.ciudad !== undefined) data.ciudad = dto.ciudad ?? null;
       if (dto.tipoOperacion !== undefined) data.tipoOperacion = dto.tipoOperacion;
-      Object.assign(data, datosCaracteristicas(dto, actual));
+      // El criterio de LA FILA, no el de la inmobiliaria hoy. Ver el comentario
+      // de `tasacionScopeSelect`.
+      Object.assign(
+        data,
+        datosCaracteristicas(
+          dto,
+          { semicubierta: decToNum(actual.coefSemicubierta), descubierta: decToNum(actual.coefDescubierta) },
+          actual,
+        ),
+      );
       Object.assign(data, datosValoresYComercial(dto));
 
       if (dto.comparables !== undefined) {
@@ -313,6 +352,7 @@ export class TasacionesService {
  */
 function datosCaracteristicas(
   dto: Partial<CreateTasacion>,
+  coef: Coeficientes,
   actual?: Pick<TasacionRow, 'supCubierta' | 'supSemicubierta' | 'supDescubierta'>,
 ): Record<string, unknown> {
   const supCubierta = dto.supCubierta ?? (actual ? decToNum(actual.supCubierta) : 0);
@@ -320,11 +360,10 @@ function datosCaracteristicas(
   const supDescubierta = dto.supDescubierta ?? (actual ? decToNum(actual.supDescubierta) : 0);
 
   const data: Record<string, unknown> = {
-    superficieTotal: superficieTotal({
-      cubierta: supCubierta,
-      semicubierta: supSemicubierta,
-      descubierta: supDescubierta,
-    }),
+    superficieTotal: superficieTotal(
+      { cubierta: supCubierta, semicubierta: supSemicubierta, descubierta: supDescubierta },
+      coef,
+    ),
   };
   if (dto.tipoPropiedad !== undefined) data.tipoPropiedad = dto.tipoPropiedad;
   if (dto.supCubierta !== undefined) data.supCubierta = dto.supCubierta;
@@ -452,6 +491,8 @@ export function toDto(row: TasacionRow) {
     supDescubierta: decToNum(row.supDescubierta),
     supTerreno: row.supTerreno == null ? null : decToNum(row.supTerreno),
     superficieTotal: decToNum(row.superficieTotal),
+    coefSemicubierta: decToNum(row.coefSemicubierta),
+    coefDescubierta: decToNum(row.coefDescubierta),
     dormitorios: row.dormitorios,
     banos: row.banos,
     toilette: row.toilette,
