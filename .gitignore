@@ -52,3 +52,8 @@ apps/sitio/.next-e2e/
 # rastrearlo dejaría el árbol sucio cada vez que se corren los tests de
 # navegador. `typecheck` no lo necesita.
 apps/sitio/next-env.d.ts
+
+# Copias de la base de producción. Tienen datos reales de clientes: no entran
+# al repositorio ni por accidente. Van a ~/Respaldos-Inmobiliaria/.
+Respaldos-Inmobiliaria/
+*.respaldo.json
