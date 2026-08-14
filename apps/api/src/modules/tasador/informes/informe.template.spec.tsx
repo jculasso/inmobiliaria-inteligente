@@ -28,6 +28,8 @@ const TASACION: TasacionDto = {
   supCubierta: 80,
   supSemicubierta: 10,
   supDescubierta: 20,
+  coefSemicubierta: 1,
+  coefDescubierta: 0.3,
   supTerreno: null,
   superficieTotal: 96,
   dormitorios: 2,

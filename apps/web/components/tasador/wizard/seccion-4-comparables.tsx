@@ -1,7 +1,7 @@
 'use client';
 
 import type { ComparableInput } from '@vacker/types';
-import type { AnalisisComparables } from '@vacker/domain';
+import type { AnalisisComparables, Coeficientes } from '@vacker/domain';
 import { ComparablesEditor } from '../comparables-editor';
 import { PasoHeader } from './campo';
 
@@ -9,9 +9,10 @@ interface Props {
   comparables: ComparableInput[];
   setComparables: (v: ComparableInput[]) => void;
   analisis: AnalisisComparables;
+  coeficientes: Coeficientes;
 }
 
-export function Seccion4Comparables({ comparables, setComparables, analisis }: Props) {
+export function Seccion4Comparables({ comparables, setComparables, analisis, coeficientes }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <PasoHeader
@@ -19,7 +20,12 @@ export function Seccion4Comparables({ comparables, setComparables, analisis }: P
         titulo="Comparables"
         bajada="Propiedades similares en venta que respaldan el valor propuesto."
       />
-      <ComparablesEditor comparables={comparables} onChange={setComparables} analisis={analisis} />
+      <ComparablesEditor
+        comparables={comparables}
+        onChange={setComparables}
+        analisis={analisis}
+        coeficientes={coeficientes}
+      />
     </div>
   );
 }

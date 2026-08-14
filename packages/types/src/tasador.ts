@@ -435,6 +435,17 @@ export const TasacionDtoSchema = z.object({
   supDescubierta: z.number(),
   supTerreno: z.number().nullable(),
   superficieTotal: z.number(),
+  /*
+   * El criterio con el que se calculó ESTA tasación, congelado al crearla. Si
+   * la inmobiliaria cambia el suyo, esta tasación sigue midiendo como el día
+   * que se entregó el informe.
+   *
+   * Con `.default()` por la misma razón que `ciudad` más abajo: la web y la API
+   * se despliegan por separado, y si la web saliera primero exigiendo el campo,
+   * fallaría toda la pantalla de la tasación y no solo este dato.
+   */
+  coefSemicubierta: z.number().min(0).max(1).default(1),
+  coefDescubierta: z.number().min(0).max(1).default(0.3),
   dormitorios: z.number().nullable(),
   banos: z.number().nullable(),
   toilette: z.number().nullable(),

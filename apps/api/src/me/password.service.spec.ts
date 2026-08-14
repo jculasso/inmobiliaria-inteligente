@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { MODULOS_DEFAULT } from '@vacker/types';
+import { MODULOS_DEFAULT, configPorDefecto } from '@vacker/types';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SupabaseAdminService } from '../admin/supabase-admin.service';
 import type { AuthPrincipal } from '../auth/auth-principal';
@@ -15,7 +15,7 @@ const PRINCIPAL: AuthPrincipal = {
   tenantId: 't1',
   debeCambiarPassword: false,
   roles: ['vendedor'],
-  tenant: { nombre: 'Vacker', plan: 'basico', modulos: MODULOS_DEFAULT, config: {} },
+  tenant: { nombre: 'Vacker', plan: 'basico', modulos: MODULOS_DEFAULT, config: configPorDefecto() },
 };
 
 function makeDb(usuario: Record<string, unknown> | null) {

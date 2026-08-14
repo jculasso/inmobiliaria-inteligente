@@ -338,6 +338,9 @@ export function InformeDocument({
       estado: t.estadoInmueble,
       cochera: t.cochera,
     } satisfies PropiedadCalc,
+    // El criterio congelado de esta tasación, no el de la inmobiliaria hoy: un
+    // informe reemitido tiene que dar el mismo número que el que se entregó.
+    { semicubierta: t.coefSemicubierta, descubierta: t.coefDescubierta },
   );
   const red = colorPrimario || '#C1121F';
   const redDark = colorPrimarioOscuro || red;
