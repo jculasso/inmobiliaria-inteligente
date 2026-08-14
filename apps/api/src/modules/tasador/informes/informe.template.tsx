@@ -228,6 +228,16 @@ function caracteristicas(t: TasacionDto): { label: string; value: string }[] {
   numero('Sup. semi-cubierta', t.supSemicubierta, ' m²');
   numero('Sup. descubierta', t.supDescubierta, ' m²');
   numero('Sup. total', t.superficieTotal, ' m²');
+  /*
+   * La superficie del terreno va DESPUÉS del total y no antes, porque no entra
+   * en esa suma: el total es cubierta + semicubierta + 30% de la descubierta.
+   * Ponerla en el medio se leería como si fuera uno de los sumandos.
+   *
+   * Faltaba. Se cargaba en el formulario, se guardaba, viajaba en el DTO y la
+   * usaba el cálculo de comparables — pero nadie la imprimía. En una casa es de
+   * los datos que más pesan, y Vacker mandó un informe sin ella a un cliente.
+   */
+  numero('Sup. terreno', t.supTerreno, ' m²');
   if (t.antiguedad != null && t.antiguedad > 0) items.push({ label: 'Antigüedad', value: `${t.antiguedad} años` });
   texto('Estado general', t.estadoInmueble);
   texto('Disposición', t.disposicion);

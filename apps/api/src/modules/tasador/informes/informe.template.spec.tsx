@@ -266,3 +266,53 @@ describe('servicios y amenities en el informe', () => {
     }
   });
 });
+
+describe('la superficie del terreno en el informe', () => {
+  /*
+   * Faltaba, y salió a un cliente real.
+   *
+   * El dato se cargaba en el formulario, se guardaba, viajaba en el DTO y hasta
+   * lo usaba el cálculo de comparables — pero la lista de características del
+   * PDF nunca lo imprimía. Vacker tasó una casa de 56 m² cubiertos sobre un
+   * terreno de 146 y mandó el informe sin el terreno; en una casa ese número
+   * suele pesar más que los metros construidos.
+   *
+   * Se afirma sobre el VALOR y no sobre la etiqueta: las etiquetas van en el
+   * peso regular de Montserrat y ese subconjunto no sobrevive a la extracción
+   * de glifos. Ver `textoDePdf` y la convención 14.
+   */
+  it('imprime los metros del terreno cuando están cargados', async () => {
+    const texto = await textoDePdf(
+      await renderToBuffer(
+        <InformeDocument
+          tasacion={{ ...TASACION, supCubierta: 56, supTerreno: 146 }}
+          tenantNombre="Vacker"
+          logoUrl={null}
+        />,
+      ),
+    );
+
+    expect(texto, 'no aparecen los metros del terreno').toContain('146 m²');
+  });
+
+  it('no inventa una fila de terreno cuando no se cargó', async () => {
+    // Un departamento no tiene terreno propio: si saliera una fila en cero, el
+    // propietario leería un dato que nadie cargó.
+    //
+    // Se busca el 146 y no un "0 m²" genérico: la primera versión de este test
+    // afirmaba `not.toContain('0 m²')` y fallaba sola, porque "80 m²" —la
+    // superficie cubierta de la tasación de prueba— también lo contiene.
+    const texto = await textoDePdf(
+      await renderToBuffer(
+        <InformeDocument
+          tasacion={{ ...TASACION, supCubierta: 56, supTerreno: null }}
+          tenantNombre="Vacker"
+          logoUrl={null}
+        />,
+      ),
+    );
+
+    expect(texto, 'apareció una fila de terreno que nadie cargó').not.toContain('146 m²');
+  });
+
+});
