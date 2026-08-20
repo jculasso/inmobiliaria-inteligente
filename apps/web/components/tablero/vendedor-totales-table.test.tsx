@@ -178,3 +178,97 @@ describe('VendedorTotalesTable — por qué columna se ordena', () => {
     expect(primero(b.container), 'la segunda tabla se movió sola').toBe('Ana Volumen');
   });
 });
+
+/**
+ * El peso acompaña al criterio elegido.
+ *
+ * Antes era siempre la participación en el VOLUMEN, ordenara la tabla por lo
+ * que ordenase: con la tabla por comisión, la barra contaba una cosa y la
+ * columna que mandaba, otra.
+ *
+ * Los tres vendedores de `TRES` sirven igual acá: tienen 900/400/200 de
+ * volumen, 5.000/30.000/12.000 de comisión y 2/5/9 puntas, así que cada
+ * criterio da porcentajes distintos y ninguno se puede confundir con otro.
+ */
+describe('VendedorTotalesTable — el peso sigue al criterio', () => {
+  /**
+   * Los porcentajes de la columna de peso, en el orden en que se muestran.
+   *
+   * Se lee la ÚLTIMA CELDA de cada fila y no el texto de la fila entera: al
+   * concatenar celdas, «$22.222» y «13%» quedan pegados como «$22.22213%» y
+   * cualquier expresión regular termina leyendo 22213. Pasó.
+   */
+  function pesosEnPantalla(contenedor: HTMLElement) {
+    return within(contenedor)
+      .getAllByRole('row')
+      .slice(1, -1) // sin el encabezado ni la fila de TOTAL GENERAL
+      .map((f) => f.querySelectorAll('td'))
+      .filter((celdas) => celdas.length > 0)
+      .map((celdas) => Number(celdas[celdas.length - 1]!.textContent?.match(/(\d+)%/)?.[1]))
+      .filter((n) => Number.isFinite(n));
+  }
+
+  it('por volumen, es la participación en el volumen', () => {
+    // 900.000 de 1.500.000 = 60%; 400.000 = 27%; 200.000 = 13%.
+    const { container } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+    expect(pesosEnPantalla(container)).toEqual([60, 27, 13]);
+  });
+
+  it('por comisión, es la participación en la comisión', () => {
+    // 30.000 de 47.000 = 64%; 12.000 = 26%; 5.000 = 11%.
+    const { container } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+    fireEvent.click(within(container).getAllByRole('button', { name: 'Comisión' })[0]!);
+    expect(pesosEnPantalla(container)).toEqual([64, 26, 11]);
+  });
+
+  it('por puntas, es la participación en las puntas', () => {
+    // 9 de 16 = 56%; 5 = 31%; 2 = 13%.
+    const { container } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+    fireEvent.click(within(container).getAllByRole('button', { name: 'Puntas' })[0]!);
+    expect(pesosEnPantalla(container)).toEqual([56, 31, 13]);
+  });
+
+  it('los tres criterios que se suman dan porcentajes que cierran en 100', () => {
+    for (const criterio of ['Volumen', 'Comisión', 'Puntas']) {
+      const { container, unmount } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+      fireEvent.click(within(container).getAllByRole('button', { name: criterio })[0]!);
+      const suma = pesosEnPantalla(container).reduce((a, b) => a + b, 0);
+      // 99..101 por el redondeo de cada fila a un entero.
+      expect(suma, `los pesos por ${criterio} suman ${suma}`).toBeGreaterThanOrEqual(99);
+      expect(suma, `los pesos por ${criterio} suman ${suma}`).toBeLessThanOrEqual(101);
+      unmount();
+    }
+  });
+
+  it('por ticket promedio NO es una participación, sino la comparación con el equipo', () => {
+    /*
+     * Un promedio no se suma. El ticket del equipo es el volumen total sobre
+     * las puntas totales: 1.500.000 / 16 = 93.750.
+     *
+     * Ana factura 450.000 por punta → 480% del ticket de la casa. Si esto
+     * fuera una participación sobre la suma de los tickets, daría 81% y no
+     * significaría nada.
+     */
+    const { container } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+    fireEvent.click(within(container).getAllByRole('button', { name: 'Ticket prom.' })[0]!);
+    expect(pesosEnPantalla(container)[0]).toBe(480);
+  });
+
+  it('la columna cambia de nombre cuando deja de ser una parte de un total', () => {
+    const { container } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+    const ultima = () => within(container).getAllByRole('columnheader').at(-1)!.textContent;
+    expect(ultima()).toBe('Peso');
+    fireEvent.click(within(container).getAllByRole('button', { name: 'Ticket prom.' })[0]!);
+    expect(ultima()).toBe('vs. equipo');
+  });
+
+  it('por volumen da lo mismo que el peso que calcula el servidor', () => {
+    // Si se separaran, la tabla y cualquier otro lugar que muestre el peso del
+    // servidor dirían números distintos para lo mismo.
+    const { container } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+    const delServidor = [...TRES]
+      .sort((a, b) => b.volumen - a.volumen)
+      .map((i) => Math.round(i.peso * 100));
+    expect(pesosEnPantalla(container)).toEqual(delServidor);
+  });
+});

@@ -26,6 +26,36 @@ const CRITERIOS: { key: CriterioOrden; label: string }[] = [
   { key: 'ticketPromedio', label: 'Ticket prom.' },
 ];
 
+/**
+ * Cuánto pesa cada vendedor, según el criterio elegido.
+ *
+ * Para volumen, puntas y comisión es la PARTICIPACIÓN sobre el total: los
+ * porcentajes suman 100 y se leen como «hizo el 23% de lo que hizo la
+ * inmobiliaria». Es lo que mostraba antes, pero solo para volumen.
+ *
+ * Para el TICKET PROMEDIO no puede ser una participación, y no es un detalle
+ * menor: un promedio no se suma. Sumar el ticket de cada vendedor no da el
+ * ticket de la inmobiliaria, da un número que no significa nada — y el
+ * porcentaje que saliera de ahí tampoco. Así que ahí se compara contra el
+ * ticket del EQUIPO (volumen total sobre puntas totales) y el número se lee
+ * distinto: 135% es «vende un 35% más caro que el promedio de la casa». Por eso
+ * la columna cambia de nombre cuando se ordena por ticket.
+ */
+function pesosSegun(items: RankingItem[], criterio: CriterioOrden): number[] {
+  if (criterio === 'ticketPromedio') {
+    const volumen = items.reduce((suma, i) => suma + i.volumen, 0);
+    const puntas = items.reduce((suma, i) => suma + i.puntas, 0);
+    const delEquipo = puntas > 0 ? volumen / puntas : 0;
+    return items.map((i) => (delEquipo > 0 ? i.ticketPromedio / delEquipo : 0));
+  }
+  const total = items.reduce((suma, i) => suma + i[criterio], 0);
+  return items.map((i) => (total > 0 ? i[criterio] / total : 0));
+}
+
+/** El nombre de la última columna: deja de ser «Peso» cuando no es una parte de un total. */
+const etiquetaDelPeso = (criterio: CriterioOrden) =>
+  criterio === 'ticketPromedio' ? 'vs. equipo' : 'Peso';
+
 /** Tabla "Totales por vendedor": la usan tanto el Ranking como el Resumen acumulado. */
 /**
  * `verTodo` viaja hasta el modal de detalle a propósito.
@@ -62,7 +92,15 @@ export function VendedorTotalesTable({
   const ordenado = [...items].sort(
     (a, b) => b[criterio] - a[criterio] || b.volumen - a.volumen || a.nombre.localeCompare(b.nombre),
   );
-  const maxPeso = Math.max(...ordenado.map((i) => i.peso), 0.0001);
+  /*
+   * El peso se recalcula acá y NO se usa el que manda el servidor. El del
+   * servidor es siempre sobre el volumen; si se mostrara ese con la tabla
+   * ordenada por comisión, la barra contaría una cosa distinta de la columna
+   * que manda. Con `criterio === 'volumen'` da exactamente lo mismo que el del
+   * servidor — hay un test que lo fija.
+   */
+  const peso = pesosSegun(ordenado, criterio);
+  const maxPeso = Math.max(...peso, 0.0001);
 
   if (ordenado.length === 0) {
     return <p className="px-5 py-6 text-sm text-muted">Sin datos para el período seleccionado.</p>;
@@ -121,7 +159,17 @@ export function VendedorTotalesTable({
               </span>
               <Avatar nombre={item.nombre} fotoUrl={item.fotoUrl} size="sm" />
               <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{item.nombre}</span>
-              <span className="shrink-0 text-xs font-bold text-muted">{Math.round(item.peso * 100)}%</span>
+              {/*
+                En la tarjeta no hay encabezado de columna, así que un «140%»
+                suelto no dice contra qué. Cuando el número deja de ser una
+                parte de un total, la tarjeta se lo aclara.
+              */}
+              <span className="shrink-0 text-right text-xs font-bold text-muted">
+                {criterio === 'ticketPromedio' && (
+                  <span className="mr-1 font-medium text-muted/70">vs. equipo</span>
+                )}
+                {Math.round(peso[i]! * 100)}%
+              </span>
             </div>
             <CamposTarjeta>
               <CampoTarjeta etiqueta="Volumen">{fmtUSD(item.volumen)}</CampoTarjeta>
@@ -164,7 +212,7 @@ export function VendedorTotalesTable({
                 {criterio === c.key && <span aria-hidden> ▾</span>}
               </th>
             ))}
-            <th className="px-5 py-2">Peso</th>
+            <th className="px-5 py-2">{etiquetaDelPeso(criterio)}</th>
           </tr>
         </thead>
         <tbody>
@@ -190,10 +238,10 @@ export function VendedorTotalesTable({
                   <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface">
                     <div
                       className="h-full rounded-full bg-brand-red"
-                      style={{ width: `${(item.peso / maxPeso) * 100}%` }}
+                      style={{ width: `${(peso[i]! / maxPeso) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs text-muted">{Math.round(item.peso * 100)}%</span>
+                  <span className="text-xs text-muted">{Math.round(peso[i]! * 100)}%</span>
                 </div>
               </td>
             </tr>
