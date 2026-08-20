@@ -9,6 +9,23 @@ import { DetalleDrillModal } from './detalle-drill-modal';
 
 const MEDALLAS = ['🥇', '🥈', '🥉'];
 
+/**
+ * Por qué columna se ordena.
+ *
+ * Vacker pidió que fuera por volumen, que es como ya estaba. Pero el criterio
+ * no es el mismo para todos: una inmobiliaria mira el volumen, otra la comisión
+ * —que es lo que efectivamente entra— y otra las puntas, que miden actividad y
+ * no suerte. En vez de elegir por ellos, se elige en pantalla.
+ */
+export type CriterioOrden = 'volumen' | 'puntas' | 'comision' | 'ticketPromedio';
+
+const CRITERIOS: { key: CriterioOrden; label: string }[] = [
+  { key: 'volumen', label: 'Volumen' },
+  { key: 'puntas', label: 'Puntas' },
+  { key: 'comision', label: 'Comisión' },
+  { key: 'ticketPromedio', label: 'Ticket prom.' },
+];
+
 /** Tabla "Totales por vendedor": la usan tanto el Ranking como el Resumen acumulado. */
 /**
  * `verTodo` viaja hasta el modal de detalle a propósito.
@@ -35,7 +52,16 @@ export function VendedorTotalesTable({
   verTodo?: boolean;
 }) {
   const [drill, setDrill] = useState<RankingItem | null>(null);
-  const ordenado = [...items].sort((a, b) => b.volumen - a.volumen);
+  const [criterio, setCriterio] = useState<CriterioOrden>('volumen');
+
+  /*
+   * El desempate por volumen y después por nombre no es adorno: sin él, dos
+   * vendedores con las mismas puntas se intercambian de lugar cada vez que la
+   * tabla se vuelve a dibujar, y el que mira cree que pasó algo.
+   */
+  const ordenado = [...items].sort(
+    (a, b) => b[criterio] - a[criterio] || b.volumen - a.volumen || a.nombre.localeCompare(b.nombre),
+  );
   const maxPeso = Math.max(...ordenado.map((i) => i.peso), 0.0001);
 
   if (ordenado.length === 0) {
@@ -54,6 +80,33 @@ export function VendedorTotalesTable({
 
   return (
     <>
+      {/*
+        Va ARRIBA de las dos vistas y no en los encabezados de la tabla: en el
+        celular no hay encabezados, se muestran tarjetas. Un ordenamiento que
+        solo se pudiera cambiar en la computadora dejaría al vendedor en la
+        calle sin poder mirar la tabla como quiere.
+      */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line px-4 py-2.5 sm:px-5">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-muted">Ordenar por</span>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Ordenar por">
+          {CRITERIOS.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setCriterio(c.key)}
+              aria-pressed={criterio === c.key}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                criterio === c.key
+                  ? 'bg-brand-red text-white'
+                  : 'bg-surface text-muted hover:text-ink'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ListaTarjetas etiqueta="Totales por vendedor">
         {ordenado.map((item, i) => (
           <Tarjeta
@@ -96,10 +149,21 @@ export function VendedorTotalesTable({
           <tr className="text-left text-xs uppercase tracking-wide text-muted">
             <th className="px-5 py-2">#</th>
             <th className="px-5 py-2">Vendedor</th>
-            <th className="px-5 py-2">Volumen</th>
-            <th className="px-5 py-2">Puntas</th>
-            <th className="px-5 py-2">Comisión</th>
-            <th className="px-5 py-2">Ticket prom.</th>
+            {/*
+              La columna por la que se está ordenando se marca en el
+              encabezado. Sin esto, con la tabla ordenada por comisión, los
+              números de volumen se ven desordenados y parece un error.
+            */}
+            {CRITERIOS.map((c) => (
+              <th
+                key={c.key}
+                aria-sort={criterio === c.key ? 'descending' : 'none'}
+                className={`px-5 py-2 ${criterio === c.key ? 'text-ink' : ''}`}
+              >
+                {c.label}
+                {criterio === c.key && <span aria-hidden> ▾</span>}
+              </th>
+            ))}
             <th className="px-5 py-2">Peso</th>
           </tr>
         </thead>
