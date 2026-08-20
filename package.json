@@ -14,9 +14,11 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "iconos": "node scripts/generar-iconos.mjs"
+    "iconos": "node scripts/generar-iconos.mjs",
+    "presentacion": "node scripts/comercial/presentacion.js"
   },
   "devDependencies": {
+    "pptxgenjs": "^4.0.1",
     "prettier": "^3.4.2",
     "sharp": "^0.34.5",
     "turbo": "^2.3.3",

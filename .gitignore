@@ -57,3 +57,8 @@ apps/sitio/next-env.d.ts
 # al repositorio ni por accidente. Van a ~/Respaldos-Inmobiliaria/.
 Respaldos-Inmobiliaria/
 *.respaldo.json
+
+# La presentación se GENERA; lo que se versiona es el script que la arma.
+scripts/comercial/*.pptx
+scripts/comercial/node_modules/
+scripts/comercial/previa/
