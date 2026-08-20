@@ -86,47 +86,100 @@ function pregunta(s, n, texto, respuesta, sobreOscuro = false) {
   });
 }
 
-/**
- * Una lista de viñetas.
+/*
+ * UN SOLO SISTEMA DE LISTAS PARA TODO EL DECK.
  *
- * El punto va DIBUJADO y no como carácter «•»: PowerPoint numera dos veces si
- * el texto ya trae el símbolo, y con un círculo propio se controla el tamaño y
- * el color. Cada viñeta tiene que entrar en UN renglón — si envuelve, el paso
- * fijo la monta sobre la siguiente.
+ * Antes había tres: la lámina 1 usaba un punto de 0,06 con sangría de 0,20 y
+ * una barra azul vertical que no aparecía en ninguna otra; la 2, un punto de
+ * 0,10 con sangría de 0,26; la 4, un número con sangría de 0,50. Tres tamaños
+ * de marca, tres sangrías y tres escalas tipográficas para decir lo mismo.
+ *
+ * Ahora todas las filas comparten el hueco de la marca y la sangría del texto.
+ * Lo único que cambia es QUÉ va en el hueco: un punto si la lista no tiene
+ * orden, un número si es una secuencia y el orden importa.
  */
-function vinetas(s, x, y, ancho, items, paso = 0.27) {
-  items.forEach((texto, i) => {
-    const yy = y + i * paso;
+const MARCA = 0.42; // el hueco de la marca: lo pide el «01», el punto entra de sobra
+
+/**
+ * La marca de una fila: un número si hay orden, un punto si no.
+ *
+ * El número se apoya a la IZQUIERDA del hueco y el punto a la DERECHA, pegado
+ * al texto. Suena caprichoso y no lo es: un «01» necesita todo el hueco, un
+ * punto no, y centrarlo o alinearlo a la izquierda lo deja flotando a media
+ * pulgada de su propia frase — que es exactamente lo que se veía mal.
+ *
+ * Lo que se mantiene igual en las cinco láminas es dónde ARRANCA EL TEXTO. Eso
+ * es lo que hace que se lean como una sola presentación; la marca solo tiene
+ * que quedar bien al lado de lo suyo.
+ */
+function marcaDeFila(s, x, y, numero, sobreOscuro) {
+  const color = sobreOscuro ? AZUL_CLARO : AZUL;
+  if (numero) {
+    s.addText(numero, {
+      x, y, w: MARCA - 0.08, h: 0.26, margin: 0, align: 'left',
+      fontFace: F, fontSize: 12, bold: true, color,
+    });
+  } else {
     s.addShape(pres.ShapeType.ellipse, {
-      x: x + 0.03, y: yy + 0.09, w: 0.06, h: 0.06,
-      fill: { color: AZUL }, line: { type: 'none' },
+      x: x + MARCA - 0.23, y: y + 0.095, w: 0.095, h: 0.095,
+      fill: { color }, line: { type: 'none' },
     });
+  }
+}
+
+/**
+ * Una fila con título y descripción. Es la unidad de todo el deck.
+ *
+ * `paso` lo decide quien la llama porque no todas las listas respiran igual,
+ * pero el hueco de la marca y la sangría del texto NO son negociables: son lo
+ * que hace que cinco láminas se lean como una sola presentación.
+ */
+function fila(s, { x, y, ancho, numero, titulo, texto, sobreOscuro }) {
+  marcaDeFila(s, x, y, numero, sobreOscuro);
+  s.addText(titulo, {
+    x: x + MARCA, y, w: ancho - MARCA, h: 0.26, margin: 0,
+    fontFace: F, fontSize: 12, bold: true, color: sobreOscuro ? BLANCO : TINTA,
+  });
+  if (texto) {
     s.addText(texto, {
-      x: x + 0.2, y: yy, w: ancho - 0.2, h: paso, margin: 0,
-      fontFace: F, fontSize: 9.5, color: GRIS, lineSpacing: 12.5,
+      x: x + MARCA, y: y + 0.25, w: ancho - MARCA, h: 0.26, margin: 0,
+      fontFace: F, fontSize: 9.5, color: sobreOscuro ? CLARO : GRIS,
     });
+  }
+}
+
+/**
+ * Una fila de un solo renglón, para las listas donde cada ítem es una frase y
+ * no un título con su explicación. Misma marca y misma sangría que `fila`.
+ */
+function filaSimple(s, x, y, ancho, texto, sobreOscuro) {
+  marcaDeFila(s, x, y, null, sobreOscuro);
+  s.addText(texto, {
+    x: x + MARCA, y, w: ancho - MARCA, h: 0.26, margin: 0,
+    fontFace: F, fontSize: 10, color: sobreOscuro ? CLARO : TINTA,
   });
 }
 
 /**
- * El título de un módulo, con su filete azul al costado.
+ * El encabezado de un bloque: filete azul arriba y el nombre debajo.
  *
- * El alto sale de la CUENTA de las viñetas y no de un número a ojo: la primera
- * versión lo tenía fijo y, al sumar una viñeta, el filete quedaba corto y se
- * veía como un error de maquetación.
+ * Es el mismo device que usan las dos personas de la lámina 5. Reaparece en la
+ * 1 para los dos módulos, en vez de la barra vertical que estaba solo ahí.
  */
-function altoDelBloque(cuantas, paso = 0.27) {
-  return 0.34 + cuantas * paso;
-}
-
-function modulo(s, x, y, alto, titulo) {
-  s.addShape(pres.ShapeType.rect, {
-    x, y, w: 0.035, h: alto, fill: { color: AZUL }, line: { type: 'none' },
+function bloque(s, x, y, ancho, titulo, subtitulo) {
+  s.addShape(pres.ShapeType.line, {
+    x, y, w: ancho, h: 0, line: { color: AZUL, width: 2 },
   });
   s.addText(titulo, {
-    x: x + 0.22, y, w: 4.6, h: 0.28, margin: 0,
-    fontFace: F, fontSize: 14, bold: true, color: AZUL,
+    x, y: y + 0.11, w: ancho, h: 0.3, margin: 0,
+    fontFace: F, fontSize: 14, bold: true, color: TINTA,
   });
+  if (subtitulo) {
+    s.addText(subtitulo, {
+      x, y: y + 0.42, w: ancho, h: 0.24, margin: 0,
+      fontFace: F, fontSize: 10.5, bold: true, color: AZUL,
+    });
+  }
 }
 
 function captura(s, archivo, opciones) {
@@ -168,15 +221,15 @@ LAMINAS.push(function laminaQueEs() {
     'El informe que su vendedor le deja al propietario',
   ];
 
-  modulo(s, 0.5, 2.42, altoDelBloque(DEL_TABLERO.length), 'Tablero Comercial');
-  vinetas(s, 0.5, 2.76, 5.3, DEL_TABLERO);
-  modulo(s, 0.5, 4.28, altoDelBloque(DEL_TASADOR.length), 'Tasador');
-  vinetas(s, 0.5, 4.62, 5.3, DEL_TASADOR);
+  bloque(s, 0.5, 2.4, 5.3, 'Tablero Comercial');
+  DEL_TABLERO.forEach((t, i) => filaSimple(s, 0.5, 2.82 + i * 0.28, 5.3, t));
+  bloque(s, 0.5, 4.36, 5.3, 'Tasador');
+  DEL_TASADOR.forEach((t, i) => filaSimple(s, 0.5, 4.78 + i * 0.28, 5.3, t));
 
-  captura(s, 'tablero-kpis.png', { x: 6.15, y: 2.76, w: 3.35, h: 2.09 });
+  captura(s, 'tablero-kpis.png', { x: 6.15, y: 2.62, w: 3.35, h: 2.09 });
   // Un renglón, no dos: con dos, la segunda línea terminaba debajo del «1 / 5».
   s.addText('El mes y el año, y lo que todavía falta cobrar.', {
-    x: 6.15, y: 4.98, w: 3.35, h: 0.3, margin: 0,
+    x: 6.15, y: 4.84, w: 3.35, h: 0.3, margin: 0,
     fontFace: F, fontSize: 9, color: GRIS,
   });
 
@@ -206,20 +259,9 @@ LAMINAS.push(function laminaParaQue() {
     ['Toda la captación junta', 'Cada tasación con su estado y su responsable, sin planillas paralelas.'],
     ['La tasa de captación', 'Cuántas tasaciones terminan en captación, y por qué se pierden las otras.'],
   ];
-  puntos.forEach(([titulo, texto], i) => {
-    const y = 2.44 + i * 0.6;
-    s.addShape(pres.ShapeType.ellipse, {
-      x: 0.53, y: y + 0.09, w: 0.1, h: 0.1, fill: { color: AZUL }, line: { type: 'none' },
-    });
-    s.addText(titulo, {
-      x: 0.79, y, w: 4.9, h: 0.25, margin: 0,
-      fontFace: F, fontSize: 12, bold: true, color: TINTA,
-    });
-    s.addText(texto, {
-      x: 0.79, y: y + 0.24, w: 4.9, h: 0.26, margin: 0,
-      fontFace: F, fontSize: 9.5, color: GRIS,
-    });
-  });
+  puntos.forEach(([titulo, texto], i) =>
+    fila(s, { x: 0.5, y: 2.44 + i * 0.6, ancho: 5.2, titulo, texto }),
+  );
 
   captura(s, 'tasador-tasaciones.png', { x: 6.0, y: 2.46, w: 3.5, h: 2.19 });
   s.addText(
@@ -266,9 +308,10 @@ LAMINAS.push(function laminaPorQue() {
       x, y: 2.46, w: 2.56, h: 2.58, rectRadius: 0.1,
       fill: { color: BLANCO }, line: { color: LINEA, width: 1 },
     });
-    s.addText(String(i + 1), {
+    // «01» y no «1»: es la misma numeración que los pasos de la lámina 4.
+    s.addText(String(i + 1).padStart(2, '0'), {
       x: x + 0.2, y: 2.6, w: 0.4, h: 0.28, margin: 0,
-      fontFace: F, fontSize: 14, bold: true, color: AZUL,
+      fontFace: F, fontSize: 12, bold: true, color: AZUL,
     });
     s.addText(titulo, {
       x: x + 0.2, y: 2.92, w: 2.18, h: 0.62, margin: 0,
@@ -304,21 +347,13 @@ LAMINAS.push(function laminaComoSeContrata() {
     ['Puesta en marcha', 'Onboarding de la dirección y de los vendedores.'],
     ['Acuerdo de confidencialidad', 'Recíproco: sus datos y los nuestros.'],
   ];
-  pasos.forEach(([titulo, texto], i) => {
-    const y = 2.52 + i * 0.8;
-    s.addText(String(i + 1).padStart(2, '0'), {
-      x: 0.5, y, w: 0.45, h: 0.28, margin: 0,
-      fontFace: F, fontSize: 12, bold: true, color: AZUL_CLARO,
-    });
-    s.addText(titulo, {
-      x: 1.0, y, w: 3.9, h: 0.28, margin: 0,
-      fontFace: F, fontSize: 13, bold: true, color: BLANCO,
-    });
-    s.addText(texto, {
-      x: 1.0, y: y + 0.28, w: 3.9, h: 0.26, margin: 0,
-      fontFace: F, fontSize: 10, color: CLARO,
-    });
-  });
+  pasos.forEach(([titulo, texto], i) =>
+    fila(s, {
+      x: 0.5, y: 2.56 + i * 0.72, ancho: 4.5,
+      numero: String(i + 1).padStart(2, '0'),
+      titulo, texto, sobreOscuro: true,
+    }),
+  );
 
   s.addShape(pres.ShapeType.roundRect, {
     x: 5.35, y: 2.46, w: 4.15, h: 2.66, rectRadius: 0.12,
@@ -396,15 +431,7 @@ LAMINAS.push(function laminaQuienesSomos() {
   ];
   gente.forEach(([nombre, cargo, texto], i) => {
     const x = 0.5 + i * 4.62;
-    s.addShape(pres.ShapeType.line, { x, y: 2.52, w: 4.38, h: 0, line: { color: AZUL, width: 2 } });
-    s.addText(nombre, {
-      x, y: 2.64, w: 4.38, h: 0.3, margin: 0,
-      fontFace: F, fontSize: 15, bold: true, color: TINTA,
-    });
-    s.addText(cargo, {
-      x, y: 2.96, w: 4.38, h: 0.24, margin: 0,
-      fontFace: F, fontSize: 10.5, bold: true, color: AZUL,
-    });
+    bloque(s, x, 2.52, 4.38, nombre, cargo);
     s.addText(texto, {
       x, y: 3.24, w: 4.38, h: 1.2, margin: 0,
       fontFace: F, fontSize: 9.5, color: GRIS, lineSpacing: 13,

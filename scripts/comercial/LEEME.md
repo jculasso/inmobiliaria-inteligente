@@ -31,6 +31,26 @@ node presentacion.js --sueltas
 for i in 1 2 3 4 5; do qlmanage -t -s 1500 -o previa "previa-lamina-$i.pptx"; done
 ```
 
+## El sistema visual: una sola lista para todo el deck
+
+Las cinco láminas usan **la misma fila**: una marca, un título y —si hace
+falta— una descripción. Lo único que cambia es qué va en la marca.
+
+| | Marca | Dónde se usa |
+|---|---|---|
+| Lista sin orden | un punto | Láminas 1 y 2 |
+| Secuencia | `01` `02` `03` | Láminas 3 y 4 |
+| Bloque con nombre | filete azul arriba | Láminas 1 y 5 |
+
+**Lo que NO se toca es dónde arranca el texto: 0,42" después del borde de la
+fila, en todas.** Eso es lo que hace que cinco láminas se lean como una sola
+presentación. Antes había tres sangrías distintas (0,20 · 0,26 · 0,50), tres
+tamaños de marca y tres escalas tipográficas para decir lo mismo.
+
+El número se apoya a la izquierda del hueco y el punto a la derecha, pegado a su
+frase. No es capricho: un `01` necesita todo el hueco y un punto no, y alinearlo
+a la izquierda lo deja flotando a media pulgada de su propio texto.
+
 ## Lo que hay que saber antes de tocarlo
 
 - **Las viñetas tienen que entrar en un renglón.** El paso entre una y otra es
