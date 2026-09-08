@@ -186,7 +186,7 @@ describe('tablero-api — la respuesta de una API todavía sin actualizar', () =
       ok: true, status: 200, json: async () => viejo,
     }) as unknown as typeof fetch;
 
-    const res = await getKpisResumen('token', 2026, 8);
+    const res = await getKpisResumen('token', { anio: 2026, mes: 8 });
     expect(res.anual.comision).toBe(50);
     expect(res.anual.comisionCompradora).toBe(0);
     expect(res.anual.comisionVendedora).toBe(0);
