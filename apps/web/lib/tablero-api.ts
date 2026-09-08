@@ -158,6 +158,8 @@ const AGREGADO_VACIO: AgregadoKpi = {
   puntasCompradoras: 0,
   puntasVendedoras: 0,
   comision: 0,
+  comisionCompradora: 0,
+  comisionVendedora: 0,
   ticketPromedio: 0,
 };
 
@@ -176,6 +178,10 @@ export function sumarAgregados(lista: AgregadoKpi[]): AgregadoKpi {
       puntasCompradoras: a.puntasCompradoras + b.puntasCompradoras,
       puntasVendedoras: a.puntasVendedoras + b.puntasVendedoras,
       comision: a.comision + b.comision,
+      comisionCompradora: a.comisionCompradora + b.comisionCompradora,
+      comisionVendedora: a.comisionVendedora + b.comisionVendedora,
+      // El ticket es un PROMEDIO: no se suma, se recalcula abajo sobre los
+      // totales ya acumulados. Sumarlo daría el ticket de nadie.
       ticketPromedio: 0,
     }),
     { ...AGREGADO_VACIO },

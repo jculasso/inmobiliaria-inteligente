@@ -18,6 +18,8 @@ const RESUMEN = {
     puntasCompradoras: 1,
     puntasVendedoras: 1,
     comision: 10,
+    comisionCompradora: 0,
+    comisionVendedora: 10,
     ticketPromedio: 50,
   },
   pendienteCobro: 0,
@@ -59,8 +61,8 @@ describe('mesesDelTrimestre', () => {
 describe('sumarAgregados', () => {
   it('suma los campos y recalcula el ticket promedio', () => {
     const resultado = sumarAgregados([
-      { volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 5, ticketPromedio: 100 },
-      { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 10, ticketPromedio: 200 },
+      { volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 5, comisionCompradora: 0, comisionVendedora: 5, ticketPromedio: 100 },
+      { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 10, comisionCompradora: 10, comisionVendedora: 0, ticketPromedio: 200 },
     ]);
     expect(resultado).toEqual({
       volumen: 300,
@@ -68,6 +70,9 @@ describe('sumarAgregados', () => {
       puntas: 2,
       puntasCompradoras: 1,
       puntasVendedoras: 1,
+      // Cada lado se suma por separado, y los dos tienen que cerrar en el total.
+      comisionCompradora: 10,
+      comisionVendedora: 5,
       comision: 15,
       ticketPromedio: 150,
     });
@@ -153,5 +158,37 @@ describe('getAgregadosPorTrimestre', () => {
     expect(trimestres[0]!.volumen).toBe(60);
     // Q4 = meses 10,11,12 -> 100+110+120 = 330
     expect(trimestres[3]!.volumen).toBe(330);
+  });
+});
+
+/**
+ * La ventana entre los dos despliegues.
+ *
+ * La web sale por Vercel en un par de minutos y la API por Render bastante
+ * después. En el medio, la web NUEVA le pregunta a la API VIEJA, que todavía no
+ * manda la comisión por lado. Sin tolerar eso, la respuesta no valida y el
+ * dashboard entero queda en error — no las dos tarjetas nuevas: el dashboard.
+ */
+describe('tablero-api — la respuesta de una API todavía sin actualizar', () => {
+  it('acepta un resumen sin la comisión por lado y la deja en cero', async () => {
+    const viejo = {
+      anio: 2026,
+      mes: 8,
+      anual: {
+        volumen: 1000, operaciones: 2, puntas: 2, puntasCompradoras: 1,
+        puntasVendedoras: 1, comision: 50, ticketPromedio: 500,
+      },
+      pendienteCobro: 0,
+      operacionesSenadas: 0,
+      alquileres: { firmados: 0, comision: 0, valorMensualPromedio: 0 },
+    };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true, status: 200, json: async () => viejo,
+    }) as unknown as typeof fetch;
+
+    const res = await getKpisResumen('token', { anio: 2026, mes: 8 });
+    expect(res.anual.comision).toBe(50);
+    expect(res.anual.comisionCompradora).toBe(0);
+    expect(res.anual.comisionVendedora).toBe(0);
   });
 });
