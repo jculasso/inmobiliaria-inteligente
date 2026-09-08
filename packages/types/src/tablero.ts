@@ -228,9 +228,18 @@ export const AgregadoKpiSchema = z.object({
    * Vacker las mira separadas en su planilla: qué comisión abonó el comprador
    * y cuál el vendedor. Verificado contra esa planilla el 08/09/2026: el total,
    * las operaciones, las puntas y el volumen coinciden exacto.
+   *
+   * `.default(0)` por el ORDEN DE DESPLIEGUE, no por comodidad. La web sale por
+   * Vercel en un par de minutos y la API por Render bastante después: entre las
+   * dos hay una ventana en la que la web nueva le pregunta a la API vieja. Sin
+   * el default, la respuesta sin estos campos no valida y el dashboard entero
+   * queda en error; con él, esas dos tarjetas muestran 0 hasta que sube la API.
+   *
+   * Un campo que el servidor SIEMPRE manda no necesita esto. Estos son nuevos,
+   * y por unos minutos no van a estar.
    */
-  comisionCompradora: z.number(),
-  comisionVendedora: z.number(),
+  comisionCompradora: z.number().default(0),
+  comisionVendedora: z.number().default(0),
   ticketPromedio: z.number(),
 });
 export type AgregadoKpi = z.infer<typeof AgregadoKpiSchema>;

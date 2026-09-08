@@ -160,3 +160,35 @@ describe('getAgregadosPorTrimestre', () => {
     expect(trimestres[3]!.volumen).toBe(330);
   });
 });
+
+/**
+ * La ventana entre los dos despliegues.
+ *
+ * La web sale por Vercel en un par de minutos y la API por Render bastante
+ * después. En el medio, la web NUEVA le pregunta a la API VIEJA, que todavía no
+ * manda la comisión por lado. Sin tolerar eso, la respuesta no valida y el
+ * dashboard entero queda en error — no las dos tarjetas nuevas: el dashboard.
+ */
+describe('tablero-api — la respuesta de una API todavía sin actualizar', () => {
+  it('acepta un resumen sin la comisión por lado y la deja en cero', async () => {
+    const viejo = {
+      anio: 2026,
+      mes: 8,
+      anual: {
+        volumen: 1000, operaciones: 2, puntas: 2, puntasCompradoras: 1,
+        puntasVendedoras: 1, comision: 50, ticketPromedio: 500,
+      },
+      pendienteCobro: 0,
+      operacionesSenadas: 0,
+      alquileres: { firmados: 0, comision: 0, valorMensualPromedio: 0 },
+    };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true, status: 200, json: async () => viejo,
+    }) as unknown as typeof fetch;
+
+    const res = await getKpisResumen('token', 2026, 8);
+    expect(res.anual.comision).toBe(50);
+    expect(res.anual.comisionCompradora).toBe(0);
+    expect(res.anual.comisionVendedora).toBe(0);
+  });
+});
