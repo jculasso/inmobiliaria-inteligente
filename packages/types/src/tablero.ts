@@ -217,6 +217,20 @@ export const AgregadoKpiSchema = z.object({
   puntasCompradoras: z.number(),
   puntasVendedoras: z.number(),
   comision: z.number(),
+  /**
+   * La comisión abierta por lado de la operación.
+   *
+   * `comisionCompradora + comisionVendedora === comision`. Se manda desglosada
+   * y no se deduce en la pantalla porque el dato vive en la punta —cada punta
+   * tiene su lado y su comisión— y en el front ya no están las puntas, solo el
+   * total agregado.
+   *
+   * Vacker las mira separadas en su planilla: qué comisión abonó el comprador
+   * y cuál el vendedor. Verificado contra esa planilla el 08/09/2026: el total,
+   * las operaciones, las puntas y el volumen coinciden exacto.
+   */
+  comisionCompradora: z.number(),
+  comisionVendedora: z.number(),
   ticketPromedio: z.number(),
 });
 export type AgregadoKpi = z.infer<typeof AgregadoKpiSchema>;

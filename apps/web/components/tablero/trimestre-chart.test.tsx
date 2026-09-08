@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { TrimestreChart } from './trimestre-chart';
 
 const DATOS = [
-  { volumen: 4000, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 100, ticketPromedio: 4000 },
-  { volumen: 4100, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 110, ticketPromedio: 4100 },
-  { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 10, ticketPromedio: 200 },
-  { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, ticketPromedio: 0 },
+  { volumen: 4000, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 100, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 4000 },
+  { volumen: 4100, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 110, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 4100 },
+  { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 10, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 200 },
+  { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 0 },
 ];
 
 // El componente dibuja los mismos trimestres dos veces: el gráfico SVG en

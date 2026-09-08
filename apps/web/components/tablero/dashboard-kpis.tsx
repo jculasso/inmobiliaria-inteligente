@@ -33,8 +33,13 @@ export function DashboardKpis({
   function cards(agg: AgregadoKpi, filtro: OperacionFiltro, periodoLabel: string) {
     const abrir = (label: string) => () =>
       setDrill({ titulo: label, subtitulo: `Ventas · ${periodoLabel}`, filtro: { ...filtro, tipo: 'venta' } });
+    /*
+     * Ocho tarjetas, en dos filas de cuatro. Eran seis en una fila de seis; al
+     * abrir la comisión por lado, seis columnas dejaban los números apretados
+     * y la fila no cerraba.
+     */
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiCard label="Volumen" value={fmtUSD(agg.volumen)} icon="💰" tone="brand" onClick={abrir('Volumen')} />
         <KpiCard
           label="Operaciones"
@@ -62,6 +67,25 @@ export function DashboardKpis({
           onClick={abrir('Puntas vendedoras')}
         />
         <KpiCard label="Comisión" value={fmtUSD(agg.comision)} icon="💵" tone="success" onClick={abrir('Comisión')} />
+        {/*
+          La comisión abierta por lado, como la mira Vacker en su planilla: qué
+          parte abonó el comprador y qué parte el vendedor. Las dos suman la
+          tarjeta de «Comisión» de al lado.
+        */}
+        <KpiCard
+          label="Com. comprador"
+          value={fmtUSD(agg.comisionCompradora)}
+          sub={`${fmtNum(agg.puntasCompradoras)} puntas`}
+          icon="🤝"
+          onClick={abrir('Comisión del comprador')}
+        />
+        <KpiCard
+          label="Com. vendedor"
+          value={fmtUSD(agg.comisionVendedora)}
+          sub={`${fmtNum(agg.puntasVendedoras)} puntas`}
+          icon="🧑‍💼"
+          onClick={abrir('Comisión del vendedor')}
+        />
       </div>
     );
   }

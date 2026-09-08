@@ -18,6 +18,8 @@ const RESUMEN = {
     puntasCompradoras: 1,
     puntasVendedoras: 1,
     comision: 10,
+    comisionCompradora: 0,
+    comisionVendedora: 10,
     ticketPromedio: 50,
   },
   pendienteCobro: 0,
@@ -59,8 +61,8 @@ describe('mesesDelTrimestre', () => {
 describe('sumarAgregados', () => {
   it('suma los campos y recalcula el ticket promedio', () => {
     const resultado = sumarAgregados([
-      { volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 5, ticketPromedio: 100 },
-      { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 10, ticketPromedio: 200 },
+      { volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 5, comisionCompradora: 0, comisionVendedora: 5, ticketPromedio: 100 },
+      { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 10, comisionCompradora: 10, comisionVendedora: 0, ticketPromedio: 200 },
     ]);
     expect(resultado).toEqual({
       volumen: 300,
@@ -68,6 +70,9 @@ describe('sumarAgregados', () => {
       puntas: 2,
       puntasCompradoras: 1,
       puntasVendedoras: 1,
+      // Cada lado se suma por separado, y los dos tienen que cerrar en el total.
+      comisionCompradora: 10,
+      comisionVendedora: 5,
       comision: 15,
       ticketPromedio: 150,
     });

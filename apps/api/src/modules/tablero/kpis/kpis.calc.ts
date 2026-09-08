@@ -36,13 +36,22 @@ export function agregar(puntas: PuntaCalc[], scope: ScopeSet): AgregadoKpi {
   let pc = 0;
   let pv = 0;
   let comision = 0;
+  // La comisión, además, abierta por lado: es el mismo recorrido, y en la
+  // pantalla ya no están las puntas para deducirlo.
+  let cc = 0;
+  let cv = 0;
   for (const p of puntas) {
     if (!enAlcance(p, scope)) continue;
     ops.add(p.operacionId);
     volumen += p.precio;
     n += 1;
-    if (p.lado === 'compradora') pc += 1;
-    else pv += 1;
+    if (p.lado === 'compradora') {
+      pc += 1;
+      cc += p.comision;
+    } else {
+      pv += 1;
+      cv += p.comision;
+    }
     comision += p.comision;
   }
   return {
@@ -52,6 +61,8 @@ export function agregar(puntas: PuntaCalc[], scope: ScopeSet): AgregadoKpi {
     puntasCompradoras: pc,
     puntasVendedoras: pv,
     comision,
+    comisionCompradora: cc,
+    comisionVendedora: cv,
     ticketPromedio: n ? volumen / n : 0,
   };
 }

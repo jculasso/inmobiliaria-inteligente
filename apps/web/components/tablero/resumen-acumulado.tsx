@@ -8,6 +8,8 @@ import { getAgregadosPorTrimestre, getResumenPeriodo, type PeriodoResumen } from
 import { getOrFetch } from '../../lib/kpi-cache';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { TrimestreChart } from './trimestre-chart';
+import { TrimestreTabla } from './trimestre-tabla';
+import { DetalleDrillModal } from './detalle-drill-modal';
 import { VendedorTotalesTable } from './vendedor-totales-table';
 
 const TABS: { key: PeriodoResumen; label: string; icono: string }[] = [
@@ -23,15 +25,29 @@ const TRIMESTRES = [
   { q: 4, label: 'Q4 · Oct–Dic' },
 ];
 
-function metricas(agg: AgregadoKpi) {
+/**
+ * Las tarjetas del período elegido.
+ *
+ * `onOperaciones` hace que la tarjeta de Operaciones abra la lista de esas
+ * operaciones. Es opcional porque no todos los períodos lo necesitan; hoy lo
+ * usa el trimestral, que es donde Vacker lo pidió.
+ */
+function metricas(agg: AgregadoKpi, onOperaciones?: () => void) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <KpiCard label="Volumen operado" value={fmtUSD(agg.volumen)} tone="brand" />
       <KpiCard label="Ticket promedio" value={fmtUSD(agg.ticketPromedio)} sub="por punta" />
-      <KpiCard label="Operaciones" value={fmtNum(agg.operaciones)} sub={`${fmtNum(agg.puntas)} puntas`} />
+      <KpiCard
+        label="Operaciones"
+        value={fmtNum(agg.operaciones)}
+        sub={onOperaciones ? 'ver cuáles' : `${fmtNum(agg.puntas)} puntas`}
+        onClick={onOperaciones}
+      />
       <KpiCard label="Puntas totales" value={fmtNum(agg.puntas)} />
       <KpiCard label="Puntas compradoras" value={fmtNum(agg.puntasCompradoras)} />
       <KpiCard label="Puntas vendedoras" value={fmtNum(agg.puntasVendedoras)} />
+      <KpiCard label="Com. comprador" value={fmtUSD(agg.comisionCompradora)} />
+      <KpiCard label="Com. vendedor" value={fmtUSD(agg.comisionVendedora)} />
       <KpiCard label="Comisiones cobradas" value={fmtUSD(agg.comision)} sub="total generada" tone="success" />
     </div>
   );
@@ -52,6 +68,8 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
   const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(inicial ?? null);
   const [loading, setLoading] = useState(!inicial);
   const [porTrimestre, setPorTrimestre] = useState<AgregadoKpi[] | null>(null);
+  /** El trimestre cuyas operaciones se están mirando en la ventana de detalle. */
+  const [verOperaciones, setVerOperaciones] = useState<number | null>(null);
   const primerRender = useRef(true);
 
   useEffect(() => {
@@ -129,8 +147,14 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       )}
 
       {tab === 'trimestral' && porTrimestre && (
-        <div className="border-b border-line p-4">
+        <div className="flex flex-col gap-4 border-b border-line p-4">
           <TrimestreChart datos={porTrimestre} seleccionado={trimestre} onSelect={setTrimestre} />
+          {/*
+            El cuadro completo va DEBAJO del gráfico. El gráfico muestra la
+            tendencia con dos series; las nueve filas de la planilla adentro de
+            un gráfico no se leerían.
+          */}
+          <TrimestreTabla datos={porTrimestre} seleccionado={trimestre} onSelect={setTrimestre} />
         </div>
       )}
 
@@ -139,7 +163,10 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
           <p className="py-6 text-sm text-muted">Cargando…</p>
         ) : (
           <div className="flex flex-col gap-5">
-            {metricas(datos.agregado)}
+            {metricas(
+              datos.agregado,
+              tab === 'trimestral' ? () => setVerOperaciones(trimestre) : undefined,
+            )}
             <div>
               <p className="mb-2 text-sm font-bold text-ink">
                 👥 Totales por vendedor <span className="text-xs font-normal text-muted">({datos.ranking.length} vendedores)</span>
@@ -151,6 +178,31 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
           </div>
         )}
       </div>
+
+      {/*
+        Las operaciones del trimestre. El filtro por `trimestre` ya existía en
+        la API —lo traduce a los tres meses— y esta misma ventana es la que se
+        abre desde el ranking: acá no hubo que inventar nada, solo pedirlo.
+
+        Se acota a VENTAS ESCRITURADAS porque es exactamente lo que cuenta la
+        tarjeta: el agregado sale de `ventas(tx, anio, 'escriturada')`. Sin esos
+        dos filtros, la lista traería alquileres y señadas que la tarjeta nunca
+        contó, y los números no coincidirían.
+      */}
+      {verOperaciones !== null && (
+        <DetalleDrillModal
+          titulo={`Operaciones · Q${verOperaciones}`}
+          subtitulo={`Ventas escrituradas · Año ${anio}`}
+          filtro={{
+            anio,
+            trimestre: verOperaciones,
+            tipo: 'venta',
+            estado: 'escriturada',
+            verTodo,
+          }}
+          onClose={() => setVerOperaciones(null)}
+        />
+      )}
     </Card>
   );
 }

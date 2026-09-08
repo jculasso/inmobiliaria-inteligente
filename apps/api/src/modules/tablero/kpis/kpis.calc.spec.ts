@@ -95,3 +95,39 @@ describe('seguimientoObjetivos', () => {
     expect(b?.avanceComision).toBe(0);
   });
 });
+
+/**
+ * La comisión abierta por lado.
+ *
+ * Vacker la mira separada en su planilla: cuánto abonó el comprador y cuánto el
+ * vendedor. El dato siempre estuvo en la punta —cada una tiene su lado y su
+ * comisión— pero el agregado devolvía solo el total.
+ *
+ * Sobre el dataset de arriba: compradoras 2 + 1,5 = 3,5 · vendedoras 3 + 6 = 9.
+ */
+describe('agregar — la comisión por lado', () => {
+  it('separa lo que abonó el comprador de lo que abonó el vendedor', () => {
+    const a = agregar(puntas, null);
+    expect(a.comisionCompradora).toBe(3.5);
+    expect(a.comisionVendedora).toBe(9);
+  });
+
+  it('los dos lados suman siempre el total', () => {
+    // Es la propiedad que hace confiable la pantalla: si alguna vez dejaran de
+    // cerrar, las tres tarjetas del dashboard se contradicen entre ellas.
+    for (const scope of [null, new Set(['a']), new Set(['b', 'c']), new Set(['z'])]) {
+      const a = agregar(puntas, scope);
+      expect(a.comisionCompradora + a.comisionVendedora, `scope ${JSON.stringify(scope)}`).toBeCloseTo(
+        a.comision,
+        10,
+      );
+    }
+  });
+
+  it('respeta el alcance, igual que el resto del agregado', () => {
+    // Solo 'a', que tiene las dos puntas vendedoras: el comprador queda en 0.
+    const a = agregar(puntas, new Set(['a']));
+    expect(a.comisionVendedora).toBe(9);
+    expect(a.comisionCompradora).toBe(0);
+  });
+});
