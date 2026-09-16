@@ -465,9 +465,18 @@ export function InformeDocument({
           </View>
         )}
 
-        <View wrap={false}>
-          <Text style={styles.sectionTitle}>ANÁLISIS COMERCIAL</Text>
-          <View style={styles.sectionUnderline} />
+        {/*
+          El título va junto a lo que titula, pero el cuerpo SÍ se parte entre
+          páginas. Con todo el bloque en `wrap={false}`, el texto que no entra
+          en una hoja no se mueve a la siguiente: se dibuja fuera y desaparece.
+          Medido — con observaciones de 5.500 caracteres el informe se quedaba
+          en 3 páginas en vez de crecer a 4.
+        */}
+        <View>
+          <View wrap={false}>
+            <Text style={styles.sectionTitle}>ANÁLISIS COMERCIAL</Text>
+            <View style={styles.sectionUnderline} />
+          </View>
           <Text style={styles.paragraph}>{textoAnalisisComercial(t)}</Text>
         </View>
 
@@ -577,9 +586,11 @@ export function InformeDocument({
         )}
         </View>
 
+        <View>
         <View wrap={false}>
-        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTRATEGIA DE COMERCIALIZACIÓN</Text>
-        <View style={styles.sectionUnderline} />
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTRATEGIA DE COMERCIALIZACIÓN</Text>
+          <View style={styles.sectionUnderline} />
+        </View>
         {t.estrategiaComercial && t.estrategiaComercial.estrategia.length > 0 && (
           <View style={styles.pills}>
             {t.estrategiaComercial.estrategia.map((e) => (

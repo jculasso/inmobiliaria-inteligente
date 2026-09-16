@@ -354,3 +354,51 @@ describe('las siglas del análisis comercial no se destruyen', () => {
     expect(texto).toContain('pasillo de acceso');
   });
 });
+
+/**
+ * Un informe largo tiene que ocupar más hojas, no perder el final.
+ *
+ * Las secciones estaban enteras dentro de un `<View wrap={false}>`, que le
+ * prohíbe a react-pdf partirlas entre páginas. Mientras el contenido entró en
+ * una hoja no se notó. Cuando no entra, lo que sobra no pasa a la página
+ * siguiente: se dibuja fuera de la hoja y no se ve, sin ningún error.
+ *
+ * Medido antes de arreglarlo: con 5.500 caracteres de observaciones el PDF se
+ * quedaba clavado en 3 páginas —los glifos estaban en el archivo, fuera del
+ * área visible— y recién con el título separado del cuerpo pasó a 4, 5 y 7
+ * según el largo.
+ *
+ * Esto se volvió alcanzable al abrir el catálogo por tipología: el párrafo de
+ * análisis pasó de unas 29 etiquetas cortas a poder tener más de cien.
+ */
+describe('un informe largo ocupa más hojas', () => {
+  const paginas = (buffer: Buffer) => (buffer.toString('latin1').match(/\/Type\s*\/Page(?![s/])/g) ?? []).length;
+
+  async function informeCon(analisis: string, estrategia: string) {
+    return renderToBuffer(
+      <InformeDocument
+        tasacion={{
+          ...TASACION,
+          analisisComercial: { ...TASACION.analisisComercial!, observacionesComerciales: analisis },
+          estrategiaComercial: { ...TASACION.estrategiaComercial!, observacionesEstrategia: estrategia },
+        }}
+        tenantNombre="Vacker"
+        logoUrl={null}
+      />,
+    );
+  }
+
+  const LARGO = 'Observación extensa que empuja el párrafo hacia abajo. '.repeat(200);
+
+  it('crece cuando crecen las observaciones comerciales', async () => {
+    const corto = paginas(await informeCon('Zona muy demandada.', 'Priorizar portales.'));
+    const largo = paginas(await informeCon(LARGO, 'Priorizar portales.'));
+    expect(largo).toBeGreaterThan(corto);
+  });
+
+  it('crece cuando crecen las observaciones de estrategia', async () => {
+    const corto = paginas(await informeCon('Zona muy demandada.', 'Priorizar portales.'));
+    const largo = paginas(await informeCon('Zona muy demandada.', LARGO));
+    expect(largo).toBeGreaterThan(corto);
+  });
+});
