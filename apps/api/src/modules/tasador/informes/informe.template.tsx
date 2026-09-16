@@ -282,6 +282,21 @@ function listasLargas(t: TasacionDto): { label: string; value: string }[] {
   return items;
 }
 
+/**
+ * La etiqueta tal como entra en medio de una frase.
+ *
+ * Antes era un `.toLowerCase()` sobre la lista entera. Daba igual mientras las
+ * opciones fueran «Excelente ubicación» y compañía, pero desde que el catálogo
+ * se abrió por tipología y el tasador puede escribir la suya, aparecen siglas:
+ * «PH con independencia total» salía impreso «ph con independencia total» en el
+ * informe que se le entrega al propietario.
+ */
+function enLaFrase(valor: string): string {
+  const primeraPalabra = valor.split(' ')[0] ?? '';
+  if (primeraPalabra.length > 1 && primeraPalabra === primeraPalabra.toUpperCase()) return valor;
+  return valor.charAt(0).toLowerCase() + valor.slice(1);
+}
+
 function textoAnalisisComercial(t: TasacionDto): string {
   const a = t.analisisComercial;
   const base = `Se trata de un/a ${t.tipoPropiedad.toLowerCase()} ubicado en ${t.barrio ?? t.direccion}, en estado ${
@@ -290,10 +305,10 @@ function textoAnalisisComercial(t: TasacionDto): string {
   if (!a) return `${base} Análisis comercial pendiente de completar.`;
   const partes: string[] = [base];
   if (a.fortalezas.length > 0) {
-    partes.push(`Entre sus principales fortalezas se destacan: ${a.fortalezas.join(', ').toLowerCase()}.`);
+    partes.push(`Entre sus principales fortalezas se destacan: ${a.fortalezas.map(enLaFrase).join(', ')}.`);
   }
   if (a.aspectos.length > 0) {
-    partes.push(`Como aspectos a considerar para la estrategia comercial mencionamos: ${a.aspectos.join(', ').toLowerCase()}.`);
+    partes.push(`Como aspectos a considerar para la estrategia comercial mencionamos: ${a.aspectos.map(enLaFrase).join(', ')}.`);
   }
   if (a.demanda) partes.push(`El nivel de demanda estimado para esta tipología es ${a.demanda.toLowerCase()},`);
   if (a.competencia) partes.push(`con una competencia ${a.competencia.toLowerCase()} en la zona.`);
@@ -450,9 +465,18 @@ export function InformeDocument({
           </View>
         )}
 
-        <View wrap={false}>
-          <Text style={styles.sectionTitle}>ANÁLISIS COMERCIAL</Text>
-          <View style={styles.sectionUnderline} />
+        {/*
+          El título va junto a lo que titula, pero el cuerpo SÍ se parte entre
+          páginas. Con todo el bloque en `wrap={false}`, el texto que no entra
+          en una hoja no se mueve a la siguiente: se dibuja fuera y desaparece.
+          Medido — con observaciones de 5.500 caracteres el informe se quedaba
+          en 3 páginas en vez de crecer a 4.
+        */}
+        <View>
+          <View wrap={false}>
+            <Text style={styles.sectionTitle}>ANÁLISIS COMERCIAL</Text>
+            <View style={styles.sectionUnderline} />
+          </View>
           <Text style={styles.paragraph}>{textoAnalisisComercial(t)}</Text>
         </View>
 
@@ -562,9 +586,11 @@ export function InformeDocument({
         )}
         </View>
 
+        <View>
         <View wrap={false}>
-        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTRATEGIA DE COMERCIALIZACIÓN</Text>
-        <View style={styles.sectionUnderline} />
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>ESTRATEGIA DE COMERCIALIZACIÓN</Text>
+          <View style={styles.sectionUnderline} />
+        </View>
         {t.estrategiaComercial && t.estrategiaComercial.estrategia.length > 0 && (
           <View style={styles.pills}>
             {t.estrategiaComercial.estrategia.map((e) => (
