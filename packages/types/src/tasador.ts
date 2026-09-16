@@ -99,42 +99,25 @@ export const PlazoEstimadoSchema = z.enum([
 ]);
 export type PlazoEstimado = z.infer<typeof PlazoEstimadoSchema>;
 
-export const FortalezaSchema = z.enum([
-  'Excelente ubicación',
-  'Buena luminosidad',
-  'Ambientes amplios',
-  'Buena distribución',
-  'Buen estado general',
-  'Edificio bien mantenido',
-  'Balcón funcional',
-  'Vista despejada',
-  'Cochera incluida',
-  'Bajas expensas',
-  'Apto crédito',
-  'Alta demanda para la tipología',
-  'Cercanía a corredores comerciales',
-  'Cercanía a espacios verdes',
-  'Buena conectividad',
-  'Buena relación precio-superficie',
-]);
-export type Fortaleza = z.infer<typeof FortalezaSchema>;
-
-export const AspectoSchema = z.enum([
-  'Necesita mejoras',
-  'Expensas elevadas',
-  'Falta de cochera',
-  'Disposición interna',
-  'Baja luminosidad',
-  'Edificio antiguo',
-  'Alta competencia en la zona',
-  'Precio sensible para la demanda actual',
-  'Documentación pendiente de revisión',
-  'Ambientes chicos',
-  'Estado original',
-  'Falta de balcón',
-  'Requiere actualización estética',
-]);
-export type Aspecto = z.infer<typeof AspectoSchema>;
+/**
+ * Las fortalezas y los aspectos NO son un enum.
+ *
+ * Hasta septiembre de 2026 lo eran: 16 y 13 valores fijos. Dejaron de serlo por
+ * dos motivos que empujan para el mismo lado.
+ *
+ * El primero es que la lista ahora depende del tipo de propiedad y el tasador
+ * puede además escribir la suya —«siempre va a existir alguna particularidad que
+ * no esté contemplada»—, y un enum no tiene dónde guardar eso.
+ *
+ * El segundo es más serio y ya nos pasó en el tablero. Estos schemas validan
+ * también la LECTURA, y el listado valida el arreglo entero: un valor que no
+ * esté en la lista no rompe su tasación, rompe el listado completo de la
+ * inmobiliaria. Con `z.string()` eso es imposible.
+ *
+ * La lista cerrada la impone la pantalla, con `fortalezasDe()` y `aspectosDe()`
+ * de `tasador-catalogo.ts`. Es el mismo criterio que ya seguía `amenities`, y
+ * por la misma razón: que nada de lo que alguien cargó se pierda.
+ */
 
 export const EstrategiaAccionSchema = z.enum([
   'Fotografías profesionales',
@@ -157,8 +140,8 @@ export type EstrategiaAccion = z.infer<typeof EstrategiaAccionSchema>;
 // divergencia Input/Output que rompe la inferencia de `apiFetch<T>` (el
 // llamador siempre manda el array, aunque sea vacío).
 export const AnalisisComercialSchema = z.object({
-  fortalezas: z.array(FortalezaSchema),
-  aspectos: z.array(AspectoSchema),
+  fortalezas: z.array(z.string()),
+  aspectos: z.array(z.string()),
   demanda: NivelSchema.nullish(),
   competencia: NivelSchema.nullish(),
   perfilComprador: PerfilCompradorSchema.nullish(),

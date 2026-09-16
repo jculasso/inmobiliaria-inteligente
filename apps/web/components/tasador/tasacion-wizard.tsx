@@ -5,13 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type {
   ComparableInput,
   AptoCredito,
-  Aspecto,
   Disposicion,
   Documentacion,
   Escenario,
   EstadoInmueble,
   EstrategiaAccion,
-  Fortaleza,
   Nivel,
   Orientacion,
   PerfilComprador,
@@ -24,13 +22,11 @@ import type {
 } from '@vacker/types';
 import {
   AptoCreditoSchema,
-  AspectoSchema,
   DisposicionSchema,
   DocumentacionSchema,
   EscenarioSchema,
   EstadoInmuebleSchema,
   EstrategiaAccionSchema,
-  FortalezaSchema,
   NivelSchema,
   OrientacionSchema,
   PerfilCompradorSchema,
@@ -154,12 +150,12 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   const [fotos, setFotos] = useState<TasacionFotoDto[]>(tasacion?.fotos ?? []);
 
   // Sección 3
-  const [fortalezas, setFortalezas] = useState<string[]>(
-    opcionesValidas(FortalezaSchema, tasacion?.analisisComercial?.fortalezas),
-  );
-  const [aspectos, setAspectos] = useState<string[]>(
-    opcionesValidas(AspectoSchema, tasacion?.analisisComercial?.aspectos),
-  );
+  // Sin `opcionesValidas` a propósito, a diferencia del resto de la pantalla.
+  // Acá el tasador puede escribir la suya, y filtrar contra una lista cerrada
+  // borraría en silencio lo que escribió la primera vez que reabra la tasación.
+  // También conserva las de una tipología que después se cambió.
+  const [fortalezas, setFortalezas] = useState<string[]>(tasacion?.analisisComercial?.fortalezas ?? []);
+  const [aspectos, setAspectos] = useState<string[]>(tasacion?.analisisComercial?.aspectos ?? []);
   const [demanda, setDemanda] = useState<Nivel | ''>(opcionValida(NivelSchema, tasacion?.analisisComercial?.demanda));
   const [competencia, setCompetencia] = useState<Nivel | ''>(
     opcionValida(NivelSchema, tasacion?.analisisComercial?.competencia),
@@ -293,8 +289,8 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   function datosSeccion3() {
     return {
       analisisComercial: {
-        fortalezas: fortalezas as Fortaleza[],
-        aspectos: aspectos as Aspecto[],
+        fortalezas,
+        aspectos,
         demanda: demanda || null,
         competencia: competencia || null,
         perfilComprador: perfilComprador || null,
@@ -555,6 +551,7 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
           )}
           {seccionActiva === 3 && (
             <Seccion3Analisis
+              tipoPropiedad={tipoPropiedad}
               fortalezas={fortalezas}
               setFortalezas={setFortalezas}
               aspectos={aspectos}

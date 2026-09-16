@@ -318,3 +318,39 @@ describe('la superficie del terreno en el informe', () => {
   });
 
 });
+
+/**
+ * Las siglas en el párrafo de análisis comercial.
+ *
+ * El texto arma una frase corrida con las fortalezas y los aspectos elegidos, y
+ * los bajaba a minúscula enteros. Mientras la lista fue la de departamentos no
+ * se notó: ninguna de las 16 opciones tenía una sigla. Desde que el catálogo se
+ * abrió por tipología —y sobre todo desde que el tasador puede escribir la
+ * suya— sí las hay, y «PH con independencia total» salía «ph con independencia
+ * total» en el informe que firma la inmobiliaria.
+ */
+describe('las siglas del análisis comercial no se destruyen', () => {
+  it('respeta PH y baja la inicial del resto', async () => {
+    const texto = await textoDePdf(
+      await renderToBuffer(
+        <InformeDocument
+          tasacion={{
+            ...TASACION,
+            analisisComercial: {
+              ...TASACION.analisisComercial!,
+              fortalezas: ['PH con independencia total', 'Excelente ubicación'],
+              aspectos: ['Pasillo de acceso'],
+            },
+          }}
+          tenantNombre="Vacker"
+          logoUrl={null}
+        />,
+      ),
+    );
+    expect(texto).toContain('PH con independencia total');
+    expect(texto).not.toContain('ph con independencia total');
+    // Y lo que no es sigla sigue entrando en minúscula en medio de la frase.
+    expect(texto).toContain('excelente ubicación');
+    expect(texto).toContain('pasillo de acceso');
+  });
+});
