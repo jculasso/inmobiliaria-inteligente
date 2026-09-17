@@ -29,6 +29,7 @@ export * from './admin';
 // Vocabulario base del Tasador de Propiedades (Sprint 0).
 export * from './tasador';
 export * from './tasador-catalogo';
+export * from './tasador-ficha';
 
 // Contratos del módulo To Do List (espejo de Google Calendar).
 export * from './todo';
