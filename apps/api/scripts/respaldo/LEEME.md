@@ -6,12 +6,40 @@ se saque a mano.
 
 ```bash
 cd apps/api
-CUANDO=$(date -u +"%Y-%m-%d_%H%M") node ../../scripts/respaldo/datos.mjs
-CUANDO=$(date -u +"%Y-%m-%d_%H%M") node ../../scripts/respaldo/archivos.mjs
+CUANDO=$(date -u +"%Y-%m-%d_%H%M") node scripts/respaldo/datos.mjs
+CUANDO=$(date -u +"%Y-%m-%d_%H%M") node scripts/respaldo/archivos.mjs
 ```
 
 Los dos **solo leen**. Todo va a `~/Respaldos-Inmobiliaria/<fecha>/`, fuera del
 repositorio.
+
+### Por qué viven acá y no en `scripts/` de la raíz
+
+Hasta el 17/09/2026 estaban en `scripts/respaldo/`, y el comando documentado
+dejó de funcionar sin que nadie se enterara:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@prisma/client'
+imported from .../scripts/respaldo/datos.mjs
+```
+
+Node resuelve los paquetes desde la ubicación del ARCHIVO, no desde el
+directorio actual. Desde la raíz, `datos.mjs` buscaba `@prisma/client` y no lo
+encontraba: pnpm lo tiene solo en `apps/api/node_modules`. Antes andaba de
+casualidad, porque estaba izado a la raíz; un `install` lo bajó y la
+instrucción quedó rota.
+
+**Por qué no se arregló agregando `@prisma/client` a la raíz**, que era lo
+primero que uno piensa: el cliente de Prisma no es un paquete común, se GENERA.
+El generado vive en una entrada del store de pnpm cuya clave incluye los peers
+(`@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3`). Declararlo en la raíz
+sin declarar también `prisma` produce otra entrada distinta, **sin el cliente
+generado adentro**, y el script falla de otra manera. Habría que duplicar las
+dos dependencias de la API en la raíz para que un script resuelva.
+
+Moverlos acá hace que la dependencia sea real en vez de accidental: el script
+necesita el cliente de Prisma de la API y el esquema de la API, así que
+pertenece al paquete de la API. `apps/api/scripts/` ya existía para esto.
 
 ## Qué copia cada uno, y por qué hacen falta los dos
 
