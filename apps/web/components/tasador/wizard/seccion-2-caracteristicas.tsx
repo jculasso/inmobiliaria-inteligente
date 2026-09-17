@@ -9,6 +9,9 @@ import {
   OrientacionSchema,
   SERVICIOS,
   TipoPropiedadSchema,
+  camposDe,
+  caracteristicasDe,
+  type CampoFicha,
   type AptoCredito,
   type Disposicion,
   type Documentacion,
@@ -271,9 +274,64 @@ export function Seccion2Caracteristicas(props: Props) {
     setFotos,
   } = props;
 
+  /*
+   * Qué se muestra y qué no, según el tipo de propiedad.
+   *
+   * `ver()` tiene dos condiciones y la segunda es la importante: un campo que
+   * la tipología no pide se muestra IGUAL si tiene un dato cargado. Es lo que
+   * hace que cambiar el desplegable de tipo no esconda —y al guardar, no
+   * pierda— lo que alguien ya había medido. Una tasación cargada como
+   * departamento y pasada a terreno sigue mostrando sus dormitorios.
+   */
+  const pedidos = camposDe(tipoPropiedad);
+  const conDato: Record<CampoFicha, boolean> = {
+    superficieConstruida: [supCubierta, supSemicubierta, supDescubierta].some((v) => v !== '' && Number(v) > 0),
+    superficieTerreno: supTerreno !== '' && Number(supTerreno) > 0,
+    dormitorios: dormitorios !== '',
+    banos: banos !== '' || toilette !== '',
+    ambientes: ambientes !== '',
+    antiguedad: antiguedad !== '',
+    disposicion: disposicion !== '',
+    orientacion: orientacion !== '',
+    estadoInmueble: estadoInmueble !== '',
+    servicios: servicios.length > 0,
+    amenities: tieneAmenities || amenities.length > 0 || detalleAmenities !== '',
+    expensas: expensas !== '',
+    aptoCredito: aptoCredito !== '',
+    documentacion: documentacion !== '',
+  };
+  const ver = (campo: CampoFicha) => pedidos.has(campo) || conDato[campo];
+  const ajenos = (Object.keys(conDato) as CampoFicha[]).filter((c) => !pedidos.has(c) && conDato[c]);
+
+  // Los tildes que la tipología ofrece, más los que ya estén marcados aunque no
+  // los ofrezca — por el mismo motivo.
+  const ofrecidas = caracteristicasDe(tipoPropiedad);
+  const caracteristicas = (
+    [
+      ['Cochera', cochera, setCochera],
+      ['Balcón', balcon, setBalcon],
+      ['Terraza', terraza, setTerraza],
+      ['Patio', patio, setPatio],
+      ['Lavadero', lavadero, setLavadero],
+      ['Piscina', piscina, setPiscina],
+      ['Altillo', altillo, setAltillo],
+      ['Baulera', baulera, setBaulera],
+      ['Biblioteca', biblioteca, setBiblioteca],
+      ['Escritorio', escritorio, setEscritorio],
+      ['Jardín', jardin, setJardin],
+      ['Vestidor', vestidor, setVestidor],
+    ] as [string, boolean, (v: boolean) => void][]
+  ).filter(([label, value]) => ofrecidas.includes(label as never) || value);
+
   return (
     <div className="flex flex-col gap-3">
       <PasoHeader numero={2} titulo="Características del inmueble" bajada="Superficies, ambientes y estado de conservación." />
+      {ajenos.length > 0 && (
+        <p className="rounded-brand border border-amber/40 bg-amber/5 px-3 py-2 text-xs text-muted">
+          Hay datos cargados que no corresponden a {tipoPropiedad.toLowerCase()}. Se muestran igual para que puedas
+          revisarlos o borrarlos; nada se borra solo al cambiar el tipo.
+        </p>
+      )}
       <Campo label="Tipo de propiedad">
         <select
           value={tipoPropiedad}
@@ -287,6 +345,8 @@ export function Seccion2Caracteristicas(props: Props) {
           ))}
         </select>
       </Campo>
+      {ver('superficieConstruida') && (
+      <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Campo label="Sup. cubierta (m²)">
           <input
@@ -330,6 +390,9 @@ export function Seccion2Caracteristicas(props: Props) {
         */}
         <span className="ml-1 text-xs text-muted">({formulaEnPalabras(coeficientes)})</span>
       </div>
+      </>
+      )}
+      {ver('superficieTerreno') && (
       <Campo label="Sup. terreno (m²)">
         <input
           type="number"
@@ -340,8 +403,11 @@ export function Seccion2Caracteristicas(props: Props) {
           className={inputClass}
         />
       </Campo>
+      )}
 
+      {(ver('dormitorios') || ver('banos') || ver('ambientes')) && (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {ver('dormitorios') && (
         <Campo label="Dormitorios">
           <input
             type="number"
@@ -351,6 +417,9 @@ export function Seccion2Caracteristicas(props: Props) {
             className={inputClass}
           />
         </Campo>
+        )}
+        {ver('banos') && (
+        <>
         <Campo label="Baños">
           <input type="number" min={0} value={banos} onChange={(e) => setBanos(e.target.value)} className={inputClass} />
         </Campo>
@@ -363,6 +432,9 @@ export function Seccion2Caracteristicas(props: Props) {
             className={inputClass}
           />
         </Campo>
+        </>
+        )}
+        {ver('ambientes') && (
         <Campo label="Ambientes">
           <input
             type="number"
@@ -372,9 +444,13 @@ export function Seccion2Caracteristicas(props: Props) {
             className={inputClass}
           />
         </Campo>
+        )}
       </div>
+      )}
 
+      {(ver('antiguedad') || ver('disposicion') || ver('orientacion')) && (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {ver('antiguedad') && (
         <Campo label="Antigüedad (años)">
           <input
             type="number"
@@ -384,6 +460,8 @@ export function Seccion2Caracteristicas(props: Props) {
             className={inputClass}
           />
         </Campo>
+        )}
+        {ver('disposicion') && (
         <Campo label="Disposición">
           <select
             value={disposicion}
@@ -398,6 +476,8 @@ export function Seccion2Caracteristicas(props: Props) {
             ))}
           </select>
         </Campo>
+        )}
+        {ver('orientacion') && (
         <Campo label="Orientación">
           <select
             value={orientacion}
@@ -412,7 +492,10 @@ export function Seccion2Caracteristicas(props: Props) {
             ))}
           </select>
         </Campo>
+        )}
       </div>
+      )}
+      {ver('estadoInmueble') && (
       <Campo label="Estado del inmueble">
         <select
           value={estadoInmueble}
@@ -427,35 +510,27 @@ export function Seccion2Caracteristicas(props: Props) {
           ))}
         </select>
       </Campo>
+      )}
 
-      <Grilla titulo="Características">
-        {(
-          [
-            ['Cochera', cochera, setCochera],
-            ['Balcón', balcon, setBalcon],
-            ['Terraza', terraza, setTerraza],
-            ['Patio', patio, setPatio],
-            ['Lavadero', lavadero, setLavadero],
-            ['Piscina', piscina, setPiscina],
-            ['Altillo', altillo, setAltillo],
-            ['Baulera', baulera, setBaulera],
-            ['Biblioteca', biblioteca, setBiblioteca],
-            ['Escritorio', escritorio, setEscritorio],
-            ['Jardín', jardin, setJardin],
-            ['Vestidor', vestidor, setVestidor],
-          ] as [string, boolean, (v: boolean) => void][]
-        ).map(([label, value, setValue]) => (
-          <TildeCard key={label} etiqueta={label} tildado={value} onChange={setValue} />
-        ))}
-      </Grilla>
+      {caracteristicas.length > 0 && (
+        <Grilla titulo="Características">
+          {caracteristicas.map(([label, value, setValue]) => (
+            <TildeCard key={label} etiqueta={label} tildado={value} onChange={setValue} />
+          ))}
+        </Grilla>
+      )}
 
-      <GrillaTildes
-        titulo="Servicios"
-        opciones={SERVICIOS}
-        elegidas={servicios}
-        onChange={setServicios}
-      />
+      {ver('servicios') && (
+        <GrillaTildes
+          titulo="Servicios"
+          opciones={SERVICIOS}
+          elegidas={servicios}
+          onChange={setServicios}
+        />
+      )}
 
+      {ver('amenities') && (
+      <>
       <Campo label="¿Tiene amenities?">
         <select
           value={tieneAmenities ? 'Sí' : 'No'}
@@ -491,8 +566,12 @@ export function Seccion2Caracteristicas(props: Props) {
           rows={2}
         />
       </Campo>
+      </>
+      )}
 
+      {(ver('expensas') || ver('aptoCredito')) && (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {ver('expensas') && (
         <Campo label="Expensas (ARS)">
           <input
             type="number"
@@ -503,6 +582,8 @@ export function Seccion2Caracteristicas(props: Props) {
             className={inputClass}
           />
         </Campo>
+        )}
+        {ver('aptoCredito') && (
         <Campo label="Apto crédito">
           <select
             value={aptoCredito}
@@ -517,7 +598,10 @@ export function Seccion2Caracteristicas(props: Props) {
             ))}
           </select>
         </Campo>
+        )}
       </div>
+      )}
+      {ver('documentacion') && (
       <Campo label="Documentación">
         <select
           value={documentacion}
@@ -532,6 +616,7 @@ export function Seccion2Caracteristicas(props: Props) {
           ))}
         </select>
       </Campo>
+      )}
 
       {tasacionId ? (
         <FotosUploader tasacionId={tasacionId} fotos={fotos} onChange={setFotos} />
