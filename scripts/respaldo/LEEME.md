@@ -6,12 +6,39 @@ se saque a mano.
 
 ```bash
 cd apps/api
-CUANDO=$(date -u +"%Y-%m-%d_%H%M") node ../../scripts/respaldo/datos.mjs
-CUANDO=$(date -u +"%Y-%m-%d_%H%M") node ../../scripts/respaldo/archivos.mjs
+CUANDO=$(date -u +"%Y-%m-%d_%H%M")
+node --input-type=module -e "$(cat ../../scripts/respaldo/datos.mjs)"
+node --input-type=module -e "$(cat ../../scripts/respaldo/archivos.mjs)"
 ```
 
 Los dos **solo leen**. Todo va a `~/Respaldos-Inmobiliaria/<fecha>/`, fuera del
 repositorio.
+
+### Por qué esa invocación tan rara
+
+Lo natural sería `node ../../scripts/respaldo/datos.mjs`, y así estaba escrito
+acá hasta el 17/09/2026. Dejó de funcionar:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@prisma/client'
+imported from .../scripts/respaldo/datos.mjs
+```
+
+Node resuelve los paquetes desde la ubicación del ARCHIVO, no desde el
+directorio actual. `datos.mjs` vive en `scripts/respaldo/`, así que busca
+`@prisma/client` subiendo hasta la raíz del repo — y ahí no está: pnpm lo deja
+solo en `apps/api/node_modules`. Antes funcionaba porque estaba izado a la
+raíz; un `install` lo bajó y la instrucción quedó rota sin que nadie se
+enterara hasta la copia siguiente.
+
+Con `-e` el código se evalúa con el directorio actual como base, y desde
+`apps/api` sí lo encuentra. Ninguno de los dos scripts usa `import.meta` ni
+`__dirname`, así que no les cambia nada ejecutarse así.
+
+**Pendiente:** la solución de fondo es que `@prisma/client` figure en el
+`package.json` de la raíz, y entonces vuelve a andar la forma normal. Es un
+cambio de dependencias con `pnpm install` y lockfile, así que no se hizo en el
+momento de sacar una copia.
 
 ## Qué copia cada uno, y por qué hacen falta los dos
 
