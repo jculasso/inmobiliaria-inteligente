@@ -6,18 +6,17 @@ se saque a mano.
 
 ```bash
 cd apps/api
-CUANDO=$(date -u +"%Y-%m-%d_%H%M")
-node --input-type=module -e "$(cat ../../scripts/respaldo/datos.mjs)"
-node --input-type=module -e "$(cat ../../scripts/respaldo/archivos.mjs)"
+CUANDO=$(date -u +"%Y-%m-%d_%H%M") node scripts/respaldo/datos.mjs
+CUANDO=$(date -u +"%Y-%m-%d_%H%M") node scripts/respaldo/archivos.mjs
 ```
 
 Los dos **solo leen**. Todo va a `~/Respaldos-Inmobiliaria/<fecha>/`, fuera del
 repositorio.
 
-### Por qué esa invocación tan rara
+### Por qué viven acá y no en `scripts/` de la raíz
 
-Lo natural sería `node ../../scripts/respaldo/datos.mjs`, y así estaba escrito
-acá hasta el 17/09/2026. Dejó de funcionar:
+Hasta el 17/09/2026 estaban en `scripts/respaldo/`, y el comando documentado
+dejó de funcionar sin que nadie se enterara:
 
 ```
 Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@prisma/client'
@@ -25,20 +24,22 @@ imported from .../scripts/respaldo/datos.mjs
 ```
 
 Node resuelve los paquetes desde la ubicación del ARCHIVO, no desde el
-directorio actual. `datos.mjs` vive en `scripts/respaldo/`, así que busca
-`@prisma/client` subiendo hasta la raíz del repo — y ahí no está: pnpm lo deja
-solo en `apps/api/node_modules`. Antes funcionaba porque estaba izado a la
-raíz; un `install` lo bajó y la instrucción quedó rota sin que nadie se
-enterara hasta la copia siguiente.
+directorio actual. Desde la raíz, `datos.mjs` buscaba `@prisma/client` y no lo
+encontraba: pnpm lo tiene solo en `apps/api/node_modules`. Antes andaba de
+casualidad, porque estaba izado a la raíz; un `install` lo bajó y la
+instrucción quedó rota.
 
-Con `-e` el código se evalúa con el directorio actual como base, y desde
-`apps/api` sí lo encuentra. Ninguno de los dos scripts usa `import.meta` ni
-`__dirname`, así que no les cambia nada ejecutarse así.
+**Por qué no se arregló agregando `@prisma/client` a la raíz**, que era lo
+primero que uno piensa: el cliente de Prisma no es un paquete común, se GENERA.
+El generado vive en una entrada del store de pnpm cuya clave incluye los peers
+(`@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3`). Declararlo en la raíz
+sin declarar también `prisma` produce otra entrada distinta, **sin el cliente
+generado adentro**, y el script falla de otra manera. Habría que duplicar las
+dos dependencias de la API en la raíz para que un script resuelva.
 
-**Pendiente:** la solución de fondo es que `@prisma/client` figure en el
-`package.json` de la raíz, y entonces vuelve a andar la forma normal. Es un
-cambio de dependencias con `pnpm install` y lockfile, así que no se hizo en el
-momento de sacar una copia.
+Moverlos acá hace que la dependencia sea real en vez de accidental: el script
+necesita el cliente de Prisma de la API y el esquema de la API, así que
+pertenece al paquete de la API. `apps/api/scripts/` ya existía para esto.
 
 ## Qué copia cada uno, y por qué hacen falta los dos
 
