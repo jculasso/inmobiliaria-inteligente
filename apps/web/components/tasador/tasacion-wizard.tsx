@@ -35,7 +35,7 @@ import {
   TipoPropiedadSchema,
 } from '@vacker/types';
 import { z } from 'zod';
-import { analizarComparables, superficieTotal, valoresSugeridos, type Coeficientes, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
+import { analizarComparables, valoresSugeridos, valuationSurface, type Coeficientes, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTasacion, generarInforme, updateTasacion } from '../../lib/tasador-api';
@@ -192,12 +192,21 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
     tasacion?.estrategiaComercial?.observacionesEstrategia ?? '',
   );
 
-  const superficieTotalPreview = superficieTotal(
+  /*
+   * La superficie que manda para valuar, que NO siempre es la construida: un
+   * terreno vale por su lote. Antes acá se sumaba solo lo construido, así que
+   * en un terreno daba cero — y como el valor sugerido es superficie × USD/m²,
+   * el valor sugerido también salía cero. Es la misma función que usa el
+   * servidor al guardar y la que ya usaban los comparables.
+   */
+  const superficieTotalPreview = valuationSurface(
     {
-      cubierta: Number(supCubierta) || 0,
-      semicubierta: Number(supSemicubierta) || 0,
-      descubierta: Number(supDescubierta) || 0,
+      supCubierta: Number(supCubierta) || 0,
+      supSemi: Number(supSemicubierta) || 0,
+      supDescubierta: Number(supDescubierta) || 0,
+      supTerreno: Number(supTerreno) || 0,
     },
+    tipoPropiedad,
     coeficientes,
   );
 

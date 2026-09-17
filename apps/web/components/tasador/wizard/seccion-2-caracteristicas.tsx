@@ -283,6 +283,15 @@ export function Seccion2Caracteristicas(props: Props) {
    * pierda— lo que alguien ya había medido. Una tasación cargada como
    * departamento y pasada a terreno sigue mostrando sus dormitorios.
    */
+  /*
+   * Con qué se arma esa superficie. La fórmula no está escrita a mano: se
+   * construye con el criterio de la inmobiliaria, porque decir «30%
+   * descubierta» a una que usa otro coeficiente sería mentirle al lado de un
+   * número bien calculado.
+   */
+  const criterioDeSuperficie =
+    tipoPropiedad === 'Terreno' ? 'superficie del terreno' : formulaEnPalabras(coeficientes);
+
   const pedidos = camposDe(tipoPropiedad);
   const conDato: Record<CampoFicha, boolean> = {
     superficieConstruida: [supCubierta, supSemicubierta, supDescubierta].some((v) => v !== '' && Number(v) > 0),
@@ -379,19 +388,19 @@ export function Seccion2Caracteristicas(props: Props) {
           />
         </Campo>
       </div>
-      <div className="rounded-brand bg-surface px-3 py-2 text-sm">
-        <span className="font-medium text-ink">Superficie total: </span>
-        <span className="font-bold text-brand-red">{fmtNum(superficieTotalPreview)} m²</span>
-        {/*
-          La fórmula se arma con el criterio de la inmobiliaria y no está
-          escrita a mano: hasta ahora decía «30% descubierta» siempre, y a una
-          inmobiliaria con otro criterio le mentiría en la cara mientras el
-          número de al lado está bien calculado.
-        */}
-        <span className="ml-1 text-xs text-muted">({formulaEnPalabras(coeficientes)})</span>
-      </div>
       </>
       )}
+      {/*
+        El total va FUERA del bloque de superficies construidas: un terreno no
+        las muestra, y aun así tiene que ver el número con el que se lo valúa
+        —el de su lote—. Sin esto, la única tipología que valúa por otra cosa
+        era justamente la que no veía su superficie.
+      */}
+      <div className="rounded-brand bg-surface px-3 py-2 text-sm">
+        <span className="font-medium text-ink">Superficie de valuación: </span>
+        <span className="font-bold text-brand-red">{fmtNum(superficieTotalPreview)} m²</span>
+        <span className="ml-1 text-xs text-muted">({criterioDeSuperficie})</span>
+      </div>
       {ver('superficieTerreno') && (
       <Campo label="Sup. terreno (m²)">
         <input

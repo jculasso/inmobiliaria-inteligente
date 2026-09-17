@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { CambiarEstado } from '@vacker/types';
+import { CreateTasacionSchema, type CambiarEstado } from '@vacker/types';
 import type { DomainEventsService } from '../../../common/domain-events.service';
 import type { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import type { TenantContext } from '../../../prisma/tenant-context';
@@ -155,5 +155,79 @@ describe('TasacionesService — cambiarEstado', () => {
     const eventos = events.emit.mock.calls.map((c) => c[0]);
     expect(eventos).toContain('tasacion_estado_cambiado');
     expect(eventos).toContain('tasacion_captada');
+  });
+});
+
+/**
+ * La superficie con la que se guarda una tasación.
+ *
+ * `superficieTotal` se recalcula siempre en el servidor, y se calculaba sumando
+ * solo lo construido. A un terreno —que no tiene nada construido— le daba CERO.
+ * No es hipotético: en producción hay un lote de 832 m² tasado en USD 79.000
+ * cuyo informe dice «superficie total de 0 m²». Y como el valor sugerido es
+ * superficie × USD/m², ese número arrastra al valor.
+ *
+ * El dominio ya tenía la función correcta —`valuationSurface`, la que usan los
+ * comparables— y hasta la tenía testeada para terrenos. Lo que faltaba era que
+ * el servidor la llamara.
+ */
+describe('TasacionesService — la superficie que se persiste', () => {
+  function stubCrear() {
+    const create = vi.fn().mockResolvedValue({ id: 'nueva' });
+    const tx = makeTx({
+      tasacion: { findUnique: vi.fn(), update: vi.fn(), create },
+      tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: {} }) },
+    });
+    const service = new TasacionesService(makeDb(tx), makeEvents(), makeStorage());
+    return { service, create };
+  }
+
+  /*
+   * Se arma con el schema y no a mano: `CreateTasacion` tiene cuarenta y pico
+   * de campos con valor por defecto, y escribirlos uno por uno sería ruido.
+   * De paso, `parse` comprueba que el payload del test sea uno que la API
+   * aceptaría de verdad.
+   */
+  const payload = (over: Record<string, unknown>) =>
+    CreateTasacionSchema.parse({
+      cliente: 'Pérez',
+      fecha: '2026-09-17',
+      direccion: 'Lote 12',
+      tipoOperacion: 'venta',
+      ...over,
+    });
+
+  it('un terreno se guarda con la superficie de SU LOTE, no con cero', async () => {
+    const { service, create } = stubCrear();
+    await service.create(
+      payload({ tipoPropiedad: 'Terreno', supCubierta: 0, supSemicubierta: 0, supDescubierta: 0, supTerreno: 832 }),
+      CTX_DIRECCION,
+    );
+    expect(create.mock.calls[0]![0].data.superficieTotal).toBe(832);
+  });
+
+  it('un departamento sigue midiendo por lo construido', async () => {
+    const { service, create } = stubCrear();
+    await service.create(
+      payload({
+        tipoPropiedad: 'Departamento',
+        supCubierta: 78,
+        supSemicubierta: 7,
+        supDescubierta: 10,
+        supTerreno: 500, // el lote es del edificio: no tiene que sumar
+      }),
+      CTX_DIRECCION,
+    );
+    // 78 + 7×1 + 10×0,3 = 88
+    expect(create.mock.calls[0]![0].data.superficieTotal).toBe(88);
+  });
+
+  it('una cochera sin superficie construida cae en la del lote', async () => {
+    const { service, create } = stubCrear();
+    await service.create(
+      payload({ tipoPropiedad: 'Cochera', supCubierta: 0, supSemicubierta: 0, supDescubierta: 0, supTerreno: 14 }),
+      CTX_DIRECCION,
+    );
+    expect(create.mock.calls[0]![0].data.superficieTotal).toBe(14);
   });
 });

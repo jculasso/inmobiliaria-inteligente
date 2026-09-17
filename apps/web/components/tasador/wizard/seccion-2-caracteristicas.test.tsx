@@ -195,3 +195,54 @@ describe('ficha — la pantalla se achica de verdad', () => {
     expect(cochera).toBeLessThan(casa * 0.4);
   });
 });
+
+/**
+ * El número con el que se valúa, visible para todas las tipologías.
+ *
+ * El recuadro del total estaba dentro del bloque de superficies construidas,
+ * que un terreno no muestra. O sea: la única tipología que valúa por otra cosa
+ * —su lote— era justamente la que no veía su superficie.
+ */
+describe('ficha — la superficie de valuación se ve siempre', () => {
+  it('un terreno la ve, y dice que es la del lote', () => {
+    montar({ tipoPropiedad: 'Terreno', supTerreno: '832', superficieTotalPreview: 832 });
+    expect(screen.getByText('Superficie de valuación:')).toBeInTheDocument();
+    expect(screen.getByText('832 m²')).toBeInTheDocument();
+    expect(screen.getByText('(superficie del terreno)')).toBeInTheDocument();
+  });
+
+  it('un departamento la ve con la fórmula de la inmobiliaria', () => {
+    montar({ tipoPropiedad: 'Departamento', supCubierta: '88', superficieTotalPreview: 88 });
+    expect(screen.getByText('Superficie de valuación:')).toBeInTheDocument();
+    expect(screen.getByText('(cubierta + semicubierta + 30% descubierta)')).toBeInTheDocument();
+  });
+});
+
+/** Las cuatro tipologías que no se habían mirado una por una. */
+describe('ficha — las tipologías que faltaban', () => {
+  it('a un local y a una oficina no les pide dormitorios', () => {
+    expect(hay(montar({ tipoPropiedad: 'Local' }), 'Dormitorios')).toBe(false);
+    expect(hay(montar({ tipoPropiedad: 'Oficina' }), 'Dormitorios')).toBe(false);
+  });
+
+  it('un local conserva baños, ambientes y servicios', () => {
+    const c = montar({ tipoPropiedad: 'Local' });
+    expect(hay(c, 'Baños')).toBe(true);
+    expect(hay(c, 'Ambientes')).toBe(true);
+    expect(hay(c, 'Servicios')).toBe(true);
+  });
+
+  it('una oficina no pide superficie de terreno, un local sí', () => {
+    expect(hay(montar({ tipoPropiedad: 'Oficina' }), 'Sup. terreno (m²)')).toBe(false);
+    expect(hay(montar({ tipoPropiedad: 'Local' }), 'Sup. terreno (m²)')).toBe(true);
+  });
+
+  it('un PH y un «Otro» ven la ficha entera, como la casa', () => {
+    for (const tipo of ['PH', 'Otro'] as const) {
+      const c = montar({ tipoPropiedad: tipo });
+      for (const campo of ['Dormitorios', 'Baños', 'Ambientes', 'Antigüedad (años)', 'Servicios', 'Características']) {
+        expect(hay(c, campo), `${tipo} · ${campo}`).toBe(true);
+      }
+    }
+  });
+});

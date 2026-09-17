@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { LIMITE_LISTA_CON_SONDA, TenantConfigSchema } from '@vacker/types';
-import { superficieTotal, usdM2, type Coeficientes } from '@vacker/domain';
+import { usdM2, valuationSurface, type Coeficientes } from '@vacker/domain';
 import type { CambiarEstado, ComparableInput, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
 import { DomainEventsService } from '../../../common/domain-events.service';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
@@ -56,6 +56,10 @@ const tasacionScopeSelect = {
   supCubierta: true,
   supSemicubierta: true,
   supDescubierta: true,
+  // Hacen falta para recalcular el total: la superficie de valuación de un
+  // terreno es la del lote, no la construida. Ver `datosCaracteristicas`.
+  supTerreno: true,
+  tipoPropiedad: true,
   // El criterio con el que nació esta tasación. Al editarla se recalcula el
   // total, y tiene que recalcularse con el SUYO y no con el de la inmobiliaria
   // hoy: si no, un informe ya entregado cambiaría de número al corregirle una
@@ -349,19 +353,41 @@ export class TasacionesService {
  * siempre en el servidor con `@vacker/domain` (nunca se confía en el valor
  * del cliente). Si es un update parcial, usa las superficies actuales como
  * base para lo que no venga en el `dto`.
+ *
+ * SE CALCULA CON `valuationSurface` Y NO CON `superficieTotal`. La segunda
+ * solo sabe sumar lo construido, así que a un terreno —que no tiene nada
+ * construido— le daba CERO. No es hipotético: hay un lote de 832 m² tasado en
+ * USD 79.000 cuyo informe dice «superficie total de 0 m²», y con esa superficie
+ * el valor sugerido también sale cero, porque es superficie × USD/m².
+ *
+ * `valuationSurface` es la función que el dominio ya tenía para esto y la que
+ * usan los comparables: un terreno vale por su lote, una cochera por lo
+ * construido o el lote, y el resto por lo construido. Para todo lo que no sea
+ * terreno ni cochera, las dos funciones dan exactamente lo mismo.
  */
 function datosCaracteristicas(
   dto: Partial<CreateTasacion>,
   coef: Coeficientes,
-  actual?: Pick<TasacionRow, 'supCubierta' | 'supSemicubierta' | 'supDescubierta'>,
+  actual?: Pick<
+    TasacionRow,
+    'supCubierta' | 'supSemicubierta' | 'supDescubierta' | 'supTerreno' | 'tipoPropiedad'
+  >,
 ): Record<string, unknown> {
   const supCubierta = dto.supCubierta ?? (actual ? decToNum(actual.supCubierta) : 0);
   const supSemicubierta = dto.supSemicubierta ?? (actual ? decToNum(actual.supSemicubierta) : 0);
   const supDescubierta = dto.supDescubierta ?? (actual ? decToNum(actual.supDescubierta) : 0);
+  const supTerreno = dto.supTerreno ?? (actual?.supTerreno != null ? decToNum(actual.supTerreno) : null);
+  const tipoPropiedad = dto.tipoPropiedad ?? actual?.tipoPropiedad ?? '';
 
   const data: Record<string, unknown> = {
-    superficieTotal: superficieTotal(
-      { cubierta: supCubierta, semicubierta: supSemicubierta, descubierta: supDescubierta },
+    superficieTotal: valuationSurface(
+      {
+        supCubierta,
+        supSemi: supSemicubierta,
+        supDescubierta,
+        supTerreno,
+      },
+      tipoPropiedad,
       coef,
     ),
   };
