@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type {
-  AgregadoKpi,
-  KpiFiltro,
-  LadoPunta,
-  RankingItem,
-  ResumenKpis,
-  SeguimientoObjetivo,
+import {
+  puedeVerAlquileres,
+  type AgregadoKpi,
+  type AlquileresMes,
+  type KpiFiltro,
+  type LadoPunta,
+  type RankingItem,
+  type ResumenKpis,
+  type SeguimientoObjetivo,
 } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
@@ -14,6 +16,7 @@ import { scopeDeVista, type Scope } from '../scope.util';
 import { decToNum } from '../tablero.util';
 import {
   agregar,
+  alquileresPorMes,
   ranking,
   seguimientoObjetivos,
   type ObjetivoRow,
@@ -50,12 +53,14 @@ export class KpisService {
       );
       const opsSenadas = new Set(puntasSenadas.map((p) => p.operacionId));
 
-      // Alquileres: métrica de tenant (no se atribuyen a un agente). Solo para
-      // el alcance 'tenant'; los alcances acotados ven 0 (nada atribuido).
-      const alquileres =
-        scope.mode === 'tenant'
-          ? await this.alquileres(tx, filtro.anio)
-          : { firmados: 0, comision: 0, valorMensualPromedio: 0 };
+      // Alquileres: métrica de la inmobiliaria, no de un vendedor —se cargan
+      // sin puntas—. Por eso no los rige el alcance sino el ROL: antes dependía
+      // de `scope.mode === 'tenant'`, y un director sin tildar «Ver todo» veía
+      // 0 en la tarjeta mientras la inmobiliaria tenía 35. Ver
+      // `puedeVerAlquileres` en @vacker/types.
+      const alquileres = puedeVerAlquileres(ctx.roles)
+        ? await this.alquileres(tx, filtro.anio)
+        : { firmados: 0, comision: 0, valorMensualPromedio: 0 };
 
       return {
         anio: filtro.anio,
@@ -80,6 +85,24 @@ export class KpisService {
       const escrituradas = await this.ventas(tx, anio, 'escriturada', scope.usuarioIds);
       const scopeSet = toScopeSet(scope);
       return Array.from({ length: 12 }, (_, i) => agregar(puntasDeMes(escrituradas, i + 1), scopeSet));
+    });
+  }
+
+  /**
+   * Los alquileres firmados del año, mes por mes, para la sección Alquileres.
+   *
+   * Sin alcance: son de la inmobiliaria entera. Quién puede pedirlos lo decide
+   * el `@Roles` del controlador; acá ya se sabe que puede.
+   */
+  async alquileresMensual(anio: number): Promise<AlquileresMes[]> {
+    return this.db.withTenant(async (tx) => {
+      const rows = await tx.operacion.findMany({
+        where: { tipo: 'alquiler', estado: 'firmado', anio },
+        select: { mes: true, comTotal: true, valorMensual: true },
+      });
+      return alquileresPorMes(
+        rows.map((r) => ({ mes: r.mes, comision: decToNum(r.comTotal), valorMensual: decToNum(r.valorMensual) })),
+      );
     });
   }
 

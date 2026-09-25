@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { NOMBRES_MES } from '../../lib/meses';
 
 // Filtro de período de Ventas/Alquileres en un renglón:
 //   Año · [ Anual | Trimestral | Mensual ] · (Q1–Q4 o mes según granularidad)
@@ -9,20 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 // server (con la latencia de Render), sin esto la selección tardaba en marcarse.
 // Así se resalta al instante y un spinner indica que está actualizando.
 
-const MESES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
+const MESES = NOMBRES_MES;
 
 type Granularidad = 'anual' | 'trimestral' | 'mensual';
 interface Sel {

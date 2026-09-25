@@ -1,7 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import { KpiFiltroSchema, type KpiFiltro } from '@vacker/types';
+import { KpiFiltroSchema, ROLES_ALQUILERES, type KpiFiltro } from '@vacker/types';
 import { CurrentUser, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ZodValidationPipe } from '../../../common/zod-validation.pipe';
@@ -56,6 +56,20 @@ export class KpisController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.kpis.mensual(filtro.anio, ctxDe(user), filtro.verTodo);
+  }
+
+  /**
+   * Los alquileres firmados del año, mes por mes.
+   *
+   * El `@Roles` sale de la MISMA lista que usa la web para mostrar la sección:
+   * un vendedor que llame a este endpoint a mano recibe 403, no ceros. Ocultar
+   * la sección en la pantalla no alcanza — el dato es de la inmobiliaria.
+   */
+  @Get('alquileres')
+  @Roles(...ROLES_ALQUILERES)
+  @ApiOperation({ summary: 'Alquileres firmados del año, mes por mes (solo dirección y administración)' })
+  alquileres(@Query(new ZodValidationPipe(AnioFiltroSchema)) filtro: AnioFiltro) {
+    return this.kpis.alquileresMensual(filtro.anio);
   }
 
   @Get('rango')

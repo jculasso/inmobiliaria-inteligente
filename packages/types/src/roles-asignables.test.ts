@@ -26,3 +26,23 @@ describe('roles asignables', () => {
     expect(ROLES_PUBLICACION).toContain('publicador');
   });
 });
+
+describe('puedeVerAlquileres', () => {
+  it('dirección y el administrador de la inmobiliaria, sí', async () => {
+    const { puedeVerAlquileres } = await import('./rol');
+    expect(puedeVerAlquileres(['direccion'])).toBe(true);
+    expect(puedeVerAlquileres(['admin_tenant'])).toBe(true);
+  });
+
+  it('vendedor, team leader y publicador, no', async () => {
+    const { puedeVerAlquileres } = await import('./rol');
+    expect(puedeVerAlquileres(['vendedor'])).toBe(false);
+    expect(puedeVerAlquileres(['team_leader'])).toBe(false);
+    expect(puedeVerAlquileres(['publicador'])).toBe(false);
+  });
+
+  it('alcanza con tener uno de los roles', async () => {
+    const { puedeVerAlquileres } = await import('./rol');
+    expect(puedeVerAlquileres(['team_leader', 'direccion'])).toBe(true);
+  });
+});

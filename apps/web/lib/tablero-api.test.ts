@@ -192,3 +192,27 @@ describe('tablero-api — la respuesta de una API todavía sin actualizar', () =
     expect(res.anual.comisionVendedora).toBe(0);
   });
 });
+
+/**
+ * Juntar meses de alquileres en un período. El valor promedio es el de los
+ * alquileres, no el de los meses — igual que el anual de la planilla de Vacker
+ * (379,59), que es el promedio de sus 46 alquileres y no de sus trimestres.
+ */
+describe('sumarAlquileres', () => {
+  it('suma la cantidad y la comisión, y divide la suma de valores por la cantidad', async () => {
+    const { sumarAlquileres } = await import('./tablero-api');
+    const r = sumarAlquileres([
+      { mes: 1, firmados: 1, comision: 100, valorMensualSuma: 1000 },
+      { mes: 2, firmados: 9, comision: 900, valorMensualSuma: 900 },
+    ]);
+    expect(r.firmados).toBe(10);
+    expect(r.comision).toBe(1000);
+    // (1000 + 900) / 10 = 190. Promediando los meses daría 550: el de nadie.
+    expect(r.valorPromedio).toBe(190);
+  });
+
+  it('sin alquileres el promedio es cero, no NaN', async () => {
+    const { sumarAlquileres } = await import('./tablero-api');
+    expect(sumarAlquileres([{ mes: 1, firmados: 0, comision: 0, valorMensualSuma: 0 }]).valorPromedio).toBe(0);
+  });
+});

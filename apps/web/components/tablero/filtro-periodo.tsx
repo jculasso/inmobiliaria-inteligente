@@ -2,21 +2,9 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@vacker/ui';
+import { NOMBRES_MES } from '../../lib/meses';
 
-const MESES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
+const MESES = NOMBRES_MES;
 
 /** El mes siempre está seleccionado (como el prototipo): "año completo" se
  * elige con el tab "Acumulado Anual" del Resumen, no con "todos los meses". */

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ResumenAcumulado } from './resumen-acumulado';
 
@@ -51,12 +51,27 @@ const getAgregadosPorTrimestre = vi.fn().mockResolvedValue([
   { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 0 },
   { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 0 },
 ]);
+/** Doce meses con volúmenes distintos, para que un error de índice se vea. */
+const getKpisMensual = vi.fn().mockResolvedValue(
+  Array.from({ length: 12 }, (_, i) => ({
+    volumen: (i + 1) * 100,
+    operaciones: i + 1,
+    puntas: i + 1,
+    puntasCompradoras: 0,
+    puntasVendedoras: i + 1,
+    comision: (i + 1) * 5,
+    comisionCompradora: 0,
+    comisionVendedora: (i + 1) * 5,
+    ticketPromedio: 100,
+  })),
+);
 vi.mock('../../lib/tablero-api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/tablero-api')>();
   return {
     ...actual,
     getResumenPeriodo: (...args: unknown[]) => getResumenPeriodo(...args),
     getAgregadosPorTrimestre: (...args: unknown[]) => getAgregadosPorTrimestre(...args),
+    getKpisMensual: (...args: unknown[]) => getKpisMensual(...args),
   };
 });
 
@@ -128,10 +143,111 @@ describe('ResumenAcumulado — las operaciones del trimestre', () => {
     });
   });
 
-  it('fuera del trimestral, la tarjeta de Operaciones no abre nada', () => {
+  it('en el acumulado anual, la tarjeta de Operaciones no abre nada', () => {
     // En el acumulado anual no hay trimestre que mirar: la tarjeta no es un botón.
     filtrosDelDetalle.length = 0;
     render(<ResumenAcumulado anio={2026} mesSeleccionado={8} />);
     expect(screen.queryByRole('button', { name: /Operaciones/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * El pedido de Vacker del 25/09/2026: «que se vea como el acumulado
+ * trimestral, pero en vez de los Q que figuren los meses del año natural».
+ */
+describe('ResumenAcumulado — el acumulado mensual', () => {
+  it('muestra el cuadro con las doce columnas de meses', async () => {
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
+    await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
+
+    const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
+    const encabezados = within(tabla)
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent);
+    expect(encabezados).toEqual(['Métrica', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic', 'Total']);
+  });
+
+  /*
+   * Cada mes en SU columna. El total no alcanza para detectarlo: si los meses
+   * se corrieran una columna, la suma seguiría dando lo mismo y enero mostraría
+   * los números de febrero. Pasó en un sabotaje antes de agregar este test.
+   */
+  it('cada mes va en su columna', async () => {
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
+    await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
+    const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
+    const volumen = within(within(tabla).getByRole('row', { name: /^Volumen USD/ }))
+      .getAllByRole('cell')
+      .slice(1, 13)
+      .map((c) => c.textContent);
+    expect(volumen).toEqual(['$100', '$200', '$300', '$400', '$500', '$600', '$700', '$800', '$900', '$1.000', '$1.100', '$1.200']);
+  });
+
+  /*
+   * Los doce meses tienen que cerrar en el año. Si un mes se perdiera, el
+   * total dejaría de coincidir con el anual.
+   */
+  it('el total de los meses es la suma de los doce', async () => {
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
+    await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
+    const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
+    const volumen = within(within(tabla).getByRole('row', { name: /^Volumen USD/ })).getAllByRole('cell');
+    // 100 + 200 + … + 1200 = 7.800
+    expect(volumen.at(-1)?.textContent).toBe('$7.800');
+  });
+
+  it('marca el mes seleccionado arriba y pide el resumen de ese mes', async () => {
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
+    await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
+    const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
+    expect(within(tabla).getByRole('columnheader', { name: 'Jul' })).toHaveAttribute('aria-current', 'true');
+    expect(getResumenPeriodo).toHaveBeenLastCalledWith('token', {
+      anio: 2026,
+      periodo: 'mensual',
+      mes: 7,
+      trimestre: 3,
+    });
+  });
+
+  it('al hacer click en Operaciones abre las de ESE mes', async () => {
+    filtrosDelDetalle.length = 0;
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} verTodo />);
+    await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
+    const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
+    await userEvent.click(within(tabla).getByRole('button', { name: 'Mar' }));
+
+    await userEvent.click(await screen.findByRole('button', { name: /Operaciones/ }));
+    expect(screen.getByTestId('detalle')).toHaveTextContent('Marzo');
+    expect(filtrosDelDetalle.at(-1)).toEqual({
+      anio: 2026,
+      mes: 3,
+      tipo: 'venta',
+      estado: 'escriturada',
+      verTodo: true,
+    });
+  });
+});
+
+/**
+ * «Totales por vendedor» seguía a las pestañas de arriba pero no lo decía, y
+ * Vacker lo leyó como que le faltaba el selector de período. Ahora el período
+ * va en el título.
+ */
+describe('ResumenAcumulado — los totales dicen qué período muestran', () => {
+  it('en el anual, el año', async () => {
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
+    expect(await screen.findByText(/Totales por vendedor · Año 2026/)).toBeInTheDocument();
+  });
+
+  it('en el trimestral, el trimestre elegido', async () => {
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
+    await userEvent.click(screen.getByRole('button', { name: /Acumulado Trimestral/ }));
+    expect(await screen.findByText(/Totales por vendedor · Q3 2026/)).toBeInTheDocument();
+  });
+
+  it('en el mensual, el mes elegido', async () => {
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
+    await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
+    expect(await screen.findByText(/Totales por vendedor · Julio 2026/)).toBeInTheDocument();
   });
 });

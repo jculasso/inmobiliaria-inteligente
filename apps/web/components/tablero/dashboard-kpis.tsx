@@ -22,11 +22,18 @@ export function DashboardKpis({
   anio,
   mes,
   verTodo,
+  verAlquileres,
 }: {
   resumen: ResumenKpis;
   anio: number;
   mes: number;
   verTodo?: boolean;
+  /**
+   * Si la persona ve los alquileres de la inmobiliaria. Lo decide
+   * `puedeVerAlquileres` en el servidor; acá solo se obedece. Quien no los ve
+   * no recibe una tarjeta en 0, que parecía un error: no recibe la tarjeta.
+   */
+  verAlquileres: boolean;
 }) {
   const [drill, setDrill] = useState<Drill | null>(null);
 
@@ -104,7 +111,7 @@ export function DashboardKpis({
         {cards(resumen.anual, { anio, verTodo }, `año ${anio}`)}
       </section>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-3 ${verAlquileres ? 'sm:grid-cols-2' : ''}`}>
         <KpiCard
           label="Pendiente de cobro"
           value={fmtUSD(resumen.pendienteCobro)}
@@ -119,19 +126,31 @@ export function DashboardKpis({
             })
           }
         />
-        <KpiCard
-          label={`Alquileres firmados · ${anio}`}
-          value={fmtNum(resumen.alquileres.firmados)}
-          sub={`${fmtUSD(resumen.alquileres.comision)} comisión · ${fmtUSD(resumen.alquileres.valorMensualPromedio)} prom./mes`}
-          icon="🔑"
-          onClick={() =>
-            setDrill({
-              titulo: 'Alquileres firmados',
-              subtitulo: `Año ${anio}`,
-              filtro: { anio, tipo: 'alquiler', estado: 'firmado', verTodo },
-            })
-          }
-        />
+        {verAlquileres && (
+          <KpiCard
+            label={`Alquileres firmados · ${anio}`}
+            value={fmtNum(resumen.alquileres.firmados)}
+            sub={`${fmtUSD(resumen.alquileres.comision)} comisión · ${fmtUSD(resumen.alquileres.valorMensualPromedio)} prom./mes`}
+            icon="🔑"
+            onClick={() =>
+              setDrill({
+                titulo: 'Alquileres firmados',
+                subtitulo: `Año ${anio}`,
+                /*
+                 * `verTodo: true` SIEMPRE, no el tilde de la pantalla. El
+                 * listado filtra por puntas cuando el alcance es «lo mío», y
+                 * los alquileres no tienen puntas: un director sin tildar «Ver
+                 * todo» veía 35 en la tarjeta y una lista vacía al tocarla.
+                 *
+                 * No abre nada de más: el servidor evalúa `verTodo` según el
+                 * rol, y esta tarjeta solo existe para quien puede ver los
+                 * alquileres de toda la inmobiliaria.
+                 */
+                filtro: { anio, tipo: 'alquiler', estado: 'firmado', verTodo: true },
+              })
+            }
+          />
+        )}
       </div>
 
       {drill && (
