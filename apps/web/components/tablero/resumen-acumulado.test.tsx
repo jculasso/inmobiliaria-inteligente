@@ -76,10 +76,9 @@ vi.mock('../../lib/tablero-api', async (importOriginal) => {
 });
 
 describe('ResumenAcumulado', () => {
-  it('carga el tab Anual por default y muestra las métricas + totales por vendedor', async () => {
+  it('carga el tab Anual por default y muestra las métricas', async () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
     expect(await screen.findByText('$1.000')).toBeInTheDocument();
-    expect(screen.getAllByText('Ana')[0]).toBeInTheDocument();
     expect(getResumenPeriodo).toHaveBeenCalledWith('token', {
       anio: 2026,
       periodo: 'anual',
@@ -229,25 +228,20 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
 });
 
 /**
- * «Totales por vendedor» seguía a las pestañas de arriba pero no lo decía, y
- * Vacker lo leyó como que le faltaba el selector de período. Ahora el período
- * va en el título.
+ * La tabla de totales por vendedor NO vive acá. Vivió acá hasta el 26/09/2026,
+ * y al mismo tiempo existía el «Ranking de vendedores» con el mismo dato: dos
+ * tablas iguales. Ahora hay una sola, en `TotalesVendedores`, con su propio
+ * selector. Si alguien la vuelve a poner dentro del Resumen, reaparece el
+ * duplicado — este test lo frena.
  */
-describe('ResumenAcumulado — los totales dicen qué período muestran', () => {
-  it('en el anual, el año', async () => {
+describe('ResumenAcumulado — la tabla de totales vive en su propia sección', () => {
+  it('no muestra los totales por vendedor en ninguna pestaña', async () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
-    expect(await screen.findByText(/Totales por vendedor · Año 2026/)).toBeInTheDocument();
-  });
-
-  it('en el trimestral, el trimestre elegido', async () => {
-    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
-    await userEvent.click(screen.getByRole('button', { name: /Acumulado Trimestral/ }));
-    expect(await screen.findByText(/Totales por vendedor · Q3 2026/)).toBeInTheDocument();
-  });
-
-  it('en el mensual, el mes elegido', async () => {
-    render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
-    await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
-    expect(await screen.findByText(/Totales por vendedor · Julio 2026/)).toBeInTheDocument();
+    await screen.findByText('$1.000');
+    for (const pestaña of [/Acumulado Anual/, /Acumulado Trimestral/, /Acumulado del Mes/]) {
+      await userEvent.click(screen.getByRole('button', { name: pestaña }));
+      expect(screen.queryByText(/Totales por vendedor/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Ana')).not.toBeInTheDocument();
+    }
   });
 });

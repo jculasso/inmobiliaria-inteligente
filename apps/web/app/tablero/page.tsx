@@ -7,6 +7,7 @@ import { ToggleVerTodo } from '../../components/tablero/toggle-ver-todo';
 import { DashboardKpis } from '../../components/tablero/dashboard-kpis';
 import { ResumenAcumulado } from '../../components/tablero/resumen-acumulado';
 import { AlquileresSeccion } from '../../components/tablero/alquileres-seccion';
+import { TotalesVendedores } from '../../components/tablero/totales-vendedores';
 
 export default async function TableroDashboardPage({
   searchParams,
@@ -53,6 +54,14 @@ export default async function TableroDashboardPage({
       </section>
 
       {/*
+        Una sola tabla de totales por vendedor, con su selector de período
+        encima, pegada al resumen de ventas porque es de ventas. Reemplaza a
+        la vez al «Ranking de vendedores» y a la tabla que vivía dentro del
+        Resumen: eran el mismo dato dos veces. Ver `TotalesVendedores`.
+      */}
+      <TotalesVendedores anio={anio} mesSeleccionado={mes} verTodo={verTodo} inicial={resumenAnual} />
+
+      {/*
         Solo para quien ve los alquileres de toda la inmobiliaria: ver
         `puedeVerAlquileres`. Para los demás no se monta —ni siquiera pide los
         datos—, en vez de mostrarse vacía.
@@ -66,14 +75,6 @@ export default async function TableroDashboardPage({
           <AlquileresSeccion anio={anio} mesSeleccionado={mes} />
         </section>
       )}
-
-      {/*
-        Acá estaba la sección «Ranking de vendedores». Se quitó el 25/09/2026 a
-        pedido de Vacker: mostraba EXACTAMENTE lo mismo que «Totales por
-        vendedor» —el mismo componente, el mismo endpoint—, con su propio
-        selector de período. Dos selectores para el mismo dato podían mostrar
-        cosas distintas, y eso era lo confuso.
-      */}
     </div>
   );
 }
