@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { AlquileresMes } from '@vacker/types';
+import type { AlquileresMes, OperacionFiltro } from '@vacker/types';
 import { Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import {
@@ -14,6 +14,7 @@ import { fmtK, fmtNum, fmtUSD } from '../../lib/format';
 import { ABREV_MES, NOMBRES_MES } from '../../lib/meses';
 import { PeriodosChart } from './periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from './periodos-tabla';
+import { DetalleDrillModal } from './detalle-drill-modal';
 
 type Tab = 'anual' | 'trimestral' | 'mensual';
 
@@ -62,10 +63,20 @@ function filas(periodos: AlquileresPeriodo[], anual: AlquileresPeriodo): FilaPer
   ];
 }
 
-function tarjetas(p: AlquileresPeriodo) {
+/**
+ * Las tarjetas del período. «Alquileres firmados» abre la lista de cuáles son
+ * — lo pidió Vacker el 26/09/2026, igual que «Operaciones» en ventas.
+ */
+function tarjetas(p: AlquileresPeriodo, verCuales: () => void) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <KpiCard label="Alquileres firmados" value={fmtNum(p.firmados)} tone="brand" />
+      <KpiCard
+        label="Alquileres firmados"
+        value={fmtNum(p.firmados)}
+        sub="ver cuáles"
+        tone="brand"
+        onClick={verCuales}
+      />
       <KpiCard label="Comisión" value={fmtUSD(p.comision)} tone="success" />
       <KpiCard label="Valor promedio" value={fmtUSD(p.valorPromedio)} sub="por mes de alquiler" />
     </div>
@@ -91,6 +102,7 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
   const [mes, setMes] = useState(mesSeleccionado);
   const [meses, setMeses] = useState<AlquileresMes[] | null>(null);
   const [error, setError] = useState(false);
+  const [lista, setLista] = useState<{ titulo: string; filtro: OperacionFiltro } | null>(null);
 
   useEffect(() => {
     setMes(mesSeleccionado);
@@ -191,7 +203,30 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
 
         <div className="flex flex-col gap-2 p-5">
           <p className="text-sm font-bold text-ink">{nombrePeriodo}</p>
-          {tarjetas(delPeriodo)}
+          {tarjetas(delPeriodo, () =>
+            setLista({
+              titulo: `Alquileres firmados · ${nombrePeriodo}`,
+              /*
+               * El listado filtra por las MISMAS columnas —`anio` y `mes`,
+               * derivadas de la fecha de firma— que los números de esta
+               * sección, así que la lista trae exactamente los que cuenta la
+               * tarjeta, en cualquier período.
+               *
+               * `verTodo: true` por lo mismo que en la tarjeta de arriba del
+               * tablero: el listado filtra por puntas cuando el alcance es «lo
+               * mío», y los alquileres no tienen. El servidor evalúa el tilde
+               * por rol, y esta sección solo existe para quien puede ver los
+               * alquileres de toda la inmobiliaria.
+               */
+              filtro: {
+                anio,
+                tipo: 'alquiler',
+                estado: 'firmado',
+                verTodo: true,
+                ...(tab === 'mensual' ? { mes } : tab === 'trimestral' ? { trimestre } : {}),
+              },
+            }),
+          )}
         </div>
       </>
     );
@@ -214,6 +249,14 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
         ))}
       </div>
       {cuerpo}
+      {lista && (
+        <DetalleDrillModal
+          titulo={lista.titulo}
+          subtitulo="Por fecha de firma del contrato"
+          filtro={lista.filtro}
+          onClose={() => setLista(null)}
+        />
+      )}
     </Card>
   );
 }

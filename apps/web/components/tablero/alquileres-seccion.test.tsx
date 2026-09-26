@@ -7,6 +7,15 @@ vi.mock('../../lib/supabase/client', () => ({
   getAccessToken: vi.fn().mockResolvedValue('token'),
 }));
 
+/** El filtro con el que se abrió la lista, para poder afirmarlo. */
+const filtrosDeLaLista: unknown[] = [];
+vi.mock('./detalle-drill-modal', () => ({
+  DetalleDrillModal: ({ titulo, filtro }: { titulo: string; filtro: unknown }) => {
+    filtrosDeLaLista.push(filtro);
+    return <div data-testid="lista">{titulo}</div>;
+  },
+}));
+
 const getAlquileresMensual = vi.fn();
 vi.mock('../../lib/tablero-api', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../lib/tablero-api')>();
@@ -122,5 +131,75 @@ describe('Alquileres — lo que no puede romper el tablero', () => {
     getAlquileresMensual.mockResolvedValue(VACKER_2026.map((m) => ({ ...m, firmados: 0, comision: 0, valorMensualSuma: 0 })));
     render(<AlquileresSeccion anio={2025} mesSeleccionado={9} />);
     expect(await screen.findByText('Todavía no hay alquileres firmados en 2025.')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Pedido de Vacker del 26/09/2026, ya con la sección en uso: «cuando hago
+ * click en los alquileres firmados, que salga la ventana emergente mostrando
+ * cuáles son».
+ *
+ * El filtro tiene que acotar EXACTAMENTE al período de la tarjeta. Si se le cae
+ * el mes o el trimestre, la ventana trae los del año entero y la lista deja de
+ * coincidir con el número sobre el que se hizo click.
+ */
+describe('Alquileres — ver cuáles son', () => {
+  const tarjeta = () => screen.getByRole('button', { name: /Alquileres firmados/ });
+
+  it('en el mensual, abre los de ESE mes', async () => {
+    filtrosDeLaLista.length = 0;
+    render(<AlquileresSeccion anio={2026} mesSeleccionado={9} />);
+    await userEvent.click(await screen.findByRole('button', { name: /Acumulado del Mes/ }));
+    await userEvent.click(
+      within(screen.getByRole('table', { name: 'Alquileres por período' })).getByRole('button', { name: 'Abr' }),
+    );
+
+    await userEvent.click(tarjeta());
+    expect(screen.getByTestId('lista')).toHaveTextContent('Alquileres firmados · Abril 2026');
+    expect(filtrosDeLaLista.at(-1)).toEqual({
+      anio: 2026,
+      mes: 4,
+      tipo: 'alquiler',
+      estado: 'firmado',
+      verTodo: true,
+    });
+  });
+
+  it('en el trimestral, abre los de ESE trimestre', async () => {
+    filtrosDeLaLista.length = 0;
+    render(<AlquileresSeccion anio={2026} mesSeleccionado={5} />);
+    await userEvent.click(await screen.findByRole('button', { name: /Acumulado Trimestral/ }));
+
+    await userEvent.click(tarjeta());
+    expect(screen.getByTestId('lista')).toHaveTextContent('Q2 2026');
+    expect(filtrosDeLaLista.at(-1)).toEqual({
+      anio: 2026,
+      trimestre: 2,
+      tipo: 'alquiler',
+      estado: 'firmado',
+      verTodo: true,
+    });
+  });
+
+  it('en el anual, abre los del año', async () => {
+    filtrosDeLaLista.length = 0;
+    render(<AlquileresSeccion anio={2026} mesSeleccionado={5} />);
+    await screen.findByText('Año 2026');
+
+    await userEvent.click(tarjeta());
+    expect(filtrosDeLaLista.at(-1)).toEqual({ anio: 2026, tipo: 'alquiler', estado: 'firmado', verTodo: true });
+  });
+
+  /*
+   * Sin «Ver todo» la lista sale vacía: el listado filtra por puntas cuando el
+   * alcance es «lo mío», y los alquileres no tienen. Es el mismo error que ya
+   * tuvo la tarjeta de arriba del tablero.
+   */
+  it('pide la lista de toda la inmobiliaria, no «lo mío»', async () => {
+    filtrosDeLaLista.length = 0;
+    render(<AlquileresSeccion anio={2026} mesSeleccionado={5} />);
+    await screen.findByText('Año 2026');
+    await userEvent.click(tarjeta());
+    expect(filtrosDeLaLista.at(-1)).toMatchObject({ verTodo: true });
   });
 });
