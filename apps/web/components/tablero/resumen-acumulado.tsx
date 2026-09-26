@@ -4,11 +4,17 @@ import { useEffect, useRef, useState } from 'react';
 import type { AgregadoKpi, RankingItem } from '@vacker/types';
 import { Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { getAgregadosPorTrimestre, getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
+import {
+  getAgregadosPorTrimestre,
+  getKpisMensual,
+  getResumenPeriodo,
+  type PeriodoResumen,
+} from '../../lib/tablero-api';
 import { getOrFetch } from '../../lib/kpi-cache';
 import { fmtNum, fmtUSD } from '../../lib/format';
-import { TrimestreChart } from './trimestre-chart';
-import { TrimestreTabla } from './trimestre-tabla';
+import { ABREV_MES, NOMBRES_MES } from '../../lib/meses';
+import { VentasChart } from './ventas-chart';
+import { VentasTabla } from './ventas-tabla';
 import { DetalleDrillModal } from './detalle-drill-modal';
 import { VendedorTotalesTable } from './vendedor-totales-table';
 
@@ -24,13 +30,17 @@ const TRIMESTRES = [
   { q: 3, label: 'Q3 · Jul–Sep' },
   { q: 4, label: 'Q4 · Oct–Dic' },
 ];
+const ETIQUETAS_TRIMESTRE = TRIMESTRES.map((t) => `Q${t.q}`);
+
+/** Qué período se está mirando en la ventana de operaciones. */
+type Detalle = { trimestre: number } | { mes: number };
 
 /**
  * Las tarjetas del período elegido.
  *
  * `onOperaciones` hace que la tarjeta de Operaciones abra la lista de esas
- * operaciones. Es opcional porque no todos los períodos lo necesitan; hoy lo
- * usa el trimestral, que es donde Vacker lo pidió.
+ * operaciones. Es opcional porque en el acumulado anual no hay un período
+ * puntual que abrir: lo usan el trimestral y el mensual.
  */
 function metricas(agg: AgregadoKpi, onOperaciones?: () => void) {
   return (
@@ -65,12 +75,20 @@ interface Props {
 export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Props) {
   const [tab, setTab] = useState<PeriodoResumen>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
+  const [mes, setMes] = useState(mesSeleccionado);
   const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(inicial ?? null);
   const [loading, setLoading] = useState(!inicial);
   const [porTrimestre, setPorTrimestre] = useState<AgregadoKpi[] | null>(null);
-  /** El trimestre cuyas operaciones se están mirando en la ventana de detalle. */
-  const [verOperaciones, setVerOperaciones] = useState<number | null>(null);
+  const [porMes, setPorMes] = useState<AgregadoKpi[] | null>(null);
+  const [detalle, setDetalle] = useState<Detalle | null>(null);
   const primerRender = useRef(true);
+
+  // Si cambia el mes de arriba del tablero, el trimestre y el mes elegidos acá
+  // lo siguen. Sin esto, cambiar de mes arriba dejaba el cuadro mirando otro.
+  useEffect(() => {
+    setMes(mesSeleccionado);
+    setTrimestre(Math.ceil(mesSeleccionado / 3));
+  }, [mesSeleccionado]);
 
   useEffect(() => {
     // El tab por defecto ('anual') ya viene resuelto desde el servidor junto
@@ -83,8 +101,8 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
     setLoading(true);
     getAccessToken()
       .then((accessToken) =>
-        getOrFetch(`resumen:${anio}:${tab}:${mesSeleccionado}:${trimestre}:${verTodo ? 1 : 0}`, () =>
-          getResumenPeriodo(accessToken, { anio, periodo: tab, mes: mesSeleccionado, trimestre, verTodo }),
+        getOrFetch(`resumen:${anio}:${tab}:${mes}:${trimestre}:${verTodo ? 1 : 0}`, () =>
+          getResumenPeriodo(accessToken, { anio, periodo: tab, mes, trimestre, verTodo }),
         ),
       )
       .then((res) => {
@@ -97,7 +115,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       cancelado = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio, tab, mesSeleccionado, trimestre, verTodo]);
+  }, [anio, tab, mes, trimestre, verTodo]);
 
   useEffect(() => {
     if (tab !== 'trimestral') return;
@@ -111,6 +129,30 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       cancelado = true;
     };
   }, [anio, tab, verTodo]);
+
+  useEffect(() => {
+    if (tab !== 'mensual') return;
+    let cancelado = false;
+    getAccessToken()
+      .then((accessToken) => getKpisMensual(accessToken, anio, verTodo))
+      .then((res) => {
+        if (!cancelado) setPorMes(res);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [anio, tab, verTodo]);
+
+  /** El período que se está mirando, escrito para una persona. */
+  const periodo =
+    tab === 'anual' ? `Año ${anio}` : tab === 'trimestral' ? `Q${trimestre} ${anio}` : `${NOMBRES_MES[mes - 1]} ${anio}`;
+
+  const abrirOperaciones =
+    tab === 'trimestral'
+      ? () => setDetalle({ trimestre })
+      : tab === 'mensual'
+        ? () => setDetalle({ mes })
+        : undefined;
 
   return (
     <Card className="p-0">
@@ -148,13 +190,37 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
 
       {tab === 'trimestral' && porTrimestre && (
         <div className="flex flex-col gap-4 border-b border-line p-4">
-          <TrimestreChart datos={porTrimestre} seleccionado={trimestre} onSelect={setTrimestre} />
+          <VentasChart
+            datos={porTrimestre}
+            etiquetas={ETIQUETAS_TRIMESTRE}
+            unidad="trimestre"
+            seleccionado={trimestre}
+            onSelect={setTrimestre}
+          />
           {/*
             El cuadro completo va DEBAJO del gráfico. El gráfico muestra la
             tendencia con dos series; las nueve filas de la planilla adentro de
             un gráfico no se leerían.
           */}
-          <TrimestreTabla datos={porTrimestre} seleccionado={trimestre} onSelect={setTrimestre} />
+          <VentasTabla
+            datos={porTrimestre}
+            etiquetas={ETIQUETAS_TRIMESTRE}
+            seleccionado={trimestre}
+            onSelect={setTrimestre}
+          />
+        </div>
+      )}
+
+      {/*
+        El mensual es el mismo cuadro que el trimestral, con los doce meses en
+        vez de los cuatro trimestres — así lo pidió Vacker el 25/09/2026. No
+        lleva la fila de botones de arriba: doce botones no entran en el
+        teléfono, y el mes ya se elige tocando la barra o la columna.
+      */}
+      {tab === 'mensual' && porMes && (
+        <div className="flex flex-col gap-4 border-b border-line p-4">
+          <VentasChart datos={porMes} etiquetas={ABREV_MES} unidad="mes" seleccionado={mes} onSelect={setMes} />
+          <VentasTabla datos={porMes} etiquetas={ABREV_MES} seleccionado={mes} onSelect={setMes} />
         </div>
       )}
 
@@ -163,13 +229,18 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
           <p className="py-6 text-sm text-muted">Cargando…</p>
         ) : (
           <div className="flex flex-col gap-5">
-            {metricas(
-              datos.agregado,
-              tab === 'trimestral' ? () => setVerOperaciones(trimestre) : undefined,
-            )}
+            {metricas(datos.agregado, abrirOperaciones)}
             <div>
+              {/*
+                El período va en el título. Antes decía solo «Totales por
+                vendedor», y como la tabla sigue a las pestañas de arriba —que
+                quedan lejos— no había forma de saber qué estaba mostrando. Vacker
+                pidió «agregarle» el acumulado año, trimestral y mes, que en
+                realidad ya tenía: lo que le faltaba era decirlo.
+              */}
               <p className="mb-2 text-sm font-bold text-ink">
-                👥 Totales por vendedor <span className="text-xs font-normal text-muted">({datos.ranking.length} vendedores)</span>
+                👥 Totales por vendedor · {periodo}{' '}
+                <span className="text-xs font-normal text-muted">({datos.ranking.length} vendedores)</span>
               </p>
               <div className="rounded-brand border border-line">
                 <VendedorTotalesTable items={datos.ranking} anio={anio} verTodo={verTodo} />
@@ -180,27 +251,26 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       </div>
 
       {/*
-        Las operaciones del trimestre. El filtro por `trimestre` ya existía en
-        la API —lo traduce a los tres meses— y esta misma ventana es la que se
-        abre desde el ranking: acá no hubo que inventar nada, solo pedirlo.
+        Las operaciones del período. El listado ya filtraba por trimestre y por
+        mes, así que acá no hubo que inventar nada, solo pedirlo.
 
         Se acota a VENTAS ESCRITURADAS porque es exactamente lo que cuenta la
         tarjeta: el agregado sale de `ventas(tx, anio, 'escriturada')`. Sin esos
         dos filtros, la lista traería alquileres y señadas que la tarjeta nunca
         contó, y los números no coincidirían.
       */}
-      {verOperaciones !== null && (
+      {detalle !== null && (
         <DetalleDrillModal
-          titulo={`Operaciones · Q${verOperaciones}`}
+          titulo={`Operaciones · ${'trimestre' in detalle ? `Q${detalle.trimestre}` : NOMBRES_MES[detalle.mes - 1]}`}
           subtitulo={`Ventas escrituradas · Año ${anio}`}
           filtro={{
             anio,
-            trimestre: verOperaciones,
+            ...detalle,
             tipo: 'venta',
             estado: 'escriturada',
             verTodo,
           }}
-          onClose={() => setVerOperaciones(null)}
+          onClose={() => setDetalle(null)}
         />
       )}
     </Card>

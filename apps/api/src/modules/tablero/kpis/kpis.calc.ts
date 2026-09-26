@@ -1,4 +1,4 @@
-import type { AgregadoKpi, LadoPunta, RankingItem, SeguimientoObjetivo } from '@vacker/types';
+import type { AgregadoKpi, AlquileresMes, LadoPunta, RankingItem, SeguimientoObjetivo } from '@vacker/types';
 
 /**
  * Lógica de negocio del Tablero (MODELO Parte C), replicada del prototipo
@@ -176,4 +176,41 @@ export function seguimientoObjetivos(
       };
     })
     .sort((a, b) => b.realVolumen - a.realVolumen);
+}
+
+/** Lo mínimo de un alquiler firmado que hace falta para agregarlo por mes. */
+export interface AlquilerRow {
+  /** 1..12, derivado de la fecha de firma. */
+  mes: number | null;
+  comision: number;
+  valorMensual: number;
+}
+
+/**
+ * Los alquileres firmados del año, repartidos en los doce meses.
+ *
+ * Devuelve SUMAS, no promedios —ver `AlquileresMesSchema`—: así cualquier
+ * agrupación posterior calcula el valor promedio exacto.
+ *
+ * Los doce meses salen siempre, aunque estén vacíos. Un mes sin alquileres es
+ * un cero en el gráfico, no un hueco: si faltara, el gráfico correría las
+ * barras y julio aparecería donde va agosto.
+ */
+export function alquileresPorMes(rows: AlquilerRow[]): AlquileresMes[] {
+  const meses: AlquileresMes[] = Array.from({ length: 12 }, (_, i) => ({
+    mes: i + 1,
+    firmados: 0,
+    comision: 0,
+    valorMensualSuma: 0,
+  }));
+  for (const r of rows) {
+    // El mes se deriva de la misma fecha que el año, así que con el año
+    // filtrado nunca viene vacío. Si viniera, no hay columna donde ponerlo.
+    if (r.mes == null || r.mes < 1 || r.mes > 12) continue;
+    const m = meses[r.mes - 1]!;
+    m.firmados += 1;
+    m.comision += r.comision;
+    m.valorMensualSuma += r.valorMensual;
+  }
+  return meses;
 }

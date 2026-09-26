@@ -267,6 +267,28 @@ export const AlquileresResumenSchema = z.object({
 });
 export type AlquileresResumen = z.infer<typeof AlquileresResumenSchema>;
 
+/**
+ * Los alquileres firmados de UN mes, en sumas y no en promedios.
+ *
+ * `valorMensualSuma` y no el promedio a propósito. El valor promedio de un
+ * trimestre NO es el promedio de los promedios de sus meses: un mes con un solo
+ * alquiler pesaría igual que uno con nueve. Con las sumas, cualquier agrupación
+ * —trimestre, año— divide la suma por la cantidad y da el número exacto.
+ *
+ * Es el mismo criterio de la planilla de Vacker: su valor promedio del año es
+ * 379,59, que no es la media de sus tres trimestres (435, 379, 326) sino el
+ * promedio de los 46 alquileres.
+ *
+ * La fecha es la de FIRMA del contrato, como en esa planilla.
+ */
+export const AlquileresMesSchema = z.object({
+  mes: z.number().int().min(1).max(12),
+  firmados: z.number(),
+  comision: z.number(),
+  valorMensualSuma: z.number(),
+});
+export type AlquileresMes = z.infer<typeof AlquileresMesSchema>;
+
 export const ResumenKpisSchema = z.object({
   anio: z.number(),
   mes: z.number().optional(),

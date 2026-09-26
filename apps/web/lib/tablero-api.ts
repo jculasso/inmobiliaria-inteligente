@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import {
   AgregadoKpiSchema,
+  AlquileresMesSchema,
   ObjetivoSetDtoSchema,
   OperacionDtoSchema,
   RankingItemSchema,
   ResumenKpisSchema,
   VendedorDtoSchema,
   type AgregadoKpi,
+  type AlquileresMes,
   type CreateOperacion,
   type CreateVendedor,
   type KpiFiltro,
@@ -187,6 +189,36 @@ export function sumarAgregados(lista: AgregadoKpi[]): AgregadoKpi {
     { ...AGREGADO_VACIO },
   );
   return { ...acc, ticketPromedio: acc.puntas > 0 ? acc.volumen / acc.puntas : 0 };
+}
+
+/** Los alquileres firmados del año, mes por mes (solo dirección y administración). */
+export async function getAlquileresMensual(accessToken: string, anio: number) {
+  return apiFetch('/tablero/kpis/alquileres', z.array(AlquileresMesSchema), {
+    accessToken,
+    searchParams: { anio },
+  });
+}
+
+/** Los alquileres de un período: la cantidad, la comisión y el valor promedio. */
+export interface AlquileresPeriodo {
+  firmados: number;
+  comision: number;
+  valorPromedio: number;
+}
+
+/**
+ * Junta varios meses de alquileres en un período.
+ *
+ * El valor promedio NO es el promedio de los meses: se divide la suma de los
+ * valores por la cantidad de alquileres. Es el mismo cuidado que el ticket de
+ * `sumarAgregados`, y el mismo criterio de la planilla de Vacker, cuyo anual
+ * (379,59) es el promedio de sus 46 alquileres y no de sus tres trimestres.
+ */
+export function sumarAlquileres(meses: AlquileresMes[]): AlquileresPeriodo {
+  const firmados = meses.reduce((s, m) => s + m.firmados, 0);
+  const comision = meses.reduce((s, m) => s + m.comision, 0);
+  const valores = meses.reduce((s, m) => s + m.valorMensualSuma, 0);
+  return { firmados, comision, valorPromedio: firmados > 0 ? valores / firmados : 0 };
 }
 
 export type PeriodoResumen = 'anual' | 'trimestral' | 'mensual';

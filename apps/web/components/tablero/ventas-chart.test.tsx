@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TrimestreChart } from './trimestre-chart';
+import { VentasChart } from './ventas-chart';
+
+const TRIMESTRES = ['Q1', 'Q2', 'Q3', 'Q4'];
 
 const DATOS = [
   { volumen: 4000, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 100, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 4000 },
@@ -16,9 +18,9 @@ const DATOS = [
 const enElGrafico = () => within(screen.getByRole('img', { name: /trimestre/i }));
 const enLasBarras = () => within(screen.getByRole('list', { name: /trimestre/i }));
 
-describe('TrimestreChart', () => {
+describe('VentasChart — por trimestre', () => {
   it('muestra las 4 etiquetas de trimestre y la leyenda', () => {
-    render(<TrimestreChart datos={DATOS} seleccionado={1} onSelect={vi.fn()} />);
+    render(<VentasChart datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={vi.fn()} />);
     expect(enElGrafico().getByText('Q1')).toBeInTheDocument();
     expect(enElGrafico().getByText('Q4')).toBeInTheDocument();
     expect(screen.getByText('Volumen USD')).toBeInTheDocument();
@@ -27,7 +29,7 @@ describe('TrimestreChart', () => {
 
   it('al hacer click en una barra llama a onSelect con el trimestre', async () => {
     const onSelect = vi.fn();
-    render(<TrimestreChart datos={DATOS} seleccionado={1} onSelect={onSelect} />);
+    render(<VentasChart datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
 
     await userEvent.click(enElGrafico().getByText('Q3'));
     expect(onSelect).toHaveBeenCalledWith(3);
@@ -37,7 +39,7 @@ describe('TrimestreChart', () => {
     // Regresión: el gráfico medía 552px y a 360px se salía 226px, así que había
     // que deslizarlo de costado — el "baile".
     const onSelect = vi.fn();
-    render(<TrimestreChart datos={DATOS} seleccionado={1} onSelect={onSelect} />);
+    render(<VentasChart datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
 
     expect(enLasBarras().getAllByRole('listitem')).toHaveLength(4);
     await userEvent.click(enLasBarras().getByText('Q3'));

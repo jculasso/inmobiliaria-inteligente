@@ -1,7 +1,11 @@
 /**
- * Cache mínima a nivel de módulo para evitar que dos componentes independientes
- * (`ResumenAcumulado` y `RankingTable`) pidan la misma combinación de
- * anio/periodo/mes/trimestre al montar con los mismos valores por defecto.
+ * Cache mínima a nivel de módulo para no repetir la misma combinación de
+ * anio/periodo/mes/trimestre cuando se va y se vuelve entre pestañas.
+ *
+ * Nació para otra cosa: que `ResumenAcumulado` y `RankingTable` no pidieran lo
+ * mismo al montar a la vez. El Ranking se quitó el 25/09/2026 —era el mismo
+ * dato dos veces— y la cache se quedó, porque ir de Anual a Trimestral y volver
+ * seguía disparando la consulta de nuevo.
  *
  * Tiene TTL corto a propósito. Sin él la entrada vivía hasta el próximo reload
  * completo, así que después de cargar o editar una operación el resumen seguía

@@ -1,11 +1,12 @@
 import { getKpisResumen, getResumenRango } from '../../lib/tablero-api';
 import { requireServerPrincipal } from '../../lib/server-principal';
 import { puedeVerTodo } from '../../lib/rbac';
+import { puedeVerAlquileres } from '@vacker/types';
 import { FiltroPeriodo } from '../../components/tablero/filtro-periodo';
 import { ToggleVerTodo } from '../../components/tablero/toggle-ver-todo';
 import { DashboardKpis } from '../../components/tablero/dashboard-kpis';
 import { ResumenAcumulado } from '../../components/tablero/resumen-acumulado';
-import { RankingTable } from '../../components/tablero/ranking-table';
+import { AlquileresSeccion } from '../../components/tablero/alquileres-seccion';
 
 export default async function TableroDashboardPage({
   searchParams,
@@ -22,12 +23,13 @@ export default async function TableroDashboardPage({
   // elige con el tab "Acumulado Anual" del Resumen, no con "todos los meses".
   const mes = params.mes ? Number(params.mes) : hoy.getMonth() + 1;
   const verTodo = params.verTodo === '1';
+  const verAlquileres = puedeVerAlquileres(ctx.principal.roles);
 
   // Se piden en paralelo: el resumen del mes seleccionado (KPIs de arriba) y
   // el acumulado anual (año completo), que es el tab por defecto de
-  // ResumenAcumulado/RankingTable — evita que esos componentes lo vuelvan a
-  // pedir al montar con los valores por defecto (mismo dato, un round-trip
-  // menos en el hop más lento del stack).
+  // ResumenAcumulado — evita que lo vuelva a pedir al montar con los valores
+  // por defecto (mismo dato, un round-trip menos en el hop más lento del
+  // stack).
   const [resumen, resumenAnual] = await Promise.all([
     getKpisResumen(ctx.accessToken, { anio, mes, verTodo }),
     getResumenRango(ctx.accessToken, anio, 1, 12, verTodo),
@@ -43,14 +45,35 @@ export default async function TableroDashboardPage({
         </div>
       </div>
 
-      <DashboardKpis resumen={resumen} anio={anio} mes={mes} verTodo={verTodo} />
+      <DashboardKpis resumen={resumen} anio={anio} mes={mes} verTodo={verTodo} verAlquileres={verAlquileres} />
 
       <section className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">📊 Resumen acumulado</p>
         <ResumenAcumulado anio={anio} mesSeleccionado={mes} verTodo={verTodo} inicial={resumenAnual} />
       </section>
 
-      <RankingTable anio={anio} mesSeleccionado={mes} verTodo={verTodo} inicial={resumenAnual} />
+      {/*
+        Solo para quien ve los alquileres de toda la inmobiliaria: ver
+        `puedeVerAlquileres`. Para los demás no se monta —ni siquiera pide los
+        datos—, en vez de mostrarse vacía.
+      */}
+      {verAlquileres && (
+        <section className="flex flex-col gap-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">
+            🔑 Alquileres{' '}
+            <span className="font-normal normal-case tracking-normal">· de toda la inmobiliaria, por fecha de firma</span>
+          </p>
+          <AlquileresSeccion anio={anio} mesSeleccionado={mes} />
+        </section>
+      )}
+
+      {/*
+        Acá estaba la sección «Ranking de vendedores». Se quitó el 25/09/2026 a
+        pedido de Vacker: mostraba EXACTAMENTE lo mismo que «Totales por
+        vendedor» —el mismo componente, el mismo endpoint—, con su propio
+        selector de período. Dos selectores para el mismo dato podían mostrar
+        cosas distintas, y eso era lo confuso.
+      */}
     </div>
   );
 }
