@@ -16,7 +16,6 @@ import { ABREV_MES, NOMBRES_MES } from '../../lib/meses';
 import { VentasChart } from './ventas-chart';
 import { VentasTabla } from './ventas-tabla';
 import { DetalleDrillModal } from './detalle-drill-modal';
-import { VendedorTotalesTable } from './vendedor-totales-table';
 
 const TABS: { key: PeriodoResumen; label: string; icono: string }[] = [
   { key: 'anual', label: 'Acumulado Anual', icono: '📅' },
@@ -143,10 +142,6 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
     };
   }, [anio, tab, verTodo]);
 
-  /** El período que se está mirando, escrito para una persona. */
-  const periodo =
-    tab === 'anual' ? `Año ${anio}` : tab === 'trimestral' ? `Q${trimestre} ${anio}` : `${NOMBRES_MES[mes - 1]} ${anio}`;
-
   const abrirOperaciones =
     tab === 'trimestral'
       ? () => setDetalle({ trimestre })
@@ -229,23 +224,12 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
           <p className="py-6 text-sm text-muted">Cargando…</p>
         ) : (
           <div className="flex flex-col gap-5">
+            {/*
+              Acá abajo estaba la tabla «Totales por vendedor», siguiendo las
+              pestañas de arriba. Se mudó a su propia sección, con su propio
+              selector: ver `TotalesVendedores`, que cuenta por qué.
+            */}
             {metricas(datos.agregado, abrirOperaciones)}
-            <div>
-              {/*
-                El período va en el título. Antes decía solo «Totales por
-                vendedor», y como la tabla sigue a las pestañas de arriba —que
-                quedan lejos— no había forma de saber qué estaba mostrando. Vacker
-                pidió «agregarle» el acumulado año, trimestral y mes, que en
-                realidad ya tenía: lo que le faltaba era decirlo.
-              */}
-              <p className="mb-2 text-sm font-bold text-ink">
-                👥 Totales por vendedor · {periodo}{' '}
-                <span className="text-xs font-normal text-muted">({datos.ranking.length} vendedores)</span>
-              </p>
-              <div className="rounded-brand border border-line">
-                <VendedorTotalesTable items={datos.ranking} anio={anio} verTodo={verTodo} />
-              </div>
-            </div>
           </div>
         )}
       </div>
