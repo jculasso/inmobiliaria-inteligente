@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { AgregadoKpi, RankingItem } from '@vacker/types';
+import type { AgregadoKpi, LadoPunta, RankingItem } from '@vacker/types';
 import { Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import {
@@ -15,6 +15,7 @@ import { fmtNum, fmtUSD } from '../../lib/format';
 import { ABREV_MES, NOMBRES_MES } from '../../lib/meses';
 import { VentasChart } from './ventas-chart';
 import { VentasTabla } from './ventas-tabla';
+import type { FocoDrill } from '../../lib/drill';
 import { DetalleDrillModal } from './detalle-drill-modal';
 
 const TABS: { key: PeriodoResumen; label: string; icono: string }[] = [
@@ -31,33 +32,65 @@ const TRIMESTRES = [
 ];
 const ETIQUETAS_TRIMESTRE = TRIMESTRES.map((t) => `Q${t.q}`);
 
-/** Qué período se está mirando en la ventana de operaciones. */
-type Detalle = { trimestre: number } | { mes: number };
+/** Qué se abre en la ventana de detalle: el período, y qué tarjeta se tocó. */
+interface Detalle {
+  periodo: { trimestre: number } | { mes: number } | Record<string, never>;
+  titulo: string;
+  foco: FocoDrill;
+  lado?: LadoPunta;
+}
+
+type Abrir = (titulo: string, foco: FocoDrill, lado?: LadoPunta) => () => void;
 
 /**
- * Las tarjetas del período elegido.
- *
- * `onOperaciones` hace que la tarjeta de Operaciones abra la lista de esas
- * operaciones. Es opcional porque en el acumulado anual no hay un período
- * puntual que abrir: lo usan el trimestral y el mensual.
+ * Las tarjetas del período elegido. Todas abren las operaciones que cuentan,
+ * con el mismo criterio que las del dashboard (ver `lib/drill.ts`): hasta el
+ * 5/10/2026 solo «Operaciones» abría algo, y solo en el trimestral y el mensual.
  */
-function metricas(agg: AgregadoKpi, onOperaciones?: () => void) {
+function metricas(agg: AgregadoKpi, abrir: Abrir) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <KpiCard label="Volumen operado" value={fmtUSD(agg.volumen)} tone="brand" />
-      <KpiCard label="Ticket promedio" value={fmtUSD(agg.ticketPromedio)} sub="por punta" />
+      <KpiCard label="Volumen operado" value={fmtUSD(agg.volumen)} tone="brand" onClick={abrir('Volumen', 'volumen')} />
+      <KpiCard
+        label="Ticket promedio"
+        value={fmtUSD(agg.ticketPromedio)}
+        sub="por punta"
+        onClick={abrir('Ticket promedio', 'ticket')}
+      />
       <KpiCard
         label="Operaciones"
         value={fmtNum(agg.operaciones)}
-        sub={onOperaciones ? 'ver cuáles' : `${fmtNum(agg.puntas)} puntas`}
-        onClick={onOperaciones}
+        sub={`${fmtNum(agg.puntas)} puntas`}
+        onClick={abrir('Operaciones', 'operaciones')}
       />
-      <KpiCard label="Puntas totales" value={fmtNum(agg.puntas)} />
-      <KpiCard label="Puntas compradoras" value={fmtNum(agg.puntasCompradoras)} />
-      <KpiCard label="Puntas vendedoras" value={fmtNum(agg.puntasVendedoras)} />
-      <KpiCard label="Com. comprador" value={fmtUSD(agg.comisionCompradora)} />
-      <KpiCard label="Com. vendedor" value={fmtUSD(agg.comisionVendedora)} />
-      <KpiCard label="Comisiones cobradas" value={fmtUSD(agg.comision)} sub="total generada" tone="success" />
+      <KpiCard label="Puntas totales" value={fmtNum(agg.puntas)} onClick={abrir('Puntas', 'puntas')} />
+      <KpiCard
+        label="Puntas compradoras"
+        value={fmtNum(agg.puntasCompradoras)}
+        onClick={abrir('Puntas compradoras', 'puntas', 'compradora')}
+      />
+      <KpiCard
+        label="Puntas vendedoras"
+        value={fmtNum(agg.puntasVendedoras)}
+        onClick={abrir('Puntas vendedoras', 'puntas', 'vendedora')}
+      />
+      <KpiCard
+        label="Com. comprador"
+        value={fmtUSD(agg.comisionCompradora)}
+        onClick={abrir('Comisión del comprador', 'comision', 'compradora')}
+      />
+      <KpiCard
+        label="Com. vendedor"
+        value={fmtUSD(agg.comisionVendedora)}
+        onClick={abrir('Comisión del vendedor', 'comision', 'vendedora')}
+      />
+      <KpiCard
+        label="Comisiones cobradas"
+        value={fmtUSD(agg.comision)}
+        sub="total generada"
+        tone="success"
+        onClick={abrir('Comisión', 'comision')}
+      />
     </div>
   );
 }
@@ -142,12 +175,15 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
     };
   }, [anio, tab, verTodo]);
 
-  const abrirOperaciones =
-    tab === 'trimestral'
-      ? () => setDetalle({ trimestre })
-      : tab === 'mensual'
-        ? () => setDetalle({ mes })
-        : undefined;
+  const nombrePeriodo =
+    tab === 'trimestral' ? `Q${trimestre} ${anio}` : tab === 'mensual' ? `${NOMBRES_MES[mes - 1]} ${anio}` : `Año ${anio}`;
+  const abrir: Abrir = (titulo, foco, lado) => () =>
+    setDetalle({
+      periodo: tab === 'trimestral' ? { trimestre } : tab === 'mensual' ? { mes } : {},
+      titulo,
+      foco,
+      lado,
+    });
 
   return (
     <Card className="p-0">
@@ -230,7 +266,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
               pestañas de arriba. Se mudó a su propia sección, con su propio
               selector: ver `TotalesVendedores`, que cuenta por qué.
             */}
-            {metricas(datos.agregado, abrirOperaciones)}
+            {metricas(datos.agregado, abrir)}
           </div>
         )}
       </div>
@@ -246,15 +282,17 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       */}
       {detalle !== null && (
         <DetalleDrillModal
-          titulo={`Operaciones · ${'trimestre' in detalle ? `Q${detalle.trimestre}` : NOMBRES_MES[detalle.mes - 1]}`}
-          subtitulo={`Ventas escrituradas · Año ${anio}`}
+          titulo={detalle.titulo}
+          subtitulo={`Ventas escrituradas · ${nombrePeriodo}`}
           filtro={{
             anio,
-            ...detalle,
+            ...detalle.periodo,
             tipo: 'venta',
             estado: 'escriturada',
             verTodo,
           }}
+          foco={detalle.foco}
+          lado={detalle.lado}
           onClose={() => setDetalle(null)}
         />
       )}
