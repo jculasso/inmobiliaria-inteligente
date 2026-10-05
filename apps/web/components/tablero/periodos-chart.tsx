@@ -1,13 +1,14 @@
 'use client';
 
-/** Redondea hacia arriba al próximo número "lindo" para el techo del eje. */
-function nextNiceMax(n: number): number {
-  if (n <= 0) return 1;
-  const step = 10 ** Math.floor(Math.log10(n));
-  return Math.ceil(n / step) * step;
-}
+import { marcasDelEje } from '../../lib/eje';
 
-const TICKS = [0, 0.25, 0.5, 0.75, 1];
+/*
+ * La línea va en tinta y no en el verde de «éxito». Las barras toman el color
+ * de la inmobiliaria, y Alteva es verde: línea y barras salían del mismo tono,
+ * y los puntos —con su borde blanco— parecían anillos sueltos sobre las barras.
+ * La tinta contrasta con cualquier color de marca.
+ */
+const COLOR_LINEA = 'var(--color-ink)';
 
 /**
  * Barras + línea por período, con doble eje. Clickeable: tocar una barra
@@ -49,11 +50,7 @@ export function PeriodosChart({
   /** La ayuda de abajo a la derecha, p. ej. «tocá una barra o un trimestre». */
   pista: string;
   titulo: string;
-  /**
-   * Las barras cuentan cosas enteras —alquileres, no dólares—. El eje se parte
-   * en cuartos, y con un máximo de 9 las marcas caían en 2,25 y 6,75
-   * alquileres: se lleva el techo a un múltiplo de 4 para que sean enteras.
-   */
+  /** Las barras cuentan cosas enteras —alquileres, no dólares—: marcas enteras. */
   barrasEnteras?: boolean;
 }) {
   const n = etiquetas.length;
@@ -66,10 +63,13 @@ export function PeriodosChart({
   const barGap = n > 6 ? 8 : 20;
   const barWidth = plotWidth / n - barGap;
 
-  const barMax = barrasEnteras
-    ? Math.max(4, Math.ceil(Math.max(...barras) / 4) * 4)
-    : nextNiceMax(Math.max(...barras));
-  const lineMax = nextNiceMax(Math.max(...linea));
+  // Cada eje con sus propias marcas redondas: las de las barras dibujan la
+  // grilla, las de la línea solo su etiqueta. Compartir los cuartos obligaba a
+  // marcas como 22.500, que la etiqueta redondeaba a «$23k». Ver `marcasDelEje`.
+  const ejeBarras = marcasDelEje(Math.max(...barras), barrasEnteras);
+  const ejeLinea = marcasDelEje(Math.max(...linea));
+  const barMax = ejeBarras.techo;
+  const lineMax = ejeLinea.techo;
 
   const xFor = (i: number) => marginLeft + i * (barWidth + barGap);
   const yBar = (v: number) => height - (v / barMax) * (height - 10);
@@ -108,7 +108,7 @@ export function PeriodosChart({
                   </span>
                   <span className="text-right text-xs font-bold tabular-nums text-ink">
                     {formatoBarras(v)}{' '}
-                    <span className="font-semibold text-success">{formatoLinea(linea[i]!)}</span>
+                    <span className="font-semibold text-muted">{formatoLinea(linea[i]!)}</span>
                   </span>
                 </button>
               ) : (
@@ -126,7 +126,7 @@ export function PeriodosChart({
                   <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface">
                     <span className="block h-full rounded-full bg-brand-red" style={{ width: `${(v / barMax) * 100}%` }} />
                   </span>
-                  <span className="mt-1 block text-[11px] text-success">{`${nombreLineaCorto} ${formatoLinea(linea[i]!)}`}</span>
+                  <span className="mt-1 block text-[11px] text-muted">{`${nombreLineaCorto} ${formatoLinea(linea[i]!)}`}</span>
                 </button>
               )}
             </li>
@@ -140,20 +140,19 @@ export function PeriodosChart({
         role="img"
         aria-label={titulo}
       >
-        {TICKS.map((t) => {
-          const y = height - t * (height - 10);
-          return (
-            <g key={t}>
-              <line x1={marginLeft} y1={y} x2={width - marginRight} y2={y} stroke="var(--color-line)" strokeWidth={1} />
-              <text x={marginLeft - 8} y={y + 4} fontSize={10} textAnchor="end" fill="var(--color-ink)">
-                {formatoBarras(t * barMax)}
-              </text>
-              <text x={width - marginRight + 8} y={y + 4} fontSize={10} textAnchor="start" fill="var(--color-success)">
-                {formatoLinea(t * lineMax)}
-              </text>
-            </g>
-          );
-        })}
+        {ejeBarras.marcas.map((m) => (
+          <g key={`b-${m}`}>
+            <line x1={marginLeft} y1={yBar(m)} x2={width - marginRight} y2={yBar(m)} stroke="var(--color-line)" strokeWidth={1} />
+            <text x={marginLeft - 8} y={yBar(m) + 4} fontSize={10} textAnchor="end" fill="var(--color-muted)">
+              {formatoBarras(m)}
+            </text>
+          </g>
+        ))}
+        {ejeLinea.marcas.map((m) => (
+          <text key={`l-${m}`} x={width - marginRight + 8} y={yLine(m) + 4} fontSize={10} textAnchor="start" fill={COLOR_LINEA}>
+            {formatoLinea(m)}
+          </text>
+        ))}
 
         {barras.map((v, i) => {
           const x = xFor(i);
@@ -183,14 +182,14 @@ export function PeriodosChart({
           );
         })}
 
-        <polyline points={linePoints} fill="none" stroke="var(--color-success)" strokeWidth={2} />
+        <polyline points={linePoints} fill="none" stroke={COLOR_LINEA} strokeWidth={2} />
         {linea.map((v, i) => (
           <circle
             key={`dot-${i}`}
             cx={xFor(i) + barWidth / 2}
             cy={yLine(v)}
             r={n > 6 ? 4 : 5}
-            fill="var(--color-success)"
+            fill={COLOR_LINEA}
             stroke="white"
             strokeWidth={2}
             className="cursor-pointer"
@@ -206,7 +205,7 @@ export function PeriodosChart({
             {nombreBarras}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-success" aria-hidden />
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-ink" aria-hidden />
             {nombreLinea}
           </span>
         </div>
