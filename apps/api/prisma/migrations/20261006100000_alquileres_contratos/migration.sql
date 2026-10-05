@@ -10,7 +10,3 @@ ALTER TABLE "alq_contrato" ADD COLUMN "dia_pago_propietario" INTEGER NOT NULL DE
 
 -- El vencimiento del inquilino por defecto es el 5, como en Vacker.
 ALTER TABLE "alq_contrato" ALTER COLUMN "dia_vencimiento" SET DEFAULT 5;
-
--- El período base del índice: la indexación se mide siempre desde acá, con la
--- variación acumulada (regla 5).
-ALTER TABLE "alq_contrato" ADD COLUMN "indice_periodo_base" DATE;

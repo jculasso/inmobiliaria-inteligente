@@ -671,9 +671,6 @@ model AlqContrato {
   ajuste             String    @default("indexado") // indexado | escalonado
   indice             String? // ICL | IPC | CCP
   periodicidadMeses  Int?      @map("periodicidad_meses")
-  /// El período base del índice (regla 5): la fecha del ICL o el mes del IPC
-  /// contra el que se mide la variación acumulada de todos los tramos.
-  indicePeriodoBase  DateTime? @map("indice_periodo_base") @db.Date
   honorariosPct      Decimal   @default(0) @map("honorarios_pct") @db.Decimal(5, 2)
   gastosAdmPct       Decimal   @default(0) @map("gastos_adm_pct") @db.Decimal(5, 2)
   ivaPct             Decimal   @default(0) @map("iva_pct") @db.Decimal(5, 2)

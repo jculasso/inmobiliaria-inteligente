@@ -87,7 +87,6 @@ export function ContratoForm({
   const [ajuste, setAjuste] = useState<AjusteContrato>(contrato?.ajuste ?? 'indexado');
   const [indice, setIndice] = useState<IndiceAlquiler | ''>(contrato?.indice ?? 'ICL');
   const [periodicidad, setPeriodicidad] = useState(String(contrato?.periodicidadMeses ?? 4));
-  const [indicePeriodoBase, setIndicePeriodoBase] = useState(contrato?.indicePeriodoBase ?? '');
   const [honorariosPct, setHonorariosPct] = useState(String(contrato?.honorariosPct ?? 8));
   const [gastosAdmPct, setGastosAdmPct] = useState(String(contrato?.gastosAdmPct ?? 2));
   const [ivaPct, setIvaPct] = useState(String(contrato?.ivaPct ?? 0));
@@ -119,7 +118,6 @@ export function ContratoForm({
       ajuste,
       indice: ajuste === 'indexado' ? indice || null : null,
       periodicidadMeses: ajuste === 'indexado' ? num(periodicidad) : null,
-      indicePeriodoBase: ajuste === 'indexado' ? indicePeriodoBase || null : null,
       honorariosPct: num(honorariosPct) ?? 0,
       gastosAdmPct: num(gastosAdmPct) ?? 0,
       ivaPct: num(ivaPct) ?? 0,
@@ -132,7 +130,7 @@ export function ContratoForm({
       partes: partes.filter((p) => p.personaId).map((p) => ({ personaId: p.personaId, papel: p.papel, porcentaje: p.papel === 'propietario' ? num(p.porcentaje) : null })),
       tramos: tramos.map((t) => ({ numero: t.numero, desde: t.desde, hasta: t.hasta, importe: num(t.importe) })),
     }),
-    [codigo, propiedadId, tipo, moneda, inicio, fin, fechaFirma, diaVencimiento, diaPagoPropietario, ajuste, indice, periodicidad, indicePeriodoBase, honorariosPct, gastosAdmPct, ivaPct, punitorioDiarioPct, pagoGarantizado, depositoImporte, depositoDevolucion, obs, partes, tramos],
+    [codigo, propiedadId, tipo, moneda, inicio, fin, fechaFirma, diaVencimiento, diaPagoPropietario, ajuste, indice, periodicidad, honorariosPct, gastosAdmPct, ivaPct, punitorioDiarioPct, pagoGarantizado, depositoImporte, depositoDevolucion, obs, partes, tramos],
   );
 
   /** Los problemas de cada paso, para avisar antes de guardar. */
@@ -348,11 +346,6 @@ export function ContratoForm({
               </div>
             ) : (
               <span />
-            )}
-            {ajuste === 'indexado' && (
-              <Campo label="Período base del índice" hint="La fecha (ICL) o el mes (IPC) desde el que se mide la variación.">
-                <input type="date" className={inputClass} value={indicePeriodoBase} onChange={(e) => setIndicePeriodoBase(e.target.value)} />
-              </Campo>
             )}
             <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-4">
               <Campo label="Honorarios %" hint="Propietario. Sin IVA.">
