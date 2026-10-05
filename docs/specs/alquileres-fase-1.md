@@ -132,9 +132,13 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
    al inquilino y los **honorarios** a descontarle a cada propietario.
 10. Generar el mismo período **dos veces no duplica** nada: la segunda vez solo
     crea lo que falte (un contrato cargado después, por ejemplo).
-11. Si el tramo de ese mes requiere indexación **no confirmada**, ese contrato
-    **no genera** el alquiler de ese mes y queda listado en «indexación
-    vencida». No se cobra un importe viejo por defecto.
+11. Si una parte del mes cae en un tramo **sin indexar**, esa parte **no se
+    genera** y el contrato queda listado en el resultado de la generación
+    con el camino a «a indexar». No se cobra un importe viejo por defecto. La
+    parte indexada del mismo mes sí se genera, como en Gexion: diciembre de
+    2026 del contrato #5 trae el 1 al 14 (513.717,81) y nada del 15 en
+    adelante. Una vez confirmada la indexación, generar el mes de nuevo crea
+    lo que faltaba (regla 10).
 12. Honorarios = alquiler del mes × porcentaje de honorarios del contrato
     × (1 + IVA de la inmobiliaria), a cargo del propietario. Gastos
     administrativos = alquiler del mes × porcentaje de gastos × (1 + IVA de la
@@ -154,9 +158,18 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
     que cambia de tramo el 15/08 genera «1 al 14» = 1.043.387 × 14/31 =
     471.207,03 y «15 al 31» = 1.137.518 × 17/31 = 623.800,19.
 14. Expensas, impuestos, servicios y reparaciones se cargan como conceptos
-    sueltos, indicando **quién lo paga** (inquilino o propietario) y **si lo
-    adelantó la inmobiliaria**. Un gasto del propietario adelantado por la
-    inmobiliaria se le descuenta en la liquidación.
+    sueltos de un contrato, indicando **quién lo debe** (inquilino o
+    propietario) y **quién ya lo pagó**, si alguien:
+    - **nadie todavía**: se le cobra a quien lo debe;
+    - **la inmobiliaria**: además queda marcado como adelantado; si lo debe el
+      propietario, se le descuenta en la liquidación;
+    - **la otra parte** (el inquilino arregló algo que era del dueño): además
+      del cargo, se le reconoce a quien lo pagó con un concepto a pagar
+      enlazado. Así lo registra Gexion: la misma reparación figura a pagar a
+      uno y a cobrar al otro.
+
+    Si lo deben varios propietarios, se reparte por sus porcentajes sin perder
+    centavos.
 
 ### Vencimientos
 
@@ -265,6 +278,14 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 - **El índice que no llegó**: ver regla 7.
 - **El contrato en dólares** con honorarios en pesos: no existe; todo el
   contrato va en su moneda (regla 18).
+- **Varios inquilinos en un contrato**: los cargos del mes van a uno solo,
+  siempre el mismo. Tiene que ser estable, porque la clave que evita
+  duplicar (regla 10) lleva la persona.
+- **El IVA del alquiler** (ningún contrato de Vacker lo tiene): lo paga el
+  inquilino y lo recibe el propietario, que es quien lo factura.
+- **Un concepto generado y después anulado** no se vuelve a crear al generar
+  el mes de nuevo: la anulación es una decisión, no un hueco.
+- **El mes de la rescisión** se genera entero; los siguientes no (regla 3).
 - **El propietario que también es inquilino**: una sola persona, dos cuentas
   corrientes por contrato, un solo estado de cuenta que las muestra separadas.
 
