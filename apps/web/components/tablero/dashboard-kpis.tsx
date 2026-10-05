@@ -1,15 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import type { AgregadoKpi, OperacionFiltro, ResumenKpis } from '@vacker/types';
+import type { AgregadoKpi, LadoPunta, OperacionFiltro, ResumenKpis } from '@vacker/types';
 import { KpiCard } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
+import { NOMBRES_MES } from '../../lib/meses';
+import type { FocoDrill } from '../../lib/drill';
 import { DetalleDrillModal } from './detalle-drill-modal';
 
 interface Drill {
   titulo: string;
   subtitulo: string;
   filtro: OperacionFiltro;
+  foco?: FocoDrill;
+  lado?: LadoPunta;
 }
 
 /**
@@ -38,8 +42,21 @@ export function DashboardKpis({
   const [drill, setDrill] = useState<Drill | null>(null);
 
   function cards(agg: AgregadoKpi, filtro: OperacionFiltro, periodoLabel: string) {
-    const abrir = (label: string) => () =>
-      setDrill({ titulo: label, subtitulo: `Ventas · ${periodoLabel}`, filtro: { ...filtro, tipo: 'venta' } });
+    /*
+     * Cada tarjeta abre las operaciones que ELLA cuenta. Escrituradas, porque
+     * el agregado sale de `ventas(tx, anio, 'escriturada')`; y si la tarjeta es
+     * de un lado, solo las puntas de ese lado. Antes las ocho abrían la misma
+     * lista —todas las ventas, de cualquier estado, con la comisión entera— y
+     * ninguna coincidía con su número. Ver `lib/drill.ts`.
+     */
+    const abrir = (titulo: string, foco: FocoDrill, lado?: LadoPunta) => () =>
+      setDrill({
+        titulo,
+        subtitulo: `Ventas escrituradas · ${periodoLabel}`,
+        filtro: { ...filtro, tipo: 'venta', estado: 'escriturada' },
+        foco,
+        lado,
+      });
     /*
      * Ocho tarjetas, en dos filas de cuatro. Eran seis en una fila de seis; al
      * abrir la comisión por lado, seis columnas dejaban los números apretados
@@ -47,33 +64,33 @@ export function DashboardKpis({
      */
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard label="Volumen" value={fmtUSD(agg.volumen)} icon="💰" tone="brand" onClick={abrir('Volumen')} />
+        <KpiCard label="Volumen" value={fmtUSD(agg.volumen)} icon="💰" tone="brand" onClick={abrir('Volumen', 'volumen')} />
         <KpiCard
           label="Operaciones"
           value={fmtNum(agg.operaciones)}
           sub={`${fmtNum(agg.puntas)} puntas`}
           icon="🏠"
-          onClick={abrir('Operaciones')}
+          onClick={abrir('Operaciones', 'operaciones')}
         />
         <KpiCard
           label="Ticket prom."
           value={fmtUSD(agg.ticketPromedio)}
           icon="🎯"
-          onClick={abrir('Ticket promedio')}
+          onClick={abrir('Ticket promedio', 'ticket')}
         />
         <KpiCard
           label="Puntas compradoras"
           value={fmtNum(agg.puntasCompradoras)}
           icon="🤝"
-          onClick={abrir('Puntas compradoras')}
+          onClick={abrir('Puntas compradoras', 'puntas', 'compradora')}
         />
         <KpiCard
           label="Puntas vendedoras"
           value={fmtNum(agg.puntasVendedoras)}
           icon="🧑‍💼"
-          onClick={abrir('Puntas vendedoras')}
+          onClick={abrir('Puntas vendedoras', 'puntas', 'vendedora')}
         />
-        <KpiCard label="Comisión" value={fmtUSD(agg.comision)} icon="💵" tone="success" onClick={abrir('Comisión')} />
+        <KpiCard label="Comisión" value={fmtUSD(agg.comision)} icon="💵" tone="success" onClick={abrir('Comisión', 'comision')} />
         {/*
           La comisión abierta por lado, como la mira Vacker en su planilla: qué
           parte abonó el comprador y qué parte el vendedor. Las dos suman la
@@ -84,14 +101,14 @@ export function DashboardKpis({
           value={fmtUSD(agg.comisionCompradora)}
           sub={`${fmtNum(agg.puntasCompradoras)} puntas`}
           icon="🤝"
-          onClick={abrir('Comisión del comprador')}
+          onClick={abrir('Comisión del comprador', 'comision', 'compradora')}
         />
         <KpiCard
           label="Com. vendedor"
           value={fmtUSD(agg.comisionVendedora)}
           sub={`${fmtNum(agg.puntasVendedoras)} puntas`}
           icon="🧑‍💼"
-          onClick={abrir('Comisión del vendedor')}
+          onClick={abrir('Comisión del vendedor', 'comision', 'vendedora')}
         />
       </div>
     );
@@ -102,13 +119,13 @@ export function DashboardKpis({
       {resumen.mesActual && (
         <section className="flex flex-col gap-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Mes seleccionado</p>
-          {cards(resumen.mesActual, { anio, mes, verTodo }, `mes ${mes}/${anio}`)}
+          {cards(resumen.mesActual, { anio, mes, verTodo }, `${NOMBRES_MES[mes - 1]} ${anio}`)}
         </section>
       )}
 
       <section className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Acumulado año {anio}</p>
-        {cards(resumen.anual, { anio, verTodo }, `año ${anio}`)}
+        {cards(resumen.anual, { anio, verTodo }, `Año ${anio}`)}
       </section>
 
       <div className={`grid grid-cols-1 gap-3 ${verAlquileres ? 'sm:grid-cols-2' : ''}`}>
@@ -123,6 +140,7 @@ export function DashboardKpis({
               titulo: 'Pendiente de cobro',
               subtitulo: `Operaciones señadas · Año ${anio}`,
               filtro: { anio, tipo: 'venta', estado: 'senada', verTodo },
+              foco: 'comision',
             })
           }
         />
@@ -147,6 +165,7 @@ export function DashboardKpis({
                  * alquileres de toda la inmobiliaria.
                  */
                 filtro: { anio, tipo: 'alquiler', estado: 'firmado', verTodo: true },
+                foco: 'operaciones',
               })
             }
           />
@@ -158,6 +177,8 @@ export function DashboardKpis({
           titulo={drill.titulo}
           subtitulo={drill.subtitulo}
           filtro={drill.filtro}
+          foco={drill.foco}
+          lado={drill.lado}
           onClose={() => setDrill(null)}
         />
       )}

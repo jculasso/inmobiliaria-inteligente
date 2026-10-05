@@ -1,39 +1,40 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { OperacionFiltro } from '@vacker/types';
+import type { LadoPunta, OperacionFiltro } from '@vacker/types';
 import { Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { listOperaciones } from '../../lib/tablero-api';
-import { fmtUSD } from '../../lib/format';
+import { fmtNum, fmtUSD } from '../../lib/format';
 import { estadoBadgeClass, estadoLabel } from '../../lib/operacion-estado';
+import { contarVentas, resumirVentas, type FocoDrill } from '../../lib/drill';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 
 interface Props {
   titulo: string;
   subtitulo?: string;
   filtro: OperacionFiltro;
+  /** La métrica de la tarjeta que se tocó: se resalta en el resumen de arriba. */
+  foco?: FocoDrill | 'valor';
+  /** Se abrió desde una tarjeta de un solo lado: «Puntas compradoras», «Com. vendedor»… */
+  lado?: LadoPunta;
   onClose: () => void;
 }
 
+type Operaciones = Awaited<ReturnType<typeof listOperaciones>>;
+
 /**
- * Panel de detalle de solo lectura: réplica del `openDrill()` del prototipo —
- * muestra las operaciones crudas detrás de un KPI/fila, con fila de totales.
- * Reusa `listOperaciones` (mismo endpoint que Ventas/Alquileres), sin acciones
- * de editar/borrar.
+ * Las operaciones que hay detrás de una tarjeta o de una fila del tablero, de
+ * solo lectura.
  *
- * ── La comisión que se muestra depende de desde dónde se abrió ──────────────
- *
- * Si el filtro trae `usuarioId` —se entró desde la fila de un vendedor en el
- * ranking— la columna muestra SU parte, no la comisión completa de la
- * operación. En una venta compartida entre dos, `comTotal` incluye la punta del
- * otro: el ranking decía 63.210 para Rocío y el detalle sumaba 251.430.
- *
- * El ranking suma `punta.comision` (ver `kpis.calc.ts`), así que este panel
- * tiene que sumar lo mismo o los dos números nunca cierran.
+ * Arriba, un resumen con los mismos números de las tarjetas, recalculados sobre
+ * lo que se lista: el que se tocó va resaltado y tiene que dar EXACTAMENTE lo
+ * mismo que la tarjeta. Abajo, cada operación con la comisión que aporta a ese
+ * número —la de sus puntas contadas, no la de la operación entera—. Las reglas
+ * están en `lib/drill.ts`, que cuenta por qué hacían falta.
  */
-export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props) {
-  const [operaciones, setOperaciones] = useState<Awaited<ReturnType<typeof listOperaciones>> | null>(null);
+export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClose }: Props) {
+  const [operaciones, setOperaciones] = useState<Operaciones | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,17 +59,44 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
   }, [JSON.stringify(filtro)]);
 
   const esVenta = filtro.tipo !== 'alquiler';
-  /**
-   * La comisión atribuible a esta vista. Con `usuarioId` en el filtro es la
-   * punta de esa persona; sin él, la comisión completa de la operación.
-   */
-  const comisionDe = (op: { comTotal: number; puntas: { usuarioId: string; comision: number }[] }) =>
-    filtro.usuarioId
-      ? op.puntas.filter((p) => p.usuarioId === filtro.usuarioId).reduce((s, p) => s + p.comision, 0)
-      : op.comTotal;
 
-  const sumPrecio = operaciones?.reduce((s, op) => s + (op.precio ?? op.valorMensual ?? 0), 0) ?? 0;
-  const sumComision = operaciones?.reduce((s, op) => s + comisionDe(op), 0) ?? 0;
+  // Ventas: cada operación con las puntas que cuenta la tarjeta. Alquileres:
+  // no tienen puntas, cuenta la operación entera.
+  const filas = operaciones
+    ? esVenta
+      ? contarVentas(operaciones, { usuarioId: filtro.usuarioId, lado })
+      : operaciones.map((op) => ({ op, puntas: [], comision: op.comTotal }))
+    : [];
+
+  let resumen: { clave: FocoDrill | 'valor'; label: string; valor: string }[] = [];
+  if (operaciones && esVenta) {
+    const r = resumirVentas(filas);
+    const delLado = lado === 'compradora' ? ' compradoras' : lado === 'vendedora' ? ' vendedoras' : '';
+    resumen = [
+      { clave: 'operaciones', label: 'Operaciones', valor: fmtNum(r.operaciones) },
+      { clave: 'puntas', label: `Puntas${delLado}`, valor: fmtNum(r.puntas) },
+      { clave: 'volumen', label: 'Volumen', valor: fmtUSD(r.volumen) },
+      { clave: 'ticket', label: 'Ticket prom.', valor: fmtUSD(r.ticket) },
+      { clave: 'comision', label: 'Comisión', valor: fmtUSD(r.comision) },
+    ];
+  } else if (operaciones) {
+    const comision = filas.reduce((s, f) => s + f.comision, 0);
+    const valores = filas.reduce((s, f) => s + (f.op.valorMensual ?? 0), 0);
+    resumen = [
+      { clave: 'operaciones', label: 'Alquileres', valor: fmtNum(filas.length) },
+      { clave: 'comision', label: 'Comisión', valor: fmtUSD(comision) },
+      { clave: 'valor', label: 'Valor prom./mes', valor: fmtUSD(filas.length ? valores / filas.length : 0) },
+    ];
+  }
+  const totalComision = filas.reduce((s, f) => s + f.comision, 0);
+
+  /** El nombre de una punta: apagado si esta tarjeta no la cuenta. */
+  const nombre = (fila: (typeof filas)[number], ladoPunta: LadoPunta) => {
+    const punta = fila.op.puntas.find((p) => p.lado === ladoPunta);
+    if (!punta) return <span className="text-muted">—</span>;
+    const cuenta = fila.puntas.some((p) => p.lado === ladoPunta);
+    return <span className={cuenta ? '' : 'text-muted/60'}>{punta.nombre}</span>;
+  };
 
   return (
     <Modal title={titulo} subtitle={subtitulo} onClose={onClose} size="xl">
@@ -80,59 +108,65 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
       )}
 
       {operaciones && !loading && (
-        <div className="max-h-[65vh] overflow-y-auto overflow-x-hidden rounded-brand border border-line sm:hidden">
-          {operaciones.length === 0 ? (
+        <dl aria-label="Resumen del detalle" className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {resumen.map((r) => (
+            <div
+              key={r.clave}
+              className={`rounded-lg border px-3 py-2 ${
+                foco === r.clave ? 'border-brand-red/40 bg-brand-red/5' : 'border-line bg-surface/50'
+              }`}
+            >
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-muted">{r.label}</dt>
+              <dd className={`text-base font-extrabold tabular-nums ${foco === r.clave ? 'text-brand-red' : 'text-ink'}`}>
+                {r.valor}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {operaciones && !loading && (
+        <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-brand border border-line sm:hidden">
+          {filas.length === 0 ? (
             <p className="px-3 py-6 text-center text-muted">Sin operaciones para mostrar.</p>
           ) : (
             <ListaTarjetas etiqueta="Operaciones del detalle">
-              {operaciones.map((op) => {
-                const vend = op.puntas.find((p) => p.lado === 'vendedora');
-                const comp = op.puntas.find((p) => p.lado === 'compradora');
-                return (
-                  <Tarjeta key={op.id}>
-                    <div className="flex items-start gap-2">
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-bold text-ink">{op.direccion}</span>
-                        <span className="mt-0.5 block text-[11px] text-muted">
-                          {op.codigo} · Firma {op.fechaFirma ?? '—'}
-                        </span>
+              {filas.map((fila) => (
+                <Tarjeta key={fila.op.id}>
+                  <div className="flex items-start gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-ink">{fila.op.direccion}</span>
+                      <span className="mt-0.5 block text-[11px] text-muted">
+                        {fila.op.codigo} · Firma {fila.op.fechaFirma ?? '—'}
                       </span>
-                      <span className={`shrink-0 ${estadoBadgeClass(op.estado)}`}>{estadoLabel(op.estado)}</span>
-                    </div>
-                    <CamposTarjeta>
-                      <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>
-                        {fmtUSD(op.precio ?? op.valorMensual ?? 0)}
-                      </CampoTarjeta>
-                      <CampoTarjeta etiqueta="Comisión">{fmtUSD(comisionDe(op))}</CampoTarjeta>
-                      {esVenta && <CampoTarjeta etiqueta="Vendedora">{vend?.nombre ?? '—'}</CampoTarjeta>}
-                      {esVenta && <CampoTarjeta etiqueta="Compradora">{comp?.nombre ?? '—'}</CampoTarjeta>}
-                    </CamposTarjeta>
-                  </Tarjeta>
-                );
-              })}
-              <li className="mt-1 rounded-xl border-2 border-line bg-surface px-3 py-2.5">
-                <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">
-                  Total ({operaciones.length})
-                </span>
-                <CamposTarjeta>
-                  <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>{fmtUSD(sumPrecio)}</CampoTarjeta>
-                  <CampoTarjeta etiqueta="Comisión">{fmtUSD(sumComision)}</CampoTarjeta>
-                </CamposTarjeta>
-              </li>
+                    </span>
+                    <span className={`shrink-0 ${estadoBadgeClass(fila.op.estado)}`}>{estadoLabel(fila.op.estado)}</span>
+                  </div>
+                  <CamposTarjeta>
+                    <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>
+                      {fmtUSD(fila.op.precio ?? fila.op.valorMensual ?? 0)}
+                    </CampoTarjeta>
+                    <CampoTarjeta etiqueta="Comisión">{fmtUSD(fila.comision)}</CampoTarjeta>
+                    {esVenta && <CampoTarjeta etiqueta="Vendedora">{nombre(fila, 'vendedora')}</CampoTarjeta>}
+                    {esVenta && <CampoTarjeta etiqueta="Compradora">{nombre(fila, 'compradora')}</CampoTarjeta>}
+                  </CamposTarjeta>
+                </Tarjeta>
+              ))}
             </ListaTarjetas>
           )}
         </div>
       )}
 
       {operaciones && !loading && (
-        <div className="hidden max-h-[65vh] overflow-auto overscroll-x-contain rounded-brand border border-line sm:block">
-          <table className="w-full min-w-[720px] text-sm">
+        <div className="hidden max-h-[60vh] overflow-auto overscroll-x-contain rounded-brand border border-line sm:block">
+          <table className="w-full min-w-[760px] text-sm">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-line text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
                 <th className="px-3 py-2.5">Código</th>
                 <th className="px-3 py-2.5">Firma</th>
                 <th className="px-3 py-2.5">Dirección</th>
                 <th className="px-3 py-2.5 text-right">{esVenta ? 'Precio' : 'Valor/mes'}</th>
+                {esVenta && <th className="px-3 py-2.5 text-right">Puntas</th>}
                 {esVenta && <th className="px-3 py-2.5">Vendedora</th>}
                 {esVenta && <th className="px-3 py-2.5">Compradora</th>}
                 <th className="px-3 py-2.5 text-right">Comisión</th>
@@ -140,45 +174,39 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, onClose }: Props)
               </tr>
             </thead>
             <tbody>
-              {operaciones.length === 0 ? (
+              {filas.length === 0 ? (
                 <tr>
-                  <td colSpan={esVenta ? 8 : 6} className="px-3 py-6 text-center text-muted">
+                  <td colSpan={esVenta ? 9 : 6} className="px-3 py-6 text-center text-muted">
                     Sin operaciones para mostrar.
                   </td>
                 </tr>
               ) : (
-                operaciones.map((op) => {
-                  const vend = op.puntas.find((p) => p.lado === 'vendedora');
-                  const comp = op.puntas.find((p) => p.lado === 'compradora');
-                  return (
-                    <tr key={op.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
-                      <td className="px-3 py-2.5 text-xs text-muted">{op.codigo}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-muted">{op.fechaFirma ?? '—'}</td>
-                      <td className="px-3 py-2.5 font-semibold text-ink">{op.direccion}</td>
-                      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">
-                        {fmtUSD(op.precio ?? op.valorMensual ?? 0)}
-                      </td>
-                      {esVenta && <td className="px-3 py-2.5">{vend?.nombre ?? '—'}</td>}
-                      {esVenta && <td className="px-3 py-2.5">{comp?.nombre ?? '—'}</td>}
-                      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">{fmtUSD(comisionDe(op))}</td>
-                      <td className="px-3 py-2.5">
-                        <span className={estadoBadgeClass(op.estado)}>{estadoLabel(op.estado)}</span>
-                      </td>
-                    </tr>
-                  );
-                })
+                filas.map((fila) => (
+                  <tr key={fila.op.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                    <td className="px-3 py-2.5 text-xs text-muted">{fila.op.codigo}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-muted">{fila.op.fechaFirma ?? '—'}</td>
+                    <td className="px-3 py-2.5 font-semibold text-ink">{fila.op.direccion}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">
+                      {fmtUSD(fila.op.precio ?? fila.op.valorMensual ?? 0)}
+                    </td>
+                    {esVenta && <td className="px-3 py-2.5 text-right tabular-nums text-muted">{fila.puntas.length}</td>}
+                    {esVenta && <td className="px-3 py-2.5">{nombre(fila, 'vendedora')}</td>}
+                    {esVenta && <td className="px-3 py-2.5">{nombre(fila, 'compradora')}</td>}
+                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">{fmtUSD(fila.comision)}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={estadoBadgeClass(fila.op.estado)}>{estadoLabel(fila.op.estado)}</span>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
-            {operaciones.length > 0 && (
+            {filas.length > 0 && (
               <tfoot className="sticky bottom-0 bg-surface">
                 <tr className="border-t-2 border-line text-ink">
-                  <td className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider" colSpan={esVenta ? 3 : 2}>
-                    Total ({operaciones.length})
+                  <td className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider" colSpan={esVenta ? 7 : 4}>
+                    Total ({filas.length})
                   </td>
-                  <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(sumPrecio)}</td>
-                  {esVenta && <td className="px-3 py-3" />}
-                  {esVenta && <td className="px-3 py-3" />}
-                  <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(sumComision)}</td>
+                  <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(totalComision)}</td>
                   <td className="px-3 py-3" />
                 </tr>
               </tfoot>

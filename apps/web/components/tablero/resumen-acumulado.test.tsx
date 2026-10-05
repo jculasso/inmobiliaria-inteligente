@@ -9,10 +9,29 @@ vi.mock('../../lib/supabase/client', () => ({
 
 /** El filtro con el que se abrió la ventana de detalle, para poder afirmarlo. */
 const filtrosDelDetalle: unknown[] = [];
+/** Con qué se abrió la ventana: el foco y el lado dicen QUÉ tarjeta se tocó. */
+const abiertoCon: { foco?: string; lado?: string }[] = [];
 vi.mock('./detalle-drill-modal', () => ({
-  DetalleDrillModal: ({ titulo, filtro }: { titulo: string; filtro: unknown }) => {
+  DetalleDrillModal: ({
+    titulo,
+    subtitulo,
+    filtro,
+    foco,
+    lado,
+  }: {
+    titulo: string;
+    subtitulo?: string;
+    filtro: unknown;
+    foco?: string;
+    lado?: string;
+  }) => {
     filtrosDelDetalle.push(filtro);
-    return <div data-testid="detalle">{titulo}</div>;
+    abiertoCon.push({ foco, lado });
+    return (
+      <div data-testid="detalle">
+        {titulo} · {subtitulo}
+      </div>
+    );
   },
 }));
 
@@ -130,7 +149,7 @@ describe('ResumenAcumulado — las operaciones del trimestre', () => {
     await screen.findByRole('button', { name: /Q1 · Ene–Mar/ });
     await userEvent.click(screen.getByRole('button', { name: /Q2 · Abr–Jun/ }));
 
-    await userEvent.click(await screen.findByRole('button', { name: /Operaciones/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /^Operaciones/ }));
 
     expect(screen.getByTestId('detalle')).toHaveTextContent('Q2');
     expect(filtrosDelDetalle.at(-1)).toEqual({
@@ -142,11 +161,30 @@ describe('ResumenAcumulado — las operaciones del trimestre', () => {
     });
   });
 
-  it('en el acumulado anual, la tarjeta de Operaciones no abre nada', () => {
-    // En el acumulado anual no hay trimestre que mirar: la tarjeta no es un botón.
+  /*
+   * Hasta el 5/10/2026 el anual no abría nada. Ahora abre las del año: las
+   * tarjetas cuentan el año entero, y la lista tiene que traer eso mismo.
+   */
+  it('en el acumulado anual, abre las escrituradas del año', async () => {
     filtrosDelDetalle.length = 0;
-    render(<ResumenAcumulado anio={2026} mesSeleccionado={8} />);
-    expect(screen.queryByRole('button', { name: /Operaciones/ })).not.toBeInTheDocument();
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={8} verTodo />);
+    await userEvent.click(await screen.findByRole('button', { name: /^Operaciones/ }));
+    expect(screen.getByTestId('detalle')).toHaveTextContent('Año 2026');
+    expect(filtrosDelDetalle.at(-1)).toEqual({ anio: 2026, tipo: 'venta', estado: 'escriturada', verTodo: true });
+  });
+
+  /*
+   * Javier, 5/10/2026: «si te parás sobre comisión comprador o comisión
+   * vendedor trae cualquier cosa». Cada tarjeta tiene que decirle a la ventana
+   * qué cuenta, o la ventana no tiene cómo coincidir con ella.
+   */
+  it('«Com. comprador» abre las escrituradas contando solo la punta compradora', async () => {
+    abiertoCon.length = 0;
+    filtrosDelDetalle.length = 0;
+    render(<ResumenAcumulado anio={2026} mesSeleccionado={8} verTodo />);
+    await userEvent.click(await screen.findByRole('button', { name: /^Com\. comprador/ }));
+    expect(abiertoCon.at(-1)).toEqual({ foco: 'comision', lado: 'compradora' });
+    expect(filtrosDelDetalle.at(-1)).toMatchObject({ tipo: 'venta', estado: 'escriturada' });
   });
 });
 
@@ -215,7 +253,7 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
     const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
     await userEvent.click(within(tabla).getByRole('button', { name: 'Mar' }));
 
-    await userEvent.click(await screen.findByRole('button', { name: /Operaciones/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /^Operaciones/ }));
     expect(screen.getByTestId('detalle')).toHaveTextContent('Marzo');
     expect(filtrosDelDetalle.at(-1)).toEqual({
       anio: 2026,

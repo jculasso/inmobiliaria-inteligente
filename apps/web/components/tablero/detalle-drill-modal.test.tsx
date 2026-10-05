@@ -72,3 +72,41 @@ describe('DetalleDrillModal — la comisión de una venta compartida', () => {
     expect(await screen.findAllByText('$10.000')).not.toHaveLength(0);
   });
 });
+
+/*
+ * «Com. comprador» abre la ventana con `lado: 'compradora'`: la comisión de
+ * cada venta es la de la punta compradora, y el resumen de arriba —resaltado—
+ * da lo mismo que la tarjeta.
+ */
+describe('DetalleDrillModal — abierto desde una tarjeta de un solo lado', () => {
+  it('cuenta solo la punta compradora y la resalta en el resumen', async () => {
+    render(
+      <DetalleDrillModal
+        titulo="Comisión del comprador"
+        filtro={{ anio: 2026, tipo: 'venta', estado: 'escriturada' } as never}
+        foco="comision"
+        lado="compradora"
+        onClose={() => {}}
+      />,
+    );
+    const caja = await screen.findByLabelText('Resumen del detalle');
+    expect(caja).toHaveTextContent('Puntas compradoras1');
+    expect(caja).toHaveTextContent('Comisión$4.000');
+    // 10.000 sería la comisión entera; 6.000, la punta vendedora.
+    expect(screen.queryByText('$10.000')).not.toBeInTheDocument();
+    expect(screen.queryByText('$6.000')).not.toBeInTheDocument();
+  });
+
+  it('el volumen cuenta el precio una vez por punta, como la tarjeta', async () => {
+    render(
+      <DetalleDrillModal
+        titulo="Volumen"
+        filtro={{ anio: 2026, tipo: 'venta', estado: 'escriturada' } as never}
+        foco="volumen"
+        onClose={() => {}}
+      />,
+    );
+    // Una venta de 200.000 con las dos puntas: aporta 400.000 al volumen.
+    expect(await screen.findByText('$400.000')).toBeInTheDocument();
+  });
+});

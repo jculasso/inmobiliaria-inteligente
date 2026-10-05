@@ -14,6 +14,7 @@ import { fmtK, fmtNum, fmtUSD } from '../../lib/format';
 import { ABREV_MES, NOMBRES_MES, periodosTranscurridos } from '../../lib/meses';
 import { PeriodosChart } from './periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from './periodos-tabla';
+import type { FocoDrill } from '../../lib/drill';
 import { DetalleDrillModal } from './detalle-drill-modal';
 
 type Tab = 'anual' | 'trimestral' | 'mensual';
@@ -64,21 +65,26 @@ function filas(periodos: AlquileresPeriodo[], anual: AlquileresPeriodo): FilaPer
 }
 
 /**
- * Las tarjetas del período. «Alquileres firmados» abre la lista de cuáles son
- * — lo pidió Vacker el 26/09/2026, igual que «Operaciones» en ventas.
+ * Las tarjetas del período. Las tres abren la lista de los alquileres que
+ * cuentan, con su número resaltado — Vacker pidió el 26/09/2026 la de
+ * «Alquileres firmados»; el 5/10 se sumaron las otras dos, como en ventas.
  */
-function tarjetas(p: AlquileresPeriodo, verCuales: () => void) {
+function tarjetas(p: AlquileresPeriodo, verCuales: (titulo: string, foco: FocoDrill | 'valor') => () => void) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <KpiCard
         label="Alquileres firmados"
         value={fmtNum(p.firmados)}
-        sub="ver cuáles"
         tone="brand"
-        onClick={verCuales}
+        onClick={verCuales('Alquileres firmados', 'operaciones')}
       />
-      <KpiCard label="Comisión" value={fmtUSD(p.comision)} tone="success" />
-      <KpiCard label="Valor promedio" value={fmtUSD(p.valorPromedio)} sub="por mes de alquiler" />
+      <KpiCard label="Comisión" value={fmtUSD(p.comision)} tone="success" onClick={verCuales('Comisión', 'comision')} />
+      <KpiCard
+        label="Valor promedio"
+        value={fmtUSD(p.valorPromedio)}
+        sub="por mes de alquiler"
+        onClick={verCuales('Valor promedio', 'valor')}
+      />
     </div>
   );
 }
@@ -102,7 +108,7 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
   const [mes, setMes] = useState(mesSeleccionado);
   const [meses, setMeses] = useState<AlquileresMes[] | null>(null);
   const [error, setError] = useState(false);
-  const [lista, setLista] = useState<{ titulo: string; filtro: OperacionFiltro } | null>(null);
+  const [lista, setLista] = useState<{ titulo: string; filtro: OperacionFiltro; foco: FocoDrill | 'valor' } | null>(null);
 
   useEffect(() => {
     setMes(mesSeleccionado);
@@ -204,9 +210,10 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
 
         <div className="flex flex-col gap-2 p-5">
           <p className="text-sm font-bold text-ink">{nombrePeriodo}</p>
-          {tarjetas(delPeriodo, () =>
+          {tarjetas(delPeriodo, (titulo, foco) => () =>
             setLista({
-              titulo: `Alquileres firmados · ${nombrePeriodo}`,
+              titulo: `${titulo} · ${nombrePeriodo}`,
+              foco,
               /*
                * El listado filtra por las MISMAS columnas —`anio` y `mes`,
                * derivadas de la fecha de firma— que los números de esta
@@ -255,6 +262,7 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
           titulo={lista.titulo}
           subtitulo="Por fecha de firma del contrato"
           filtro={lista.filtro}
+          foco={lista.foco}
           onClose={() => setLista(null)}
         />
       )}

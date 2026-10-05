@@ -19,4 +19,20 @@ describe('KpiCard', () => {
     render(<KpiCard label="Comisión" value="$230.692" icon="💵" />);
     expect(screen.getByText('💵')).toBeInTheDocument();
   });
+
+  /*
+   * La lupa avisa que la tarjeta se abre. Tiene que estar en las que se abren
+   * y en ninguna otra: una lupa que no hace nada es peor que no tenerla.
+   */
+  it('la tarjeta que se abre lleva la lupa; la que no, no', () => {
+    const { container, rerender } = render(<KpiCard label="Volumen" value="$1" onClick={() => {}} />);
+    expect(container.querySelector('svg')).not.toBeNull();
+    rerender(<KpiCard label="Volumen" value="$1" />);
+    expect(container.querySelector('svg')).toBeNull();
+  });
+
+  it('la que se abre dice qué hace al tocarla', () => {
+    render(<KpiCard label="Comisión" value="$66.990" onClick={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Comisión: $66.990. Ver el detalle' })).toBeInTheDocument();
+  });
 });
