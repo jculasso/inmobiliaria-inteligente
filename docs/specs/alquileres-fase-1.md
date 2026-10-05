@@ -89,14 +89,31 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 
 ### Indexación
 
-5. El importe de un tramo indexado es el **importe inicial del contrato** ×
-   (valor del índice en el período requerido ÷ valor en el período base del
-   contrato), **redondeado a peso entero**. Se calcula siempre desde el
-   inicial con la variación **acumulada**, nunca encadenando sobre el tramo
-   anterior: así el redondeo de un tramo no se arrastra al siguiente.
-   Verificado en Gexion el 5/10/2026 en cuatro contratos de Vacker (ICL, IPC y
-   Casa Propia): por ejemplo, 250.000 × 1,3087 = 327.175, que es lo que
-   muestra; encadenado daría 327.184.
+5. El importe de un tramo indexado es el **importe del tramo anterior** ×
+   (valor del índice al empezar este tramo ÷ valor al empezar el anterior),
+   **redondeado a peso entero**. Se encadena: cada tramo parte del importe
+   que efectivamente se cobró, incluso si alguien lo corrigió a mano.
+   - **ICL** (diario): el valor del día en que empieza cada tramo. Para el
+     segundo tramo, el del día en que empezó el contrato.
+   - **IPC** (mensual): el valor del **mes anterior** al que empieza cada
+     tramo. Un tramo que arranca el 15/12/2025 usa noviembre; el contrato que
+     arrancó el 15/08/2025, julio.
+   - **Casa Propia** y cualquier índice sin fuente: el importe se carga a mano.
+
+   El «período base» que muestra Gexion **no interviene** en la cuenta: en
+   varios contratos dice un mes que no es el que usa. Por eso el contrato no
+   lo guarda; sale de la fecha de inicio.
+
+   Verificado el 5/10/2026 contra los tramos ya indexados de Vacker, con los
+   valores oficiales (BCRA para el ICL, INDEC para el IPC):
+   - IPC: 23 de 25 tramos exactos; los otros dos, a un peso.
+   - ICL: 61 de 109 exactos; 31 más a menos del 0,005%, que es lo que mueve
+     publicar el índice con dos decimales (Gexion debe usar más). El resto
+     son importes redondos o saltos de más del 0,2%: correcciones manuales.
+
+   Calcularlo desde el importe inicial con la variación acumulada da peor: 41
+   de 109 en ICL y 16 de 25 en IPC. Es la regla que esta spec decía antes, y
+   salía de leer los porcentajes que Gexion muestra redondeados.
 6. El sistema **propone** el importe; queda aplicado solo cuando una persona
    lo **confirma**. Ningún importe cambia sin confirmación, aunque el índice
    esté cargado.
@@ -295,6 +312,11 @@ Con los datos reales de Vacker migrados al día de corte:
 
    **Tienen que coincidir al peso.** Cualquier diferencia es un error del
    módulo o una regla mal entendida, y se corrige antes de apagar Gexion.
+
+   La excepción es la **próxima indexación por ICL**: el módulo usa el valor
+   oficial del BCRA, que tiene dos decimales, y puede dar unos pesos distinto
+   de lo que habría calculado Gexion (regla 5). Se acepta; la diferencia se
+   anota en el cotejo y no frena el corte.
 3. El tablero muestra la misma cantidad de contratos vigentes que Gexion (78
    al 5/10/2026, o los que haya al corte) y el mismo porcentaje de alquileres
    cobrados del mes.
