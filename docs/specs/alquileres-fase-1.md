@@ -143,8 +143,8 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 37. El alquiler del inquilino vence el **día de vencimiento** del contrato
     (5 en Vacker) y al propietario se le paga el **día de pago** (10 en
     Vacker). Si cae sábado o domingo, se corre al lunes. Los feriados **no**
-    se corren: es lo que hace Gexion (el 12/10/2026, feriado, queda igual)
-    [a confirmar con Vacker si quiere que se corran].
+    se corren, igual que en Gexion (el 12/10/2026, feriado, queda igual).
+    Decidido por Javier el 5/10/2026: se mantiene el criterio de Gexion.
 
 ### Cobros, punitorios y cuenta corriente
 
