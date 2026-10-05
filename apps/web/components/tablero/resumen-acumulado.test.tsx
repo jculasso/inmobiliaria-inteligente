@@ -94,11 +94,11 @@ describe('ResumenAcumulado', () => {
     await userEvent.click(screen.getByRole('button', { name: /Acumulado Trimestral/ }));
     expect(await screen.findByRole('button', { name: /Q1 · Ene–Mar/ })).toBeInTheDocument();
     /*
-     * «Volumen USD» aparece DOS veces desde que el trimestral tiene tabla: en
-     * la leyenda del gráfico y como fila del cuadro. Se comprueban las dos, que
-     * es justamente lo que tiene que estar.
+     * «Volumen USD» aparece TRES veces: como título del panel del gráfico, en
+     * la leyenda de las barras acostadas del celular y como fila del cuadro.
+     * Se comprueban las tres, que es justamente lo que tiene que estar.
      */
-    expect(await screen.findAllByText('Volumen USD')).toHaveLength(2);
+    expect(await screen.findAllByText('Volumen USD')).toHaveLength(3);
     // Y el cuadro, por una fila que solo existe ahí.
     expect(screen.getByText('Total comisión')).toBeInTheDocument();
 
