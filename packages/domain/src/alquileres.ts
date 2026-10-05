@@ -132,14 +132,122 @@ export function validarTramos(inicio: string, fin: string, tramos: TramoBase[]):
   return errores;
 }
 
+// --- Indexación (reglas 5 a 7) ----------------------------------------------------
+
+export type IndiceConFuente = 'ICL' | 'IPC';
+
 /**
- * Regla 5: el importe indexado sale del importe INICIAL del contrato por la
- * variación acumulada del índice, redondeado a peso entero. Nunca encadenando
- * sobre el tramo anterior: así el redondeo de un tramo no se arrastra.
+ * Regla 5: el importe de un tramo indexado es el del tramo ANTERIOR por la
+ * relación entre el índice al empezar este tramo y al empezar el anterior,
+ * redondeado a peso entero. Se encadena sobre lo que efectivamente se cobró.
+ *
+ * Verificado contra los tramos ya indexados de Vacker en Gexion: con los
+ * valores oficiales, IPC 23 de 25 exactos y ICL 61 de 109 exactos más 31 a
+ * menos del 0,005% (lo que mueven los dos decimales con que se publica el
+ * ICL). Calcularlo desde el importe inicial da 16/25 y 41/109.
  */
-export function importeIndexado(importeInicial: number, valorBase: number, valorRequerido: number): number {
-  if (!(valorBase > 0)) throw new Error('El valor base del índice tiene que ser mayor que cero.');
-  return Math.round(redondear2((importeInicial * valorRequerido) / valorBase));
+export function importeIndexado(importeAnterior: number, valorAnterior: number, valorNuevo: number): number {
+  if (!(valorAnterior > 0)) throw new Error('El valor anterior del índice tiene que ser mayor que cero.');
+  return Math.round(redondear2((importeAnterior * valorNuevo) / valorAnterior));
+}
+
+/**
+ * La fecha del valor del índice que corresponde a un tramo que empieza en
+ * `desde` (regla 5). El ICL es diario: el del mismo día. El IPC es mensual y
+ * se toma el del mes anterior, guardado como su primer día: un tramo que
+ * empieza el 15/12/2025 usa el IPC de noviembre (`2025-11-01`).
+ *
+ * Para el segundo tramo, el «anterior» es el primero, que empieza con el
+ * contrato: por eso no hace falta guardar un período base.
+ */
+export function fechaDelIndice(indice: IndiceConFuente, desde: string): string {
+  if (indice === 'ICL') return desde;
+  return sumarMesesIso(`${desde.slice(0, 7)}-01`, -1);
+}
+
+/** `agosto de 2026`, para nombrar un IPC que falta. */
+export function mesLargo(iso: string): string {
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  return `${MESES[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}`;
+}
+
+export type PropuestaIndexacion =
+  | {
+      estado: 'lista';
+      fechaBase: string;
+      valorBase: number;
+      fechaRequerida: string;
+      valorRequerido: number;
+      importe: number;
+    }
+  /** Regla 7: el índice todavía no se publicó. No es una indexación vencida. */
+  | { estado: 'pendiente_indice'; fechaBase: string; fechaRequerida: string; falta: string[] }
+  /** Casa Propia, o cualquier índice sin fuente: el importe se carga a mano. */
+  | { estado: 'manual' };
+
+/**
+ * Lo que el sistema propone para un tramo (regla 6: proponer no es aplicar).
+ * `valor` busca un valor cargado del índice por fecha; `undefined` si no está.
+ */
+export function proponerIndexacion(
+  indice: string,
+  anterior: { desde: string; importe: number },
+  tramo: { desde: string },
+  valor: (indice: IndiceConFuente, fecha: string) => number | undefined,
+): PropuestaIndexacion {
+  if (indice !== 'ICL' && indice !== 'IPC') return { estado: 'manual' };
+  const fechaBase = fechaDelIndice(indice, anterior.desde);
+  const fechaRequerida = fechaDelIndice(indice, tramo.desde);
+  const valorBase = valor(indice, fechaBase);
+  const valorRequerido = valor(indice, fechaRequerida);
+  if (valorBase === undefined || valorRequerido === undefined) {
+    const nombre = (f: string) => (indice === 'ICL' ? `el ICL del ${fechaCorta(f)}` : `el IPC de ${mesLargo(f)}`);
+    const falta = [valorBase === undefined ? fechaBase : null, valorRequerido === undefined ? fechaRequerida : null]
+      .filter((f): f is string => f !== null)
+      .map(nombre);
+    return { estado: 'pendiente_indice', fechaBase, fechaRequerida, falta };
+  }
+  return {
+    estado: 'lista',
+    fechaBase,
+    valorBase,
+    fechaRequerida,
+    valorRequerido,
+    importe: importeIndexado(anterior.importe, valorBase, valorRequerido),
+  };
+}
+
+/** Día del mes desde el que el IPC del mes anterior ya tendría que estar. */
+export const DIA_IPC_PUBLICADO = 20;
+
+/**
+ * Regla 8: cuándo avisar que un índice no se está actualizando. Devuelve el
+ * aviso en palabras, o `null` si está todo bien.
+ *
+ * - ICL: el BCRA publica un valor por día, así que pasar más de 3 días sin
+ *   cargar ninguno nuevo quiere decir que la fuente no responde.
+ * - IPC: el INDEC lo publica a mediados del mes siguiente; pasado el día 20,
+ *   el del mes anterior tendría que estar.
+ *
+ * `ultimaCarga` es el día en que entró el último valor nuevo; `ultimaFecha`,
+ * la fecha del último valor.
+ */
+export function alertaIndice(
+  indice: IndiceConFuente,
+  ultimaFecha: string | null,
+  ultimaCarga: string | null,
+  hoy: string,
+): string | null {
+  if (ultimaFecha === null || ultimaCarga === null) return `Todavía no hay valores del ${indice} cargados.`;
+  if (indice === 'ICL') {
+    return diasInclusive(ultimaCarga, hoy) - 1 > 3
+      ? `El ICL no trae valores nuevos desde el ${fechaCorta(ultimaCarga)}. Las indexaciones que lo necesiten van a quedar pendientes.`
+      : null;
+  }
+  const mesAnterior = sumarMesesIso(`${hoy.slice(0, 7)}-01`, -1);
+  return Number(hoy.slice(8, 10)) > DIA_IPC_PUBLICADO && ultimaFecha < mesAnterior
+    ? `El IPC de ${mesLargo(mesAnterior)} ya tendría que estar publicado y no se cargó.`
+    : null;
 }
 
 // --- Partes (regla 4) -------------------------------------------------------------

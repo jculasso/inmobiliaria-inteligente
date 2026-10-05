@@ -1,6 +1,7 @@
 import { Controller, Headers, Post, UnauthorizedException } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Public } from '../../auth/decorators';
+import { IndicesService, type ResultadoIndice } from '../alquileres/indices.service';
 import { TareasService, type ResumenCorrida } from './tareas.service';
 
 /**
@@ -16,16 +17,36 @@ import { TareasService, type ResumenCorrida } from './tareas.service';
 @ApiExcludeController()
 @Controller('tareas')
 export class TareasController {
-  constructor(private readonly tareas: TareasService) {}
+  constructor(
+    private readonly tareas: TareasService,
+    private readonly indices: IndicesService,
+  ) {}
 
   @Post('reporte-semanal')
   @Public()
   async reporteSemanal(@Headers('x-cron-secret') secreto?: string): Promise<ResumenCorrida> {
-    const esperado = process.env.CRON_SECRET;
-    // Falla cerrada: sin secreto configurado, nadie entra.
-    if (!esperado || secreto !== esperado) {
-      throw new UnauthorizedException('Secreto de tarea inválido.');
-    }
+    verificarSecreto(secreto);
     return this.tareas.enviarReportesSemanales();
+  }
+
+  /**
+   * Trae los valores nuevos del ICL y del IPC (alquileres, regla 8). Es global:
+   * los índices son los mismos para todas las inmobiliarias. Un error de una
+   * fuente viene en el resultado, no como excepción, para que el workflow lo
+   * muestre y falle sin perder lo que sí se cargó de la otra.
+   */
+  @Post('indices')
+  @Public()
+  async indicesDiarios(@Headers('x-cron-secret') secreto?: string): Promise<ResultadoIndice[]> {
+    verificarSecreto(secreto);
+    return this.indices.importar();
+  }
+}
+
+function verificarSecreto(secreto: string | undefined): void {
+  const esperado = process.env.CRON_SECRET;
+  // Falla cerrada: sin secreto configurado, nadie entra.
+  if (!esperado || secreto !== esperado) {
+    throw new UnauthorizedException('Secreto de tarea inválido.');
   }
 }

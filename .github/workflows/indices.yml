@@ -1,0 +1,41 @@
+name: Índices de alquileres
+
+# Todos los días a las 12:00 UTC = 9:00 en Argentina. Trae los valores nuevos
+# del ICL (BCRA) y del IPC (INDEC) con los que se indexan los contratos
+# (spec alquileres-fase-1.md, regla 8). Un valor ya cargado no se pisa, así
+# que correrlo dos veces no cambia nada.
+#
+# Si una fuente no responde, el paso falla y GitHub manda el mail de corrida
+# fallida: es el primer aviso. El segundo es la alerta de la bandeja «a
+# indexar», que aparece si pasan 3 días sin valores nuevos del ICL.
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  importar:
+    name: Traer ICL e IPC
+    runs-on: ubuntu-latest
+    steps:
+      # La API duerme en el free tier de Render: el primer request tarda.
+      - name: Despertar la API
+        run: curl -fsS --max-time 120 --retry 3 --retry-delay 15 https://api.inmobiliariainteligente.net/health
+
+      - name: Importar
+        run: |
+          respuesta=$(curl -fsS --max-time 180 --retry 2 --retry-delay 20 \
+            -X POST https://api.inmobiliariainteligente.net/tareas/indices \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}")
+          echo "$respuesta"
+          echo "$respuesta" | python3 -c "
+          import json, sys
+          errores = 0
+          for r in json.load(sys.stdin):
+              if r.get('error'):
+                  errores += 1
+                  print(f\"✗ {r['indice']}: {r['error']}\")
+              else:
+                  print(f\"✓ {r['indice']}: {r['nuevos']} valores nuevos, hasta {r['ultimaFecha']}\")
+          sys.exit(1 if errores else 0)
+          "

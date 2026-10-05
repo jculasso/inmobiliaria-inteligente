@@ -911,3 +911,18 @@ model AlqFirmaEvento {
   @@index([documentoId])
   @@map("alq_firma_evento")
 }
+
+/// Valores del ICL (BCRA) y del IPC (INDEC). Sin tenant_id a propósito: son
+/// datos públicos, iguales para todas las inmobiliarias. RLS de solo lectura;
+/// la escribe el importador diario (spec alquileres, regla 8).
+model IndiceValor {
+  indice    String // ICL | IPC
+  /// ICL: el día. IPC: el primer día del mes.
+  fecha     DateTime @db.Date
+  valor     Decimal  @db.Decimal(18, 6)
+  fuente    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([indice, fecha])
+  @@map("indice_valor")
+}
