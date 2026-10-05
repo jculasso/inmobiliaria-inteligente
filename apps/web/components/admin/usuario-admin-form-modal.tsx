@@ -17,6 +17,11 @@ const ROLES_DISPONIBLES: { value: Rol; label: string; descripcion: string }[] = 
     label: 'Publicador',
     descripcion: 'Publica propiedades en Tokko. Se suma a lo que la persona ya sea.',
   },
+  {
+    value: 'administracion',
+    label: 'Administración',
+    descripcion: 'Opera los alquileres: contratos, cobros y liquidaciones. No ve el Tablero.',
+  },
   { value: 'admin_tenant', label: 'Admin del tenant', descripcion: 'Administra usuarios y ajustes.' },
 ];
 

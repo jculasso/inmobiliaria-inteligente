@@ -1,4 +1,11 @@
-import type { ModuloKey, ModulosTenant, PlanTenant, Rol, TenantConfig } from '@vacker/types';
+import {
+  puedeAdministrarAlquileres,
+  type ModuloKey,
+  type ModulosTenant,
+  type PlanTenant,
+  type Rol,
+  type TenantConfig,
+} from '@vacker/types';
 import { Avatar, type BadgeVariant } from '@vacker/ui';
 import { puedeExportarDatos, alcanceDeModulo } from '../lib/rbac';
 import { marcaPlataformaStyle, tenantBrandStyle } from '../lib/tenant-style';
@@ -16,6 +23,12 @@ interface Modulo {
   icono: string;
   estado: BadgeVariant;
   href: string | null;
+  /**
+   * Para los módulos que NO siguen el alcance comercial (propio / equipo /
+   * total) sino una lista de roles propia. Si está, decide quién ve la
+   * tarjeta y quién entra; si no, manda `alcanceDeModulo`.
+   */
+  roles?: (roles: Rol[]) => boolean;
 }
 
 const MODULOS: Modulo[] = [
@@ -51,6 +64,21 @@ const MODULOS: Modulo[] = [
     estado: 'activo',
     href: '/protocolo',
   },
+  /*
+   * La administración de alquileres no es una herramienta comercial: la usa
+   * quien opera los contratos, y no la ve un vendedor (spec
+   * alquileres-fase-1.md §3). Por eso la tarjeta no aparece para quien no
+   * puede entrar, ni para un invitado: no es parte de lo que se ofrece hoy.
+   */
+  {
+    key: 'alquileres',
+    nombre: 'Alquileres',
+    descripcion: 'Contratos, indexaciones, cobros y liquidaciones a propietarios.',
+    icono: '🔑',
+    estado: 'activo',
+    href: '/alquileres',
+    roles: puedeAdministrarAlquileres,
+  },
 ];
 
 export interface HomeViewProps {
@@ -66,6 +94,8 @@ export interface HomeViewProps {
 
 export function HomeView({ sesion }: HomeViewProps) {
   const bloqueada = sesion === null;
+  // Un módulo con lista de roles propia solo se muestra a quien puede entrar.
+  const visibles = MODULOS.filter((m) => !m.roles || (sesion !== null && m.roles(sesion.roles)));
   const alcance = sesion ? alcanceDeModulo(sesion.roles) : null;
   const anio = new Date().getFullYear();
   const config = sesion?.tenant.config;
@@ -164,10 +194,15 @@ export function HomeView({ sesion }: HomeViewProps) {
 
         {/* Con sesión, los 4 módulos entran en una fila en desktop: la Home es
             un menú, no debería obligar a scrollear para ver un módulo. */}
-        <section className={`grid gap-4 sm:grid-cols-2 ${bloqueada ? 'xl:grid-cols-2' : 'lg:grid-cols-4'}`}>
-          {MODULOS.map((m) => {
+        <section
+          className={`grid gap-4 sm:grid-cols-2 ${
+            bloqueada ? 'xl:grid-cols-2' : visibles.length > 4 ? 'lg:grid-cols-3 xl:grid-cols-5' : 'lg:grid-cols-4'
+          }`}
+        >
+          {visibles.map((m) => {
             const licenciado = bloqueada || modulos?.[m.key] === true;
-            const habilitado = m.estado === 'activo' && alcance !== null && licenciado;
+            const conAcceso = m.roles ? Boolean(sesion && m.roles(sesion.roles)) : alcance !== null;
+            const habilitado = m.estado === 'activo' && conAcceso && licenciado;
             return (
               <ModuleCard
                 key={m.nombre}

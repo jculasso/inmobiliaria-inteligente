@@ -95,7 +95,7 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
 
   /**
    * Acceso al delegado de Prisma por nombre (`tx.operacion`, `tx.usuario`…).
-   * Es lo que permite recorrer las 16 tablas sin escribir 16 bloques iguales.
+   * Es lo que permite recorrer todas las tablas sin escribir un bloque por cada una.
    */
   type Delegado = {
     findMany: (a: unknown) => Promise<unknown>;

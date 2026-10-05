@@ -7,4 +7,5 @@ export const NOMBRE_MODULO: Record<ModuloKey, string> = {
   todo: 'To Do List',
   protocolo: 'Protocolo 5 Semanas',
   publicacion: 'Publicación',
+  alquileres: 'Alquileres',
 };

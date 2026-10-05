@@ -12,7 +12,7 @@ const TENANT: TenantDto = {
   nombre: 'Vacker',
   slug: 'vacker',
   plan: 'enterprise',
-  modulos: { tablero: true, tasador: true, todo: false, protocolo: false, publicacion: false },
+  modulos: { tablero: true, tasador: true, todo: false, protocolo: false, publicacion: false, alquileres: false },
   estado: 'activo',
   config: configPorDefecto(),
   createdAt: '2026-01-01T00:00:00.000Z',

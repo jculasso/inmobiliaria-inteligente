@@ -12,7 +12,7 @@ const PRINCIPAL = {
   tenant: {
     nombre: 'Vacker',
     plan: 'basico',
-    modulos: { tablero: true, tasador: false, todo: false, protocolo: false, publicacion: false },
+    modulos: { tablero: true, tasador: false, todo: false, protocolo: false, publicacion: false, alquileres: false },
     /*
      * `config: {}` entra vacía y sale con el criterio de tasación por defecto:
      * el schema le pone los coeficientes. Que este test lo diga es a propósito
