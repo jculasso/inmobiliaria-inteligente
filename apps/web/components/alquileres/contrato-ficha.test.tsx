@@ -24,7 +24,6 @@ const base: ContratoDto = {
   ajuste: 'indexado',
   indice: 'ICL',
   periodicidadMeses: 4,
-  indicePeriodoBase: '2024-11-01',
   honorariosPct: 2.48,
   gastosAdmPct: 2,
   ivaPct: 0,
