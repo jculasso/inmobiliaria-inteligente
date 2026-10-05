@@ -2,6 +2,7 @@
 
 import type { AgregadoKpi } from '@vacker/types';
 import { fmtK } from '../../lib/format';
+import { periodosTranscurridos } from '../../lib/meses';
 import { PeriodosChart } from './periodos-chart';
 
 /**
@@ -10,12 +11,15 @@ import { PeriodosChart } from './periodos-chart';
  * para meses. Clickeable: tocar una barra selecciona ese período.
  */
 export function VentasChart({
+  anio,
   datos,
   etiquetas,
   unidad,
   seleccionado,
   onSelect,
 }: {
+  /** Para no dibujar los períodos que todavía no llegaron. */
+  anio: number;
   /** Un agregado por período, en el orden de `etiquetas`. */
   datos: AgregadoKpi[];
   etiquetas: string[];
@@ -39,6 +43,7 @@ export function VentasChart({
       seleccionado={seleccionado}
       onSelect={onSelect}
       pista={`tocá una barra o un ${unidad}`}
+      transcurridos={periodosTranscurridos(anio, unidad)}
     />
   );
 }

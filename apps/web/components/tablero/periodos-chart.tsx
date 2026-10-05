@@ -33,6 +33,7 @@ export function PeriodosChart({
   pista,
   titulo,
   barrasEnteras = false,
+  transcurridos,
 }: {
   etiquetas: string[];
   barras: number[];
@@ -52,6 +53,12 @@ export function PeriodosChart({
   titulo: string;
   /** Las barras cuentan cosas enteras —alquileres, no dólares—: marcas enteras. */
   barrasEnteras?: boolean;
+  /**
+   * Cuántos períodos ya empezaron (ver `periodosTranscurridos`). Los que vienen
+   * no llevan barra ni punto: la línea termina en el mes en curso en vez de
+   * caer a cero. Sin el dato se dibujan todos.
+   */
+  transcurridos?: number;
 }) {
   const n = etiquetas.length;
   const width = 720;
@@ -75,7 +82,11 @@ export function PeriodosChart({
   const yBar = (v: number) => height - (v / barMax) * (height - 10);
   const yLine = (v: number) => height - (v / lineMax) * (height - 10);
 
-  const linePoints = linea.map((v, i) => `${xFor(i) + barWidth / 2},${yLine(v)}`).join(' ');
+  const hasta = Math.min(transcurridos ?? n, n);
+  const linePoints = linea
+    .slice(0, hasta)
+    .map((v, i) => `${xFor(i) + barWidth / 2},${yLine(v)}`)
+    .join(' ');
 
   // El scroller queda solo para pantalla ancha: si el gráfico no entra en una
   // tablet angosta, se desliza ahí y no en el celular.
@@ -160,6 +171,7 @@ export function PeriodosChart({
           const activo = seleccionado === i + 1;
           return (
             <g key={i} onClick={() => onSelect(i + 1)} className="cursor-pointer">
+              {i < hasta && (
               <rect
                 x={x}
                 y={yBar(v)}
@@ -168,6 +180,7 @@ export function PeriodosChart({
                 rx={n > 6 ? 2 : 4}
                 fill={activo ? 'var(--color-brand-red-dark)' : 'var(--color-brand-red)'}
               />
+              )}
               <text
                 x={x + barWidth / 2}
                 y={height + 18}
@@ -183,15 +196,21 @@ export function PeriodosChart({
         })}
 
         <polyline points={linePoints} fill="none" stroke={COLOR_LINEA} strokeWidth={2} />
-        {linea.map((v, i) => (
+        {/*
+          Puntos huecos —blancos con borde de tinta— y no rellenos con borde
+          blanco: así se ven iguales sobre una barra y sobre el fondo. Antes,
+          sobre la barra parecían anillos y afuera puntos negros, como si fueran
+          dos series distintas.
+        */}
+        {linea.slice(0, hasta).map((v, i) => (
           <circle
             key={`dot-${i}`}
             cx={xFor(i) + barWidth / 2}
             cy={yLine(v)}
             r={n > 6 ? 4 : 5}
-            fill={COLOR_LINEA}
-            stroke="white"
-            strokeWidth={2}
+            fill="white"
+            stroke={COLOR_LINEA}
+            strokeWidth={2.5}
             className="cursor-pointer"
             onClick={() => onSelect(i + 1)}
           />
