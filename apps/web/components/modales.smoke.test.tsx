@@ -45,6 +45,12 @@ vi.mock('../lib/protocolo-api', () => ({
   desarchivarProtocolo: vi.fn(),
 }));
 vi.mock('../lib/tasador-api', () => ({ cambiarEstado: vi.fn(), generarInforme: vi.fn() }));
+vi.mock('../lib/alquileres-api', () => ({
+  crearPersona: vi.fn(),
+  actualizarPersona: vi.fn(),
+  crearPropiedadAlquiler: vi.fn(),
+  actualizarPropiedadAlquiler: vi.fn(),
+}));
 
 const { OperacionFormModal } = await import('./tablero/operacion-form-modal');
 const { VendedorFormModal } = await import('./tablero/vendedor-form-modal');
@@ -57,6 +63,8 @@ const { ActivarAccesoModal } = await import('./admin/activar-acceso-modal');
 const { ResetPasswordModal } = await import('./admin/reset-password-modal');
 const { IniciarProtocoloModal } = await import('./protocolo/iniciar-protocolo-modal');
 const { ArchivarModal } = await import('./protocolo/archivar-modal');
+const { PersonaFormModal } = await import('./alquileres/persona-form-modal');
+const { PropiedadFormModal } = await import('./alquileres/propiedad-form-modal');
 
 const noop = () => {};
 
@@ -116,6 +124,8 @@ const MODALES: [string, () => void][] = [
   ['Restablecer contraseña', () => render(<ResetPasswordModal tenantId="t" usuario={usuario} onClose={noop} onSaved={noop} />)],
   ['Iniciar protocolo', () => render(<IniciarProtocoloModal candidata={candidata} onClose={noop} />)],
   ['Archivar', () => render(<ArchivarModal protocolo={protocolo} onArchivada={noop} onGuardando={noop} onClose={noop} />)],
+  ['Nueva persona', () => render(<PersonaFormModal onClose={noop} onSaved={noop} />)],
+  ['Nueva propiedad', () => render(<PropiedadFormModal onClose={noop} onSaved={noop} />)],
 ];
 
 describe('Todos los modales montan sin romperse', () => {

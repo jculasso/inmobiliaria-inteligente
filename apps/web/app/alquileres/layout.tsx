@@ -9,6 +9,8 @@ import { tenantBrandStyle } from '../../lib/tenant-style';
 import { LogoutButton } from '../../components/logout-button';
 import { MarcaPlataforma } from '../../components/marca-plataforma';
 import { MenuModulos } from '../../components/menu-modulos';
+import { AlquileresNav } from '../../components/alquileres/alquileres-nav';
+import { puedeAdministrarAlquileres } from '@vacker/types';
 
 export default async function AlquileresLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -65,6 +67,11 @@ export default async function AlquileresLayout({ children }: { children: ReactNo
   // este layout ya pide.
   if (principal.debeCambiarPassword) redirect('/cambiar-clave');
 
+  // Contratado no alcanza: el módulo lo opera quien administra los contratos
+  // (spec alquileres-fase-1.md §3). Se resuelve acá, una vez, para todas las
+  // páginas del módulo. La API responde 403 igual; esto explica por qué.
+  const conAcceso = puedeAdministrarAlquileres(principal.roles);
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10" style={tenantBrandStyle(principal.tenant.config)}>
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -87,7 +94,22 @@ export default async function AlquileresLayout({ children }: { children: ReactNo
         </div>
       </div>
 
-      <div className="mt-6">{children}</div>
+      {conAcceso ? (
+        <>
+          <div className="mt-5">
+            <AlquileresNav />
+          </div>
+          <div className="mt-5">{children}</div>
+        </>
+      ) : (
+        <div className="mt-6 rounded-brand border border-line bg-white p-6">
+          <h2 className="text-base font-bold text-ink">No tenés acceso a Alquileres</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted">
+            Este módulo lo usan la dirección y quien tiene el rol <strong>Administración</strong>. Si te
+            corresponde, pedile a la administración de tu inmobiliaria que te lo asigne.
+          </p>
+        </div>
+      )}
     </main>
   );
 }
