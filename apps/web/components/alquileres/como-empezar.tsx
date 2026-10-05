@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ResumenAlquileres } from '@vacker/types';
 
 /**
@@ -11,16 +12,19 @@ export function ComoEmpezar({ resumen }: { resumen: ResumenAlquileres }) {
       titulo: 'Cargá a los propietarios e inquilinos',
       detalle: 'Con su documento y un contacto. La misma persona puede ser propietaria de un contrato e inquilina de otro.',
       hecho: resumen.personas > 0,
+      href: '/alquileres/personas',
     },
     {
       titulo: 'Cargá las propiedades',
       detalle: 'La unidad que se alquila: dirección, piso y departamento.',
       hecho: resumen.propiedades > 0,
+      href: '/alquileres/propiedades',
     },
     {
       titulo: 'Cargá los contratos',
       detalle: 'Con sus tramos, el índice de ajuste, los honorarios y los gastos administrativos.',
       hecho: resumen.contratos > 0,
+      href: null,
     },
   ];
 
@@ -44,7 +48,13 @@ export function ComoEmpezar({ resumen }: { resumen: ResumenAlquileres }) {
             </span>
             <span>
               <span className="block text-sm font-bold text-ink">
-                {p.titulo}
+                {p.href ? (
+                  <Link href={p.href} className="hover:text-brand-red hover:underline">
+                    {p.titulo} →
+                  </Link>
+                ) : (
+                  p.titulo
+                )}
                 {p.hecho && <span className="sr-only"> (hecho)</span>}
               </span>
               <span className="block text-sm text-muted">{p.detalle}</span>
@@ -53,7 +63,7 @@ export function ComoEmpezar({ resumen }: { resumen: ResumenAlquileres }) {
         ))}
       </ol>
       <p className="mt-5 text-xs text-muted">
-        La carga de personas, propiedades y contratos llega en las próximas entregas del módulo.
+        La carga de contratos llega en la próxima entrega del módulo.
       </p>
     </section>
   );
