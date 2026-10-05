@@ -345,3 +345,155 @@ export function cargoConIva(alquiler: number, porcentaje: number, ivaPct: number
   const neto = redondear2((alquiler * porcentaje) / 100);
   return redondear2(neto * (1 + ivaPct / 100));
 }
+
+// --- Vencimientos (regla 37) --------------------------------------------------------
+
+/**
+ * El vencimiento de un mes: el día pedido (o el último del mes, si es más
+ * corto) y, si cae sábado o domingo, el lunes siguiente. Los feriados NO se
+ * corren, igual que en Gexion: el 12/10/2026 queda el 12.
+ */
+export function vencimientoDelMes(periodo: string, dia: number): string {
+  const [anio, mes] = periodo.split('-').map(Number) as [number, number];
+  const fecha = `${periodo}-${String(Math.min(dia, diasDelMes(anio, mes))).padStart(2, '0')}`;
+  const diaSemana = new Date(aUtc(fecha)).getUTCDay(); // 0 domingo, 6 sábado
+  return diaSemana === 6 ? sumarDiasIso(fecha, 2) : diaSemana === 0 ? sumarDiasIso(fecha, 1) : fecha;
+}
+
+// --- Generación del período (reglas 9 a 13) ---------------------------------------
+
+export type TipoConceptoGenerado = 'alquiler' | 'gastos_adm' | 'honorarios' | 'iva';
+export type SentidoConcepto = 'a_cobrar' | 'a_pagar';
+
+export interface ContratoParaGenerar {
+  id: string;
+  moneda: string;
+  inicio: string;
+  fin: string;
+  /** Si está rescindido: desde el mes siguiente a esta fecha no se genera nada (regla 3). */
+  rescindidoEl: string | null;
+  diaVencimiento: number;
+  diaPagoPropietario: number;
+  honorariosPct: number;
+  gastosAdmPct: number;
+  /** IVA del alquiler, a cargo del inquilino. Ningún contrato de Vacker lo tiene. */
+  ivaPct: number;
+  tramos: TramoConImporte[];
+  propietarios: { personaId: string; porcentaje: number }[];
+  /** El primero es el titular: a él se le generan los cargos. */
+  inquilinos: { personaId: string }[];
+}
+
+export interface ConceptoGenerado {
+  /** Única por inmobiliaria: generar dos veces el mismo mes no duplica (regla 10). */
+  clave: string;
+  personaId: string;
+  tipo: TipoConceptoGenerado;
+  sentido: SentidoConcepto;
+  moneda: string;
+  periodo: string;
+  vencimiento: string;
+  importe: number;
+  descripcion: string;
+}
+
+export interface ResultadoPeriodo {
+  conceptos: ConceptoGenerado[];
+  /** Partes del mes cuyo tramo no está indexado: no se generan (regla 11). */
+  sinIndexar: ParteDelMes[];
+}
+
+/**
+ * Reparte un importe según porcentajes, con centavos, y sin perder ni
+ * inventar un centavo: lo que sobra del redondeo va, de a uno, a los que más
+ * fracción perdieron. Dos dueños al 50% de 100.000,01 cobran 50.000,01 y
+ * 50.000, no 50.000,01 cada uno.
+ */
+export function repartir(importe: number, porcentajes: number[]): number[] {
+  const centavos = Math.round(importe * 100);
+  const exactos = porcentajes.map((p) => (centavos * p) / 100);
+  const base = exactos.map((x) => Math.floor(x + 1e-9));
+  let resto = centavos - base.reduce((s, x) => s + x, 0);
+  const orden = exactos.map((x, i) => [x - base[i]!, i] as const).sort((a, b) => b[0] - a[0]);
+  for (const [, i] of orden) {
+    if (resto <= 0) break;
+    base[i]! += 1;
+    resto -= 1;
+  }
+  return base.map((c) => c / 100);
+}
+
+const NOMBRE_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/**
+ * Reglas 9 a 13: lo que genera un contrato en un mes calendario.
+ *
+ * Por cada parte del mes (una, o dos si cambia el tramo; proporcional si el
+ * contrato empieza o termina en el mes):
+ * - alquiler a cobrar al inquilino titular y a pagar a cada propietario, según
+ *   su porcentaje;
+ * - gastos administrativos a cobrar al inquilino y honorarios a cobrarle a
+ *   cada propietario (se le descuentan al liquidar), con el IVA de la
+ *   inmobiliaria, neto redondeado primero (regla 12);
+ * - IVA del alquiler, si el contrato lo tiene: a cobrar al inquilino y a pagar
+ *   al propietario, que es quien lo factura.
+ *
+ * Un porcentaje en cero no genera un concepto en cero. Una parte cuyo tramo no
+ * está indexado no genera nada y vuelve en `sinIndexar` (regla 11): no se
+ * cobra un importe viejo por defecto.
+ */
+export function generarPeriodo(c: ContratoParaGenerar, periodo: string, ivaInmobiliariaPct: number): ResultadoPeriodo {
+  const [anio, mes] = periodo.split('-').map(Number) as [number, number];
+  const ultimoDelMes = `${periodo}-${String(diasDelMes(anio, mes)).padStart(2, '0')}`;
+  // Regla 3: rescindido, se genera hasta el mes de la rescisión inclusive.
+  if (c.rescindidoEl && c.rescindidoEl.slice(0, 7) < periodo) return { conceptos: [], sinIndexar: [] };
+  const inquilino = c.inquilinos[0];
+  if (!inquilino || c.propietarios.length === 0) return { conceptos: [], sinIndexar: [] };
+
+  const fin = c.fin < ultimoDelMes ? c.fin : ultimoDelMes;
+  const tramos = c.tramos.filter((t) => t.desde <= fin).map((t) => ({ ...t, hasta: t.hasta < fin ? t.hasta : fin }));
+  const partes = partesDelMes(anio, mes, tramos);
+
+  const vencInquilino = vencimientoDelMes(periodo, c.diaVencimiento);
+  const vencPropietario = vencimientoDelMes(periodo, c.diaPagoPropietario);
+  const mesTexto = `${NOMBRE_MES[mes - 1]} ${anio}`;
+  const conceptos: ConceptoGenerado[] = [];
+  const sinIndexar: ParteDelMes[] = [];
+
+  for (const p of partes) {
+    if (p.importe == null) {
+      sinIndexar.push(p);
+      continue;
+    }
+    const cuando = p.proporcional ? `${fechaCorta(p.desde).slice(0, 5)} al ${fechaCorta(p.hasta)} (${p.dias}/${p.diasDelMes} días)` : mesTexto;
+    const nuevo = (papel: 'inquilino' | 'propietario', tipo: TipoConceptoGenerado, sentido: SentidoConcepto, personaId: string, importe: number, nombre: string) => {
+      if (!(importe > 0)) return;
+      conceptos.push({
+        clave: `alq|${c.id}|${periodo}|${p.desde}|${tipo}|${sentido}|${personaId}`,
+        personaId,
+        tipo,
+        sentido,
+        moneda: c.moneda,
+        periodo,
+        vencimiento: papel === 'inquilino' ? vencInquilino : vencPropietario,
+        importe,
+        descripcion: `${nombre} ${cuando}`,
+      });
+    };
+
+    nuevo('inquilino', 'alquiler', 'a_cobrar', inquilino.personaId, p.importe, 'Alquiler');
+    nuevo('inquilino', 'gastos_adm', 'a_cobrar', inquilino.personaId, cargoConIva(p.importe, c.gastosAdmPct, ivaInmobiliariaPct), 'Gastos administrativos');
+    const ivaAlquiler = redondear2((p.importe * c.ivaPct) / 100);
+    nuevo('inquilino', 'iva', 'a_cobrar', inquilino.personaId, ivaAlquiler, 'IVA del alquiler');
+
+    const porcentajes = c.propietarios.map((x) => x.porcentaje);
+    const alquileres = repartir(p.importe, porcentajes);
+    const ivas = repartir(ivaAlquiler, porcentajes);
+    c.propietarios.forEach((dueno, i) => {
+      nuevo('propietario', 'alquiler', 'a_pagar', dueno.personaId, alquileres[i]!, 'Alquiler');
+      nuevo('propietario', 'iva', 'a_pagar', dueno.personaId, ivas[i]!, 'IVA del alquiler');
+      nuevo('propietario', 'honorarios', 'a_cobrar', dueno.personaId, cargoConIva(alquileres[i]!, c.honorariosPct, ivaInmobiliariaPct), 'Honorarios');
+    });
+  }
+  return { conceptos, sinIndexar };
+}

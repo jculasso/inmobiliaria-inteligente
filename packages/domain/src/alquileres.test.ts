@@ -3,14 +3,18 @@ import {
   alertaIndice,
   cargoConIva,
   fechaDelIndice,
+  generarPeriodo,
   generarTramos,
   importeIndexado,
   partesDelMes,
   proponerIndexacion,
   redondear2,
+  repartir,
   sumarMesesIso,
   validarPartes,
   validarTramos,
+  vencimientoDelMes,
+  type ContratoParaGenerar,
 } from './alquileres';
 
 /*
@@ -272,6 +276,144 @@ describe('cargoConIva (regla 12)', () => {
 
   it('sin IVA (una inmobiliaria monotributista) es el porcentaje solo', () => {
     expect(cargoConIva(306_088, 8, 0)).toBe(24_487.04);
+  });
+});
+
+describe('vencimientoDelMes (regla 37)', () => {
+  // Fechas de Gexion, contrato #5.
+  it('fin de semana se corre al lunes', () => {
+    expect(vencimientoDelMes('2026-12', 5)).toBe('2026-12-07'); // sábado 5
+    expect(vencimientoDelMes('2026-10', 10)).toBe('2026-10-12'); // sábado 10
+  });
+
+  it('un feriado no se corre: el 12/10/2026 queda el 12', () => {
+    expect(vencimientoDelMes('2026-10', 12)).toBe('2026-10-12');
+  });
+
+  it('en día hábil queda igual', () => {
+    expect(vencimientoDelMes('2026-11', 5)).toBe('2026-11-05');
+    expect(vencimientoDelMes('2026-12', 10)).toBe('2026-12-10');
+  });
+});
+
+describe('repartir', () => {
+  it('suma exactamente el total, centavo por centavo', () => {
+    expect(repartir(100_000.01, [50, 50])).toEqual([50_000.01, 50_000]);
+    expect(repartir(1_000, [33.33, 33.33, 33.34])).toEqual([333.3, 333.3, 333.4]);
+    expect(repartir(513_717.81, [100])).toEqual([513_717.81]);
+  });
+});
+
+describe('generarPeriodo (reglas 9 a 13)', () => {
+  const INQ = 'inq';
+  const DUENO = 'dueno';
+  /* Contrato #5 de Gexion: IPC, 8% de honorarios, 2% de gastos, IVA 21%. */
+  const c5 = (over: Partial<ContratoParaGenerar> = {}): ContratoParaGenerar => ({
+    id: 'c5',
+    moneda: 'ARS',
+    inicio: '2025-08-15',
+    fin: '2027-08-14',
+    rescindidoEl: null,
+    diaVencimiento: 5,
+    diaPagoPropietario: 10,
+    honorariosPct: 8,
+    gastosAdmPct: 2,
+    ivaPct: 0,
+    tramos: [
+      { numero: 1, desde: '2025-08-15', hasta: '2025-12-14', importe: 850_000 },
+      { numero: 2, desde: '2025-12-15', hasta: '2026-04-14', importe: 926_992 },
+      { numero: 3, desde: '2026-04-15', hasta: '2026-08-14', importe: 1_043_387 },
+      { numero: 4, desde: '2026-08-15', hasta: '2026-12-14', importe: 1_137_518 },
+      { numero: 5, desde: '2026-12-15', hasta: '2027-04-14', importe: null },
+    ],
+    propietarios: [{ personaId: DUENO, porcentaje: 100 }],
+    inquilinos: [{ personaId: INQ }],
+    ...over,
+  });
+  const resumen = (r: ReturnType<typeof generarPeriodo>) =>
+    r.conceptos.map((x) => [x.tipo, x.sentido, x.personaId, x.importe, x.vencimiento]);
+
+  // Regla 9, mes entero: noviembre de 2026 en Gexion.
+  it('un mes entero: alquiler a cobrar y a pagar, gastos y honorarios', () => {
+    expect(resumen(generarPeriodo(c5(), '2026-11', 21))).toEqual([
+      ['alquiler', 'a_cobrar', INQ, 1_137_518, '2026-11-05'],
+      ['gastos_adm', 'a_cobrar', INQ, 27_527.94, '2026-11-05'],
+      ['alquiler', 'a_pagar', DUENO, 1_137_518, '2026-11-10'],
+      ['honorarios', 'a_cobrar', DUENO, 110_111.74, '2026-11-10'],
+    ]);
+  });
+
+  // Regla 13: diciembre de 2025 en Gexion, cambio de tramo el 15.
+  it('cambio de tramo: dos partes proporcionales, cada una con sus gastos y honorarios', () => {
+    const r = generarPeriodo(c5(), '2025-12', 21);
+    expect(r.conceptos.filter((x) => x.personaId === INQ).map((x) => [x.tipo, x.importe])).toEqual([
+      ['alquiler', 383_870.97],
+      ['gastos_adm', 9_289.68],
+      ['alquiler', 508_350.45],
+      ['gastos_adm', 12_302.08],
+    ]);
+    expect(r.conceptos.filter((x) => x.tipo === 'honorarios').map((x) => x.importe)).toEqual([37_158.71, 49_208.33]);
+    expect(r.conceptos[0]!.descripcion).toBe('Alquiler 01/12 al 14/12/2025 (14/31 días)');
+  });
+
+  // Regla 11: diciembre de 2026 en Gexion genera del 1 al 14 y nada más.
+  it('la parte de un tramo sin indexar no se genera y se informa', () => {
+    const r = generarPeriodo(c5(), '2026-12', 21);
+    expect(resumen(r)).toEqual([
+      ['alquiler', 'a_cobrar', INQ, 513_717.81, '2026-12-07'],
+      ['gastos_adm', 'a_cobrar', INQ, 12_431.98, '2026-12-07'],
+      ['alquiler', 'a_pagar', DUENO, 513_717.81, '2026-12-10'],
+      ['honorarios', 'a_cobrar', DUENO, 49_727.88, '2026-12-10'],
+    ]);
+    expect(r.sinIndexar).toMatchObject([{ tramo: 5, desde: '2026-12-15', hasta: '2026-12-31' }]);
+  });
+
+  // Regla 10: la clave identifica cada concepto; generar de nuevo da las mismas.
+  it('las claves son estables y no se repiten', () => {
+    const a = generarPeriodo(c5(), '2025-12', 21).conceptos.map((x) => x.clave);
+    expect(generarPeriodo(c5(), '2025-12', 21).conceptos.map((x) => x.clave)).toEqual(a);
+    expect(new Set(a).size).toBe(a.length);
+  });
+
+  it('el primer mes, proporcional desde el inicio', () => {
+    const r = generarPeriodo(c5(), '2025-08', 21);
+    expect(r.conceptos[0]).toMatchObject({ importe: 466_129.03, descripcion: 'Alquiler 15/08 al 31/08/2025 (17/31 días)' });
+  });
+
+  it('fuera del contrato no genera nada', () => {
+    expect(generarPeriodo(c5(), '2025-07', 21).conceptos).toEqual([]);
+  });
+
+  // Regla 3: rescindido, hasta el mes de la rescisión inclusive.
+  it('rescindido: genera el mes de la rescisión, no los siguientes', () => {
+    expect(generarPeriodo(c5({ rescindidoEl: '2026-03-20' }), '2026-03', 21).conceptos).toHaveLength(4);
+    expect(generarPeriodo(c5({ rescindidoEl: '2026-03-20' }), '2026-04', 21).conceptos).toEqual([]);
+  });
+
+  // Contrato #72: comercial con honorarios en 0%.
+  it('un porcentaje en cero no genera un concepto en cero', () => {
+    const r = generarPeriodo(c5({ honorariosPct: 0 }), '2026-11', 21);
+    expect(r.conceptos.map((x) => x.tipo)).not.toContain('honorarios');
+  });
+
+  it('dos propietarios: el alquiler y los honorarios por su parte, sin perder centavos', () => {
+    const r = generarPeriodo(c5({ propietarios: [{ personaId: 'a', porcentaje: 50 }, { personaId: 'b', porcentaje: 50 }] }), '2026-12', 21);
+    const aPagar = r.conceptos.filter((x) => x.sentido === 'a_pagar').map((x) => x.importe);
+    expect(aPagar).toEqual([256_858.91, 256_858.9]);
+    expect(aPagar[0]! + aPagar[1]!).toBeCloseTo(513_717.81, 2);
+  });
+
+  // Caso construido: ningún contrato de Vacker tiene IVA del alquiler.
+  it('IVA del alquiler: lo paga el inquilino y lo recibe el propietario', () => {
+    const r = generarPeriodo(c5({ ivaPct: 21 }), '2026-11', 21);
+    expect(r.conceptos.filter((x) => x.tipo === 'iva').map((x) => [x.sentido, x.importe])).toEqual([
+      ['a_cobrar', 238_878.78],
+      ['a_pagar', 238_878.78],
+    ]);
+  });
+
+  it('un contrato en dólares genera en dólares (regla 18)', () => {
+    expect(generarPeriodo(c5({ moneda: 'USD' }), '2026-11', 21).conceptos.every((x) => x.moneda === 'USD')).toBe(true);
   });
 });
 
