@@ -33,6 +33,19 @@ const SIN_RLS_PERMITIDO: Record<string, string> = {
   _prisma_migrations: 'Historial de migraciones de Prisma. No contiene datos de negocio.',
 };
 
+/**
+ * Tablas con RLS que NO son de ninguna inmobiliaria: datos públicos, iguales
+ * para todas, que la API solo lee. No llevan tenant_id, así que el test de
+ * aislamiento no tiene nada que probar en ellas; lo que se prueba acá abajo es
+ * que de veras sean de solo lectura para la API.
+ *
+ * Agregar una entrada acá es afirmar que la tabla no tiene un solo dato de
+ * una inmobiliaria.
+ */
+const GLOBALES_SOLO_LECTURA: Record<string, string> = {
+  indice_valor: 'Valores del ICL y del IPC: datos públicos del BCRA y del INDEC (alquileres, regla 8).',
+};
+
 suite('Guardia de RLS', () => {
   let db: PrismaClient;
 
@@ -111,7 +124,7 @@ suite('Guardia de RLS', () => {
        ORDER BY c.relname
     `);
 
-    const cubiertas = new Set(TABLAS.map((t) => t.tabla));
+    const cubiertas = new Set([...TABLAS.map((t) => t.tabla), ...Object.keys(GLOBALES_SOLO_LECTURA)]);
     const sinCubrir = enLaBase.map((t) => t.relname).filter((t) => !cubiertas.has(t));
 
     expect(
@@ -121,5 +134,35 @@ suite('Guardia de RLS', () => {
             `${sinCubrir.join(', ')}. Agregalas a TABLAS en test/aislamiento.fixtures.ts.`
         : '',
     ).toEqual([]);
+  });
+
+  /**
+   * La excepción de arriba vale solo si la tabla es lo que dice: sin
+   * tenant_id, con policies únicamente de lectura, y sin permiso de escritura
+   * para el rol con que entra la API. Si alguien le agrega una columna
+   * tenant_id o una policy de escritura, deja de ser global y tiene que pasar
+   * al test de aislamiento.
+   */
+  it.each(Object.keys(GLOBALES_SOLO_LECTURA))('%s es global y de solo lectura para la API', async (tabla) => {
+    const tenant = await db.$queryRawUnsafe<{ n: number }[]>(
+      `SELECT count(*)::int AS n FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = $1 AND column_name = 'tenant_id'`,
+      tabla,
+    );
+    expect(tenant[0]!.n, `${tabla} tiene tenant_id: va en TABLAS, no en GLOBALES_SOLO_LECTURA`).toBe(0);
+
+    const policies = await db.$queryRawUnsafe<{ cmd: string }[]>(
+      `SELECT cmd FROM pg_policies WHERE schemaname = 'public' AND tablename = $1`,
+      tabla,
+    );
+    expect(policies.map((p) => p.cmd)).toEqual(['SELECT']);
+
+    const escritura = await db.$queryRawUnsafe<{ privilege_type: string }[]>(
+      `SELECT privilege_type FROM information_schema.role_table_grants
+        WHERE table_schema = 'public' AND table_name = $1
+          AND grantee IN ('authenticated', 'anon') AND privilege_type <> 'SELECT'`,
+      tabla,
+    );
+    expect(escritura.map((e) => e.privilege_type)).toEqual([]);
   });
 });
