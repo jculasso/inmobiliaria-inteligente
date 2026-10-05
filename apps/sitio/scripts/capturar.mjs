@@ -28,9 +28,15 @@ const PERFIL = resolve(AQUI, '../.perfil-capturas');
 const APP = process.env.APP_URL ?? 'https://app.inmobiliariainteligente.net';
 
 /** Identificadores de la inmobiliaria de demostración (Alteva Propiedades). */
-const ALSINA = '68c23132-10a0-450c-9096-cc01154b5d97'; // 23 días, 10 hechas, 6 atrasadas
-/** La tasación de la que nació ese protocolo: 6 comparables cargados. */
-const ALSINA_TASACION = 'e7b49da5-b1cf-4beb-adcb-b454de2354db';
+/*
+ * Av. Carballo 230: semana 3, once acciones hechas y una atrasada — se ven a la
+ * vez el método avanzando y el sistema levantando la mano. Hasta el 5/10/2026
+ * era Alsina 3841, que ese día se archivó como vendida al poner la demostración
+ * al día; una ficha archivada no muestra alertas.
+ */
+const CARBALLO = '00eefe6e-7870-4616-a83d-95d84562a356';
+/** La tasación de la que nació ese protocolo: 4 comparables cargados. */
+const CARBALLO_TASACION = '1940e4bf-5272-41f8-9ff8-3d10020e5a63';
 
 const ESCRITORIO = { width: 1280, height: 800 };
 const TELEFONO = { width: 375, height: 812 };
@@ -39,22 +45,22 @@ const TABLET = { width: 820, height: 1180 };
 
 /*
  * El Tablero abre en el mes en curso. Si se corre esto un día 1, sale todo en
- * cero y la captura no muestra nada. Julio 2026 es el último mes cerrado y el
- * más cargado: 20 operaciones, $5.638.000.
+ * cero y la captura no muestra nada. Septiembre 2026 es el último mes cerrado:
+ * 9 escrituras, $1.854.500.
  */
-const MES = { anio: '2026', nombre: 'Julio' };
+const MES = { anio: '2026', nombre: 'Septiembre' };
 
 /** Cada captura: adónde ir, en qué ancho, y qué hacer antes de disparar. */
 const CAPTURAS = [
   {
     archivo: 'protocolo-ficha.png',
-    ruta: `/protocolo/${ALSINA}`,
+    ruta: `/protocolo/${CARBALLO}`,
     tamano: ESCRITORIO,
     espera: 'Semana',
   },
   {
     archivo: 'protocolo-ficha-telefono.png',
-    ruta: `/protocolo/${ALSINA}`,
+    ruta: `/protocolo/${CARBALLO}`,
     tamano: TELEFONO,
     espera: 'Semana',
   },
@@ -111,19 +117,19 @@ const CAPTURAS = [
     // clickeando "Siguiente": cada "Siguiente" dispara un PATCH que guarda
     // la sección, y este script no tiene por qué escribir en la base de un
     // cliente para sacar una foto.
-    ruta: `/tasador/tasaciones/${ALSINA_TASACION}/editar?seccion=4`,
+    ruta: `/tasador/tasaciones/${CARBALLO_TASACION}/editar?seccion=4`,
     tamano: ESCRITORIO,
     espera: 'Progreso',
   },
   {
     archivo: 'tasador-telefono.png',
-    ruta: `/tasador/tasaciones/${ALSINA_TASACION}/editar?seccion=4`,
+    ruta: `/tasador/tasaciones/${CARBALLO_TASACION}/editar?seccion=4`,
     tamano: TELEFONO,
     espera: 'Progreso',
   },
   {
     archivo: 'protocolo-tablet.png',
-    ruta: `/protocolo/${ALSINA}`,
+    ruta: `/protocolo/${CARBALLO}`,
     tamano: TABLET,
     espera: 'Semana',
   },
