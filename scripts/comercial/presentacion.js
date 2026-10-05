@@ -210,15 +210,21 @@ LAMINAS.push(function laminaQueEs() {
    */
   const DEL_TABLERO = [
     'Facturación anual, trimestral y mensual, de la inmobiliaria y de cada vendedor',
-    'Ranking de vendedores, ticket promedio, operaciones y puntas',
-    'La comisión generada, y qué parte todavía no entró en caja',
+    'Ranking de vendedores por año, trimestre o mes: operaciones, puntas y ticket',
+    'La comisión de cada punta, comprador y vendedor, y qué falta cobrar',
     'Operaciones señadas: el flujo de caja que viene',
-    'Contratos de alquileres firmados',
+    'Alquileres: contratos firmados, valor promedio y comisión de cada mes',
   ];
+  /*
+   * Desde septiembre de 2026 la ficha cambia según la tipología: a un terreno
+   * no se le preguntan dormitorios. Es lo primero que nota un tasador, así que
+   * va en la lámina; el «motivo cuando no se capta» se juntó con el informe
+   * para no pasar de tres renglones — la lámina ya llega al borde de abajo.
+   */
   const DEL_TASADOR = [
     'Cada tasación con su valor, su estado y el vendedor a cargo',
-    'Cuando no se capta, queda escrito el motivo',
-    'El informe que su vendedor le deja al propietario',
+    'La ficha se adapta al tipo: casa, departamento, PH, terreno, local u oficina',
+    'El informe para el propietario, y el motivo cuando no se capta',
   ];
 
   bloque(s, 0.5, 2.4, 5.3, 'Tablero Comercial');
@@ -228,7 +234,10 @@ LAMINAS.push(function laminaQueEs() {
 
   captura(s, 'tablero-kpis.png', { x: 6.15, y: 2.62, w: 3.35, h: 2.09 });
   // Un renglón, no dos: con dos, la segunda línea terminaba debajo del «1 / 5».
-  s.addText('El mes y el año, y lo que todavía falta cobrar.', {
+  // Desde la comisión por punta (septiembre de 2026) el tablero tiene dos filas
+  // más de tarjetas y «Pendiente de cobro» quedó fuera del recorte: el pie
+  // describe lo que la captura muestra, no lo que hay más abajo.
+  s.addText('El mes y el año, con la comisión de cada punta.', {
     x: 6.15, y: 4.84, w: 3.35, h: 0.3, margin: 0,
     fontFace: F, fontSize: 9, color: GRIS,
   });
@@ -255,7 +264,7 @@ LAMINAS.push(function laminaParaQue() {
   const puntos = [
     ['Cómo viene el año', 'Proyección anual y trimestral, contra el mismo período del año pasado.'],
     ['Dónde está el margen', 'La comisión real por operación y por punta, no solamente el volumen.'],
-    ['Quién produce', 'Operaciones, puntas y comisión de cada vendedor, en un mismo ranking.'],
+    ['Quién produce', 'Puntas y comisión de cada vendedor: en el año, el trimestre o el mes.'],
     ['Toda la captación junta', 'Cada tasación con su estado y su responsable, sin planillas paralelas.'],
     ['La tasa de captación', 'Cuántas tasaciones terminan en captación, y por qué se pierden las otras.'],
   ];
