@@ -124,7 +124,10 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
     inmobiliaria), a cargo del inquilino. El IVA es una configuración de la
     inmobiliaria: **21% en Vacker**, que es responsable inscripto — en Gexion,
     8% de honorarios se cobra 9,68% y 2% de gastos, 2,42%. Se calculan con
-    centavos. El IVA **del alquiler** (porcentaje del contrato) es otra cosa y
+    centavos, en dos pasos: primero el neto redondeado a centavos, después el
+    IVA sobre ese neto. No da lo mismo que aplicar el porcentaje con IVA de
+    una vez: sobre 513.717,81 al 2%, Gexion cobra 12.431,98 (10.274,36 × 1,21)
+    y el 2,42% directo daría 12.431,97. El IVA **del alquiler** (porcentaje del contrato) es otra cosa y
     va a cargo del inquilino; hoy ningún contrato de Vacker lo tiene.
 13. Los períodos son **meses calendario**. Si en un mes empieza o termina el
     contrato, o cambia el tramo, cada parte se cobra **proporcional a sus
