@@ -186,6 +186,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       {tab === 'trimestral' && porTrimestre && (
         <div className="flex flex-col gap-4 border-b border-line p-4">
           <VentasChart
+            anio={anio}
             datos={porTrimestre}
             etiquetas={ETIQUETAS_TRIMESTRE}
             unidad="trimestre"
@@ -214,7 +215,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       */}
       {tab === 'mensual' && porMes && (
         <div className="flex flex-col gap-4 border-b border-line p-4">
-          <VentasChart datos={porMes} etiquetas={ABREV_MES} unidad="mes" seleccionado={mes} onSelect={setMes} />
+          <VentasChart anio={anio} datos={porMes} etiquetas={ABREV_MES} unidad="mes" seleccionado={mes} onSelect={setMes} />
           <VentasTabla datos={porMes} etiquetas={ABREV_MES} seleccionado={mes} onSelect={setMes} />
         </div>
       )}

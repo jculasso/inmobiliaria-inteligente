@@ -20,7 +20,7 @@ const enLasBarras = () => within(screen.getByRole('list', { name: /trimestre/i }
 
 describe('VentasChart — por trimestre', () => {
   it('muestra las 4 etiquetas de trimestre y la leyenda', () => {
-    render(<VentasChart datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={vi.fn()} />);
+    render(<VentasChart anio={2025} datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={vi.fn()} />);
     expect(enElGrafico().getByText('Q1')).toBeInTheDocument();
     expect(enElGrafico().getByText('Q4')).toBeInTheDocument();
     expect(screen.getByText('Volumen USD')).toBeInTheDocument();
@@ -29,7 +29,7 @@ describe('VentasChart — por trimestre', () => {
 
   it('al hacer click en una barra llama a onSelect con el trimestre', async () => {
     const onSelect = vi.fn();
-    render(<VentasChart datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
+    render(<VentasChart anio={2025} datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
 
     await userEvent.click(enElGrafico().getByText('Q3'));
     expect(onSelect).toHaveBeenCalledWith(3);
@@ -39,7 +39,7 @@ describe('VentasChart — por trimestre', () => {
     // Regresión: el gráfico medía 552px y a 360px se salía 226px, así que había
     // que deslizarlo de costado — el "baile".
     const onSelect = vi.fn();
-    render(<VentasChart datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
+    render(<VentasChart anio={2025} datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
 
     expect(enLasBarras().getAllByRole('listitem')).toHaveLength(4);
     await userEvent.click(enLasBarras().getByText('Q3'));

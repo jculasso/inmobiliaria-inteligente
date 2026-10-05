@@ -11,7 +11,7 @@ import {
   type AlquileresPeriodo,
 } from '../../lib/tablero-api';
 import { fmtK, fmtNum, fmtUSD } from '../../lib/format';
-import { ABREV_MES, NOMBRES_MES } from '../../lib/meses';
+import { ABREV_MES, NOMBRES_MES, periodosTranscurridos } from '../../lib/meses';
 import { PeriodosChart } from './periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from './periodos-tabla';
 import { DetalleDrillModal } from './detalle-drill-modal';
@@ -186,6 +186,7 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
               nombreLinea="Comisión USD"
               nombreLineaCorto="Comisión"
               barrasEnteras
+              transcurridos={periodosTranscurridos(anio, tab === 'mensual' ? 'mes' : 'trimestre')}
               seleccionado={seleccionado}
               onSelect={elegir}
               pista={`tocá una barra o un ${tab === 'mensual' ? 'mes' : 'trimestre'}`}
