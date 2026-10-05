@@ -337,3 +337,115 @@ export const IndexacionConfirmadaDtoSchema = z.object({
   importe: z.number(),
 });
 export type IndexacionConfirmadaDto = z.infer<typeof IndexacionConfirmadaDtoSchema>;
+
+// --- Conceptos y generación del período (reglas 9 a 14) --------------------------
+
+/** Un mes calendario, `AAAA-MM`. */
+export const PeriodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Período inválido, se espera AAAA-MM.');
+
+export const TipoConceptoSchema = z.enum([
+  'alquiler',
+  'gastos_adm',
+  'honorarios',
+  'iva',
+  'punitorio',
+  'expensa',
+  'impuesto',
+  'servicio',
+  'reparacion',
+  'saldo_inicial',
+  'otro',
+]);
+export type TipoConcepto = z.infer<typeof TipoConceptoSchema>;
+
+export const SentidoConceptoSchema = z.enum(['a_cobrar', 'a_pagar']);
+export type SentidoConcepto = z.infer<typeof SentidoConceptoSchema>;
+
+export const GenerarPeriodoSchema = z.object({ periodo: PeriodoSchema });
+export type GenerarPeriodo = z.infer<typeof GenerarPeriodoSchema>;
+
+/** Lo que hizo «Generar el período». Correrlo dos veces da `creados: 0` la segunda (regla 10). */
+export const ResultadoGeneracionDtoSchema = z.object({
+  periodo: PeriodoSchema,
+  contratos: z.number().int().nonnegative(),
+  creados: z.number().int().nonnegative(),
+  existentes: z.number().int().nonnegative(),
+  /** Partes del mes que no se generaron porque su tramo no está indexado (regla 11). */
+  sinIndexar: z.array(
+    z.object({
+      contratoId: z.string().uuid(),
+      codigo: z.string(),
+      direccion: z.string(),
+      tramo: z.number().int(),
+      desde: FechaIso,
+      hasta: FechaIso,
+    }),
+  ),
+});
+export type ResultadoGeneracionDto = z.infer<typeof ResultadoGeneracionDtoSchema>;
+
+export const ConceptoDtoSchema = z.object({
+  id: z.string().uuid(),
+  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), direccion: z.string() }).nullable(),
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  tipo: TipoConceptoSchema,
+  sentido: SentidoConceptoSchema,
+  moneda: MonedaAlquilerSchema,
+  periodo: PeriodoSchema.nullable(),
+  vencimiento: FechaIso,
+  importe: z.number(),
+  adelantadoPorInmobiliaria: z.boolean(),
+  descripcion: z.string().nullable(),
+  /** Lo creó la generación del período, no una persona. */
+  generado: z.boolean(),
+  /** Tiene cobros o pagos aplicados, o ya se liquidó: no se puede anular. */
+  aplicado: z.boolean(),
+  anulado: z.object({ en: z.string(), motivo: z.string() }).nullable(),
+});
+export type ConceptoDto = z.infer<typeof ConceptoDtoSchema>;
+
+/** Los conceptos que se cargan a mano (regla 14). */
+export const TipoConceptoSueltoSchema = z.enum(['expensa', 'impuesto', 'servicio', 'reparacion', 'otro']);
+export type TipoConceptoSuelto = z.infer<typeof TipoConceptoSueltoSchema>;
+
+/**
+ * Un gasto suelto de un contrato (regla 14): quién lo debe y quién, si
+ * alguien, ya lo pagó.
+ *
+ * - Lo pagó la inmobiliaria: se le cobra a quien lo debe, marcado como
+ *   adelantado (al propietario se le descuenta en la liquidación).
+ * - Lo pagó la otra parte —el inquilino arregló algo que era del dueño—: además
+ *   del cargo, se le reconoce a quien lo pagó. Así lo registra Gexion: la
+ *   reparación aparece a pagar a uno y a cobrar al otro.
+ */
+export const ConceptoSueltoInputSchema = z
+  .object({
+    contratoId: z.string().uuid(),
+    tipo: TipoConceptoSueltoSchema,
+    aCargoDe: z.enum(['inquilino', 'propietario']),
+    pagadoPor: z.enum(['nadie', 'inmobiliaria', 'inquilino', 'propietario']).default('nadie'),
+    importe: z.number().positive('El importe tiene que ser mayor que cero.'),
+    vencimiento: FechaIso,
+    periodo: PeriodoSchema.nullish().transform((v) => v ?? null),
+    descripcion: z
+      .string()
+      .trim()
+      .nullish()
+      .transform((v) => (v ? v : null)),
+  })
+  .superRefine((v, ctx) => {
+    if (v.pagadoPor === v.aCargoDe) {
+      ctx.addIssue({ code: 'custom', path: ['pagadoPor'], message: 'Si ya lo pagó quien lo debe, no hay nada que cargar.' });
+    }
+    if (v.tipo === 'otro' && !v.descripcion) {
+      ctx.addIssue({ code: 'custom', path: ['descripcion'], message: 'Contá de qué se trata.' });
+    }
+  });
+export type ConceptoSueltoInput = z.input<typeof ConceptoSueltoInputSchema>;
+export type ConceptoSuelto = z.output<typeof ConceptoSueltoInputSchema>;
+
+/** Un concepto no se borra: se anula, con motivo (regla 19). */
+export const AnularConceptoSchema = z.object({
+  motivo: z.string().trim().min(3, 'Escribí el motivo.'),
+});
+export type AnularConcepto = z.infer<typeof AnularConceptoSchema>;

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import {
   BandejaIndexacionDtoSchema,
+  ConceptoDtoSchema,
+  ResultadoGeneracionDtoSchema,
+  type ConceptoSueltoInput,
   ContratoDtoSchema,
   IndexacionConfirmadaDtoSchema,
   ContratoResumenDtoSchema,
@@ -79,4 +82,22 @@ export async function confirmarIndexacion(accessToken: string, tramoId: string, 
     method: 'POST',
     body: { importe },
   });
+}
+
+/** Los conceptos de un mes (`AAAA-MM`). */
+export async function listConceptos(accessToken: string, periodo: string) {
+  return apiFetch(`/alquileres/conceptos?periodo=${periodo}`, z.array(ConceptoDtoSchema), { accessToken });
+}
+
+/** Genera el mes. Correrlo de nuevo no duplica: crea solo lo que falte. */
+export async function generarPeriodo(accessToken: string, periodo: string) {
+  return apiFetch('/alquileres/conceptos/generar', ResultadoGeneracionDtoSchema, { accessToken, method: 'POST', body: { periodo } });
+}
+
+export async function crearConceptoSuelto(accessToken: string, dto: ConceptoSueltoInput) {
+  return apiFetch('/alquileres/conceptos', z.array(ConceptoDtoSchema), { accessToken, method: 'POST', body: dto });
+}
+
+export async function anularConcepto(accessToken: string, id: string, motivo: string) {
+  return apiFetch(`/alquileres/conceptos/${id}/anular`, z.object({ anulados: z.number() }), { accessToken, method: 'POST', body: { motivo } });
 }
