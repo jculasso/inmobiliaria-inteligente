@@ -89,9 +89,14 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 
 ### Indexación
 
-5. El importe de un tramo indexado es el del tramo anterior × (valor del
-   índice en el período requerido ÷ valor en el período base), **redondeado a
-   peso entero** (confirmado por Javier el 5/10/2026; es lo que hace Gexion).
+5. El importe de un tramo indexado es el **importe inicial del contrato** ×
+   (valor del índice en el período requerido ÷ valor en el período base del
+   contrato), **redondeado a peso entero**. Se calcula siempre desde el
+   inicial con la variación **acumulada**, nunca encadenando sobre el tramo
+   anterior: así el redondeo de un tramo no se arrastra al siguiente.
+   Verificado en Gexion el 5/10/2026 en cuatro contratos de Vacker (ICL, IPC y
+   Casa Propia): por ejemplo, 250.000 × 1,3087 = 327.175, que es lo que
+   muestra; encadenado daría 327.184.
 6. El sistema **propone** el importe; queda aplicado solo cuando una persona
    lo **confirma**. Ningún importe cambia sin confirmación, aunque el índice
    esté cargado.
@@ -113,18 +118,33 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 11. Si el tramo de ese mes requiere indexación **no confirmada**, ese contrato
     **no genera** el alquiler de ese mes y queda listado en «indexación
     vencida». No se cobra un importe viejo por defecto.
-12. Honorarios = alquiler del mes × porcentaje de honorarios del contrato, a
-    cargo del propietario. Gastos administrativos = alquiler del mes ×
-    porcentaje de gastos, a cargo del inquilino. IVA del alquiler, si el
-    contrato lo tiene, = alquiler × porcentaje, a cargo del inquilino.
-13. El mes de inicio y el de fin, si el contrato no arranca o no termina en
-    un borde de mes, se cobran **proporcionales a los días** del mes
-    (confirmado por Javier el 5/10/2026). Honorarios y gastos administrativos
-    se calculan sobre ese importe proporcional.
+12. Honorarios = alquiler del mes × porcentaje de honorarios del contrato
+    × (1 + IVA de la inmobiliaria), a cargo del propietario. Gastos
+    administrativos = alquiler del mes × porcentaje de gastos × (1 + IVA de la
+    inmobiliaria), a cargo del inquilino. El IVA es una configuración de la
+    inmobiliaria: **21% en Vacker**, que es responsable inscripto — en Gexion,
+    8% de honorarios se cobra 9,68% y 2% de gastos, 2,42%. Se calculan con
+    centavos. El IVA **del alquiler** (porcentaje del contrato) es otra cosa y
+    va a cargo del inquilino; hoy ningún contrato de Vacker lo tiene.
+13. Los períodos son **meses calendario**. Si en un mes empieza o termina el
+    contrato, o cambia el tramo, cada parte se cobra **proporcional a sus
+    días** sobre los días de ese mes, como conceptos separados, conservando
+    los centavos. Honorarios y gastos se calculan sobre cada parte.
+    Confirmado por Javier y verificado en Gexion el 5/10/2026: un contrato
+    que cambia de tramo el 15/08 genera «1 al 14» = 1.043.387 × 14/31 =
+    471.207,03 y «15 al 31» = 1.137.518 × 17/31 = 623.800,19.
 14. Expensas, impuestos, servicios y reparaciones se cargan como conceptos
     sueltos, indicando **quién lo paga** (inquilino o propietario) y **si lo
     adelantó la inmobiliaria**. Un gasto del propietario adelantado por la
     inmobiliaria se le descuenta en la liquidación.
+
+### Vencimientos
+
+37. El alquiler del inquilino vence el **día de vencimiento** del contrato
+    (5 en Vacker) y al propietario se le paga el **día de pago** (10 en
+    Vacker). Si cae sábado o domingo, se corre al lunes. Los feriados **no**
+    se corren: es lo que hace Gexion (el 12/10/2026, feriado, queda igual)
+    [a confirmar con Vacker si quiere que se corran].
 
 ### Cobros, punitorios y cuenta corriente
 
@@ -250,10 +270,21 @@ Con los datos reales de Vacker migrados al día de corte:
 1. Javier entra con un usuario de rol `administracion` en Vacker y ve el
    módulo en la Home; con un usuario `vendedor`, no lo ve, y la URL directa
    devuelve «sin acceso».
-2. Se eligen **cinco contratos** de Vacker: uno indexado por ICL, uno
-   escalonado, uno en dólares, uno comercial con IVA y uno con pago
-   garantizado. Para el primer mes después del corte, en Gexion y en el
-   módulo, se comparan:
+2. Se cotejan **cinco contratos reales** de Vacker, elegidos el 5/10/2026
+   recorriendo los 78 vigentes (código de Gexion entre paréntesis):
+
+   | Caso | Contrato | Por qué |
+   |---|---|---|
+   | ICL con historia | #25, comercial | Seis tramos, todos indexados; honorarios 2,48% |
+   | IPC que arranca el 15 | #5, vivienda | Tramos que cambian a mitad de mes: prorrateo |
+   | Casa Propia | #26, vivienda | El único con CCP; contrato desde 2023 |
+   | Sin indexación | #93, vivienda | Importe fijo; honorarios 5% |
+   | Comercial sin honorarios | #72, comercial | IPC, arranca el 15, honorarios 0% |
+
+   En la cartera de Vacker **no hay** contratos en dólares, con IVA del
+   alquiler ni con pago garantizado: esas reglas se prueban con casos
+   construidos, no con un cotejo. Para el primer mes después del corte, en
+   Gexion y en el módulo, se comparan:
    - el alquiler del mes,
    - los honorarios y los gastos administrativos,
    - el neto liquidado a cada propietario,
@@ -275,7 +306,8 @@ Con los datos reales de Vacker migrados al día de corte:
 | 2, 3 | Unit de generación: contrato `borrador`/`finalizado` no genera; rescisión anula lo impago posterior |
 | 5, 6, 7 | Unit de indexación con valores del ICL e IPC conocidos; un tramo sin confirmar no cambia de importe; índice no publicado → alerta correcta |
 | 8 | Unit del importador de índices con la fuente simulada: no pisa, reintenta, avisa a los 3 días |
-| 9, 10, 11, 12, 13 | Unit de generación del período: conceptos esperados por contrato; idempotencia; bloqueo por indexación; montos; prorrateo |
+| 9, 10, 11, 12, 13 | Unit de generación del período: conceptos esperados por contrato; idempotencia; bloqueo por indexación; montos con IVA de la inmobiliaria; prorrateo por cambio de tramo con los importes de Gexion |
+| 37 | Unit de vencimientos: sábado y domingo se corren al lunes, un feriado no |
 | 14, 20, 21, 22 | Unit de liquidación: neto con gastos adelantados, con y sin pago garantizado, sin doble liquidación |
 | 15, 16, 17 | Unit de cobro: imputación por antigüedad, parcial, punitorio propuesto y condonado, saldo a favor |
 | 18 | Unit de cuenta corriente: saldos separados por moneda |
