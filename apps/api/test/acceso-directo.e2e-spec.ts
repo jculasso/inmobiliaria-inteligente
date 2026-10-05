@@ -87,6 +87,16 @@ const PERMITIDOS: Excepcion[] = [
       'es este.',
   },
   {
+    archivo: 'src/modules/alquileres/indices.service.ts',
+    funciones: ['constructor'],
+    motivo:
+      'El importador diario del ICL y del IPC escribe `indice_valor`, que no tiene ' +
+      'tenant_id ni datos de ninguna inmobiliaria: son valores públicos del BCRA y ' +
+      'del INDEC. Dentro de withTenant la tabla es de solo lectura (rls-habilitada ' +
+      'verifica que no haya policy ni permiso de escritura), así que escribirla ' +
+      'exige el rol dueño. No toca ninguna otra tabla.',
+  },
+  {
     archivo: 'src/modules/tareas/tareas.service.ts',
     funciones: ['constructor', 'enviarReportesSemanales'],
     motivo:

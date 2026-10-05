@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  alertaIndice,
   cargoConIva,
+  fechaDelIndice,
   generarTramos,
   importeIndexado,
   partesDelMes,
+  proponerIndexacion,
   redondear2,
   sumarMesesIso,
   validarPartes,
@@ -86,25 +89,96 @@ describe('validarTramos (regla 1)', () => {
 
 describe('importeIndexado (regla 5)', () => {
   /*
-   * Contrato #25 (ICL): importe inicial 250.000. Gexion muestra la variación
-   * acumulada de cada tramo con dos decimales, así que acá se usa la
-   * variación como relación de índices.
+   * Contrato #25 (ICL), con los valores oficiales del BCRA: 250.000 desde el
+   * 01/11/2024 (ICL 19,89), y cada tramo encadenado sobre el anterior.
+   * Gexion muestra 287.079, 327.175 y 355.833.
    */
-  it('desde el inicial con la variación acumulada, a peso entero', () => {
-    expect(importeIndexado(250_000, 1, 1.3087)).toBe(327_175); // tramo 3 en Gexion
-    expect(importeIndexado(250_000, 1, 1.7215)).toBe(430_375); // tramo 6 en Gexion
+  it('encadena sobre el tramo anterior: contrato #25 por ICL', () => {
+    const t2 = importeIndexado(250_000, 19.89, 22.84);
+    const t3 = importeIndexado(t2, 22.84, 26.03);
+    const t4 = importeIndexado(t3, 26.03, 28.31);
+    expect([t2, t3, t4]).toEqual([287_079, 327_175, 355_833]);
   });
 
   /*
-   * La razón de la regla: encadenar sobre el tramo anterior (287.079 × 1,1397)
-   * daría 327.184, nueve pesos de diferencia con Gexion en el tercer tramo.
+   * Contrato #5 (IPC), arranca el 15/08/2025: el IPC de julio, noviembre,
+   * marzo y julio. Gexion muestra 926.992, 1.043.387 y 1.137.518.
    */
-  it('no encadena sobre el tramo anterior', () => {
-    expect(importeIndexado(250_000, 1, 1.3087)).not.toBe(Math.round(287_079 * 1.1397));
+  it('encadena sobre el tramo anterior: contrato #5 por IPC', () => {
+    const t2 = importeIndexado(850_000, 9_023.973, 9_841.3581);
+    const t3 = importeIndexado(t2, 9_841.3581, 11_077.0608);
+    const t4 = importeIndexado(t3, 11_077.0608, 12_076.3937);
+    expect([t2, t3, t4]).toEqual([926_992, 1_043_387, 1_137_518]);
   });
 
-  it('con valores reales del índice, la relación es requerido ÷ base', () => {
-    expect(importeIndexado(200_000, 20.5, 23.1)).toBe(Math.round((200_000 * 23.1) / 20.5));
+  /*
+   * La regla que esta spec decía antes —desde el inicial con la variación
+   * acumulada— da 327.174 en el tercer tramo del #25, no los 327.175 de
+   * Gexion. Este test falla con la fórmula vieja.
+   */
+  it('no calcula desde el importe inicial', () => {
+    expect(Math.round((250_000 * 26.03) / 19.89)).not.toBe(327_175);
+  });
+
+  it('un índice anterior en cero no se divide', () => {
+    expect(() => importeIndexado(100, 0, 1)).toThrow(/mayor que cero/);
+  });
+});
+
+describe('fechaDelIndice (regla 5)', () => {
+  it('ICL: el valor del día en que empieza el tramo', () => {
+    expect(fechaDelIndice('ICL', '2025-03-01')).toBe('2025-03-01');
+  });
+
+  it('IPC: el mes anterior al del tramo, aunque empiece el 15', () => {
+    expect(fechaDelIndice('IPC', '2025-12-15')).toBe('2025-11-01');
+    expect(fechaDelIndice('IPC', '2026-01-01')).toBe('2025-12-01');
+  });
+});
+
+describe('proponerIndexacion (reglas 6 y 7)', () => {
+  const IPC: Record<string, number> = { '2026-03-01': 11_077.0608, '2026-07-01': 12_076.3937 };
+  const valor = (_i: string, f: string) => IPC[f];
+
+  it('con los dos valores cargados propone el importe, con qué índices', () => {
+    const p = proponerIndexacion('IPC', { desde: '2026-04-15', importe: 1_043_387 }, { desde: '2026-08-15' }, valor);
+    expect(p).toEqual({
+      estado: 'lista',
+      fechaBase: '2026-03-01',
+      valorBase: 11_077.0608,
+      fechaRequerida: '2026-07-01',
+      valorRequerido: 12_076.3937,
+      importe: 1_137_518,
+    });
+  });
+
+  // Regla 7: el IPC de un mes sale a mediados del siguiente.
+  it('sin el índice del período: pendiente de índice, y dice cuál falta', () => {
+    const p = proponerIndexacion('IPC', { desde: '2026-08-15', importe: 1_137_518 }, { desde: '2026-12-15' }, valor);
+    expect(p).toMatchObject({ estado: 'pendiente_indice', falta: ['el IPC de noviembre de 2026'] });
+  });
+
+  it('Casa Propia no tiene fuente: el importe va a mano', () => {
+    expect(proponerIndexacion('CCP', { desde: '2026-01-01', importe: 1 }, { desde: '2026-05-01' }, valor)).toEqual({ estado: 'manual' });
+  });
+});
+
+describe('alertaIndice (regla 8)', () => {
+  it('ICL: avisa a los 3 días sin valores nuevos, no antes', () => {
+    expect(alertaIndice('ICL', '2026-10-16', '2026-10-05', '2026-10-08')).toBeNull();
+    expect(alertaIndice('ICL', '2026-10-16', '2026-10-05', '2026-10-09')).toMatch(/desde el 05\/10\/2026/);
+  });
+
+  it('IPC: pasado el 20, el del mes anterior tiene que estar', () => {
+    expect(alertaIndice('IPC', '2026-08-01', '2026-09-14', '2026-10-15')).toBeNull();
+    expect(alertaIndice('IPC', '2026-08-01', '2026-09-14', '2026-10-21')).toBe(
+      'El IPC de septiembre de 2026 ya tendría que estar publicado y no se cargó.',
+    );
+    expect(alertaIndice('IPC', '2026-09-01', '2026-10-14', '2026-10-21')).toBeNull();
+  });
+
+  it('sin ningún valor cargado, avisa', () => {
+    expect(alertaIndice('IPC', null, null, '2026-10-05')).toMatch(/Todavía no hay valores del IPC/);
   });
 });
 

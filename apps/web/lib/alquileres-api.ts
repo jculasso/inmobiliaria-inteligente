@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
+  BandejaIndexacionDtoSchema,
   ContratoDtoSchema,
+  IndexacionConfirmadaDtoSchema,
   ContratoResumenDtoSchema,
   type CambiarEstadoContrato,
   type ContratoInput,
@@ -63,4 +65,18 @@ export async function actualizarContrato(accessToken: string, id: string, dto: C
 
 export async function cambiarEstadoContrato(accessToken: string, id: string, cambio: CambiarEstadoContrato) {
   return apiFetch(`/alquileres/contratos/${id}/estado`, ContratoDtoSchema, { accessToken, method: 'POST', body: cambio });
+}
+
+/** La bandeja «a indexar»: tramos con su propuesta y el estado de los índices. */
+export async function getBandejaIndexacion(accessToken: string) {
+  return apiFetch('/alquileres/indexaciones', BandejaIndexacionDtoSchema, { accessToken });
+}
+
+/** Confirma un tramo. `importe` solo para índices sin fuente (Casa Propia). */
+export async function confirmarIndexacion(accessToken: string, tramoId: string, importe: number | null) {
+  return apiFetch(`/alquileres/indexaciones/${tramoId}/confirmar`, IndexacionConfirmadaDtoSchema, {
+    accessToken,
+    method: 'POST',
+    body: { importe },
+  });
 }

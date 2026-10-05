@@ -267,3 +267,73 @@ export const CambiarEstadoContratoSchema = z.discriminatedUnion('estado', [
   z.object({ estado: z.literal('rescindido'), fecha: FechaIso }),
 ]);
 export type CambiarEstadoContrato = z.infer<typeof CambiarEstadoContratoSchema>;
+
+// --- Indexación (reglas 5 a 8) --------------------------------------------------
+
+/**
+ * Cuántos días antes de que empiece un tramo aparece en la bandeja «a
+ * indexar». El ICL se publica con unos diez días de anticipación, así que un
+ * tramo por ICL suele poder confirmarse antes de empezar.
+ */
+export const DIAS_ANTICIPACION_INDEXACION = 30;
+
+export const EstadoIndexacionSchema = z.enum(['lista', 'pendiente_indice', 'manual']);
+export type EstadoIndexacion = z.infer<typeof EstadoIndexacionSchema>;
+
+/** Un tramo a indexar, con la propuesta del sistema (regla 6). */
+export const IndexacionDtoSchema = z.object({
+  tramoId: z.string().uuid(),
+  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), direccion: z.string(), unidad: z.string().nullable() }),
+  inquilinos: z.array(z.string()),
+  indice: IndiceAlquilerSchema,
+  numero: z.number().int(),
+  desde: FechaIso,
+  hasta: FechaIso,
+  importeAnterior: z.number(),
+  estado: EstadoIndexacionSchema,
+  fechaBase: FechaIso.nullable(),
+  valorBase: z.number().nullable(),
+  fechaRequerida: FechaIso.nullable(),
+  valorRequerido: z.number().nullable(),
+  importePropuesto: z.number().nullable(),
+  /** Qué valores del índice faltan, en palabras («el IPC de agosto de 2026»). */
+  falta: z.array(z.string()),
+  /** El tramo ya empezó y sigue sin importe. */
+  vencida: z.boolean(),
+});
+export type IndexacionDto = z.infer<typeof IndexacionDtoSchema>;
+
+/** Hasta dónde llegan los valores cargados de un índice, y si hay que preocuparse (regla 8). */
+export const EstadoIndiceDtoSchema = z.object({
+  indice: z.enum(['ICL', 'IPC']),
+  ultimaFecha: FechaIso.nullable(),
+  alerta: z.string().nullable(),
+});
+export type EstadoIndiceDto = z.infer<typeof EstadoIndiceDtoSchema>;
+
+export const BandejaIndexacionDtoSchema = z.object({
+  indices: z.array(EstadoIndiceDtoSchema),
+  tramos: z.array(IndexacionDtoSchema),
+});
+export type BandejaIndexacionDto = z.infer<typeof BandejaIndexacionDtoSchema>;
+
+/**
+ * Confirmar una indexación (regla 6). El importe solo viaja cuando el índice
+ * no tiene fuente (Casa Propia); si no, lo calcula la API y uno distinto se
+ * rechaza: lo que se confirma es lo que se mostró.
+ */
+export const ConfirmarIndexacionSchema = z.object({
+  importe: z
+    .number()
+    .positive('El importe tiene que ser mayor que cero.')
+    .nullish()
+    .transform((v) => v ?? null),
+});
+export type ConfirmarIndexacion = z.infer<typeof ConfirmarIndexacionSchema>;
+
+export const IndexacionConfirmadaDtoSchema = z.object({
+  tramoId: z.string().uuid(),
+  numero: z.number().int(),
+  importe: z.number(),
+});
+export type IndexacionConfirmadaDto = z.infer<typeof IndexacionConfirmadaDtoSchema>;
