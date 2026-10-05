@@ -47,7 +47,6 @@ function fila(over: Record<string, unknown> = {}) {
     ajuste: 'indexado',
     indice: 'ICL',
     periodicidadMeses: 4,
-    indicePeriodoBase: null,
     honorariosPct: 2.48,
     gastosAdmPct: 2,
     ivaPct: 0,

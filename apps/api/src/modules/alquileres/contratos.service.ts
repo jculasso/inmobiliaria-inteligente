@@ -191,7 +191,6 @@ function columnas(dto: Contrato) {
     // Un contrato escalonado no tiene índice: no se guarda lo que no aplica.
     indice: dto.ajuste === 'indexado' ? dto.indice : null,
     periodicidadMeses: dto.ajuste === 'indexado' ? dto.periodicidadMeses : null,
-    indicePeriodoBase: dto.ajuste === 'indexado' ? toDate(dto.indicePeriodoBase) : null,
     honorariosPct: dto.honorariosPct,
     gastosAdmPct: dto.gastosAdmPct,
     ivaPct: dto.ivaPct,
@@ -268,7 +267,6 @@ function aDto(f: FilaContrato): ContratoDto {
     ajuste: f.ajuste as ContratoDto['ajuste'],
     indice: f.indice as ContratoDto['indice'],
     periodicidadMeses: f.periodicidadMeses,
-    indicePeriodoBase: fromDate(f.indicePeriodoBase),
     honorariosPct: decToNum(f.honorariosPct),
     gastosAdmPct: decToNum(f.gastosAdmPct),
     ivaPct: decToNum(f.ivaPct),
