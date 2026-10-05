@@ -24,7 +24,7 @@ export function ComoEmpezar({ resumen }: { resumen: ResumenAlquileres }) {
       titulo: 'Cargá los contratos',
       detalle: 'Con sus tramos, el índice de ajuste, los honorarios y los gastos administrativos.',
       hecho: resumen.contratos > 0,
-      href: null,
+      href: '/alquileres/contratos/nuevo',
     },
   ];
 
@@ -62,9 +62,6 @@ export function ComoEmpezar({ resumen }: { resumen: ResumenAlquileres }) {
           </li>
         ))}
       </ol>
-      <p className="mt-5 text-xs text-muted">
-        La carga de contratos llega en la próxima entrega del módulo.
-      </p>
     </section>
   );
 }
