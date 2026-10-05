@@ -5,6 +5,7 @@ import { MODULO_KEY, ROLES_KEY } from '../../auth/decorators';
 import { AlquileresController } from './alquileres.controller';
 import { PersonasController } from './personas.controller';
 import { PropiedadesAlquilerController } from './propiedades.controller';
+import { ContratosController } from './contratos.controller';
 
 /**
  * Spec alquileres-fase-1.md §3: el módulo se contrata por inmobiliaria Y pide
@@ -14,7 +15,7 @@ import { PropiedadesAlquilerController } from './propiedades.controller';
  * controller. Un endpoint nuevo que se olvide el `@Roles` hace fallar esto,
  * en vez de quedar abierto para cualquier usuario de la inmobiliaria.
  */
-const CONTROLLERS = [AlquileresController, PersonasController, PropiedadesAlquilerController];
+const CONTROLLERS = [AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController];
 
 const handlers = CONTROLLERS.flatMap((C) =>
   Object.getOwnPropertyNames(C.prototype)
@@ -24,7 +25,7 @@ const handlers = CONTROLLERS.flatMap((C) =>
 
 describe('RBAC del módulo Alquileres', () => {
   it('el test efectivamente encontró los endpoints', () => {
-    expect(handlers.length).toBeGreaterThanOrEqual(7);
+    expect(handlers.length).toBeGreaterThanOrEqual(12);
   });
 
   it.each(CONTROLLERS.map((C) => [C.name, C] as const))('%s exige tener contratado el módulo', (_n, C) => {

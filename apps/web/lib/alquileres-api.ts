@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  ContratoDtoSchema,
+  ContratoResumenDtoSchema,
+  type CambiarEstadoContrato,
+  type ContratoInput,
   PersonaDtoSchema,
   PropiedadAlquilerDtoSchema,
   ResumenAlquileresSchema,
@@ -39,4 +43,24 @@ export async function actualizarPropiedadAlquiler(accessToken: string, id: strin
     method: 'PATCH',
     body: dto,
   });
+}
+
+export async function listContratos(accessToken: string) {
+  return apiFetch('/alquileres/contratos', z.array(ContratoResumenDtoSchema), { accessToken });
+}
+
+export async function getContrato(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/contratos/${id}`, ContratoDtoSchema, { accessToken });
+}
+
+export async function crearContrato(accessToken: string, dto: ContratoInput) {
+  return apiFetch('/alquileres/contratos', ContratoDtoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+export async function actualizarContrato(accessToken: string, id: string, dto: ContratoInput) {
+  return apiFetch(`/alquileres/contratos/${id}`, ContratoDtoSchema, { accessToken, method: 'PATCH', body: dto });
+}
+
+export async function cambiarEstadoContrato(accessToken: string, id: string, cambio: CambiarEstadoContrato) {
+  return apiFetch(`/alquileres/contratos/${id}/estado`, ContratoDtoSchema, { accessToken, method: 'POST', body: cambio });
 }

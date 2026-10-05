@@ -1,0 +1,210 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { CambiarEstadoContrato, ContratoDto } from '@vacker/types';
+import { Button, Modal } from '@vacker/ui';
+import { getAccessToken } from '../../lib/supabase/client';
+import { cambiarEstadoContrato } from '../../lib/alquileres-api';
+import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { Campo, inputClass } from '../form-ui';
+import { EstadoContratoBadge } from './estado-contrato';
+
+const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
+
+function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">{etiqueta}</dt>
+      <dd className="mt-0.5 text-sm text-ink">{children}</dd>
+    </div>
+  );
+}
+
+/** La ficha de un contrato, con las acciones que corresponden a su estado (reglas 2 y 3). */
+export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
+  const router = useRouter();
+  const [confirmar, setConfirmar] = useState<null | 'vigente' | 'finalizado' | 'rescindido'>(null);
+  const [fecha, setFecha] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const m = (n: number | null) => (n == null ? '—' : fmtMoneda(n, contrato.moneda));
+
+  async function cambiar(cambio: CambiarEstadoContrato) {
+    setError(null);
+    setEnviando(true);
+    try {
+      await cambiarEstadoContrato(await getAccessToken(), contrato.id, cambio);
+      setConfirmar(null);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cambiar el estado.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const textos = {
+    vigente: {
+      titulo: 'Activar el contrato',
+      detalle: 'Desde ahora el contrato genera sus alquileres cada mes y ya no se edita completo: cambia por indexación o rescisión.',
+      boton: 'Activar',
+    },
+    finalizado: {
+      titulo: 'Finalizar el contrato',
+      detalle: 'El contrato deja de generar alquileres. Lo ya generado queda como está.',
+      boton: 'Finalizar',
+    },
+    rescindido: {
+      titulo: 'Rescindir el contrato',
+      detalle: 'Desde el mes siguiente a la fecha no se generan alquileres, y los ya generados de esos meses que no se cobraron se anulan. Lo cobrado no se toca.',
+      boton: 'Rescindir',
+    },
+  } as const;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted">
+            <Link href="/alquileres/contratos" className="hover:underline">
+              Contratos
+            </Link>{' '}
+            /
+          </p>
+          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-xl font-extrabold text-ink">
+            Contrato {contrato.codigo} <EstadoContratoBadge estado={contrato.estado} />
+          </h2>
+          <p className="text-sm text-muted">
+            {contrato.propiedad.direccion}
+            {contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}
+            {contrato.propiedad.ciudad ? ` · ${contrato.propiedad.ciudad}` : ''}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {contrato.estado === 'borrador' && (
+            <>
+              <Link href={`/alquileres/contratos/${contrato.id}/editar`}>
+                <Button variant="secondary" size="sm">
+                  Editar
+                </Button>
+              </Link>
+              <Button variant="primary" size="sm" onClick={() => setConfirmar('vigente')}>
+                Activar contrato
+              </Button>
+            </>
+          )}
+          {contrato.estado === 'vigente' && (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => setConfirmar('finalizado')}>
+                Finalizar
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setConfirmar('rescindido')}>
+                Rescindir
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <section className="rounded-brand border border-line bg-white p-5">
+        <h3 className="text-sm font-bold text-ink">Partes</h3>
+        <ul className="mt-2 flex flex-col gap-1.5">
+          {contrato.partes.map((p) => (
+            <li key={`${p.papel}-${p.personaId}`} className="flex flex-wrap items-baseline gap-2 text-sm">
+              <span className="w-24 text-[11px] font-bold uppercase tracking-wide text-muted">{p.papel}</span>
+              <span className="font-semibold text-ink">{p.nombre}</span>
+              {p.papel === 'propietario' && p.porcentaje != null && p.porcentaje !== 100 && <span className="text-muted">{p.porcentaje}%</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="rounded-brand border border-line bg-white p-5">
+        <h3 className="text-sm font-bold text-ink">Condiciones</h3>
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <Dato etiqueta="Vigencia">
+            {fmtFecha(contrato.inicio)} al {fmtFecha(contrato.fin)}
+          </Dato>
+          <Dato etiqueta="Tipo">{contrato.tipo === 'comercial' ? 'Comercial' : 'Vivienda'}</Dato>
+          <Dato etiqueta="Ajuste">
+            {contrato.ajuste === 'indexado' && contrato.indice
+              ? `${NOMBRE_INDICE[contrato.indice]} cada ${contrato.periodicidadMeses} meses`
+              : 'Escalonado'}
+          </Dato>
+          <Dato etiqueta="Vencimientos">
+            Inquilino el {contrato.diaVencimiento} · propietario el {contrato.diaPagoPropietario}
+          </Dato>
+          <Dato etiqueta="Honorarios">{contrato.honorariosPct}% + IVA</Dato>
+          <Dato etiqueta="Gastos adm.">{contrato.gastosAdmPct}% + IVA</Dato>
+          <Dato etiqueta="Punitorio diario">{contrato.punitorioDiarioPct}%</Dato>
+          <Dato etiqueta="Pago garantizado">{contrato.pagoGarantizado ? 'Sí' : 'No'}</Dato>
+          {contrato.depositoImporte != null && <Dato etiqueta="Depósito">{fmtMoneda(contrato.depositoImporte, contrato.depositoMoneda ?? contrato.moneda)}</Dato>}
+          {contrato.depositoDevolucion && <Dato etiqueta="Devolución del depósito">{fmtFecha(contrato.depositoDevolucion)}</Dato>}
+          {contrato.rescindidoEl && <Dato etiqueta="Rescindido el">{fmtFecha(contrato.rescindidoEl)}</Dato>}
+        </dl>
+        {contrato.obs && <p className="mt-3 whitespace-pre-line text-sm text-muted">{contrato.obs}</p>}
+      </section>
+
+      <section className="rounded-brand border border-line bg-white p-5">
+        <h3 className="text-sm font-bold text-ink">Tramos</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full min-w-[30rem] text-sm">
+            <thead>
+              <tr className="text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
+                <th className="py-2 pr-3">N°</th>
+                <th className="py-2 pr-3">Desde</th>
+                <th className="py-2 pr-3">Hasta</th>
+                <th className="py-2 text-right">Importe mensual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contrato.tramos.map((t) => (
+                <tr key={t.numero} className="border-t border-line">
+                  <td className="py-2 pr-3 tabular-nums text-muted">{t.numero}</td>
+                  <td className="py-2 pr-3 tabular-nums">{fmtFecha(t.desde)}</td>
+                  <td className="py-2 pr-3 tabular-nums">{fmtFecha(t.hasta)}</td>
+                  <td className="py-2 text-right font-semibold tabular-nums text-ink">
+                    {t.importe == null ? <span className="text-xs font-bold text-warning">A indexar</span> : m(t.importe)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {confirmar && (
+        <Modal title={textos[confirmar].titulo} onClose={() => setConfirmar(null)}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm leading-relaxed text-ink">{textos[confirmar].detalle}</p>
+            {confirmar === 'rescindido' && (
+              <Campo label="Fecha de rescisión" requerido>
+                <input type="date" className={inputClass} value={fecha} min={contrato.inicio} max={contrato.fin} onChange={(e) => setFecha(e.target.value)} />
+              </Campo>
+            )}
+            {error && (
+              <p role="alert" className="text-sm font-medium text-brand-red">
+                {error}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setConfirmar(null)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={enviando || (confirmar === 'rescindido' && !fecha)}
+                onClick={() => cambiar(confirmar === 'rescindido' ? { estado: 'rescindido', fecha } : { estado: confirmar })}
+              >
+                {enviando ? 'Guardando…' : textos[confirmar].boton}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
