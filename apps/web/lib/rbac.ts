@@ -41,6 +41,7 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
   team_leader: 'Team Leader',
   direccion: 'Dirección',
   publicador: 'Publicador',
+  administracion: 'Administración',
   admin_tenant: 'Admin tenant',
   admin_plataforma: 'Admin plataforma',
 };

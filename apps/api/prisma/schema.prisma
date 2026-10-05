@@ -20,7 +20,7 @@ model Tenant {
   plan      String   @default("basico") // etiqueta comercial: basico | profesional | enterprise
   // Módulos habilitados ("prendido / pagado"), fuente de verdad de permisos —
   // ModulosTenantSchema. El plan quedó como rótulo, sin efecto en accesos.
-  modulos   Json     @default("{\"tablero\": true, \"tasador\": false, \"todo\": false, \"protocolo\": false, \"publicacion\": false}")
+  modulos   Json     @default("{\"tablero\": true, \"tasador\": false, \"todo\": false, \"protocolo\": false, \"publicacion\": false, \"alquileres\": false}")
   estado    String   @default("activo") // activo | suspendido
   config    Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -41,39 +41,51 @@ model Tenant {
   propiedades              Propiedad[]
   protocolos               Protocolo[]
   protocoloAcciones        ProtocoloAccion[]
+  alqPersonas              AlqPersona[]
+  alqPropiedades           AlqPropiedad[]
+  alqContratos             AlqContrato[]
+  alqContratoPartes        AlqContratoParte[]
+  alqTramos                AlqTramo[]
+  alqConceptos             AlqConcepto[]
+  alqCobros                AlqCobro[]
+  alqImputaciones          AlqImputacion[]
+  alqLiquidaciones         AlqLiquidacion[]
+  alqDocumentos            AlqDocumento[]
+  alqFirmantes             AlqFirmante[]
+  alqFirmaEventos          AlqFirmaEvento[]
 
   @@map("tenant")
 }
 
 /// Usuario. `id` coincide con el user id de Supabase Auth.
 model Usuario {
-  id        String   @id @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  nombre    String
-  email     String
-  estado    String   @default("activo") // activo | inactivo
-  liderId   String?  @map("lider_id") @db.Uuid // Team Leader del que depende
+  id                   String   @id @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  nombre               String
+  email                String
+  estado               String   @default("activo") // activo | inactivo
+  liderId              String?  @map("lider_id") @db.Uuid // Team Leader del que depende
   // Id del usuario en Supabase Auth — null para vendedores creados desde el
   // Tablero (registros de datos sin acceso todavía, ver VendedoresService).
   // Se "activa" el acceso creándole una cuenta real y seteando este campo,
   // sin tocar `id` (que sigue siendo la PK usada en todas las FKs de negocio).
-  authUserId String? @unique @map("auth_user_id") @db.Uuid
+  authUserId           String?  @unique @map("auth_user_id") @db.Uuid
   // Foto de perfil (usuarios-avatares en Supabase Storage) — se carga desde
   // /admin, sin restricción de tamaño más allá de la que ya valida el upload.
-  fotoUrl    String? @map("foto_url")
+  fotoUrl              String?  @map("foto_url")
   // Teléfono de contacto del agente — se carga desde /admin y aparece en el
   // header del informe de tasación (email · teléfono).
-  telefono   String? @map("telefono")
+  telefono             String?  @map("telefono")
   /// El implementador da de alta con una clave temporal: hasta que la persona
   /// elija la suya, la app la manda a /cambiar-clave. Se vuelve a marcar cuando
   /// un admin resetea la contraseña (misma situación que el primer ingreso).
-  debeCambiarPassword Boolean @default(true) @map("debe_cambiar_password")
+  debeCambiarPassword  Boolean  @default(true) @map("debe_cambiar_password")
   /// Recibe el reporte semanal del Protocolo por mail. NO se deriva del rol:
   /// quién recibe un mail es una decisión de negocio, el rol es un permiso.
   /// Arranca apagado — un reporte que nadie pidió se marca como spam.
-  recibeReporteSemanal Boolean @default(false) @map("recibe_reporte_semanal")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  recibeReporteSemanal Boolean  @default(false) @map("recibe_reporte_semanal")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   lider             Usuario?                  @relation("Equipo", fields: [liderId], references: [id], onDelete: SetNull)
@@ -296,28 +308,28 @@ model Tasacion {
 
 /// Comparable de mercado cargado a mano (1..6 por tasación, validado en Zod).
 model TasacionComparable {
-  id             String    @id @default(uuid()) @db.Uuid
-  tasacionId     String    @map("tasacion_id") @db.Uuid
-  tenantId       String    @map("tenant_id") @db.Uuid
-  direccion      String
-  tipoComp       String    @default("Departamento") @map("tipo_comp")
-  superficie     Decimal   @db.Decimal(10, 2) // superficie de valuación (cubierta + semi + descubierta×0.3); USD/m² = precio/superficie
-  supCubierta    Decimal?  @map("sup_cubierta") @db.Decimal(10, 2)
-  supSemi        Decimal?  @map("sup_semi") @db.Decimal(10, 2)
-  supDescubierta Decimal?  @map("sup_descubierta") @db.Decimal(10, 2)
-  supTerreno     Decimal?  @map("sup_terreno") @db.Decimal(10, 2)
-  precio         Decimal   @db.Decimal(14, 2)
-  dormitorios    Int?
-  banos          Int?
-  antiguedad     Int?      // años de antigüedad del comparable (se muestra en el informe)
-  cochera        Boolean   @default(false)
-  estado         String?
-  fuente         String    @default("Publicación")
-  tipoPrecio     String    @default("Publicado") @map("tipo_precio")
+  id              String    @id @default(uuid()) @db.Uuid
+  tasacionId      String    @map("tasacion_id") @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  direccion       String
+  tipoComp        String    @default("Departamento") @map("tipo_comp")
+  superficie      Decimal   @db.Decimal(10, 2) // superficie de valuación (cubierta + semi + descubierta×0.3); USD/m² = precio/superficie
+  supCubierta     Decimal?  @map("sup_cubierta") @db.Decimal(10, 2)
+  supSemi         Decimal?  @map("sup_semi") @db.Decimal(10, 2)
+  supDescubierta  Decimal?  @map("sup_descubierta") @db.Decimal(10, 2)
+  supTerreno      Decimal?  @map("sup_terreno") @db.Decimal(10, 2)
+  precio          Decimal   @db.Decimal(14, 2)
+  dormitorios     Int?
+  banos           Int?
+  antiguedad      Int? // años de antigüedad del comparable (se muestra en el informe)
+  cochera         Boolean   @default(false)
+  estado          String?
+  fuente          String    @default("Publicación")
+  tipoPrecio      String    @default("Publicado") @map("tipo_precio")
   fechaReferencia DateTime? @map("fecha_referencia") @db.Date
-  distanciaKm    Decimal?  @map("distancia_km") @db.Decimal(8, 2)
-  link           String?
-  observaciones  String?
+  distanciaKm     Decimal?  @map("distancia_km") @db.Decimal(8, 2)
+  link            String?
+  observaciones   String?
 
   tasacion Tasacion @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -396,19 +408,19 @@ model InformeGenerado {
 /// el valor. La clave de cifrado vive en INTEGRACIONES_ENC_KEY, fuera de la base
 /// — quien lea un backup no puede usar las credenciales.
 model IntegracionCredencial {
-  id        String @id @default(uuid()) @db.Uuid
-  tenantId  String @map("tenant_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
   /// Proveedor: por ahora solo 'tokko'.
-  proveedor String
+  proveedor      String
   /// Secreto cifrado, formato "iv.tag.ciphertext" en base64.
-  secretoEnc String @map("secreto_enc")
+  secretoEnc     String   @map("secreto_enc")
   /// Últimos 4 caracteres en claro, para que el admin reconozca cuál cargó sin
   /// que la API tenga que devolver el secreto.
-  ultimos4  String @map("ultimos4")
+  ultimos4       String   @map("ultimos4")
   /// Quién la cargó por última vez, para poder preguntarle.
-  actualizadoPor String? @map("actualizado_por") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  actualizadoPor String?  @map("actualizado_por") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -435,30 +447,30 @@ model Propiedad {
   /// el que se hace el match al publicar (`reference_code` del importador).
   referenceCode String? @map("reference_code")
 
-  titulo    String?
-  tipo      String?
-  operacion String?
-  precio    Decimal? @db.Decimal(14, 2)
-  moneda    String?
-  direccion String?
-  ubicacion String?
-  fotos     Int      @default(0)
-  fotoPortada String? @map("foto_portada")
-  publicUrl String?  @map("public_url")
-  estado    String?
+  titulo      String?
+  tipo        String?
+  operacion   String?
+  precio      Decimal? @db.Decimal(14, 2)
+  moneda      String?
+  direccion   String?
+  ubicacion   String?
+  fotos       Int      @default(0)
+  fotoPortada String?  @map("foto_portada")
+  publicUrl   String?  @map("public_url")
+  estado      String?
 
   /// Vendedor que la captó. Se resuelve por el email del `producer` de Tokko;
   /// queda en null cuando ese email no corresponde a ningún usuario nuestro.
-  agenteId        String? @map("agente_id") @db.Uuid
+  agenteId          String? @map("agente_id") @db.Uuid
   /// El email tal como vino de Tokko, aunque no haya matcheado. Sin esto no se
   /// puede ofrecer vincularlo después: se perdería a quién pertenece.
-  agenteEmailTokko String? @map("agente_email_tokko")
+  agenteEmailTokko  String? @map("agente_email_tokko")
   agenteNombreTokko String? @map("agente_nombre_tokko")
 
   /// Fechas de Tokko, no las nuestras: `updated_at` es lo que el importador usa
   /// para decidir si una modificación se aplica o se ignora.
-  creadoEnTokko     DateTime? @map("creado_en_tokko") @db.Timestamptz(6)
-  importadoEl       DateTime  @default(now()) @map("importado_el") @db.Timestamptz(6)
+  creadoEnTokko DateTime? @map("creado_en_tokko") @db.Timestamptz(6)
+  importadoEl   DateTime  @default(now()) @map("importado_el") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -539,9 +551,9 @@ model Protocolo {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  tasacion Tasacion           @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
-  agente   Usuario            @relation(fields: [agenteId], references: [id], onDelete: Restrict)
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tasacion Tasacion          @relation(fields: [tasacionId], references: [id], onDelete: Cascade)
+  agente   Usuario           @relation(fields: [agenteId], references: [id], onDelete: Restrict)
   acciones ProtocoloAccion[]
 
   @@index([tenantId])
@@ -577,4 +589,321 @@ model ProtocoloAccion {
   @@index([tenantId])
   @@index([protocoloId])
   @@map("protocolo_accion")
+}
+
+// ============================================================================
+// Módulo Alquileres — administración de contratos de alquiler.
+// Ver docs/specs/alquileres-fase-1.md (qué) y alquileres-fase-1-plan.md (cómo).
+//
+// Todas las tablas llevan tenant_id, aunque se pueda deducir del padre: la
+// policy de RLS tiene que poder filtrar cada tabla sola.
+//
+// Los campos `*PorId` (quién confirmó, anuló, cargó) son uuid SIN clave
+// foránea a `usuario` a propósito: son auditoría, y un usuario dado de baja no
+// puede dejar huérfano —ni impedir borrar— un movimiento de plata.
+// ============================================================================
+
+/// Una persona del módulo: propietario, inquilino o garante. El papel no vive
+/// acá sino en cada contrato (`AlqContratoParte`): la misma persona puede ser
+/// propietaria de un contrato e inquilina de otro.
+model AlqPersona {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  tipo      String   @default("fisica") // fisica | juridica
+  nombre    String
+  documento String? // DNI o CUIT, sin puntos ni guiones
+  email     String?
+  telefono  String?
+  domicilio String?
+  obs       String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partes        AlqContratoParte[]
+  conceptos     AlqConcepto[]
+  cobros        AlqCobro[]
+  liquidaciones AlqLiquidacion[]
+  firmas        AlqFirmante[]
+
+  @@unique([tenantId, documento])
+  @@index([tenantId])
+  @@map("alq_persona")
+}
+
+/// La unidad que se alquila. Tabla propia y no el modelo `Propiedad`, que es
+/// el espejo de Tokko: una unidad alquilada puede no estar publicada. Si está,
+/// `tokkoId` permite vincularlas.
+model AlqPropiedad {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  direccion String
+  unidad    String? // piso y depto, local, cochera
+  ciudad    String?
+  tipo      String? // vivienda | local | oficina | cochera | otro
+  tokkoId   Int?     @map("tokko_id")
+  obs       String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contratos AlqContrato[]
+
+  @@index([tenantId])
+  @@map("alq_propiedad")
+}
+
+model AlqContrato {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  codigo             String
+  propiedadId        String    @map("propiedad_id") @db.Uuid
+  tipo               String    @default("vivienda") // vivienda | comercial
+  moneda             String    @default("ARS") // ARS | USD — todo el contrato va en esta moneda
+  inicio             DateTime  @db.Date
+  fin                DateTime  @db.Date
+  fechaFirma         DateTime? @map("fecha_firma") @db.Date
+  diaVencimiento     Int       @default(10) @map("dia_vencimiento")
+  ajuste             String    @default("indexado") // indexado | escalonado
+  indice             String? // ICL | IPC | CCP
+  periodicidadMeses  Int?      @map("periodicidad_meses")
+  honorariosPct      Decimal   @default(0) @map("honorarios_pct") @db.Decimal(5, 2)
+  gastosAdmPct       Decimal   @default(0) @map("gastos_adm_pct") @db.Decimal(5, 2)
+  ivaPct             Decimal   @default(0) @map("iva_pct") @db.Decimal(5, 2)
+  punitorioDiarioPct Decimal   @default(0) @map("punitorio_diario_pct") @db.Decimal(6, 3)
+  pagoGarantizado    Boolean   @default(false) @map("pago_garantizado")
+  depositoImporte    Decimal?  @map("deposito_importe") @db.Decimal(14, 2)
+  depositoMoneda     String?   @map("deposito_moneda")
+  depositoDevolucion DateTime? @map("deposito_devolucion") @db.Date
+  estado             String    @default("borrador") // borrador | vigente | finalizado | rescindido
+  rescindidoEl       DateTime? @map("rescindido_el") @db.Date
+  obs                String?
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propiedad  AlqPropiedad       @relation(fields: [propiedadId], references: [id], onDelete: Restrict)
+  partes     AlqContratoParte[]
+  tramos     AlqTramo[]
+  conceptos  AlqConcepto[]
+  documentos AlqDocumento[]
+
+  @@unique([tenantId, codigo])
+  @@index([tenantId])
+  @@index([tenantId, estado])
+  @@map("alq_contrato")
+}
+
+/// Quién es quién en un contrato. `porcentaje` solo para propietarios, y entre
+/// todos suman 100 (regla 4 de la spec).
+model AlqContratoParte {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  contratoId String   @map("contrato_id") @db.Uuid
+  personaId  String   @map("persona_id") @db.Uuid
+  papel      String // propietario | inquilino | garante
+  porcentaje Decimal? @db.Decimal(5, 2)
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato AlqContrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  persona  AlqPersona  @relation(fields: [personaId], references: [id], onDelete: Restrict)
+
+  @@unique([contratoId, personaId, papel])
+  @@index([tenantId])
+  @@index([personaId])
+  @@map("alq_contrato_parte")
+}
+
+/// Un período del contrato con su importe mensual. En un contrato indexado,
+/// `importe` queda vacío hasta que alguien confirma la propuesta (reglas 5–6).
+model AlqTramo {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  contratoId       String    @map("contrato_id") @db.Uuid
+  numero           Int
+  desde            DateTime  @db.Date
+  hasta            DateTime  @db.Date
+  importe          Decimal?  @db.Decimal(14, 2)
+  indiceBase       Decimal?  @map("indice_base") @db.Decimal(18, 6)
+  indiceRequerido  Decimal?  @map("indice_requerido") @db.Decimal(18, 6)
+  importePropuesto Decimal?  @map("importe_propuesto") @db.Decimal(14, 2)
+  confirmadoEl     DateTime? @map("confirmado_el") @db.Timestamptz(6)
+  confirmadoPorId  String?   @map("confirmado_por_id") @db.Uuid
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato AlqContrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@unique([contratoId, numero])
+  @@index([tenantId])
+  @@map("alq_tramo")
+}
+
+/// Lo que alguien debe, o lo que se le debe a alguien. La pieza central.
+///
+/// `claveGeneracion` es lo que hace idempotente la generación del período
+/// (regla 10): los conceptos generados la llevan —contrato, persona, tipo y
+/// período— y los cargados a mano la dejan vacía. La restricción única la
+/// garantiza la base, no un `if` que se pueda saltear.
+model AlqConcepto {
+  id                        String    @id @default(uuid()) @db.Uuid
+  tenantId                  String    @map("tenant_id") @db.Uuid
+  contratoId                String?   @map("contrato_id") @db.Uuid
+  personaId                 String    @map("persona_id") @db.Uuid
+  tipo                      String // alquiler | gastos_adm | honorarios | iva | punitorio | expensa | impuesto | servicio | reparacion | saldo_inicial | otro
+  sentido                   String // a_cobrar | a_pagar
+  moneda                    String    @default("ARS")
+  periodo                   String? // YYYY-MM
+  vencimiento               DateTime  @db.Date
+  importe                   Decimal   @db.Decimal(14, 2)
+  adelantadoPorInmobiliaria Boolean   @default(false) @map("adelantado_por_inmobiliaria")
+  liquidacionId             String?   @map("liquidacion_id") @db.Uuid
+  origenId                  String?   @map("origen_id") @db.Uuid
+  descripcion               String?
+  claveGeneracion           String?   @map("clave_generacion")
+  anuladoEn                 DateTime? @map("anulado_en") @db.Timestamptz(6)
+  anuladoPorId              String?   @map("anulado_por_id") @db.Uuid
+  motivoAnulacion           String?   @map("motivo_anulacion")
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato     AlqContrato?    @relation(fields: [contratoId], references: [id], onDelete: Restrict)
+  persona      AlqPersona      @relation(fields: [personaId], references: [id], onDelete: Restrict)
+  liquidacion  AlqLiquidacion? @relation(fields: [liquidacionId], references: [id], onDelete: SetNull)
+  imputaciones AlqImputacion[]
+
+  @@unique([tenantId, claveGeneracion])
+  @@index([tenantId])
+  @@index([tenantId, personaId])
+  @@index([tenantId, periodo])
+  @@index([contratoId])
+  @@map("alq_concepto")
+}
+
+/// Plata que entra (de un inquilino) o sale. Nunca se borra: se anula (regla 19).
+model AlqCobro {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  personaId       String    @map("persona_id") @db.Uuid
+  fecha           DateTime  @db.Date
+  moneda          String    @default("ARS")
+  importe         Decimal   @db.Decimal(14, 2)
+  medio           String // transferencia | efectivo | cheque | otro
+  obs             String?
+  creadoPorId     String?   @map("creado_por_id") @db.Uuid
+  anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(6)
+  anuladoPorId    String?   @map("anulado_por_id") @db.Uuid
+  motivoAnulacion String?   @map("motivo_anulacion")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  persona      AlqPersona      @relation(fields: [personaId], references: [id], onDelete: Restrict)
+  imputaciones AlqImputacion[]
+
+  @@index([tenantId])
+  @@index([tenantId, personaId])
+  @@map("alq_cobro")
+}
+
+/// Cuánto de un cobro se aplicó a cada concepto. El saldo de un concepto es su
+/// importe menos lo imputado; la cuenta corriente no es una tabla (ver el plan).
+model AlqImputacion {
+  id         String  @id @default(uuid()) @db.Uuid
+  tenantId   String  @map("tenant_id") @db.Uuid
+  cobroId    String  @map("cobro_id") @db.Uuid
+  conceptoId String  @map("concepto_id") @db.Uuid
+  importe    Decimal @db.Decimal(14, 2)
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cobro    AlqCobro    @relation(fields: [cobroId], references: [id], onDelete: Cascade)
+  concepto AlqConcepto @relation(fields: [conceptoId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([cobroId])
+  @@index([conceptoId])
+  @@map("alq_imputacion")
+}
+
+/// Lo que se le paga a un propietario por un período, neto de honorarios y
+/// gastos (reglas 20–22). Cada concepto apunta a la liquidación que lo saldó.
+model AlqLiquidacion {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  personaId       String    @map("persona_id") @db.Uuid
+  periodo         String // YYYY-MM
+  moneda          String    @default("ARS")
+  neto            Decimal   @db.Decimal(14, 2)
+  fecha           DateTime  @db.Date
+  creadoPorId     String?   @map("creado_por_id") @db.Uuid
+  anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(6)
+  anuladoPorId    String?   @map("anulado_por_id") @db.Uuid
+  motivoAnulacion String?   @map("motivo_anulacion")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  persona   AlqPersona    @relation(fields: [personaId], references: [id], onDelete: Restrict)
+  conceptos AlqConcepto[]
+
+  @@index([tenantId])
+  @@index([tenantId, personaId])
+  @@map("alq_liquidacion")
+}
+
+/// El documento de un contrato y su estado de firma (reglas 33–36). El
+/// proveedor de firma queda detrás de una interfaz propia: acá solo se guarda
+/// cuál fue y el identificador que devolvió.
+model AlqDocumento {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  contratoId     String   @map("contrato_id") @db.Uuid
+  archivo        String? // ruta en Storage
+  estadoFirma    String   @default("sin_enviar") @map("estado_firma") // sin_enviar | enviado | firmado_parcial | firmado | rechazado | vencido
+  proveedor      String? // manual | <nombre del proveedor>
+  envioExternoId String?  @map("envio_externo_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato  AlqContrato      @relation(fields: [contratoId], references: [id], onDelete: Restrict)
+  firmantes AlqFirmante[]
+  eventos   AlqFirmaEvento[]
+
+  @@index([tenantId])
+  @@index([contratoId])
+  @@map("alq_documento")
+}
+
+model AlqFirmante {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  documentoId String @map("documento_id") @db.Uuid
+  personaId   String @map("persona_id") @db.Uuid
+  estado      String @default("pendiente") // pendiente | firmado | rechazado
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documento AlqDocumento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  persona   AlqPersona   @relation(fields: [personaId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([documentoId])
+  @@map("alq_firmante")
+}
+
+/// Cada cambio de estado de firma, con su origen (regla 34). Solo se agrega.
+model AlqFirmaEvento {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  documentoId    String   @map("documento_id") @db.Uuid
+  fecha          DateTime @default(now()) @db.Timestamptz(6)
+  estadoAnterior String?  @map("estado_anterior")
+  estadoNuevo    String   @map("estado_nuevo")
+  origen         String // manual | <nombre del proveedor>
+  detalle        Json?
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documento AlqDocumento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([documentoId])
+  @@map("alq_firma_evento")
 }

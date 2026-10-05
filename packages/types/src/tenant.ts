@@ -45,7 +45,7 @@ export function configPorDefecto(): TenantConfig {
   return TenantConfigSchema.parse({});
 }
 
-export const MODULO_KEYS = ['tablero', 'tasador', 'todo', 'protocolo', 'publicacion'] as const;
+export const MODULO_KEYS = ['tablero', 'tasador', 'todo', 'protocolo', 'publicacion', 'alquileres'] as const;
 export type ModuloKey = (typeof MODULO_KEYS)[number];
 
 /**
@@ -63,6 +63,13 @@ export const ModulosTenantSchema = z.object({
   todo: z.boolean(),
   protocolo: z.boolean(),
   publicacion: z.boolean(),
+  /**
+   * Con `.default(false)` y no obligatoria como las demás, a propósito: la web
+   * (Vercel) se publica antes que la API (Render). En esos minutos la API vieja
+   * devuelve los módulos sin esta clave, y una clave obligatoria rompería la
+   * Home de todas las inmobiliarias. La migración la completa en la base.
+   */
+  alquileres: z.boolean().default(false),
 });
 export type ModulosTenant = z.infer<typeof ModulosTenantSchema>;
 
@@ -73,6 +80,7 @@ export const MODULOS_DEFAULT: ModulosTenant = {
   todo: false,
   protocolo: false,
   publicacion: false,
+  alquileres: false,
 };
 
 /** Lista de claves habilitadas, para iterar (la Home arma las tarjetas con esto). */
