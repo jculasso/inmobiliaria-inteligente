@@ -2,22 +2,25 @@
 
 import { marcasDelEje } from '../../lib/eje';
 
-/*
- * La línea va en tinta y no en el verde de «éxito». Las barras toman el color
- * de la inmobiliaria, y Alteva es verde: línea y barras salían del mismo tono,
- * y los puntos —con su borde blanco— parecían anillos sueltos sobre las barras.
- * La tinta contrasta con cualquier color de marca.
- */
-const COLOR_LINEA = 'var(--color-ink)';
-
 /**
- * Barras + línea por período, con doble eje. Clickeable: tocar una barra
- * elige ese período.
+ * Dos magnitudes por período —volumen y comisión, o alquileres y comisión—, en
+ * DOS paneles alineados: cada mes ocupa la misma columna en los dos, y cada
+ * panel tiene su propia escala. Clickeable: tocar una barra elige ese período.
  *
- * Nació como el gráfico trimestral de ventas —barras de volumen, línea de
- * comisión— y se generalizó el 25/09/2026 para los meses y para alquileres.
- * Vacker pidió alquileres «bajo el mismo esquema que el de ventas», así que el
- * esquema es este mismo: la magnitud principal en barras, la comisión en línea.
+ * POR QUÉ DOS PANELES Y NO BARRAS CON UNA LÍNEA ENCIMA. Hasta el 5/10/2026 era
+ * un gráfico de doble eje: el volumen en barras y la comisión en una línea
+ * superpuesta, con su escala a la derecha. Se corrigieron las marcas del eje,
+ * el color de la línea y los meses futuros, y seguía viéndose mal — porque el
+ * problema era el formato. Con dos escalas en el mismo espacio, la línea no
+ * tiene ninguna relación visual con las barras: septiembre era la barra más
+ * alta con el punto a media altura, agosto tenía el punto por encima de su
+ * barra, y quien lo mira lee una contradicción que no existe. Separados, cada
+ * barra se lee contra su propio eje y la comparación entre meses se hace en
+ * vertical, columna por columna.
+ *
+ * Nació como el gráfico trimestral de ventas y se generalizó el 25/09/2026 para
+ * los meses y para alquileres, que Vacker pidió «bajo el mismo esquema que el
+ * de ventas».
  */
 export function PeriodosChart({
   etiquetas,
@@ -36,11 +39,13 @@ export function PeriodosChart({
   transcurridos,
 }: {
   etiquetas: string[];
+  /** El panel de arriba: la magnitud principal (volumen, alquileres firmados). */
   barras: number[];
+  /** El panel de abajo: la comisión. Se llamaba línea y el nombre quedó. */
   linea: number[];
   formatoBarras: (n: number) => string;
   formatoLinea: (n: number) => string;
-  /** Para la leyenda, p. ej. «Volumen USD». */
+  /** El título de cada panel, p. ej. «Volumen USD». */
   nombreBarras: string;
   nombreLinea: string;
   /** Para las barras acostadas del celular, donde el «USD» sobra al lado del «$». */
@@ -51,42 +56,35 @@ export function PeriodosChart({
   /** La ayuda de abajo a la derecha, p. ej. «tocá una barra o un trimestre». */
   pista: string;
   titulo: string;
-  /** Las barras cuentan cosas enteras —alquileres, no dólares—: marcas enteras. */
+  /** El panel de arriba cuenta cosas enteras —alquileres, no dólares—: marcas enteras. */
   barrasEnteras?: boolean;
   /**
    * Cuántos períodos ya empezaron (ver `periodosTranscurridos`). Los que vienen
-   * no llevan barra ni punto: la línea termina en el mes en curso en vez de
-   * caer a cero. Sin el dato se dibujan todos.
+   * no llevan barra: valen «todavía no», no cero. Sin el dato se dibujan todos.
    */
   transcurridos?: number;
 }) {
   const n = etiquetas.length;
   const width = 720;
-  const height = 220;
   const marginLeft = 56;
-  const marginRight = 56;
+  const marginRight = 12;
   const plotWidth = width - marginLeft - marginRight;
   // Con doce barras el hueco de cuatro las dejaría finitas como palillos.
   const barGap = n > 6 ? 8 : 20;
-  const barWidth = plotWidth / n - barGap;
-
-  // Cada eje con sus propias marcas redondas: las de las barras dibujan la
-  // grilla, las de la línea solo su etiqueta. Compartir los cuartos obligaba a
-  // marcas como 22.500, que la etiqueta redondeaba a «$23k». Ver `marcasDelEje`.
-  const ejeBarras = marcasDelEje(Math.max(...barras), barrasEnteras);
-  const ejeLinea = marcasDelEje(Math.max(...linea));
-  const barMax = ejeBarras.techo;
-  const lineMax = ejeLinea.techo;
-
+  const barWidth = (plotWidth - barGap * (n - 1)) / n;
   const xFor = (i: number) => marginLeft + i * (barWidth + barGap);
-  const yBar = (v: number) => height - (v / barMax) * (height - 10);
-  const yLine = (v: number) => height - (v / lineMax) * (height - 10);
-
   const hasta = Math.min(transcurridos ?? n, n);
-  const linePoints = linea
-    .slice(0, hasta)
-    .map((v, i) => `${xFor(i) + barWidth / 2},${yLine(v)}`)
-    .join(' ');
+
+  // El de arriba más alto: es la magnitud principal. El de abajo alcanza para
+  // ver la forma de la comisión mes a mes.
+  const paneles = [
+    { clave: 'barras', nombre: nombreBarras, valores: barras, formato: formatoBarras, eje: marcasDelEje(Math.max(...barras), barrasEnteras), top: 26, alto: 140 },
+    { clave: 'linea', nombre: nombreLinea, valores: linea, formato: formatoLinea, eje: marcasDelEje(Math.max(...linea), false, 3), top: 210, alto: 84 },
+  ];
+  /** El largo de las barras acostadas del celular, contra el mismo techo. */
+  const barMax = paneles[0]!.eje.techo;
+  const yEtiquetas = 294 + 20;
+  const height = yEtiquetas + 8;
 
   // El scroller queda solo para pantalla ancha: si el gráfico no entra en una
   // tablet angosta, se desliza ahí y no en el celular.
@@ -146,89 +144,86 @@ export function PeriodosChart({
       </ul>
 
       <svg
-        viewBox={`0 0 ${width} ${height + 26}`}
+        viewBox={`0 0 ${width} ${height}`}
         className="hidden w-full min-w-[520px] sm:block"
         role="img"
         aria-label={titulo}
       >
-        {ejeBarras.marcas.map((m) => (
-          <g key={`b-${m}`}>
-            <line x1={marginLeft} y1={yBar(m)} x2={width - marginRight} y2={yBar(m)} stroke="var(--color-line)" strokeWidth={1} />
-            <text x={marginLeft - 8} y={yBar(m) + 4} fontSize={10} textAnchor="end" fill="var(--color-muted)">
-              {formatoBarras(m)}
-            </text>
-          </g>
-        ))}
-        {ejeLinea.marcas.map((m) => (
-          <text key={`l-${m}`} x={width - marginRight + 8} y={yLine(m) + 4} fontSize={10} textAnchor="start" fill={COLOR_LINEA}>
-            {formatoLinea(m)}
-          </text>
-        ))}
-
-        {barras.map((v, i) => {
-          const x = xFor(i);
-          const h = (v / barMax) * (height - 10);
-          const activo = seleccionado === i + 1;
+        {paneles.map((p) => {
+          const y = (v: number) => p.top + p.alto - (v / p.eje.techo) * p.alto;
           return (
-            <g key={i} onClick={() => onSelect(i + 1)} className="cursor-pointer">
-              {i < hasta && (
-              <rect
-                x={x}
-                y={yBar(v)}
-                width={barWidth}
-                height={Math.max(h, 1)}
-                rx={n > 6 ? 2 : 4}
-                fill={activo ? 'var(--color-brand-red-dark)' : 'var(--color-brand-red)'}
-              />
-              )}
-              <text
-                x={x + barWidth / 2}
-                y={height + 18}
-                textAnchor="middle"
-                fontSize={n > 6 ? 11 : 12}
-                fontWeight={activo ? 700 : 500}
-                fill={activo ? 'var(--color-brand-red)' : 'var(--color-ink)'}
-              >
-                {etiquetas[i]}
+            <g key={p.clave}>
+              <text x={marginLeft} y={p.top - 12} fontSize={11} fontWeight={700} fill="var(--color-ink)">
+                {p.nombre}
               </text>
+              {p.eje.marcas.map((m) => (
+                <g key={m}>
+                  <line x1={marginLeft} y1={y(m)} x2={width - marginRight} y2={y(m)} stroke="var(--color-line)" strokeWidth={1} />
+                  <text x={marginLeft - 8} y={y(m) + 4} fontSize={10} textAnchor="end" fill="var(--color-muted)">
+                    {p.formato(m)}
+                  </text>
+                </g>
+              ))}
+              {p.valores.slice(0, hasta).map((v, i) => {
+                const activo = seleccionado === i + 1;
+                const alto = (v / p.eje.techo) * p.alto;
+                return (
+                  <rect
+                    key={i}
+                    x={xFor(i)}
+                    y={p.top + p.alto - Math.max(alto, 1)}
+                    width={barWidth}
+                    height={Math.max(alto, 1)}
+                    rx={n > 6 ? 2 : 4}
+                    fill={activo ? 'var(--color-brand-red-dark)' : 'var(--color-brand-red)'}
+                    // La comisión, un poco más clara: se distingue de un vistazo
+                    // cuál panel es cuál sin sumar un segundo color de marca.
+                    fillOpacity={p.clave === 'linea' && !activo ? 0.6 : 1}
+                    className="cursor-pointer"
+                    onClick={() => onSelect(i + 1)}
+                  >
+                    <title>{`${etiquetas[i]}: ${p.formato(v)}`}</title>
+                  </rect>
+                );
+              })}
             </g>
           );
         })}
 
-        <polyline points={linePoints} fill="none" stroke={COLOR_LINEA} strokeWidth={2} />
-        {/*
-          Puntos huecos —blancos con borde de tinta— y no rellenos con borde
-          blanco: así se ven iguales sobre una barra y sobre el fondo. Antes,
-          sobre la barra parecían anillos y afuera puntos negros, como si fueran
-          dos series distintas.
-        */}
-        {linea.slice(0, hasta).map((v, i) => (
-          <circle
-            key={`dot-${i}`}
-            cx={xFor(i) + barWidth / 2}
-            cy={yLine(v)}
-            r={n > 6 ? 4 : 5}
-            fill="white"
-            stroke={COLOR_LINEA}
-            strokeWidth={2.5}
-            className="cursor-pointer"
-            onClick={() => onSelect(i + 1)}
-          />
-        ))}
+        {etiquetas.map((etiqueta, i) => {
+          const activo = seleccionado === i + 1;
+          return (
+            <text
+              key={etiqueta}
+              x={xFor(i) + barWidth / 2}
+              y={yEtiquetas}
+              textAnchor="middle"
+              fontSize={n > 6 ? 11 : 12}
+              fontWeight={activo ? 700 : 500}
+              fill={activo ? 'var(--color-brand-red)' : 'var(--color-ink)'}
+              className="cursor-pointer"
+              onClick={() => onSelect(i + 1)}
+            >
+              {etiqueta}
+            </text>
+          );
+        })}
       </svg>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-        <div className="flex items-center gap-4">
+        {/* En pantalla ancha cada panel tiene su título; la leyenda queda para
+            las barras acostadas del celular, que muestran los dos números. */}
+        <div className="flex items-center gap-4 sm:hidden">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-brand-red" aria-hidden />
             {nombreBarras}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-ink" aria-hidden />
-            {nombreLinea}
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted" aria-hidden />
+            {nombreLineaCorto}
           </span>
         </div>
-        <span>{pista}</span>
+        <span className="sm:ml-auto">{pista}</span>
       </div>
     </div>
   );

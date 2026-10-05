@@ -23,8 +23,9 @@ describe('VentasChart — por trimestre', () => {
     render(<VentasChart anio={2025} datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={vi.fn()} />);
     expect(enElGrafico().getByText('Q1')).toBeInTheDocument();
     expect(enElGrafico().getByText('Q4')).toBeInTheDocument();
-    expect(screen.getByText('Volumen USD')).toBeInTheDocument();
-    expect(screen.getByText('Comisión USD')).toBeInTheDocument();
+    // Cada panel lleva su título.
+    expect(enElGrafico().getByText('Volumen USD')).toBeInTheDocument();
+    expect(enElGrafico().getByText('Comisión USD')).toBeInTheDocument();
   });
 
   it('al hacer click en una barra llama a onSelect con el trimestre', async () => {
