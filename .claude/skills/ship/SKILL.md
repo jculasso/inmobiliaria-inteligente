@@ -96,10 +96,24 @@ Rebase, no merge commit: el historial se lee lineal.
 
 ## 7. Si el cambio incluye una migración de Prisma
 
-Render corre `prisma migrate deploy` al desplegar, así que la migración se
-aplica sola al mergear. Antes de llegar acá tenía que estar validada contra la
-base real dentro de `BEGIN … ROLLBACK` — ver la skill `sql-produccion`.
+**Render NO corre las migraciones.** Al mergear se despliega el código de la
+API, pero el esquema de la base no cambia: la migración se aplica a mano,
+desde la máquina local, con
+
+```bash
+pnpm --filter @vacker/api prisma:deploy
+```
+
+Comprobado el 14/08/2026: `_prisma_migrations` quedó con la hora exacta del
+comando, y la API nueva recién arrancó minutos después. Hasta el 5/10/2026
+esta sección decía lo contrario.
+
+El orden importa: si la API nueva llega antes que la migración, falla contra
+la base vieja. Aplicá la migración **antes** de mergear, y escribila de modo
+que la API vieja la tolere (columnas nuevas opcionales o con default). Antes
+de aplicarla, tiene que estar validada contra la base real dentro de
+`BEGIN … ROLLBACK` — ver la skill `sql-produccion`.
 
 Toda tabla de negocio nueva lleva **RLS** más su `REVOKE`/`GRANT`, y se suma a
-`isolation.e2e-spec.ts`. Si no está en ese test, el aislamiento no está
+`apps/api/test/aislamiento.e2e-spec.ts`. Si no está en ese test, el aislamiento no está
 verificado por más que la policy exista.
