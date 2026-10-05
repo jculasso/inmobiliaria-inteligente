@@ -167,6 +167,7 @@ export const RolAsignableSchema = z.enum([
   'team_leader',
   'direccion',
   'publicador',
+  'administracion',
   'admin_tenant',
 ]);
 export type RolAsignable = z.infer<typeof RolAsignableSchema>;

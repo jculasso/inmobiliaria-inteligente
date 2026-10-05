@@ -16,6 +16,14 @@ export const RolSchema = z.enum([
    * ver ni tocar nada del Tablero.
    */
   'publicador',
+  /**
+   * Administra los alquileres: contratos, indexaciones, cobros y liquidaciones
+   * (módulo Alquileres). Rol FUNCIONAL, como `publicador`: lo tiene la persona
+   * que hoy opera Gexion en Vacker. No ve nada del Tablero Comercial — ni
+   * comisiones, ni objetivos, ni la sección de alquileres firmados, que es de
+   * conducción (`ROLES_ALQUILERES`).
+   */
+  'administracion',
   'admin_tenant',
   'admin_plataforma',
 ]);
@@ -45,4 +53,29 @@ export const ROLES_ALQUILERES = ['direccion', 'admin_tenant'] as const satisfies
 
 export function puedeVerAlquileres(roles: readonly Rol[]): boolean {
   return roles.some((r) => (ROLES_ALQUILERES as readonly Rol[]).includes(r));
+}
+
+/**
+ * Quién entra al módulo Alquileres (la administración de contratos).
+ *
+ * NO confundir con `ROLES_ALQUILERES`, de arriba: esa es la sección de
+ * alquileres firmados del Tablero Comercial —un número de conducción— y no
+ * incluye a `administracion`. Esta es la operación diaria de los contratos.
+ *
+ * En este módulo ver y poder coinciden: los contratos no tienen puntas, son de
+ * la inmobiliaria. Quien entra ve la cartera entera; quien no, nada. Ver
+ * docs/specs/alquileres-fase-1.md §3.
+ *
+ * La usan el `@Roles` de cada endpoint del módulo, la Home y el layout de la
+ * web: una sola lista, para que no se separen (la lección de
+ * `ROLES_PUBLICACION`).
+ */
+export const ROLES_ADMINISTRACION_ALQUILERES = [
+  'administracion',
+  'direccion',
+  'admin_tenant',
+] as const satisfies readonly Rol[];
+
+export function puedeAdministrarAlquileres(roles: readonly Rol[]): boolean {
+  return roles.some((r) => (ROLES_ADMINISTRACION_ALQUILERES as readonly Rol[]).includes(r));
 }

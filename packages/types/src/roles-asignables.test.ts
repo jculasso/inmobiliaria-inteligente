@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { RolAsignableSchema, RolSchema, ROLES_PUBLICACION } from './index';
+import {
+  RolAsignableSchema,
+  RolSchema,
+  ROLES_ADMINISTRACION_ALQUILERES,
+  ROLES_ALQUILERES,
+  ROLES_PUBLICACION,
+  puedeAdministrarAlquileres,
+} from './index';
 
 describe('roles asignables', () => {
   /**
@@ -44,5 +51,33 @@ describe('puedeVerAlquileres', () => {
   it('alcanza con tener uno de los roles', async () => {
     const { puedeVerAlquileres } = await import('./rol');
     expect(puedeVerAlquileres(['team_leader', 'direccion'])).toBe(true);
+  });
+});
+
+/**
+ * El módulo Alquileres (spec alquileres-fase-1.md §3): lo operan
+ * `administracion`, `direccion` y `admin_tenant`; nadie más.
+ */
+describe('quién entra al módulo Alquileres', () => {
+  it('el rol que lo opera se puede asignar desde la app', () => {
+    expect(RolAsignableSchema.options).toContain('administracion');
+    expect(ROLES_ADMINISTRACION_ALQUILERES).toContain('administracion');
+  });
+
+  it.each(['administracion', 'direccion', 'admin_tenant'] as const)('%s entra', (rol) => {
+    expect(puedeAdministrarAlquileres([rol])).toBe(true);
+  });
+
+  it.each(['vendedor', 'team_leader', 'publicador', 'admin_plataforma'] as const)('%s no entra', (rol) => {
+    expect(puedeAdministrarAlquileres([rol])).toBe(false);
+  });
+
+  /*
+   * Son dos listas distintas a propósito. `ROLES_ALQUILERES` es la sección de
+   * alquileres firmados del Tablero Comercial —conducción—, y quien administra
+   * los contratos no ve nada del Tablero.
+   */
+  it('administración no ve la sección de alquileres del Tablero', () => {
+    expect(ROLES_ALQUILERES).not.toContain('administracion');
   });
 });

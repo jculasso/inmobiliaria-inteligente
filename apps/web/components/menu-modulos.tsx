@@ -12,6 +12,7 @@ const ICONO: Record<ModuloKey, string> = {
   todo: '🗓️',
   protocolo: '📋',
   publicacion: '🌐',
+  alquileres: '🔑',
 };
 
 const RUTA: Record<ModuloKey, string> = {
@@ -20,6 +21,7 @@ const RUTA: Record<ModuloKey, string> = {
   todo: '/todo',
   protocolo: '/protocolo',
   publicacion: '/publicacion',
+  alquileres: '/alquileres',
 };
 
 /**

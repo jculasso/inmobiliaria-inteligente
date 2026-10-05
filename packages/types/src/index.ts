@@ -41,3 +41,4 @@ export * from './protocolo';
 // pantalla que lo corre a pedido, así que el contrato es uno solo.
 export * from './reporte-protocolo';
 export * from './publicacion';
+export * from './alquileres';

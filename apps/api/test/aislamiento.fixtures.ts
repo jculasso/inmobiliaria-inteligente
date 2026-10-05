@@ -29,6 +29,18 @@ export interface IdsDeTenant {
   googleCuenta: string;
   protocolo: string;
   protocoloAccion: string;
+  alqPersona: string;
+  alqPropiedad: string;
+  alqContrato: string;
+  alqContratoParte: string;
+  alqTramo: string;
+  alqLiquidacion: string;
+  alqConcepto: string;
+  alqCobro: string;
+  alqImputacion: string;
+  alqDocumento: string;
+  alqFirmante: string;
+  alqFirmaEvento: string;
   /**
    * Un segundo usuario y una segunda tasación por inmobiliaria.
    *
@@ -61,6 +73,18 @@ export function nuevosIds(n: number): IdsDeTenant {
     googleCuenta: randomUUID(),
     protocolo: randomUUID(),
     protocoloAccion: randomUUID(),
+    alqPersona: randomUUID(),
+    alqPropiedad: randomUUID(),
+    alqContrato: randomUUID(),
+    alqContratoParte: randomUUID(),
+    alqTramo: randomUUID(),
+    alqLiquidacion: randomUUID(),
+    alqConcepto: randomUUID(),
+    alqCobro: randomUUID(),
+    alqImputacion: randomUUID(),
+    alqDocumento: randomUUID(),
+    alqFirmante: randomUUID(),
+    alqFirmaEvento: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
     n,
@@ -96,7 +120,7 @@ export interface TablaBajoPrueba {
   /**
    * Columna por la que la tabla dice a qué inmobiliaria pertenece.
    *
-   * Es `tenantId` en las quince tablas de negocio y `id` en `tenant`, que se
+   * Es `tenantId` en todas las tablas de negocio y `id` en `tenant`, que se
    * identifica a sí misma. Sin esta distinción, las consultas genéricas del
    * test fallan sobre `tenant` por una columna que no existe — y ese error se
    * lee como si RLS hubiera bloqueado algo.
@@ -366,6 +390,143 @@ export const TABLAS: TablaBajoPrueba[] = [
       titulo: `Acción ${i.n}`,
     }),
   },
+  // ── Módulo Alquileres (docs/specs/alquileres-fase-1.md) ──────────────────
+  // En orden de dependencias: persona y propiedad antes que el contrato, el
+  // contrato antes que sus partes y tramos, la liquidación antes que el
+  // concepto (que puede apuntarle), el cobro antes que la imputación.
+  {
+    tabla: 'alq_persona',
+    modelo: 'alqPersona',
+    claveId: 'alqPersona',
+    campoTenant: 'tenantId',
+    campoEditable: 'nombre',
+    // `documento` es único por inmobiliaria: sale de `n` para que la fila
+    // intrusa no choque con la de la víctima antes de llegar a RLS.
+    fila: (t, i) => ({ id: i.alqPersona, tenantId: t, nombre: `Persona ${i.n}`, documento: `${30000000 + i.n}` }),
+  },
+  {
+    tabla: 'alq_propiedad',
+    modelo: 'alqPropiedad',
+    claveId: 'alqPropiedad',
+    campoTenant: 'tenantId',
+    campoEditable: 'direccion',
+    fila: (t, i) => ({ id: i.alqPropiedad, tenantId: t, direccion: `Alquilada ${i.n}` }),
+  },
+  {
+    tabla: 'alq_contrato',
+    modelo: 'alqContrato',
+    claveId: 'alqContrato',
+    campoTenant: 'tenantId',
+    campoEditable: 'obs',
+    fila: (t, i) => ({
+      id: i.alqContrato,
+      tenantId: t,
+      codigo: `ALQ-AISL-${i.n}`,
+      propiedadId: i.alqPropiedad,
+      inicio: HOY,
+      fin: HOY,
+    }),
+  },
+  {
+    tabla: 'alq_contrato_parte',
+    modelo: 'alqContratoParte',
+    claveId: 'alqContratoParte',
+    campoTenant: 'tenantId',
+    campoEditable: 'papel',
+    fila: (t, i) => ({
+      id: i.alqContratoParte,
+      tenantId: t,
+      contratoId: i.alqContrato,
+      personaId: i.alqPersona,
+      papel: 'propietario',
+      porcentaje: 100,
+    }),
+    // (contrato, persona, papel) es único: la intrusa cambia el papel para no
+    // chocar con la fila real de la víctima, que es la que tiene que ejercer RLS.
+    filaIntrusa: (t, i) => ({
+      id: randomUUID(),
+      tenantId: t,
+      contratoId: i.alqContrato,
+      personaId: i.alqPersona,
+      papel: 'garante',
+    }),
+  },
+  {
+    tabla: 'alq_tramo',
+    modelo: 'alqTramo',
+    claveId: 'alqTramo',
+    campoTenant: 'tenantId',
+    campoEditable: 'numero',
+    // (contrato, número) es único: el número sale de `n`.
+    fila: (t, i) => ({ id: i.alqTramo, tenantId: t, contratoId: i.alqContrato, numero: i.n, desde: HOY, hasta: HOY }),
+  },
+  {
+    tabla: 'alq_liquidacion',
+    modelo: 'alqLiquidacion',
+    claveId: 'alqLiquidacion',
+    campoTenant: 'tenantId',
+    campoEditable: 'periodo',
+    fila: (t, i) => ({ id: i.alqLiquidacion, tenantId: t, personaId: i.alqPersona, periodo: '2026-01', neto: 1, fecha: HOY }),
+  },
+  {
+    tabla: 'alq_concepto',
+    modelo: 'alqConcepto',
+    claveId: 'alqConcepto',
+    campoTenant: 'tenantId',
+    campoEditable: 'descripcion',
+    // Sin `claveGeneracion` (concepto cargado a mano): esa columna es única por
+    // inmobiliaria y vacía no choca.
+    fila: (t, i) => ({
+      id: i.alqConcepto,
+      tenantId: t,
+      contratoId: i.alqContrato,
+      personaId: i.alqPersona,
+      tipo: 'alquiler',
+      sentido: 'a_cobrar',
+      vencimiento: HOY,
+      importe: 1,
+    }),
+  },
+  {
+    tabla: 'alq_cobro',
+    modelo: 'alqCobro',
+    claveId: 'alqCobro',
+    campoTenant: 'tenantId',
+    campoEditable: 'obs',
+    fila: (t, i) => ({ id: i.alqCobro, tenantId: t, personaId: i.alqPersona, fecha: HOY, importe: 1, medio: 'efectivo' }),
+  },
+  {
+    tabla: 'alq_imputacion',
+    modelo: 'alqImputacion',
+    claveId: 'alqImputacion',
+    campoTenant: 'tenantId',
+    campoEditable: 'importe',
+    fila: (t, i) => ({ id: i.alqImputacion, tenantId: t, cobroId: i.alqCobro, conceptoId: i.alqConcepto, importe: 1 }),
+  },
+  {
+    tabla: 'alq_documento',
+    modelo: 'alqDocumento',
+    claveId: 'alqDocumento',
+    campoTenant: 'tenantId',
+    campoEditable: 'proveedor',
+    fila: (t, i) => ({ id: i.alqDocumento, tenantId: t, contratoId: i.alqContrato }),
+  },
+  {
+    tabla: 'alq_firmante',
+    modelo: 'alqFirmante',
+    claveId: 'alqFirmante',
+    campoTenant: 'tenantId',
+    campoEditable: 'estado',
+    fila: (t, i) => ({ id: i.alqFirmante, tenantId: t, documentoId: i.alqDocumento, personaId: i.alqPersona }),
+  },
+  {
+    tabla: 'alq_firma_evento',
+    modelo: 'alqFirmaEvento',
+    claveId: 'alqFirmaEvento',
+    campoTenant: 'tenantId',
+    campoEditable: 'origen',
+    fila: (t, i) => ({ id: i.alqFirmaEvento, tenantId: t, documentoId: i.alqDocumento, estadoNuevo: 'firmado', origen: 'manual' }),
+  },
 ];
 
 /**
@@ -394,6 +555,10 @@ export function idsIntrusos(base: IdsDeTenant, clave: keyof IdsDeTenant): IdsDeT
 export function valorEditable(t: TablaBajoPrueba): unknown {
   if (t.campoEditable === 'anio') return 2027;
   if (t.campoEditable === 'rol') return 'direccion';
+  // Columnas numéricas de las tablas de Alquileres que no tienen un campo de
+  // texto propio para tocar.
+  if (t.campoEditable === 'numero') return 99;
+  if (t.campoEditable === 'importe') return 2;
   return 'tocado-por-el-test';
 }
 
@@ -406,8 +571,8 @@ export function valorEditable(t: TablaBajoPrueba): unknown {
 export async function sembrar(db: PrismaClient, ids: IdsDeTenant): Promise<void> {
   for (const t of TABLAS) {
     const datos = t.fila(ids.tenant, ids);
-    // El delegado se busca por nombre: es lo que permite recorrer las 16 tablas
-    // sin escribir 16 bloques iguales.
+    // El delegado se busca por nombre: es lo que permite recorrer todas las tablas
+    // sin escribir un bloque por cada una.
     const delegado = (
       db as unknown as Record<string, { create: (a: unknown) => Promise<unknown> } | undefined>
     )[t.modelo];

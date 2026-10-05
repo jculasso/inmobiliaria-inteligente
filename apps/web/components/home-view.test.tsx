@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MODULOS_DEFAULT, type ModulosTenant, configPorDefecto } from '@vacker/types';
+import { MODULOS_DEFAULT, type ModulosTenant, type Rol, configPorDefecto } from '@vacker/types';
 import { HomeView } from './home-view';
 
 vi.mock('./logout-button', () => ({ LogoutButton: () => <button>Cerrar sesión</button> }));
@@ -216,5 +216,47 @@ describe('HomeView · de quién es la marca', () => {
       />,
     );
     expect(rotulo(conSesion.container)).toHaveClass('text-plataforma');
+  });
+});
+
+/**
+ * La tarjeta de Alquileres (spec alquileres-fase-1.md §3): la ven y la usan
+ * `administracion`, `direccion` y `admin_tenant`. Un vendedor no la ve, ni un
+ * invitado: no es parte de lo que se ofrece hoy.
+ */
+describe('HomeView · tarjeta de Alquileres', () => {
+  const sesion = (roles: Rol[], alquileres = true) => ({
+    email: 'demo@vacker.com',
+    nombre: 'Demo',
+    fotoUrl: null,
+    roles,
+    tenant: tenant({ tasador: true, todo: true, alquileres }),
+  });
+
+  it('dirección con el módulo contratado la ve y entra', () => {
+    render(<HomeView sesion={sesion(['direccion'])} />);
+    expect(screen.getByText('Alquileres')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Entrar' }).map((a) => a.getAttribute('href'))).toContain('/alquileres');
+  });
+
+  it('administración entra a Alquileres y a ningún módulo comercial', () => {
+    render(<HomeView sesion={sesion(['administracion'])} />);
+    expect(screen.getAllByRole('link', { name: 'Entrar' }).map((a) => a.getAttribute('href'))).toEqual(['/alquileres']);
+  });
+
+  it('un vendedor no ve la tarjeta, aunque la inmobiliaria tenga el módulo', () => {
+    render(<HomeView sesion={sesion(['vendedor'])} />);
+    expect(screen.queryByText('Alquileres')).not.toBeInTheDocument();
+  });
+
+  it('un invitado no la ve', () => {
+    render(<HomeView sesion={null} />);
+    expect(screen.queryByText('Alquileres')).not.toBeInTheDocument();
+  });
+
+  it('sin el módulo contratado, dirección la ve pero no entra', () => {
+    render(<HomeView sesion={sesion(['direccion'], false)} />);
+    expect(screen.getByText('Alquileres')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Entrar' }).map((a) => a.getAttribute('href'))).not.toContain('/alquileres');
   });
 });
