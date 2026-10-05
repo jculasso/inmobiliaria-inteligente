@@ -26,6 +26,13 @@ export const TenantConfigSchema = z.object({
   coefSemicubierta: z.number().min(0).max(1).default(1),
   /** Cuánto pesa cada metro descubierto, de 0 a 1. Vacker usa 0,3. */
   coefDescubierta: z.number().min(0).max(1).default(0.3),
+  /**
+   * IVA que la inmobiliaria le suma a sus honorarios y gastos administrativos
+   * en el módulo Alquileres (regla 12). 21 por defecto: Vacker es responsable
+   * inscripta, y en Gexion un 8% de honorarios se cobra 9,68%. Una
+   * monotributista pone 0.
+   */
+  ivaHonorariosPct: z.number().min(0).max(27).default(21),
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 

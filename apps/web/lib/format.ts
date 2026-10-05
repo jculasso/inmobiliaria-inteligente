@@ -37,3 +37,18 @@ export function fmtFecha(iso: string | null | undefined): string {
   if (!anio || !mes || !dia) return iso;
   return `${dia}/${mes}/${anio}`;
 }
+
+/**
+ * Monto de alquileres en su moneda: «$ 250.000» o «U$S 1.200». Con centavos
+ * solo si los tiene —un prorrateo da 471.207,03—, para que un importe entero
+ * no se lea con ,00 de relleno.
+ */
+export function fmtMoneda(n: number | null | undefined, moneda: 'ARS' | 'USD' = 'ARS'): string {
+  const v = n ?? 0;
+  const conCentavos = Math.round(v * 100) % 100 !== 0;
+  const texto = v.toLocaleString('es-AR', {
+    minimumFractionDigits: conCentavos ? 2 : 0,
+    maximumFractionDigits: conCentavos ? 2 : 0,
+  });
+  return `${moneda === 'USD' ? 'U$S' : '$'} ${texto}`;
+}

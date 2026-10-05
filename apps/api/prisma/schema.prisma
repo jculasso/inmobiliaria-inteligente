@@ -663,10 +663,17 @@ model AlqContrato {
   inicio             DateTime  @db.Date
   fin                DateTime  @db.Date
   fechaFirma         DateTime? @map("fecha_firma") @db.Date
-  diaVencimiento     Int       @default(10) @map("dia_vencimiento")
+  /// Día del mes en que vence el alquiler del inquilino (5 en Vacker) y día en
+  /// que se le paga al propietario (10). En fin de semana se corren al lunes;
+  /// los feriados no (regla 37, como Gexion).
+  diaVencimiento     Int       @default(5) @map("dia_vencimiento")
+  diaPagoPropietario Int       @default(10) @map("dia_pago_propietario")
   ajuste             String    @default("indexado") // indexado | escalonado
   indice             String? // ICL | IPC | CCP
   periodicidadMeses  Int?      @map("periodicidad_meses")
+  /// El período base del índice (regla 5): la fecha del ICL o el mes del IPC
+  /// contra el que se mide la variación acumulada de todos los tramos.
+  indicePeriodoBase  DateTime? @map("indice_periodo_base") @db.Date
   honorariosPct      Decimal   @default(0) @map("honorarios_pct") @db.Decimal(5, 2)
   gastosAdmPct       Decimal   @default(0) @map("gastos_adm_pct") @db.Decimal(5, 2)
   ivaPct             Decimal   @default(0) @map("iva_pct") @db.Decimal(5, 2)
