@@ -1,6 +1,8 @@
-/** Monto en USD, redondeado, con separador de miles es-AR. Ej: fmtUSD(45231.7) -> "$45.232". */
+/** Monto en USD, redondeado, con separador de miles es-AR. Ej: fmtUSD(45231.7) -> "U$S 45.232". */
 export function fmtUSD(n: number | null | undefined): string {
-  return `$${Math.round(n ?? 0).toLocaleString('es-AR')}`;
+  // «U$S», no «$»: en la Argentina «$» son pesos, y Alquileres ya lo usa así
+  // (revisión del 6/10/2026: «$45.232» de una venta en dólares se leía en pesos).
+  return `U$S ${Math.round(n ?? 0).toLocaleString('es-AR')}`;
 }
 
 /** Número redondeado con separador de miles es-AR, sin prefijo de moneda. */

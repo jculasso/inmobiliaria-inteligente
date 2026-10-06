@@ -17,7 +17,9 @@ export function MarcaPlataforma() {
   return (
     <Link
       href="/"
-      className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-plataforma hover:underline"
+      // `py-2 -my-2`: el texto es chico, pero el dedo necesita ~40px para tocarlo:
+      // es la única salida al inicio desde cualquier módulo.
+      className="-my-2 inline-flex items-center gap-1.5 rounded py-2 text-xs font-bold uppercase tracking-[0.2em] text-plataforma hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-plataforma/40"
     >
       <svg viewBox="0 0 100 100" className="h-4 w-4 shrink-0" aria-hidden>
         <rect width="100" height="100" rx="22" fill="#173F6B" />

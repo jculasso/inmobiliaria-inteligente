@@ -15,7 +15,9 @@ describe('globals.css', () => {
     // agrandar, la ventana visible se achica y la página se puede arrastrar de
     // costado. Medido en un iPhone 14 Pro Max: 430px de layout contra 377px
     // visibles — exactamente el factor 16/14.
-    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]{0,200}font-size: 16px !important/);
+    expect(css).toMatch(
+      /@media \(max-width: 640px\), \(pointer: coarse\)[\s\S]{0,200}font-size: 16px !important/,
+    );
   });
 
   it('la página no se desplaza de costado (red de seguridad en html y body)', () => {

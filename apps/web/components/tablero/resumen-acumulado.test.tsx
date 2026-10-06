@@ -137,7 +137,7 @@ vi.mock('../../lib/tablero-api', async (importOriginal) => {
 describe('ResumenAcumulado', () => {
   it('carga el tab Anual por default y muestra las métricas', async () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
-    expect(await screen.findByText('$1.000')).toBeInTheDocument();
+    expect(await screen.findByText('U$S 1.000')).toBeInTheDocument();
     expect(getResumenPeriodo).toHaveBeenCalledWith('token', {
       anio: 2026,
       periodo: 'anual',
@@ -148,7 +148,7 @@ describe('ResumenAcumulado', () => {
 
   it('al elegir Trimestral aparecen los sub-tabs Q1-Q4 y se puede cambiar de trimestre', async () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
-    await screen.findByText('$1.000');
+    await screen.findByText('U$S 1.000');
 
     await userEvent.click(screen.getByRole('button', { name: /Acumulado Trimestral/ }));
     expect(await screen.findByRole('button', { name: /Q1 · Ene–Mar/ })).toBeInTheDocument();
@@ -278,18 +278,18 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
       .slice(1, 13)
       .map((c) => c.textContent);
     expect(volumen).toEqual([
-      '$100',
-      '$200',
-      '$300',
-      '$400',
-      '$500',
-      '$600',
-      '$700',
-      '$800',
-      '$900',
-      '$1.000',
-      '$1.100',
-      '$1.200',
+      'U$S 100',
+      'U$S 200',
+      'U$S 300',
+      'U$S 400',
+      'U$S 500',
+      'U$S 600',
+      'U$S 700',
+      'U$S 800',
+      'U$S 900',
+      'U$S 1.000',
+      'U$S 1.100',
+      'U$S 1.200',
     ]);
   });
 
@@ -305,7 +305,7 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
       'cell',
     );
     // 100 + 200 + … + 1200 = 7.800
-    expect(volumen.at(-1)?.textContent).toBe('$7.800');
+    expect(volumen.at(-1)?.textContent).toBe('U$S 7.800');
   });
 
   it('marca el mes seleccionado arriba y pide el resumen de ese mes', async () => {
@@ -353,7 +353,7 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
 describe('ResumenAcumulado — la tabla de totales vive en su propia sección', () => {
   it('no muestra los totales por vendedor en ninguna pestaña', async () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
-    await screen.findByText('$1.000');
+    await screen.findByText('U$S 1.000');
     for (const pestaña of [/Acumulado Anual/, /Acumulado Trimestral/, /Acumulado del Mes/]) {
       await userEvent.click(screen.getByRole('button', { name: pestaña }));
       expect(screen.queryByText(/Totales por vendedor/)).not.toBeInTheDocument();

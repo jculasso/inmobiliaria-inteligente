@@ -29,6 +29,8 @@ export function Modal({
   onClose,
   children,
   size = 'md',
+  cerrable = true,
+  conCambios = false,
 }: {
   title: string;
   /** Bajada opcional bajo el título (período, contexto del detalle…). */
@@ -36,16 +38,32 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
   size?: keyof typeof ANCHOS;
+  /**
+   * `false` mientras se guarda: cerrar a mitad de un guardado lento y volver a
+   * abrir y mandar de nuevo creaba duplicados (revisión del 6/10/2026).
+   */
+  cerrable?: boolean;
+  /**
+   * Hay algo cargado sin guardar: cerrar desde afuera (tocar el fondo, Escape)
+   * pregunta antes. En el teléfono, un toque perdido arriba de la hoja tiraba
+   * un formulario entero.
+   */
+  conCambios?: boolean;
 }) {
+  const cerrar = () => {
+    if (!cerrable) return;
+    if (conCambios && !window.confirm('¿Descartar lo que cargaste?')) return;
+    onClose();
+  };
   // Escape cierra: es lo que espera cualquiera que use teclado, y hasta ahora
   // la única salida era el botón o hacer clic afuera.
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') cerrar();
     };
     document.addEventListener('keydown', alTeclear);
     return () => document.removeEventListener('keydown', alTeclear);
-  }, [onClose]);
+  });
 
   // Fondo quieto mientras el modal está abierto.
   useEffect(() => {
@@ -63,7 +81,7 @@ export function Modal({
       aria-label={title}
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-[2px] sm:items-center sm:p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) cerrar();
       }}
     >
       <div
@@ -82,7 +100,9 @@ export function Modal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            // La × es una decisión: cierra sin preguntar, salvo mientras se guarda.
+            onClick={() => cerrable && onClose()}
+            disabled={!cerrable}
             aria-label="Cerrar"
             className="-mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl leading-none text-muted transition-colors hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
           >

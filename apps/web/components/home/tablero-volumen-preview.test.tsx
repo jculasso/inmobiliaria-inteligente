@@ -17,7 +17,7 @@ describe('TableroVolumenPreview', () => {
     // Estado inicial (aún sin resolver el fetch).
     expect(screen.getByText('…')).toBeInTheDocument();
     // Una vez resuelto, el número formateado.
-    expect(await screen.findByText('$8.452.500')).toBeInTheDocument();
+    expect(await screen.findByText('U$S 8.452.500')).toBeInTheDocument();
     expect(screen.getByText(/Total/)).toBeInTheDocument();
   });
 });
@@ -31,14 +31,14 @@ describe('TableroVolumenPreview — el número coincide con su etiqueta', () => 
   it('con alcance total, pide verTodo', async () => {
     pedidos.length = 0;
     render(<TableroVolumenPreview anio={2026} alcance="total" />);
-    await screen.findByText('$8.452.500');
+    await screen.findByText('U$S 8.452.500');
     expect(pedidos[0]).toMatchObject({ verTodo: true });
   });
 
   it('con alcance propio, no lo pide', async () => {
     pedidos.length = 0;
     render(<TableroVolumenPreview anio={2026} alcance="propio" />);
-    await screen.findByText('$8.452.500');
+    await screen.findByText('U$S 8.452.500');
     expect(pedidos[0]).toMatchObject({ verTodo: false });
   });
 });

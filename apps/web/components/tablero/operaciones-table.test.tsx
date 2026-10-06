@@ -95,8 +95,8 @@ describe('OperacionesTable', () => {
     expect(enLasTarjetas().getAllByRole('listitem')).toHaveLength(2);
     expect(enLasTarjetas().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     // El precio y la comisión se ven de una: antes había que deslizar a ciegas.
-    expect(enLasTarjetas().getByText('$100.000')).toBeInTheDocument();
-    expect(enLasTarjetas().getByText('$3.000')).toBeInTheDocument();
+    expect(enLasTarjetas().getByText('U$S 100.000')).toBeInTheDocument();
+    expect(enLasTarjetas().getByText('U$S 3.000')).toBeInTheDocument();
   });
 
   it('filtra por texto de búsqueda', async () => {
@@ -172,7 +172,7 @@ describe('OperacionesTable', () => {
     expect(within(dialogo).getByText('Borrar venta')).toBeInTheDocument();
     expect(within(dialogo).getByText('OP-1001')).toBeInTheDocument();
     expect(within(dialogo).getByText('Av. Siempre Viva 742')).toBeInTheDocument();
-    expect(within(dialogo).getByText('$100.000')).toBeInTheDocument();
+    expect(within(dialogo).getByText('U$S 100.000')).toBeInTheDocument();
     expect(within(dialogo).getByText('Ana')).toBeInTheDocument();
   });
 

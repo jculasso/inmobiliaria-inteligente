@@ -20,7 +20,8 @@ export function LogoutButton({ redirectTo = '/' }: { redirectTo?: string }) {
       .signOut({ scope: 'local' })
       .catch((e: unknown) => ({ error: e }));
     if (error) await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
-    window.location.assign(redirectTo);
+    // `replace`: que «atrás» no vuelva a la pantalla de la sesión que se cerró.
+    window.location.replace(redirectTo);
   }
 
   return (
