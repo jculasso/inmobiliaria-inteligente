@@ -9,6 +9,8 @@ import {
 import type { AnalisisComparables } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../../lib/format';
+import { escribirImporte, leerImporte } from '../../../lib/importe';
+import { InputImporte, InputPorcentajeTexto } from '../../input-importe';
 import { ConfianzaBadge } from '../confianza-badge';
 import { Campo, PasoHeader, inputClass } from './campo';
 
@@ -67,15 +69,24 @@ export function Seccion5Valores({
 
   function aplicarSugeridos() {
     if (!aspSugerido) return;
-    setValorMinimo(String(minSugerido));
-    setValorRecomendado(String(recSugerido));
-    setValorAspiracional(String(aspSugerido));
+    setValorMinimo(escribirImporte(minSugerido));
+    setValorRecomendado(escribirImporte(recSugerido));
+    setValorAspiracional(escribirImporte(aspSugerido));
   }
 
-  const min = Number(valorMinimo) || 0;
-  const rec = Number(valorRecomendado) || 0;
-  const asp = Number(valorAspiracional) || 0;
-  const diffPct = min && asp ? (((asp - min) / min) * 100).toFixed(1) : null;
+  // Los campos son texto como se escribe acá («185.000,00»): `Number()` leía
+  // «185.000» como 185.
+  const min = leerImporte(valorMinimo) || 0;
+  const rec = leerImporte(valorRecomendado) || 0;
+  const asp = leerImporte(valorAspiracional) || 0;
+  // «11,1%», con coma: `toFixed` escribía «11.1%», que acá se lee como miles.
+  const diffPct =
+    min && asp
+      ? (((asp - min) / min) * 100).toLocaleString('es-AR', {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })
+      : null;
   const comentario = escenarioRecomendado ? ESTRATEGIA_ESCENARIO[escenarioRecomendado] : '';
 
   return (
@@ -119,31 +130,13 @@ export function Seccion5Valores({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
         <Campo label="Valor mínimo competitivo (USD)">
-          <input
-            type="number"
-            min={0}
-            value={valorMinimo}
-            onChange={(e) => setValorMinimo(e.target.value)}
-            className={inputClass}
-          />
+          <InputImporte moneda="USD" value={valorMinimo} onChange={setValorMinimo} />
         </Campo>
         <Campo label="Valor recomendado (USD)" requerido>
-          <input
-            type="number"
-            min={0}
-            value={valorRecomendado}
-            onChange={(e) => setValorRecomendado(e.target.value)}
-            className={inputClass}
-          />
+          <InputImporte moneda="USD" value={valorRecomendado} onChange={setValorRecomendado} />
         </Campo>
         <Campo label="Valor aspiracional (USD)">
-          <input
-            type="number"
-            min={0}
-            value={valorAspiracional}
-            onChange={(e) => setValorAspiracional(e.target.value)}
-            className={inputClass}
-          />
+          <InputImporte moneda="USD" value={valorAspiracional} onChange={setValorAspiracional} />
         </Campo>
       </div>
 
@@ -199,13 +192,7 @@ export function Seccion5Valores({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
         <Campo label="Margen de negociación estimado (%)">
-          <input
-            type="number"
-            min={0}
-            value={margenNegociacion}
-            onChange={(e) => setMargenNegociacion(e.target.value)}
-            className={inputClass}
-          />
+          <InputPorcentajeTexto value={margenNegociacion} onChange={setMargenNegociacion} />
         </Campo>
         <Campo label="Escenario recomendado">
           <select

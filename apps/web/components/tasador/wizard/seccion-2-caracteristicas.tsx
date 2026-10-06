@@ -199,6 +199,8 @@ interface Props {
   tasacionId: string | null;
   fotos: TasacionFotoDto[];
   setFotos: (fotos: TasacionFotoDto[]) => void;
+  /** Antes de abrir el selector de fotos: el wizard guarda lo pendiente. */
+  onAntesDeElegirFoto?: () => void;
 }
 
 export function Seccion2Caracteristicas(props: Props) {
@@ -272,6 +274,7 @@ export function Seccion2Caracteristicas(props: Props) {
     tasacionId,
     fotos,
     setFotos,
+    onAntesDeElegirFoto,
   } = props;
 
   /*
@@ -642,7 +645,12 @@ export function Seccion2Caracteristicas(props: Props) {
       )}
 
       {tasacionId ? (
-        <FotosUploader tasacionId={tasacionId} fotos={fotos} onChange={setFotos} />
+        <FotosUploader
+          tasacionId={tasacionId}
+          fotos={fotos}
+          onChange={setFotos}
+          onAntesDeElegir={onAntesDeElegirFoto}
+        />
       ) : (
         <p className="text-xs text-muted">Podés cargar fotos una vez que guardes esta sección.</p>
       )}

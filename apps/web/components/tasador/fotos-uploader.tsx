@@ -4,6 +4,9 @@ import { useState } from 'react';
 import type { TasacionFotoDto } from '@vacker/types';
 import { getAccessToken } from '../../lib/supabase/client';
 import { eliminarFotoTasacion, subirFotoTasacion } from '../../lib/tasador-api';
+import { ConfirmarBorradoModal } from '../confirmar-borrado-modal';
+import { CLASE_FOCO, MensajeError } from '../piezas';
+import { reducirFoto } from './reducir-foto';
 
 const MAX_FOTOS = 3;
 
@@ -11,12 +14,20 @@ interface Props {
   tasacionId: string;
   fotos: TasacionFotoDto[];
   onChange: (fotos: TasacionFotoDto[]) => void;
+  /**
+   * Se llama justo antes de abrir el selector de fotos. En el iPhone, la
+   * cámara o la galería pueden hacer que el sistema descargue la página: el
+   * wizard aprovecha para guardar lo que haya sin guardar.
+   */
+  onAntesDeElegir?: () => void;
 }
 
 /** Fotos de la propiedad (hasta 3). Sube apenas se selecciona el archivo — requiere que la tasación ya exista. */
-export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
+export function FotosUploader({ tasacionId, fotos, onChange, onAntesDeElegir }: Props) {
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aBorrar, setABorrar] = useState<TasacionFotoDto | null>(null);
+  const lleno = fotos.length >= MAX_FOTOS;
 
   async function handleSeleccionar(e: React.ChangeEvent<HTMLInputElement>) {
     const seleccionadas = Array.from(e.target.files ?? []);
@@ -33,7 +44,8 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
       // que subirlas en paralelo les daría el mismo orden a todas.
       let acumuladas = fotos;
       for (const file of aSubir) {
-        const foto = await subirFotoTasacion(accessToken, tasacionId, file);
+        const reducida = await reducirFoto(file);
+        const foto = await subirFotoTasacion(accessToken, tasacionId, reducida);
         acumuladas = [...acumuladas, foto];
         onChange(acumuladas);
       }
@@ -44,15 +56,11 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
     }
   }
 
-  async function handleEliminar(fotoId: string) {
+  async function borrar(fotoId: string) {
     setError(null);
-    try {
-      const accessToken = await getAccessToken();
-      await eliminarFotoTasacion(accessToken, tasacionId, fotoId);
-      onChange(fotos.filter((f) => f.id !== fotoId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar la foto.');
-    }
+    const accessToken = await getAccessToken();
+    await eliminarFotoTasacion(accessToken, tasacionId, fotoId);
+    onChange(fotos.filter((f) => f.id !== fotoId));
   }
 
   return (
@@ -61,9 +69,14 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
         <p className="text-xs font-bold uppercase tracking-wide text-muted">
           Fotos de la propiedad ({fotos.length}/{MAX_FOTOS})
         </p>
+        {/* El input queda accesible (sr-only, no `hidden`): con `display:none`
+            el teclado no llegaba nunca al botón de cargar. */}
         <label
-          className={`cursor-pointer rounded-brand border border-line px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface ${
-            fotos.length >= MAX_FOTOS || subiendo ? 'pointer-events-none opacity-50' : ''
+          onClick={() => {
+            if (!lleno && !subiendo) onAntesDeElegir?.();
+          }}
+          className={`inline-flex h-10 cursor-pointer items-center rounded-brand border border-line px-3 text-sm font-semibold text-ink hover:bg-surface focus-within:ring-2 focus-within:ring-brand-red/40 ${
+            lleno || subiendo ? 'pointer-events-none opacity-50' : ''
           }`}
         >
           {subiendo ? 'Subiendo…' : '＋ Cargar fotos'}
@@ -71,34 +84,50 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
             type="file"
             accept="image/*"
             multiple
-            className="hidden"
-            disabled={fotos.length >= MAX_FOTOS || subiendo}
+            className="sr-only"
+            disabled={lleno || subiendo}
             onChange={handleSeleccionar}
           />
         </label>
       </div>
 
-      {error && <p className="text-xs text-brand-red">{error}</p>}
+      <MensajeError>{error}</MensajeError>
 
       {fotos.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {fotos.map((f) => (
+          {fotos.map((f, i) => (
             <div
               key={f.id}
-              className="group relative aspect-[4/3] overflow-hidden rounded-brand border border-line"
+              className="relative aspect-[4/3] overflow-hidden rounded-brand border border-line"
             >
-              <img src={f.url} alt="" className="h-full w-full object-cover" />
+              <img src={f.url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+              {/* Siempre a la vista: en el teléfono no hay «pasar el mouse por
+                  encima», y con `opacity-0` hasta el hover la foto no se podía
+                  borrar. 40 px para el dedo. */}
               <button
                 type="button"
-                onClick={() => handleEliminar(f.id)}
-                aria-label="Eliminar foto"
-                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-sm text-white opacity-0 transition-opacity group-hover:opacity-100"
+                onClick={() => setABorrar(f)}
+                aria-label={`Borrar la foto ${i + 1}`}
+                title="Borrar"
+                className={`absolute right-1 top-1 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-lg text-white hover:bg-black/75 ${CLASE_FOCO} focus-visible:ring-white`}
               >
-                ×
+                🗑️
               </button>
             </div>
           ))}
         </div>
+      )}
+
+      {aBorrar && (
+        <ConfirmarBorradoModal
+          titulo="Borrar foto"
+          descripcion="La foto deja de aparecer en la tasación y en el informe."
+          detalle={
+            <img src={aBorrar.url} alt="" className="mx-auto max-h-40 rounded-brand object-cover" />
+          }
+          onConfirm={() => borrar(aBorrar.id)}
+          onClose={() => setABorrar(null)}
+        />
       )}
     </div>
   );
