@@ -231,7 +231,7 @@ describe('AdminUsuariosService', () => {
     const storage = makeStorage({ upload: vi.fn().mockResolvedValue('https://storage.test/foto.jpg') });
     const service = new AdminUsuariosService(db, makeSupabaseAdmin(), storage, makeCache());
 
-    const file = { buffer: Buffer.from(''), mimetype: 'image/jpeg', originalname: 'foto.jpg', size: 1024 };
+    const file = { buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]), mimetype: 'image/jpeg', originalname: 'foto.jpg', size: 1024 };
     const result = await service.subirFoto(TENANT_ID, 'auth-1', file);
 
     expect(storage.upload).toHaveBeenCalledWith('usuarios-avatares', `${TENANT_ID}/auth-1.jpg`, file.buffer, 'image/jpeg');

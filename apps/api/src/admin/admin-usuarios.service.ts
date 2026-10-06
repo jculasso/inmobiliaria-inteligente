@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { Prisma } from '@prisma/client';
 import {
   assertAvatarValido,
+  tipoDe,
   pathDesdeUrl,
   rutaAvatar,
   AVATAR_BUCKET,
@@ -175,7 +176,7 @@ export class AdminUsuariosService {
     assertAvatarValido(file);
 
     const path = rutaAvatar(tenantId, id, file);
-    const fotoUrl = await this.storage.upload(AVATAR_BUCKET, path, file.buffer, file.mimetype);
+    const fotoUrl = await this.storage.upload(AVATAR_BUCKET, path, file.buffer, tipoDe(file));
 
     await this.db.usuario.update({ where: { id }, data: { fotoUrl } });
     const row = await this.db.usuario.findUniqueOrThrow({ where: { id }, include: usuarioAdminInclude });

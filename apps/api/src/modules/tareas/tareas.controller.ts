@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { Controller, Headers, Post, UnauthorizedException } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Public } from '../../auth/decorators';
@@ -46,7 +47,11 @@ export class TareasController {
 function verificarSecreto(secreto: string | undefined): void {
   const esperado = process.env.CRON_SECRET;
   // Falla cerrada: sin secreto configurado, nadie entra.
-  if (!esperado || secreto !== esperado) {
+  // Comparación en tiempo constante: con `!==` la demora de la respuesta
+  // revela cuántos caracteres del principio son correctos.
+  const a = Buffer.from(secreto ?? '');
+  const b = Buffer.from(esperado ?? '');
+  if (!esperado || a.length !== b.length || !timingSafeEqual(a, b)) {
     throw new UnauthorizedException('Secreto de tarea inválido.');
   }
 }

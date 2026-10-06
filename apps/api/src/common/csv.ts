@@ -25,7 +25,11 @@ const SEP = ';';
 /** Un valor listo para meter en una celda. */
 export type Celda = string | number | boolean | Date | null | undefined;
 
-function escapar(v: string): string {
+function escapar(texto: string): string {
+  // Un texto que empieza con = + - @ (o tab/retorno) Excel lo ejecuta como
+  // fórmula: con un apóstrofo adelante se lee como texto (auditoría del
+  // 6/10/2026). Los números no pasan por acá.
+  const v = /^[=+\-@\t\r]/.test(texto) ? `'${texto}` : texto;
   // Solo se encierra entre comillas si hace falta; un archivo lleno de comillas
   // innecesarias es más difícil de leer si alguien lo mira en un editor.
   if (!/[";\n\r]/.test(v)) return v;
