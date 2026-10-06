@@ -191,11 +191,11 @@ export class ProveedoresService {
       if (!c) throw new NotFoundException('El comprobante no existe.');
       if (c.anuladoEn) throw new ConflictException('El comprobante ya está anulado.');
       const aplicados = await tx.alqConcepto.count({
-        where: { claveGeneracion: { startsWith: `prov|${id}|` }, anuladoEn: null, OR: [{ liquidacionId: { not: null } }, { imputaciones: { some: IMPUTACION_ACTIVA } }] },
+        where: { claveOrigen: id, anuladoEn: null, OR: [{ liquidacionId: { not: null } }, { imputaciones: { some: IMPUTACION_ACTIVA } }] },
       });
       if (aplicados) throw new BadRequestException('Lo que se le cargó a la parte ya se cobró o se liquidó: anulá primero ese recibo o esa liquidación.');
       const ahora = new Date();
-      await tx.alqConcepto.updateMany({ where: { claveGeneracion: { startsWith: `prov|${id}|` }, anuladoEn: null }, data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: `comprobante anulado: ${motivo}` } });
+      await tx.alqConcepto.updateMany({ where: { claveOrigen: id, anuladoEn: null }, data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: `comprobante anulado: ${motivo}` } });
       await tx.alqComprobante.update({ where: { id }, data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: motivo } });
       await registrarEventos(tx, ctx, { entidad: 'comprobante', entidadId: id, contratoId: c.contratoId, accion: 'anulacion', resumen: `Comprobante anulado: ${motivo}` });
       return this.obtenerEn(tx, id);
@@ -251,7 +251,7 @@ export class ProveedoresService {
       nombresDeUsuarios(tx, filas.map((f) => f.creadoPorId)),
       filas.length
         ? tx.alqConcepto.findMany({
-            where: { OR: filas.map((f) => ({ claveGeneracion: { startsWith: `prov|${f.id}|` } })), anuladoEn: null, AND: [{ OR: [{ liquidacionId: { not: null } }, { imputaciones: { some: IMPUTACION_ACTIVA } }] }] },
+            where: { claveOrigen: { in: filas.map((f) => f.id) }, anuladoEn: null, AND: [{ OR: [{ liquidacionId: { not: null } }, { imputaciones: { some: IMPUTACION_ACTIVA } }] }] },
             select: { claveGeneracion: true },
           })
         : [],

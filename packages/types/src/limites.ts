@@ -21,11 +21,18 @@ export const LIMITE_LISTA = 500;
 export const LIMITE_LISTA_CON_SONDA = LIMITE_LISTA + 1;
 
 /**
+ * Los conceptos de UN mes no crecen con la historia sino con la cartera: unos
+ * seis por contrato. Con el tope general se cortaban a los ~85 contratos,
+ * menos que la cartera de Vacker (revisión de performance del 6/10/2026).
+ */
+export const LIMITE_CONCEPTOS_MES = 5000;
+
+/**
  * Separa lo que se muestra de si quedó algo afuera.
  *
  * @param filas lo que devolvió la API, que puede traer una fila de sonda.
  */
-export function recortarAlLimite<T>(filas: T[]): { visibles: T[]; hayMas: boolean } {
-  const hayMas = filas.length > LIMITE_LISTA;
-  return { visibles: hayMas ? filas.slice(0, LIMITE_LISTA) : filas, hayMas };
+export function recortarAlLimite<T>(filas: T[], limite = LIMITE_LISTA): { visibles: T[]; hayMas: boolean } {
+  const hayMas = filas.length > limite;
+  return { visibles: hayMas ? filas.slice(0, limite) : filas, hayMas };
 }

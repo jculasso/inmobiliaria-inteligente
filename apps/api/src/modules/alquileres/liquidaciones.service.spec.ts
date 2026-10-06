@@ -59,6 +59,9 @@ function makeTx(over: { delDueno?: unknown[]; delInquilino?: unknown[]; marcados
       findUnique: vi.fn().mockResolvedValue({ id: DUENO, nombre: 'Propietario' }),
       findMany: vi.fn().mockResolvedValue([{ id: DUENO, nombre: 'Propietario' }]),
     },
+    // Lo que filtra la base (propietario en su contrato y con saldo): acá, todos;
+    // el filtro en memoria que sigue después lo vuelve a comprobar.
+    $queryRaw: vi.fn(async () => (deDueno as { id: string }[]).map((k) => ({ id: k.id }))),
     alqConcepto: {
       // La primera consulta trae lo del propietario; la segunda, lo del inquilino de esos contratos.
       findMany: vi.fn(async (args: { where: { contratoId?: unknown } }) =>

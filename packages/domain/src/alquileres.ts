@@ -749,3 +749,25 @@ export function completarPlantilla(cuerpo: string, valores: Record<string, strin
   // `Object.hasOwn`: «{{constructor}}» no tiene que imprimir el código de una función.
   return cuerpo.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, clave: string) => (Object.hasOwn(valores, clave) ? valores[clave]! : `[falta: ${clave}]`));
 }
+
+/**
+ * El alquiler que rige hoy: el del último tramo ya empezado que tiene importe.
+ * Si el tramo de hoy espera indexación, sigue el anterior —es lo que se cobra
+ * mientras tanto—, no «—». Una sola definición para el tablero, la lista de
+ * contratos y la persona (revisión del 6/10/2026: daban distinto).
+ */
+export function alquilerDeHoy(tramos: { desde: string; importe: number | null }[], hoy: string): number | null {
+  const empezados = tramos.filter((t) => t.importe != null && t.desde <= hoy).sort((a, b) => (a.desde < b.desde ? -1 : 1));
+  return empezados.at(-1)?.importe ?? null;
+}
+
+/**
+ * El próximo cambio de alquiler: el primer tramo sin importe (si ya empezó,
+ * la indexación está vencida) o el primero que todavía no empezó —el escalón
+ * de un escalonado—. El primer tramo no cuenta: es el de inicio.
+ */
+export function proximoCambio(tramos: { numero: number; desde: string; importe: number | null }[], hoy: string): string | null {
+  const t = [...tramos].sort((a, b) => a.numero - b.numero).find((x) => x.numero > 1 && (x.importe == null || x.desde > hoy));
+  return t?.desde ?? null;
+}
+

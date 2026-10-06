@@ -1173,6 +1173,14 @@ export const TableroAlquileresDtoSchema = z.object({
 });
 export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;
 
+/** Los tres cortes de una vez: cambiar de filtro en la pantalla no pide nada. */
+export const TablerosAlquileresDtoSchema = z.object({
+  todos: TableroAlquileresDtoSchema,
+  vivienda: TableroAlquileresDtoSchema,
+  comercial: TableroAlquileresDtoSchema,
+});
+export type TablerosAlquileresDto = z.infer<typeof TablerosAlquileresDtoSchema>;
+
 // --- Firma del contrato (reglas 33 a 36) -------------------------------------------
 
 export const EstadoFirmaSchema = z.enum(['sin_enviar', 'enviado', 'firmado_parcial', 'firmado', 'rechazado', 'vencido']);

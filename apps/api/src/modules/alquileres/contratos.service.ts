@@ -13,7 +13,7 @@ import {
   type ExtenderContrato,
   type EstadoContrato,
 } from '@vacker/types';
-import { generarTramos, sumarDiasIso, validarPartes, validarTramos } from '@vacker/domain';
+import { alquilerDeHoy, generarTramos, proximoCambio, sumarDiasIso, validarPartes, validarTramos } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
@@ -405,8 +405,6 @@ function hijos(tenantId: string, dto: Contrato) {
 
 function aResumen(f: FilaContrato, hoy: string): ContratoResumenDto {
   const tramos = f.tramos.map((t) => ({ desde: fromDate(t.desde)!, hasta: fromDate(t.hasta)!, importe: t.importe == null ? null : decToNum(t.importe) }));
-  const deHoy = tramos.find((t) => t.desde <= hoy && t.hasta >= hoy);
-  const pendiente = tramos.filter((t) => t.importe == null).sort((a, b) => (a.desde < b.desde ? -1 : 1))[0];
   const nombres = (papel: string) => f.partes.filter((p) => p.papel === papel).map((p) => ({ id: p.personaId, nombre: p.persona.nombre }));
   return {
     id: f.id,
@@ -419,8 +417,9 @@ function aResumen(f: FilaContrato, hoy: string): ContratoResumenDto {
     propiedad: { id: f.propiedad.id, direccion: f.propiedad.direccion, unidad: f.propiedad.unidad },
     propietarios: nombres('propietario'),
     inquilinos: nombres('inquilino'),
-    importeVigente: deHoy?.importe ?? null,
-    proximaIndexacion: f.ajuste === 'indexado' ? (pendiente?.desde ?? null) : null,
+    // Las mismas definiciones que el tablero: antes uno decía «—» y el otro un importe.
+    importeVigente: alquilerDeHoy(tramos, hoy),
+    proximaIndexacion: f.estado === 'vigente' ? proximoCambio(tramos.map((t, i) => ({ ...t, numero: f.tramos[i]!.numero })), hoy) : null,
   };
 }
 

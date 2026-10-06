@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   alertaIndice,
+  alquilerDeHoy,
+  proximoCambio,
   completarPlantilla,
   enLetras,
   importeEnLetras,
@@ -577,5 +579,22 @@ describe('enLetras y plantillas (entrega 15)', () => {
 
   it('completa las variables y deja a la vista las que faltan', () => {
     expect(completarPlantilla('Entre {{propietarios}} y {{ inquilinos }}, por {{nada}}.', { propietarios: 'Juan', inquilinos: 'Ana' })).toBe('Entre Juan y Ana, por [falta: nada].');
+  });
+});
+
+describe('alquilerDeHoy y proximoCambio (una sola definición)', () => {
+  const tramos = [
+    { numero: 1, desde: '2026-01-01', importe: 100_000 },
+    { numero: 2, desde: '2026-05-01', importe: null },
+    { numero: 3, desde: '2026-09-01', importe: null },
+  ];
+  it('si el tramo de hoy espera indexación, rige el anterior', () => {
+    expect(alquilerDeHoy(tramos, '2026-06-15')).toBe(100_000);
+    expect(alquilerDeHoy(tramos, '2025-12-31')).toBeNull();
+  });
+  it('el próximo cambio es el primer tramo sin importe, aunque ya haya pasado', () => {
+    expect(proximoCambio(tramos, '2026-06-15')).toBe('2026-05-01');
+    expect(proximoCambio([{ numero: 1, desde: '2026-01-01', importe: 1 }, { numero: 2, desde: '2026-07-01', importe: 2 }], '2026-06-15')).toBe('2026-07-01');
+    expect(proximoCambio([{ numero: 1, desde: '2026-01-01', importe: 1 }], '2026-06-15')).toBeNull();
   });
 });

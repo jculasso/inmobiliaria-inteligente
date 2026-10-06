@@ -1,6 +1,6 @@
 import { PeriodoSchema, puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../../lib/server-principal';
-import { getPlanillaBoletas, listBoletas, listContratos, listCuentasServicio, listPolizas, listPropiedadesAlquiler, listServicios } from '../../../lib/alquileres-api';
+import { getPlanillaBoletas, listBoletas, listContratos, listPolizas, listPropiedadesAlquiler, listServicios } from '../../../lib/alquileres-api';
 import { ImpuestosVista } from '../../../components/alquileres/impuestos-vista';
 
 export const metadata = { title: 'Impuestos y servicios · Alquileres' };
@@ -15,12 +15,11 @@ export default async function ImpuestosPage({ searchParams }: { searchParams: Pr
   const periodo = pedido.success ? pedido.data : mesActual();
   const ver = q.ver === 'control' ? 'control' : 'mes';
   const t = ctx.accessToken;
-  const [planilla, boletas, control, servicios, cuentas, propiedades, polizas, contratos] = await Promise.all([
+  const [planilla, boletas, control, servicios, propiedades, polizas, contratos] = await Promise.all([
     getPlanillaBoletas(t, periodo),
     listBoletas(t, { periodo, ver: 'mes' }),
     listBoletas(t, { ver: 'control' }),
     listServicios(t),
-    listCuentasServicio(t),
     listPropiedadesAlquiler(t),
     listPolizas(t),
     listContratos(t),
@@ -34,7 +33,8 @@ export default async function ImpuestosPage({ searchParams }: { searchParams: Pr
       boletas={boletas}
       control={control}
       servicios={servicios}
-      cuentas={cuentas}
+      // Las cuentas ya vienen en la planilla: pedirlas aparte era leerlas dos veces.
+      cuentas={planilla.filas.map((f) => f.cuenta)}
       propiedades={propiedades}
       polizas={polizas}
       contratos={contratos}

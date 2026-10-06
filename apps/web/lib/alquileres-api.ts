@@ -6,6 +6,7 @@ import {
   UrlArchivoDtoSchema,
   type CambioFirmaManualInput,
   TableroAlquileresDtoSchema,
+  TablerosAlquileresDtoSchema,
   LiquidacionDtoSchema,
   LiquidacionResumenDtoSchema,
   PendienteLiquidarDtoSchema,
@@ -216,6 +217,11 @@ export async function generarLiquidacionPdf(accessToken: string, id: string) {
 }
 
 /** El tablero del módulo (reglas 26 a 32). */
+/** Los tres cortes del tablero de una vez: el filtro Todos / Particulares / Comerciales no vuelve a pedir nada. */
+export async function getTablerosAlquileres(accessToken: string, anio?: number) {
+  return apiFetch(`/alquileres/tablero/completo${anio ? `?anio=${anio}` : ''}`, TablerosAlquileresDtoSchema, { accessToken });
+}
+
 export async function getTableroAlquileres(accessToken: string, anio?: number, tipo: FiltroTipoContrato = 'todos') {
   const q = new URLSearchParams();
   if (anio) q.set('anio', String(anio));

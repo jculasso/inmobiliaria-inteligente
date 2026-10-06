@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { DIAS_TABLERO_PROXIMOS, type FilaTablero, type FiltroTipoContrato, type Indicador, type MonedaAlquiler, type TableroAlquileresDto } from '@vacker/types';
+import { DIAS_TABLERO_PROXIMOS, type FilaTablero, type FiltroTipoContrato, type Indicador, type MonedaAlquiler, type TableroAlquileresDto, type TablerosAlquileresDto } from '@vacker/types';
 import { mesLargo } from '@vacker/domain';
 import { Card, KpiCard, Modal } from '@vacker/ui';
 import { fmtFecha, fmtK, fmtMoneda, fmtNum } from '../../lib/format';
@@ -69,18 +69,12 @@ const plata = (n: number) => `$${fmtK(n)}`;
 const porcentaje = (n: number) => `${Math.round(n)}%`;
 const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
 
-/** Cambia un parámetro del tablero en la dirección, sin perder los otros. */
-function useParametro(startTransition: (f: () => void) => void) {
-  const router = useRouter();
-  const pathname = usePathname();
-  return (t: TableroAlquileresDto, cambio: { anio?: number; tipo?: FiltroTipoContrato }) => {
-    const q = new URLSearchParams();
-    const anio = cambio.anio ?? t.anio;
-    const tipo = cambio.tipo ?? t.tipo;
-    if (anio !== Number(t.hoy.slice(0, 4))) q.set('anio', String(anio));
-    if (tipo !== 'todos') q.set('tipo', tipo);
-    startTransition(() => router.push(`${pathname}${q.toString() ? `?${q}` : ''}`, { scroll: false }));
-  };
+/** La dirección del tablero con su año y su tipo: se puede compartir o recargar y queda igual. */
+function direccion(pathname: string, hoy: string, anio: number, tipo: FiltroTipoContrato) {
+  const q = new URLSearchParams();
+  if (anio !== Number(hoy.slice(0, 4))) q.set('anio', String(anio));
+  if (tipo !== 'todos') q.set('tipo', tipo);
+  return `${pathname}${q.toString() ? `?${q}` : ''}`;
 }
 
 /**
@@ -349,24 +343,24 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
  * lo que cuenta, y esa lista suma el número: los dos llegan juntos de la API,
  * del mismo cálculo.
  */
-export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDto }) {
+export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tableros: TablerosAlquileresDto; tipoInicial?: FiltroTipoContrato }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const [actualizando, startTransition] = useTransition();
-  const cambiar = useParametro(startTransition);
-  // Lo elegido se ve al instante; los números llegan cuando responde la API.
-  const [elegido, setElegido] = useState({ tipo: t.tipo, anio: t.anio });
-  const [visto, setVisto] = useState({ tipo: t.tipo, anio: t.anio });
-  if (visto.tipo !== t.tipo || visto.anio !== t.anio) {
-    setVisto({ tipo: t.tipo, anio: t.anio });
-    setElegido({ tipo: t.tipo, anio: t.anio });
-  }
-  const elegirTipo = (tipo: FiltroTipoContrato) => {
-    setElegido((e) => ({ ...e, tipo }));
-    cambiar(t, { tipo });
+  // Los tres cortes ya están acá: cambiar de tipo es instantáneo (Javier,
+  // 6/10/2026: «parece que no está funcionando»). Solo el año vuelve a pedir.
+  const [tipo, setTipo] = useState<FiltroTipoContrato>(tipoInicial);
+  const t = tableros[tipo];
+  const [anioElegido, setAnioElegido] = useState(t.anio);
+  const elegirTipo = (nuevo: FiltroTipoContrato) => {
+    setTipo(nuevo);
+    // La dirección acompaña, sin pedirle nada al servidor.
+    window.history.replaceState(null, '', direccion(pathname, t.hoy, t.anio, nuevo));
   };
   const elegirAnio = (anio: number) => {
-    setElegido((e) => ({ ...e, anio }));
-    cambiar(t, { anio });
+    setAnioElegido(anio);
+    startTransition(() => router.push(direccion(pathname, t.hoy, anio, tipo), { scroll: false }));
   };
   const abrir = (titulo: string, indicador: Indicador, columnas: [Columna, string][], extra: Partial<Detalle> = {}) => () => setDetalle({ titulo, indicador, columnas, ...extra });
   const mes = mesLargo(`${t.mes}-01`);
@@ -386,7 +380,7 @@ export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDt
     { icono: '🪜', titulo: `Escalones que empiezan en los próximos ${DIAS_TABLERO_PROXIMOS} días`, ind: t.tareas.escalones, columnas: VISTAS.escalones },
     ...t.tareas.vencen.map((v) => ({
       icono: '📅',
-      titulo: `Contratos que vencen ${v.dias === 30 ? 'en 30 días' : v.dias === 60 ? 'entre 31 y 60 días' : 'entre 61 y 90 días'}`,
+      titulo: v.dias === 30 ? 'Contratos vencidos o que vencen en 30 días' : `Contratos que vencen ${v.dias === 60 ? 'entre 31 y 60 días' : 'entre 61 y 90 días'}`,
       ind: v.indicador,
       columnas: VISTAS.vencen,
     })),
@@ -415,8 +409,8 @@ export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDt
             Actualizando…
           </span>
         )}
-        <FiltroTipo tipo={elegido.tipo} cambiar={elegirTipo} />
-        <FiltroAnioAlquileres t={t} anio={elegido.anio} cambiar={elegirAnio} />
+        <FiltroTipo tipo={tipo} cambiar={elegirTipo} />
+        <FiltroAnioAlquileres t={t} anio={anioElegido} cambiar={elegirAnio} />
       </EncabezadoPagina>
 
       <div aria-busy={actualizando} className={`flex flex-col gap-5 transition-opacity ${actualizando ? 'pointer-events-none opacity-50' : ''}`}>
@@ -748,7 +742,7 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
                 <span />
               )}
               {accion && (
-                <Link href={accion.href} className="ml-auto rounded-brand bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-d">
+                <Link href={accion.href} className="ml-auto rounded-brand bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-dark">
                   {accion.texto} →
                 </Link>
               )}
