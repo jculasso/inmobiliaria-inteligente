@@ -7,6 +7,7 @@ import { fmtNum, fmtUSD } from '../../lib/format';
 import { NOMBRES_MES } from '../../lib/meses';
 import type { FocoDrill } from '../../lib/drill';
 import { DetalleDrillModal } from './detalle-drill-modal';
+import { TituloSeccion } from '../piezas';
 
 interface Drill {
   titulo: string;
@@ -130,15 +131,13 @@ export function DashboardKpis({
     <>
       {resumen.mesActual && (
         <section className="flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Mes seleccionado</p>
+          <TituloSeccion icono="🗓️">Mes seleccionado</TituloSeccion>
           {cards(resumen.mesActual, { anio, mes, verTodo }, `${NOMBRES_MES[mes - 1]} ${anio}`)}
         </section>
       )}
 
       <section className="flex flex-col gap-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">
-          Acumulado año {anio}
-        </p>
+        <TituloSeccion icono="📅">{`Acumulado año ${anio}`}</TituloSeccion>
         {cards(resumen.anual, { anio, verTodo }, `Año ${anio}`)}
       </section>
 
