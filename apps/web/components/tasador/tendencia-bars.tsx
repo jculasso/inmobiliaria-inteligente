@@ -1,5 +1,7 @@
 'use client';
 
+import { CLASE_FOCO } from '../piezas';
+
 export interface TendenciaBar {
   label: string;
   full: string;
@@ -32,7 +34,7 @@ export function TendenciaBars({
             onClick={() => onSelect(d)}
             disabled={d.total === 0}
             title={`Ver tasaciones de ${d.full}`}
-            className={`flex h-full min-w-0 flex-1 flex-col items-center rounded-lg transition-colors ${
+            className={`${CLASE_FOCO} flex h-full min-w-0 flex-1 flex-col items-center rounded-brand transition-colors ${
               sel ? 'bg-brand-red/10' : d.total > 0 ? 'hover:bg-brand-red/10' : 'cursor-default'
             }`}
           >

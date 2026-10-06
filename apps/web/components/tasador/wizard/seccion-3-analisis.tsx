@@ -1,5 +1,6 @@
 'use client';
 
+import { CLASE_FOCO } from '../../piezas';
 import {
   NivelSchema,
   PerfilCompradorSchema,
@@ -64,7 +65,7 @@ function Pill({ valor, activo, onClick }: { valor: string; activo: boolean; onCl
       type="button"
       aria-pressed={activo}
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+      className={`${CLASE_FOCO} rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
         activo
           ? 'border-brand-red bg-brand-red/10 text-brand-red'
           : 'border-line text-muted hover:border-brand-red/40 hover:text-ink'
@@ -153,7 +154,7 @@ function SeccionPills({
               type="button"
               aria-pressed
               onClick={() => toggle(valores, setValores, v)}
-              className="rounded-full border border-dashed border-brand-red bg-brand-red/10 px-3 py-1.5 text-xs font-semibold text-brand-red"
+              className={`rounded-full border border-dashed border-brand-red bg-brand-red/10 px-3 py-1.5 text-xs font-semibold text-brand-red ${CLASE_FOCO}`}
               title="Fuera de la lista de esta tipología"
             >
               {v}
@@ -188,7 +189,7 @@ function SeccionPills({
           <button
             type="button"
             onClick={() => setVerTodas(true)}
-            className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-brand-red hover:border-brand-red/40"
+            className={`rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-brand-red hover:border-brand-red/40 ${CLASE_FOCO}`}
           >
             Ver las {ocultas} restantes
           </button>
@@ -197,7 +198,7 @@ function SeccionPills({
           <button
             type="button"
             onClick={() => setVerTodas(false)}
-            className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink"
+            className={`rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink ${CLASE_FOCO}`}
           >
             Ver menos
           </button>
@@ -224,14 +225,14 @@ function SeccionPills({
           <button
             type="button"
             onClick={agregar}
-            className="rounded-full border border-brand-red bg-brand-red/10 px-3 py-1.5 text-xs font-semibold text-brand-red"
+            className={`rounded-full border border-brand-red bg-brand-red/10 px-3 py-1.5 text-xs font-semibold text-brand-red ${CLASE_FOCO}`}
           >
             Agregar
           </button>
           <button
             type="button"
             onClick={() => setAgregando(false)}
-            className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted"
+            className={`rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted ${CLASE_FOCO}`}
           >
             Cancelar
           </button>
@@ -240,7 +241,7 @@ function SeccionPills({
         <button
           type="button"
           onClick={() => setAgregando(true)}
-          className="self-start rounded-full border border-dashed border-line px-3 py-1.5 text-xs font-semibold text-muted hover:border-brand-red/40 hover:text-ink"
+          className={`self-start rounded-full border border-dashed border-line px-3 py-1.5 text-xs font-semibold text-muted hover:border-brand-red/40 hover:text-ink ${CLASE_FOCO}`}
         >
           ＋ {etiquetaAgregar}
         </button>

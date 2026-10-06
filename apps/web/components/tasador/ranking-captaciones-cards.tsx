@@ -1,6 +1,7 @@
 'use client';
 
 import { Avatar } from '@vacker/ui';
+import { CLASE_FOCO } from '../piezas';
 
 interface Item {
   usuarioId: string;
@@ -42,7 +43,7 @@ export function RankingCaptacionesCards({ ranking, seleccionado, onSelect }: Pro
             type="button"
             onClick={() => onSelect(r)}
             title={`Ver captaciones de ${r.nombre}`}
-            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all hover:-translate-x-0 hover:translate-x-0.5 ${
+            className={`${CLASE_FOCO} flex items-center gap-3 rounded-brand border px-3 py-2.5 text-left transition-all hover:-translate-x-0 hover:translate-x-0.5 ${
               sel
                 ? 'border-brand-red bg-brand-red/5 shadow-[inset_0_0_0_1px_rgba(193,18,31,0.15)]'
                 : top

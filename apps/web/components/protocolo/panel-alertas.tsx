@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import type { AlertaProtocolo } from '@vacker/types';
+import { CLASE_FOCO } from '../piezas';
 import { AlertaItem } from './protocolo-ui';
 
 export interface AlertaConPropiedad extends AlertaProtocolo {
@@ -28,7 +29,7 @@ export function PanelAlertas({ alertas }: { alertas: AlertaConPropiedad[] }) {
         type="button"
         onClick={() => setAbierto((v) => !v)}
         aria-expanded={abierto}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        className={`flex w-full items-center justify-between gap-3 rounded-brand px-4 py-3 text-left ${CLASE_FOCO}`}
       >
         <span className="flex min-w-0 items-center gap-2.5">
           <span aria-hidden className="text-lg">

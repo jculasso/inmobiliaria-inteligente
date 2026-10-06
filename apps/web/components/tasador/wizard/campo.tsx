@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { CLASE_FOCO } from '../../piezas';
 
 /**
  * Piezas compartidas por los seis pasos del wizard de tasación.
@@ -81,7 +82,7 @@ export function CheckPills({
               type="button"
               aria-pressed={activo}
               onClick={() => onToggle(o)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`${CLASE_FOCO} rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                 activo
                   ? 'border-brand-red bg-brand-red/10 text-brand-red'
                   : 'border-line text-muted hover:border-brand-red/40 hover:text-ink'
