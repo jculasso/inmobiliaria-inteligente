@@ -81,11 +81,11 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="whitespace-nowrap font-bold tabular-nums text-ink">{fmtMoneda(p.neto, p.moneda)}</span>
-                  <Link href={`/alquileres/liquidaciones/nueva?persona=${p.persona.id}`}>
-                    <Button variant="secondary" size="sm">
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href={`/alquileres/liquidaciones/nueva?persona=${p.persona.id}`}>
                       Liquidar
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </span>
               </li>
             ))}

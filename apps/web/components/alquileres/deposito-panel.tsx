@@ -6,7 +6,7 @@ import type { DepositoDto, EstadoDeposito } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { devolverDeposito, entregarDeposito } from '../../lib/alquileres-api';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { Insignia, Panel, type TonoInsignia } from './piezas';
 
@@ -26,7 +26,7 @@ const ESTADO: Record<EstadoDeposito, { texto: string; tono: TonoInsignia }> = {
 export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string; deposito: DepositoDto }) {
   const router = useRouter();
   const [devolviendo, setDevolviendo] = useState(false);
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyIso());
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const moneda = d.moneda ?? 'ARS';

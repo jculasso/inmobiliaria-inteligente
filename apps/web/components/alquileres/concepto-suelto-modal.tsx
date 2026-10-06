@@ -6,6 +6,8 @@ import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { crearConceptoSuelto } from '../../lib/alquileres-api';
 import { Campo, inputClass } from '../form-ui';
+import { leerImporte } from '../../lib/importe';
+import { InputImporte } from '../input-importe';
 
 export const NOMBRE_TIPO_SUELTO: Record<TipoConceptoSuelto, string> = {
   expensa: 'Expensas',
@@ -33,7 +35,8 @@ export function ConceptoSueltoModal({
   onClose: () => void;
   onSaved: (n: number) => void;
 }) {
-  const vigentes = contratos.filter((c) => c.estado !== 'borrador');
+  // Los que tienen cuenta: no un borrador ni uno anulado.
+  const vigentes = contratos.filter((c) => c.estado !== 'borrador' && c.estado !== 'anulado');
   const [contratoId, setContratoId] = useState(vigentes[0]?.id ?? '');
   const [tipo, setTipo] = useState<TipoConceptoSuelto>('expensa');
   const [aCargoDe, setACargoDe] = useState<Parte>('inquilino');
@@ -49,7 +52,7 @@ export function ConceptoSueltoModal({
   async function guardar(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const monto = Number(importe.replace(/\./g, '').replace(',', '.'));
+    const monto = leerImporte(importe) ?? Number.NaN;
     if (!(monto > 0)) {
       setError('Cargá el importe.');
       return;
@@ -89,7 +92,7 @@ export function ConceptoSueltoModal({
             </select>
           </Campo>
           <Campo label="Importe" requerido>
-            <input className={`${inputClass} text-right tabular-nums`} inputMode="decimal" placeholder="$ 0" value={importe} onChange={(e) => setImporte(e.target.value)} />
+            <InputImporte moneda={vigentes.find((c) => c.id === contratoId)?.moneda ?? 'ARS'} value={importe} onChange={setImporte} />
           </Campo>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">

@@ -7,9 +7,11 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { guardarConfiguracionAlquileres } from '../../lib/alquileres-api';
 import { Campo, inputClass } from '../form-ui';
+import { InputPorcentaje } from '../input-importe';
+import { fmtMoneda } from '../../lib/format';
+import { fmtPct } from '../../lib/importe';
 import { EncabezadoPagina, Panel } from './piezas';
 
-const num = (v: string) => Number(v.replace(',', '.')) || 0;
 
 /**
  * La configuración del módulo (Javier, 6/10/2026: «la comisión la podemos
@@ -50,27 +52,27 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
       <Panel icono="💼" titulo="Comisión inicial">
         <div className="grid gap-3 sm:grid-cols-3">
           <Campo label="% del valor total del contrato">
-            <input className={inputClass} inputMode="decimal" value={String(c.comisionInicialPct).replace('.', ',')} onChange={(e) => cambiar({ comisionInicialPct: num(e.target.value) })} />
+            <InputPorcentaje valor={c.comisionInicialPct} onValor={(n) => cambiar({ comisionInicialPct: n })} />
           </Campo>
           <Campo label="En cuántas cuotas">
             <input type="number" min={1} max={12} className={inputClass} value={c.comisionInicialCuotas} onChange={(e) => cambiar({ comisionInicialCuotas: Math.min(12, Math.max(1, Number(e.target.value) || 1)) })} />
           </Campo>
           <Campo label="IVA">
             <select className={inputClass} value={c.comisionInicialConIva ? 'si' : 'no'} onChange={(e) => cambiar({ comisionInicialConIva: e.target.value === 'si' })}>
-              <option value="si">Más IVA ({c.ivaHonorariosPct}%)</option>
+              <option value="si">Más IVA ({fmtPct(c.ivaHonorariosPct)})</option>
               <option value="no">Sin IVA</option>
             </select>
           </Campo>
         </div>
         <p className="mt-2 text-xs text-muted">
-          Ejemplo: un contrato de 24 meses a $ 350.000 → {ejemplo.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })} en {c.comisionInicialCuotas}{' '}
+          Ejemplo: un contrato de 24 meses a {fmtMoneda(350_000)} → {fmtMoneda(ejemplo)} en {c.comisionInicialCuotas}{' '}
           {c.comisionInicialCuotas === 1 ? 'cuota' : 'cuotas'}, a cargo del inquilino.
         </p>
       </Panel>
       <Panel icono="🧾" titulo="Sellado">
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Alícuota sobre el valor total (%)" hint="0 = no se propone sellado.">
-            <input className={inputClass} inputMode="decimal" value={String(c.selladoPct).replace('.', ',')} onChange={(e) => cambiar({ selladoPct: num(e.target.value) })} />
+            <InputPorcentaje valor={c.selladoPct} onValor={(n) => cambiar({ selladoPct: n })} />
           </Campo>
           <Campo label="Lo paga el inquilino (%)" hint="El resto, el propietario.">
             <input type="number" min={0} max={100} className={inputClass} value={c.selladoInquilinoPct} onChange={(e) => cambiar({ selladoInquilinoPct: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} />
@@ -87,7 +89,7 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
       </Panel>
       <Panel icono="🏢" titulo="IVA de la inmobiliaria">
         <Campo label="IVA sobre honorarios, gastos y comisión (%)" hint="21 si es responsable inscripta; 0 si es monotributista.">
-          <input className={inputClass} inputMode="decimal" value={String(c.ivaHonorariosPct).replace('.', ',')} onChange={(e) => cambiar({ ivaHonorariosPct: num(e.target.value) })} />
+          <InputPorcentaje valor={c.ivaHonorariosPct} onValor={(n) => cambiar({ ivaHonorariosPct: n })} />
         </Campo>
       </Panel>
       {error && (

@@ -11,6 +11,7 @@ import {
   PolizaInputSchema,
   type CoberturaPoliza,
   type ContratoResumenDto,
+  type MonedaAlquiler,
   type PolizaDto,
   type QuienPaga,
 } from '@vacker/types';
@@ -21,9 +22,11 @@ import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { AnularModal } from './anular-modal';
 import { Bloque, Insignia } from './piezas';
+import { InputImporte } from '../input-importe';
+import { leerImporte } from '../../lib/importe';
 
 const hoy = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
-const num = (v: string) => Number(v.replace(/\./g, '').replace(',', '.')) || 0;
+const num = (v: string) => leerImporte(v) ?? 0;
 
 /** Vigente, por vencer (60 días, como el tablero), vencida o anulada. */
 export function EstadoPoliza({ p }: { p: PolizaDto }) {
@@ -34,7 +37,20 @@ export function EstadoPoliza({ p }: { p: PolizaDto }) {
 }
 
 /** Las pólizas, de un contrato o de todos, con su alta y su anulación. */
-export function Polizas({ polizas, contratos, contratoFijo, titulo = 'Pólizas de seguro' }: { polizas: PolizaDto[]; contratos: ContratoResumenDto[]; contratoFijo?: string; titulo?: string }) {
+export function Polizas({
+  polizas,
+  contratos,
+  contratoFijo,
+  moneda,
+  titulo = 'Pólizas de seguro',
+}: {
+  polizas: PolizaDto[];
+  contratos: ContratoResumenDto[];
+  contratoFijo?: string;
+  /** La moneda del contrato, cuando la lista es de uno. */
+  moneda?: MonedaAlquiler;
+  titulo?: string;
+}) {
   const router = useRouter();
   const [nueva, setNueva] = useState(false);
   const [aAnular, setAAnular] = useState<PolizaDto | null>(null);
@@ -88,6 +104,7 @@ export function Polizas({ polizas, contratos, contratoFijo, titulo = 'Pólizas d
         <PolizaModal
           contratos={contratos}
           contratoFijo={contratoFijo}
+          monedaFija={moneda}
           onClose={() => setNueva(false)}
           onDone={() => {
             setNueva(false);
@@ -111,8 +128,21 @@ export function Polizas({ polizas, contratos, contratoFijo, titulo = 'Pólizas d
   );
 }
 
-export function PolizaModal({ contratos, contratoFijo, onClose, onDone }: { contratos: ContratoResumenDto[]; contratoFijo?: string; onClose: () => void; onDone: () => void }) {
+export function PolizaModal({
+  contratos,
+  contratoFijo,
+  monedaFija,
+  onClose,
+  onDone,
+}: {
+  contratos: ContratoResumenDto[];
+  contratoFijo?: string;
+  monedaFija?: MonedaAlquiler;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [contratoId, setContratoId] = useState(contratoFijo ?? '');
+  const [moneda, setMoneda] = useState<MonedaAlquiler>(monedaFija ?? 'ARS');
   const [aseguradora, setAseguradora] = useState('');
   const [numero, setNumero] = useState('');
   const [cobertura, setCobertura] = useState<CoberturaPoliza>('incendio');
@@ -127,7 +157,7 @@ export function PolizaModal({ contratos, contratoFijo, onClose, onDone }: { cont
   const [enviando, setEnviando] = useState(false);
 
   async function guardar() {
-    const dto = { contratoId, aseguradora, numero, cobertura, desde, hasta, premio: num(premio), cuotas: Number(cuotas) || 1, primerVencimiento, aCargoDe, paga };
+    const dto = { contratoId, aseguradora, numero, cobertura, desde, hasta, premio: num(premio), cuotas: Number(cuotas) || 1, primerVencimiento, moneda, aCargoDe, paga };
     const r = PolizaInputSchema.safeParse(dto);
     if (!r.success) {
       setError(contratoId ? (r.error.issues[0]?.message ?? 'Revisá los datos.') : 'Elegí el contrato.');
@@ -149,7 +179,11 @@ export function PolizaModal({ contratos, contratoFijo, onClose, onDone }: { cont
       <div className="flex flex-col gap-3">
         {!contratoFijo && (
           <Campo label="Contrato" requerido>
-            <select className={inputClass} value={contratoId} onChange={(e) => setContratoId(e.target.value)}>
+            <select className={inputClass} value={contratoId} onChange={(e) => {
+                setContratoId(e.target.value);
+                setMoneda(contratos.find((c) => c.id === e.target.value)?.moneda ?? 'ARS');
+              }}
+            >
               <option value="">Elegí el contrato…</option>
               {contratos
                 .filter((c) => c.estado === 'vigente')
@@ -180,21 +214,27 @@ export function PolizaModal({ contratos, contratoFijo, onClose, onDone }: { cont
           </Campo>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Campo label="Vigente desde">
+          <Campo label="Vigente desde" requerido>
             <input type="date" className={inputClass} value={desde} onChange={(e) => setDesde(e.target.value)} />
           </Campo>
           <Campo label="Hasta" requerido>
             <input type="date" className={inputClass} value={hasta} onChange={(e) => setHasta(e.target.value)} />
           </Campo>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-[7rem_1fr_6rem_1fr]">
+          <Campo label="Moneda">
+            <select className={inputClass} value={moneda} onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}>
+              <option value="ARS">Pesos</option>
+              <option value="USD">Dólares</option>
+            </select>
+          </Campo>
           <Campo label="Premio total" requerido>
-            <input className={`${inputClass} text-right tabular-nums`} inputMode="decimal" value={premio} onChange={(e) => setPremio(e.target.value)} placeholder="$ 0" />
+            <InputImporte moneda={moneda} value={premio} onChange={setPremio} />
           </Campo>
           <Campo label="Cuotas">
             <input className={`${inputClass} text-right tabular-nums`} inputMode="numeric" value={cuotas} onChange={(e) => setCuotas(e.target.value)} />
           </Campo>
-          <Campo label="Primer vencimiento">
+          <Campo label="Primer vencimiento" requerido>
             <input type="date" className={inputClass} value={primerVencimiento} onChange={(e) => setPrimer(e.target.value)} />
           </Campo>
         </div>

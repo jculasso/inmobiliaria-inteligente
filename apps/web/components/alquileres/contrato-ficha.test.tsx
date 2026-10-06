@@ -73,7 +73,7 @@ describe('ContratoFicha — acciones según el estado (reglas 2 y 3)', () => {
 
   it('un tramo sin indexar se marca, no se muestra en cero', () => {
     render(<ContratoFicha contrato={base} />);
-    expect(screen.getByText('$ 250.000')).toBeInTheDocument();
+    expect(screen.getByText('$ 250.000,00')).toBeInTheDocument();
     expect(screen.getByText('A indexar')).toBeInTheDocument();
   });
 });

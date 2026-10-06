@@ -59,8 +59,8 @@ export function ResumenPersona({ cuenta, ficha, historial }: { cuenta: CuentaCor
           <div key={m.moneda} className="col-span-2 sm:col-span-1">
             <KpiCard
               label={`Saldo en ${m.moneda === 'ARS' ? 'pesos' : 'dólares'}`}
-              value={m.saldo === 0 ? 'Al día' : fmtMoneda(Math.abs(m.saldo), m.moneda)}
-              sub={m.saldo > 0 ? 'debe' : m.saldo < 0 ? 'a su favor' : undefined}
+              value={Math.abs(m.saldo) < 0.005 ? 'Al día' : fmtMoneda(Math.abs(m.saldo), m.moneda)}
+              sub={m.saldo >= 0.005 ? 'debe' : m.saldo <= -0.005 ? 'a su favor' : undefined}
               icon="💰"
               tone={m.saldo > 0 ? 'warning' : 'success'}
             />

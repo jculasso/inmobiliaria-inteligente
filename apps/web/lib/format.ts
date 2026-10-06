@@ -39,16 +39,18 @@ export function fmtFecha(iso: string | null | undefined): string {
 }
 
 /**
- * Monto de alquileres en su moneda: «$ 250.000» o «U$S 1.200». Con centavos
- * solo si los tiene —un prorrateo da 471.207,03—, para que un importe entero
- * no se lea con ,00 de relleno.
+ * Monto de alquileres en su moneda, siempre con centavos: «$ 250.000,00» o
+ * «U$S 1.200,00». Javier, 6/10/2026: un importe redondo sin «,00» al lado de
+ * otro con centavos «queda mal». Igual que el recibo y la liquidación.
  */
 export function fmtMoneda(n: number | null | undefined, moneda: 'ARS' | 'USD' = 'ARS'): string {
-  const v = n ?? 0;
-  const conCentavos = Math.round(v * 100) % 100 !== 0;
-  const texto = v.toLocaleString('es-AR', {
-    minimumFractionDigits: conCentavos ? 2 : 0,
-    maximumFractionDigits: conCentavos ? 2 : 0,
-  });
-  return `${moneda === 'USD' ? 'U$S' : '$'} ${texto}`;
+  // Redondeado a centavos primero: un resto de -0,001 no es «-$ 0,00».
+  const v = Math.round((n ?? 0) * 100) / 100;
+  const texto = Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${v < 0 ? '-' : ''}${moneda === 'USD' ? 'U$S' : '$'} ${texto}`;
+}
+
+/** Hoy en Argentina (UTC−3), como «2026-10-06»: después de las 21 h, `toISOString` ya da mañana. */
+export function hoyIso(): string {
+  return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
 }

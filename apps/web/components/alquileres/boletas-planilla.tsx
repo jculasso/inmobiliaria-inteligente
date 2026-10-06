@@ -10,10 +10,12 @@ import { cargarLoteBoletas } from '../../lib/alquileres-api';
 import { fmtMoneda } from '../../lib/format';
 import { inputClass } from '../form-ui';
 import { Bloque } from './piezas';
+import { escribirImporte, leerImporte } from '../../lib/importe';
+import { InputImporte } from '../input-importe';
 
 type Carga = { cuota: string; vencimiento: string; importe: string };
 const VACIA: Carga = { cuota: '', vencimiento: '', importe: '' };
-const num = (v: string) => Number(v.replace(/\./g, '').replace(',', '.')) || 0;
+const num = (v: string) => leerImporte(v) ?? 0;
 const llena = (c: Carga) => c.importe.trim() !== '' || c.vencimiento !== '';
 
 /**
@@ -45,7 +47,7 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
         nueva[f.cuenta.id] = {
           cuota: cuota ?? '',
           vencimiento: sumarMesesIso(f.anterior.vencimiento, 1),
-          importe: String(f.anterior.importe).replace('.', ','),
+          importe: escribirImporte(f.anterior.importe),
         };
       }
       return nueva;
@@ -140,13 +142,12 @@ function FilaCarga({ fila: f, carga, poner }: { fila: FilaPlanilla; carga: Carga
       <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-2 sm:contents">
         <input aria-label={`Cuota de ${etiqueta}`} className={`${inputClass} text-center`} placeholder="3/6" value={carga.cuota} onChange={(e) => poner('cuota', e.target.value)} />
         <input aria-label={`Vencimiento de ${etiqueta}`} type="date" className={inputClass} value={carga.vencimiento} onChange={(e) => poner('vencimiento', e.target.value)} />
-        <input
+        <InputImporte
           aria-label={`Importe de ${etiqueta}`}
-          className={`${inputClass} col-span-2 text-right tabular-nums sm:col-span-1`}
-          inputMode="decimal"
-          placeholder={f.anterior ? fmtMoneda(f.anterior.importe, 'ARS') : '$ 0'}
+          className="col-span-2 sm:col-span-1"
+          placeholder={f.anterior ? escribirImporte(f.anterior.importe) : ''}
           value={carga.importe}
-          onChange={(e) => poner('importe', e.target.value)}
+          onChange={(v) => poner('importe', v)}
         />
       </div>
     </li>

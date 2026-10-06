@@ -8,6 +8,8 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { extenderContrato } from '../../lib/alquileres-api';
 import { fmtFecha } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
+import { leerImporte } from '../../lib/importe';
+import { InputImporte } from '../input-importe';
 
 /**
  * Extender un contrato vigente (punto 13 de Javier, como el botón de Gexion):
@@ -27,7 +29,7 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
     setError(null);
     setEnviando(true);
     try {
-      await extenderContrato(await getAccessToken(), c.id, { nuevoFin, importeBase: escalonado ? Number(importe.replace(/\./g, '').replace(',', '.')) || null : null });
+      await extenderContrato(await getAccessToken(), c.id, { nuevoFin, importeBase: escalonado ? leerImporte(importe) || null : null });
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo extender.');
@@ -59,7 +61,7 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
         </div>
         {escalonado ? (
           <Campo label="Importe mensual de la extensión" requerido>
-            <input className={`${inputClass} text-right tabular-nums`} inputMode="decimal" value={importe} onChange={(e) => setImporte(e.target.value)} placeholder="$ 0" />
+            <InputImporte value={importe} onChange={setImporte} />
           </Campo>
         ) : (
           <p className="text-sm text-muted">

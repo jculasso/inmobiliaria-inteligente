@@ -9,8 +9,9 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { confirmarIndexacion } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
-import { inputClass } from '../form-ui';
 import { EncabezadoPagina, Insignia, TituloSeccion, Vacio } from './piezas';
+import { leerImporte } from '../../lib/importe';
+import { InputImporte } from '../input-importe';
 
 const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
 
@@ -58,7 +59,7 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
 
   async function confirmar() {
     setError(null);
-    const manual = t.estado === 'manual' ? Number(importe.replace(/\./g, '').replace(',', '.')) : null;
+    const manual = t.estado === 'manual' ? (leerImporte(importe) ?? Number.NaN) : null;
     if (t.estado === 'manual' && !(manual! > 0)) {
       setError('Cargá el importe del tramo.');
       return;
@@ -115,13 +116,11 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
       {t.estado !== 'pendiente_indice' && (
         <div className="flex w-full items-center gap-2 sm:w-auto sm:shrink-0">
           {t.estado === 'manual' && (
-            <input
+            <InputImporte
               aria-label={`Importe del tramo ${t.numero} del contrato ${t.contrato.codigo}`}
-              className={`${inputClass} min-w-0 flex-1 text-right tabular-nums sm:w-36 sm:flex-none`}
-              inputMode="numeric"
-              placeholder="$ 0"
+              className="min-w-0 flex-1 sm:w-40 sm:flex-none"
               value={importe}
-              onChange={(e) => setImporte(e.target.value)}
+              onChange={setImporte}
             />
           )}
           <Button

@@ -1,4 +1,4 @@
-import type { EstadoContrato } from '@vacker/types';
+import { NOMBRE_ESTADO_CONTRATO, type EstadoContrato } from '@vacker/types';
 import { Insignia, type TonoInsignia } from './piezas';
 
 const TONO: Record<EstadoContrato, TonoInsignia> = {
@@ -9,14 +9,6 @@ const TONO: Record<EstadoContrato, TonoInsignia> = {
   anulado: 'marca',
 };
 
-const NOMBRE: Record<EstadoContrato, string> = {
-  borrador: 'Borrador',
-  vigente: 'Vigente',
-  finalizado: 'Finalizado',
-  rescindido: 'Rescindido',
-  anulado: 'Anulado',
-};
-
 export function EstadoContratoBadge({ estado }: { estado: EstadoContrato }) {
-  return <Insignia tono={TONO[estado]}>{NOMBRE[estado]}</Insignia>;
+  return <Insignia tono={TONO[estado]}>{NOMBRE_ESTADO_CONTRATO[estado]}</Insignia>;
 }

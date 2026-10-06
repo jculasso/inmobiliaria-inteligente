@@ -156,12 +156,12 @@ export function LiquidacionForm({
           <Button variant="secondary" onClick={() => setMandando(true)}>
             ✉️ Mandar por mail
           </Button>
-          <Link href={`/alquileres/personas/${hecha.persona.id}`}>
-            <Button variant="secondary">Ver la cuenta</Button>
-          </Link>
-          <Link href="/alquileres/liquidaciones">
-            <Button variant="secondary">Volver a la bandeja</Button>
-          </Link>
+          <Button asChild variant="secondary">
+            <Link href={`/alquileres/personas/${hecha.persona.id}`}>Ver la cuenta</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/alquileres/liquidaciones">Volver a la bandeja</Link>
+          </Button>
         </div>
         {error && <p role="alert" className="text-sm font-semibold text-brand-red">{error}</p>}
         {mandando && (
@@ -238,7 +238,8 @@ export function LiquidacionForm({
 
       {cargando && <p className="text-sm text-muted">Armando la liquidación…</p>}
 
-      {prep && (
+      {/* Mientras carga, nada: lo anterior estaba en la otra moneda. */}
+      {prep && !cargando && (
         <>
           <PanelResumen prep={prep} grupos={grupos.length} />
           {grupos.length === 0 && <p className="text-sm text-muted">No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}.</p>}

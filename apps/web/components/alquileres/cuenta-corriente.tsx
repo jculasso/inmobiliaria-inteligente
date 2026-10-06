@@ -258,16 +258,6 @@ export function CuentaCorriente({
         </Bloque>
       )}
 
-      {editando && (ficha?.persona ?? persona) && (
-        <PersonaFormModal
-          persona={ficha?.persona ?? persona ?? undefined}
-          onClose={() => setEditando(false)}
-          onSaved={() => {
-            setEditando(false);
-            router.refresh();
-          }}
-        />
-      )}
     </>
   );
 
@@ -294,16 +284,16 @@ export function CuentaCorriente({
               ✏️ Editar datos
             </Button>
           )}
-          <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
-            <Button variant="secondary" size="sm">
+          <Button asChild variant="secondary" size="sm">
+            <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
               🧾 Liquidar
-            </Button>
-          </Link>
-          <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
-            <Button variant="primary" size="sm">
+            </Link>
+          </Button>
+          <Button asChild variant="primary" size="sm">
+            <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
               ＋ Registrar cobro
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -335,6 +325,18 @@ export function CuentaCorriente({
       )}
 
 
+
+      {/* Fuera de las solapas: «Editar» se toca desde cualquiera, no solo desde la cuenta. */}
+      {editando && (ficha?.persona ?? persona) && (
+        <PersonaFormModal
+          persona={ficha?.persona ?? persona ?? undefined}
+          onClose={() => setEditando(false)}
+          onSaved={() => {
+            setEditando(false);
+            router.refresh();
+          }}
+        />
+      )}
 
       {aEnviar && (
         <EnviarMailModal

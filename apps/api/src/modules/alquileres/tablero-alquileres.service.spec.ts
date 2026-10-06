@@ -102,8 +102,8 @@ function servicio(over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unkn
     bandeja: vi.fn().mockResolvedValue({
       indices: [],
       tramos: [
-        { tramoId: 't1', contrato: { id: 'c5', codigo: '5' }, inquilinos: ['Inquilina'], numero: 5, indice: 'IPC', desde: '2026-10-15', estado: 'lista', importePropuesto: 1_200_000, vencida: true },
-        { tramoId: 't2', contrato: { id: 'c7', codigo: '7' }, inquilinos: [], numero: 3, indice: 'ICL', desde: '2026-11-01', estado: 'pendiente_indice', importePropuesto: null, vencida: false },
+        { tramoId: 't1', contrato: { id: 'c5', codigo: '5' }, inquilinos: ['Inquilina'], numero: 5, indice: 'IPC', desde: '2026-10-15', estado: 'lista', importeAnterior: 1_137_518, importePropuesto: 1_200_000, falta: [], vencida: true },
+        { tramoId: 't2', contrato: { id: 'c7', codigo: '7' }, inquilinos: [], numero: 3, indice: 'ICL', desde: '2026-11-01', estado: 'pendiente_indice', importeAnterior: 900_000, importePropuesto: null, falta: ['el ICL del 31/10/2026'], vencida: false },
       ],
     }),
   } as unknown as IndexacionesService;
@@ -121,8 +121,6 @@ function indicadores(t: TableroAlquileresDto): [string, Indicador, 'importe' | '
   return [
     ['vigentes', t.cartera.vigentes, 'cantidad'],
     ...t.cartera.alquilerMensual.map((a) => [`alquiler ${a.moneda}`, a.indicador, 'importe'] as [string, Indicador, 'importe']),
-    ['propietarios', t.cartera.propietarios, 'cantidad'],
-    ['inquilinos', t.cartera.inquilinos, 'cantidad'],
     ...t.cobranza.flatMap((c) => [
       [`emitidos ${c.moneda}`, c.emitidos, 'cantidad'],
       [`cobrados ${c.moneda}`, c.cobrados, 'cantidad'],
@@ -160,7 +158,7 @@ describe('TableroAlquileresService', () => {
   it('cartera: el alquiler de hoy es el del último tramo indexado ya empezado', async () => {
     const t = await servicio().tablero(HOY);
     expect(t.cartera.alquilerMensual).toEqual([{ moneda: 'ARS', indicador: expect.objectContaining({ valor: 1_137_518 }) }]);
-    expect(t.cartera).toMatchObject({ vivienda: 1, comercial: 0, propietarios: { valor: 1 }, inquilinos: { valor: 1 } });
+    expect(t.cartera).toMatchObject({ vivienda: 1, comercial: 0 });
   });
 
   // Regla 28: uno pagado en parte no cuenta como cobrado, pero suma lo pagado.
@@ -212,7 +210,7 @@ describe('TableroAlquileresService', () => {
       contrato({ id: 'c8', codigo: '8', estado: 'finalizado', fin: d('2026-09-30') }),
     ];
     const t = (await servicio({ contratos }).tablero(HOY)).tareas.sinFirmar;
-    expect(t.filas.map((f) => [f.contrato, f.detalle])).toEqual([
+    expect(t.filas.map((f) => [f.contrato, f.estado])).toEqual([
       ['5', 'Falta cargar el contrato firmado'],
       ['7', 'Falta completar la firma'],
     ]);
@@ -221,8 +219,28 @@ describe('TableroAlquileresService', () => {
   // Entrega 19.
   it('pólizas de los vigentes que vencen en 60 días y boletas que paga la inmobiliaria', async () => {
     const t = (await servicio().tablero(HOY)).tareas;
-    expect(t.polizas.filas.map((f) => [f.contrato, f.detalle, f.href])).toEqual([['5', 'Póliza Sancor N° 123 · vence el 30/11/2026', '/alquileres/contratos/c5']]);
-    expect(t.boletas.filas.map((f) => [f.contrato, f.detalle, f.importe])).toEqual([['5', 'API cuota 3/6 · vencida el 10/10/2026', 45_000]]);
+    expect(t.polizas.filas.map((f) => [f.contrato, f.detalle, f.fecha, f.estado, f.href])).toEqual([['5', 'Sancor N° 123', '2026-11-30', 'Vence en 41 días', '/alquileres/contratos/c5']]);
+    expect(t.boletas.filas.map((f) => [f.contrato, f.detalle, f.importe, f.estado])).toEqual([['5', 'API cuota 3/6', 45_000, 'Vencida hace 10 días']]);
+  });
+
+  // Javier, 6/10/2026: «Propietario, Inquilino, Importe Alquiler vigente, cuando indexa, cuando vence».
+  it('cada contrato del detalle trae partes, alquiler de hoy, próxima indexación y vencimiento', async () => {
+    const [f] = (await servicio().tablero(HOY)).cartera.vigentes.filas;
+    expect(f).toMatchObject({ contrato: '5', propiedad: 'Calle 1', inquilino: 'Inquilina', propietario: 'Dueño', moneda: 'ARS', alquiler: 1_137_518, indexa: '2026-12-15', vence: '2027-08-14' });
+  });
+
+  it('lo que no es un contrato (un alquiler del mes, una deuda) trae igual los datos de su contrato', async () => {
+    const t = await servicio().tablero(HOY);
+    expect(t.morosidad[0]!.total.filas[0]).toMatchObject({ contrato: '5', propietario: 'Dueño', propiedad: 'Calle 1', dias: 15 });
+    const parcial = t.cobranza[0]!.emitidos.filas.find((f) => f.id === '6')!;
+    expect(parcial.estado).toBe('Pagó $ 150.000,00, falta $ 250.000,00');
+    expect(t.cobranza[0]!.emitidos.filas.find((f) => f.id === '5')!.estado).toBe('Cobrado');
+  });
+
+  it('indexaciones: el alquiler de hoy, el nuevo y qué falta', async () => {
+    const t = (await servicio().tablero(HOY)).tareas;
+    expect(t.indexacionesVencidas.filas[0]).toMatchObject({ alquiler: 1_137_518, importe: 1_200_000, estado: 'Lista para confirmar (vencida)' });
+    expect(t.indexacionesProximas.filas[0]).toMatchObject({ estado: 'Espera el ICL del 31/10/2026', dias: 12 });
   });
 
   it('cada fila lleva a la ficha o a la cuenta', async () => {
@@ -237,7 +255,8 @@ describe('TableroAlquileresService', () => {
     const llamadas = rawCalls.at(-1)!;
     expect(llamadas[1]).toEqual(expect.arrayContaining(['2025-01', '2025-12']));
     const fechas = llamadas[2]!.filter((v: unknown) => v instanceof Date).map((v) => (v as Date).toISOString().slice(0, 10));
-    expect(fechas).toEqual(['2024-01-01', '2026-01-01', '2024-01-01', '2026-01-01']);
+    // Hasta fin del año en curso: la tarjeta «Ingresos del mes» es siempre del mes de hoy.
+    expect(fechas).toEqual(['2024-01-01', '2027-01-01', '2024-01-01', '2027-01-01']);
   });
 
   it('los ingresos llegan por mes, con los punitorios en cero si no hubo', async () => {

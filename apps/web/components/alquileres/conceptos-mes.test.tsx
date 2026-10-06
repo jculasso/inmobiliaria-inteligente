@@ -52,7 +52,7 @@ describe('ConceptosMes', () => {
     render(<ConceptosMes periodo="2026-11" conceptos={NOVIEMBRE} contratos={[contrato]} />);
     const tarjeta = (titulo: string) => screen.getByText(titulo, { selector: 'p' }).closest('.rounded-brand')!;
     expect(tarjeta('A cobrar')).toHaveTextContent('$ 1.275.157,68'); // 1.137.518 + 27.527,94 + 110.111,74
-    expect(tarjeta('A pagar')).toHaveTextContent('$ 1.137.518');
+    expect(tarjeta('A pagar')).toHaveTextContent('$ 1.137.518,00');
     expect(tarjeta('Para la inmobiliaria')).toHaveTextContent('$ 137.639,68');
   });
 
@@ -82,7 +82,7 @@ describe('ConceptosMes', () => {
     render(<ConceptosMes periodo="2026-11" conceptos={[k({ estado: 'parcial', saldo: 37_518 }), k({ estado: 'liquidado', sentido: 'a_pagar', papel: 'propietario' })]} contratos={[contrato]} />);
     const tabla = within(screen.getByRole('table'));
     expect(tabla.getByText('Cobrado en parte')).toBeInTheDocument();
-    expect(tabla.getByText('falta $ 37.518')).toBeInTheDocument();
+    expect(tabla.getByText('falta $ 37.518,00')).toBeInTheDocument();
     expect(tabla.getByText('Liquidado')).toBeInTheDocument();
   });
 

@@ -20,6 +20,8 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarContrato, crearContrato } from '../../lib/alquileres-api';
 import { Campo, inputClass, textareaClass } from '../form-ui';
+import { InputImporte } from '../input-importe';
+import { escribirImporte, leerImporte, leerNumero } from '../../lib/importe';
 import { EncabezadoPagina } from './piezas';
 
 interface Parte {
@@ -47,8 +49,8 @@ const NOMBRE_PAPEL: Record<PapelContrato, string> = {
 let secuencia = 0;
 const nuevaClave = () => `p${++secuencia}`;
 
-/** `''` → null, y el resto a número. Los inputs devuelven texto. */
-const num = (v: string): number | null => (v.trim() === '' ? null : Number(v.replace(',', '.')));
+/** Porcentajes y cantidades: `''` → null; punto o coma, decimal. */
+const num = leerNumero;
 
 /**
  * Alta y edición (en borrador) de un contrato, en tres pasos.
@@ -94,12 +96,12 @@ export function ContratoForm({
   const [ivaPct, setIvaPct] = useState(String(contrato?.ivaPct ?? 0));
   const [punitorioDiarioPct, setPunitorioDiarioPct] = useState(String(contrato?.punitorioDiarioPct ?? 0));
   const [pagoGarantizado, setPagoGarantizado] = useState(contrato?.pagoGarantizado ?? false);
-  const [depositoImporte, setDepositoImporte] = useState(contrato?.depositoImporte == null ? '' : String(contrato.depositoImporte));
+  const [depositoImporte, setDepositoImporte] = useState(escribirImporte(contrato?.depositoImporte));
   const [depositoDevolucion, setDepositoDevolucion] = useState(contrato?.depositoDevolucion ?? '');
   const [obs, setObs] = useState(contrato?.obs ?? '');
 
   const [tramos, setTramos] = useState<Tramo[]>(
-    contrato?.tramos.map((t) => ({ numero: t.numero, desde: t.desde, hasta: t.hasta, importe: t.importe == null ? '' : String(t.importe) })) ?? [],
+    contrato?.tramos.map((t) => ({ numero: t.numero, desde: t.desde, hasta: t.hasta, importe: escribirImporte(t.importe) })) ?? [],
   );
 
   const [error, setError] = useState<string | null>(null);
@@ -125,12 +127,12 @@ export function ContratoForm({
       ivaPct: num(ivaPct) ?? 0,
       punitorioDiarioPct: num(punitorioDiarioPct) ?? 0,
       pagoGarantizado,
-      depositoImporte: num(depositoImporte),
-      depositoMoneda: num(depositoImporte) != null ? moneda : null,
+      depositoImporte: leerImporte(depositoImporte),
+      depositoMoneda: leerImporte(depositoImporte) != null ? moneda : null,
       depositoDevolucion: depositoDevolucion || null,
       obs: obs || null,
       partes: partes.filter((p) => p.personaId).map((p) => ({ personaId: p.personaId, papel: p.papel, porcentaje: p.papel === 'propietario' ? num(p.porcentaje) : null })),
-      tramos: tramos.map((t) => ({ numero: t.numero, desde: t.desde, hasta: t.hasta, importe: num(t.importe) })),
+      tramos: tramos.map((t) => ({ numero: t.numero, desde: t.desde, hasta: t.hasta, importe: leerImporte(t.importe) })),
     }),
     [codigo, propiedadId, tipo, moneda, inicio, fin, fechaFirma, diaVencimiento, diaPagoPropietario, ajuste, indice, periodicidad, honorariosPct, gastosAdmPct, ivaPct, punitorioDiarioPct, pagoGarantizado, depositoImporte, depositoDevolucion, obs, partes, tramos],
   );
@@ -142,7 +144,7 @@ export function ContratoForm({
     const enPaso = (campos: string[]) => mensajes.filter((m) => campos.includes(m.campo)).map((m) => m.mensaje);
     return [
       [...(propiedadId ? [] : ['Elegí la propiedad.']), ...validarPartes(dto.partes)],
-      [...(inicio && fin ? [] : ['Completá el inicio y el fin.']), ...enPaso(['fin', 'indice', 'periodicidadMeses'])],
+      [...(inicio && fin ? [] : ['Completá el inicio y el fin.']), ...enPaso(['fin', 'indice', 'periodicidadMeses', 'depositoImporte', 'diaVencimiento', 'diaPagoPropietario', 'honorariosPct', 'gastosAdmPct', 'ivaPct', 'punitorioDiarioPct'])],
       // Sin fechas no hay tramos que validar, pero el paso tampoco está completo.
       inicio && fin ? [...validarTramos(inicio, fin, dto.tramos), ...enPaso(['tramos'])] : ['Completá el inicio y el fin en Condiciones.'],
     ];
@@ -378,7 +380,7 @@ export function ContratoForm({
               Pago garantizado: al propietario se le paga aunque el inquilino no haya pagado.
             </label>
             <Campo label="Depósito en garantía">
-              <input className={inputClass} inputMode="decimal" value={depositoImporte} onChange={(e) => setDepositoImporte(e.target.value)} />
+              <InputImporte moneda={moneda} value={depositoImporte} onChange={setDepositoImporte} />
             </Campo>
             <Campo label="Devolución del depósito">
               <input type="date" className={inputClass} value={depositoDevolucion} onChange={(e) => setDepositoDevolucion(e.target.value)} />
@@ -430,13 +432,12 @@ export function ContratoForm({
                           <input type="date" aria-label={`Hasta, tramo ${t.numero}`} className={inputClass} value={t.hasta} onChange={(e) => setTramo(i, { hasta: e.target.value })} />
                         </td>
                         <td className="py-1.5">
-                          <input
+                          <InputImporte
                             aria-label={`Importe, tramo ${t.numero}`}
-                            className={inputClass}
-                            inputMode="decimal"
+                            moneda={moneda}
                             placeholder={ajuste === 'indexado' && i > 0 ? 'Se indexa' : ''}
                             value={t.importe}
-                            onChange={(e) => setTramo(i, { importe: e.target.value })}
+                            onChange={(importe) => setTramo(i, { importe })}
                           />
                         </td>
                       </tr>

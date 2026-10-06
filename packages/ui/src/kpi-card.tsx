@@ -54,19 +54,21 @@ export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: 
         )}
         <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
       </div>
-      <p className="mt-1.5 text-2xl font-extrabold text-ink">{value}</p>
+      {/* Un importe con centavos («$ 2.337.098,05») no se parte en dos líneas: el número se
+          achica con el ancho de la tarjeta, así todas las de una fila quedan del mismo tamaño. */}
+      <p className="mt-1.5 whitespace-nowrap text-[clamp(1.05rem,8.5cqw,1.5rem)] font-extrabold tabular-nums text-ink">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
     </>
   );
 
   if (onClick) {
     return (
-      <Card className={`p-0 ${TONE_BG[tone]}`}>
+      <Card className={`h-full p-0 @container ${TONE_BG[tone]}`}>
         <button
           type="button"
           onClick={onClick}
           aria-label={`${label}: ${value}. Ver el detalle`}
-          className="group relative w-full rounded-brand p-4 pr-8 text-left transition-colors hover:bg-black/[0.03]"
+          className="group relative flex h-full w-full flex-col justify-start rounded-brand p-4 pr-8 text-left transition-colors hover:bg-black/[0.03]"
         >
           <Lupa />
           {content}
@@ -75,5 +77,6 @@ export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: 
     );
   }
 
-  return <Card className={`p-4 ${TONE_BG[tone]}`}>{content}</Card>;
+  // `h-full`: en una fila de tarjetas, todas del mismo alto aunque una tenga subtítulo y otra no.
+  return <Card className={`h-full p-4 @container ${TONE_BG[tone]}`}>{content}</Card>;
 }

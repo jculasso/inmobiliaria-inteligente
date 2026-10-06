@@ -13,8 +13,10 @@ import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { Bloque, EncabezadoPagina } from './piezas';
 import { SelectorPersona } from './selector-persona';
+import { InputImporte } from '../input-importe';
+import { escribirImporte, leerImporte } from '../../lib/importe';
 
-const numero = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'));
+const numero = (s: string) => leerImporte(s) ?? Number.NaN;
 const recibo = (n: number) => String(n).padStart(6, '0');
 
 /** Lo que se escribe del punitorio de cada alquiler: el importe y, si se condona algo, el motivo. */
@@ -70,7 +72,7 @@ export function CobroForm({
         if (!vigente) return;
         setPrep(p);
         setElegidos(new Set(p.deudas.map((d) => d.conceptoId)));
-        setPunitorios(Object.fromEntries(p.deudas.filter((d) => d.punitorio).map((d) => [d.conceptoId, { importe: String(d.punitorio!.importe).replace('.', ','), motivo: '' }])));
+        setPunitorios(Object.fromEntries(p.deudas.filter((d) => d.punitorio).map((d) => [d.conceptoId, { importe: escribirImporte(d.punitorio!.importe), motivo: '' }])));
       } catch (err) {
         if (vigente) setError(err instanceof Error ? err.message : 'No se pudo traer la cuenta de la persona.');
       } finally {
@@ -149,9 +151,9 @@ export function CobroForm({
           <Button variant="secondary" onClick={() => setMandando(true)}>
             ✉️ Mandar por mail
           </Button>
-          <Link href={`/alquileres/personas/${hecho.persona.id}`}>
-            <Button variant="secondary">Ver la cuenta</Button>
-          </Link>
+          <Button asChild variant="secondary">
+            <Link href={`/alquileres/personas/${hecho.persona.id}`}>Ver la cuenta</Link>
+          </Button>
           <Button variant="secondary" onClick={() => window.location.reload()}>
             Otro cobro
           </Button>
@@ -248,12 +250,11 @@ export function CobroForm({
                             Punitorio: {d.punitorio.dias} días de atraso, {fmtMoneda(d.punitorio.importe, moneda)}
                           </p>
                           <Campo label="Se cobra">
-                            <input
+                            <InputImporte
                               aria-label={`Punitorio de ${d.descripcion}`}
-                              className={`${inputClass} text-right tabular-nums`}
-                              inputMode="decimal"
+                              moneda={moneda}
                               value={p?.importe ?? ''}
-                              onChange={(e) => setPunitorios({ ...punitorios, [d.conceptoId]: { importe: e.target.value, motivo: p?.motivo ?? '' } })}
+                              onChange={(importe) => setPunitorios({ ...punitorios, [d.conceptoId]: { importe, motivo: p?.motivo ?? '' } })}
                             />
                           </Campo>
                           {condona && (
@@ -292,9 +293,9 @@ export function CobroForm({
           <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-3">
             <Campo label="Importe recibido" requerido hint={sugerido > 0 ? `Para cancelar lo elegido: ${fmtMoneda(sugerido, moneda)}` : undefined}>
               <div className="flex gap-2">
-                <input className={`${inputClass} text-right tabular-nums`} inputMode="decimal" placeholder="$ 0" value={importe} onChange={(e) => setImporte(e.target.value)} />
+                <InputImporte className="min-w-0 flex-1" moneda={moneda} aria-label="Importe recibido" value={importe} onChange={setImporte} />
                 {sugerido > 0 && (
-                  <Button type="button" variant="secondary" onClick={() => setImporte(String(sugerido).replace('.', ','))}>
+                  <Button type="button" variant="secondary" onClick={() => setImporte(escribirImporte(sugerido))}>
                     Todo
                   </Button>
                 )}
