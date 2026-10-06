@@ -120,7 +120,7 @@ describe('sección 3 — nada de lo elegido se pierde', () => {
 describe('sección 3 — agregar una propia', () => {
   it('suma lo que el tasador escribe', () => {
     const { setFortalezas } = montar();
-    fireEvent.click(screen.getByRole('button', { name: '+ Agregar fortaleza' }));
+    fireEvent.click(screen.getByRole('button', { name: '＋ Agregar fortaleza' }));
     const campo = screen.getByLabelText('Agregar fortaleza');
     fireEvent.change(campo, { target: { value: '  Vista al lago  ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Agregar' }));
@@ -129,7 +129,7 @@ describe('sección 3 — agregar una propia', () => {
 
   it('no la duplica si ya está, aunque cambien tildes y mayúsculas', () => {
     const { setFortalezas } = montar({ fortalezas: ['Excelente ubicación'] });
-    fireEvent.click(screen.getByRole('button', { name: '+ Agregar fortaleza' }));
+    fireEvent.click(screen.getByRole('button', { name: '＋ Agregar fortaleza' }));
     fireEvent.change(screen.getByLabelText('Agregar fortaleza'), {
       target: { value: 'excelente ubicacion' },
     });
@@ -139,7 +139,7 @@ describe('sección 3 — agregar una propia', () => {
 
   it('ignora el texto vacío', () => {
     const { setFortalezas } = montar();
-    fireEvent.click(screen.getByRole('button', { name: '+ Agregar fortaleza' }));
+    fireEvent.click(screen.getByRole('button', { name: '＋ Agregar fortaleza' }));
     fireEvent.change(screen.getByLabelText('Agregar fortaleza'), { target: { value: '   ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Agregar' }));
     expect(setFortalezas).not.toHaveBeenCalled();

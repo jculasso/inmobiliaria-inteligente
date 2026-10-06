@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { TONO_ESTADO_TASACION } from '../../lib/tasacion-estado';
 import { TasacionFila } from './tasacion-fila';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -48,5 +49,40 @@ describe('TasacionFila — la ciudad', () => {
     // nueva puede estar hablando con la API vieja.
     fila({ id: '3', direccion: 'Mitre 900' });
     expect(screen.getByText('Mitre 900')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Las acciones como en el resto de la app: «📄 PDF», editar y borrar, con el
+ * nombre de la fila para el lector de pantalla (antes eran «Editar», «Ver» y
+ * «Borrar» sueltos, y «Ver» abría un PDF).
+ */
+describe('TasacionFila — acciones', () => {
+  it('cada acción dice de qué tasación es', () => {
+    const onVer = vi.fn();
+    render(
+      <TasacionFila
+        tasacion={{ ...BASE, id: '9', direccion: 'Mitre 900', ciudad: null } as never}
+        onEstado={() => {}}
+        onVer={onVer}
+        onBorrar={() => Promise.resolve()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Descargar el PDF de la tasación de Mitre 900' }),
+    );
+    expect(onVer).toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'Editar la tasación de Mitre 900' })).toHaveAttribute(
+      'href',
+      '/tasador/tasaciones/9/editar',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Borrar la tasación de Mitre 900' }),
+    ).toBeInTheDocument();
+  });
+
+  it('una captación perdida va en el color de peligro, nunca en el de la marca', () => {
+    expect(TONO_ESTADO_TASACION['No captada']).toBe('peligro');
+    expect(TONO_ESTADO_TASACION.Captada).toBe('exito');
   });
 });

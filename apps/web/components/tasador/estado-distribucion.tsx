@@ -2,6 +2,7 @@
 
 import type { EstadoTasacion, ResumenTasadorKpi } from '@vacker/types';
 import { ESTADO_TASACION_COLOR } from '@vacker/types';
+import { TituloSeccion } from '../piezas';
 
 interface Props {
   distribucion: ResumenTasadorKpi['distribucionEstado'];
@@ -22,9 +23,11 @@ export function EstadoDistribucion({
 
   return (
     <div>
-      <p className="mb-2 text-sm font-bold text-ink">
-        {titulo} <span className="text-xs font-normal text-muted">({periodoLabel})</span>
-      </p>
+      <div className="mb-2">
+        <TituloSeccion icono="📋" detalle={periodoLabel}>
+          {titulo}
+        </TituloSeccion>
+      </div>
       <div className="flex flex-col gap-2">
         {distribucion.map((d) => {
           const fila = (

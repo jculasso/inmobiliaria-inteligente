@@ -1,10 +1,12 @@
 import type { NivelConfianza } from '@vacker/domain';
 
 // Semáforo: Alta = verde, Media = ámbar, Baja = rojo. Es la señal clave de la valuación.
+// El rojo es `danger` y no `brand-red`: con una marca verde, «Confianza baja»
+// salía verde y parecía buena noticia (CONVENCIONES_TECNICAS §13).
 const ESTILO: Record<NivelConfianza, string> = {
   Alta: 'bg-success/15 text-success',
   Media: 'bg-warning/15 text-warning',
-  Baja: 'bg-brand-red/15 text-brand-red',
+  Baja: 'bg-danger/15 text-danger',
 };
 
 export function ConfianzaBadge({ nivel, score }: { nivel: NivelConfianza; score: number }) {

@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { recortarAlLimite, type TasacionResumenDto } from '@vacker/types';
-import { Button, Card } from '@vacker/ui';
+import { Card } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteTasacion, generarInforme } from '../../lib/tasador-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { CambiarEstadoModal } from './cambiar-estado-modal';
 import { AvisoListaRecortada } from '../aviso-lista-recortada';
 import { TasacionFila } from './tasacion-fila';
+import { BarraLista, BotonNuevo, MensajeError } from '../piezas';
 
 interface Props {
   tasaciones: TasacionResumenDto[];
@@ -61,34 +62,22 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por cliente, dirección, ciudad o agente…"
-          className="h-9 w-full max-w-sm rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red"
-        />
-        <div className="flex items-center gap-3">
-          <span className="whitespace-nowrap text-xs text-muted">
-            {filtradas.length} de {tasaciones.length} tasaciones
-          </span>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => router.push('/tasador/tasaciones/nueva')}
-          >
-            ＋ Nueva tasación
-          </Button>
-        </div>
-      </div>
+      {/* «de cuántas» cuenta las visibles: la fila de sonda de la API (la 501)
+          no es una tasación que se pueda ver. */}
+      <BarraLista
+        busqueda={busqueda}
+        onBusqueda={setBusqueda}
+        placeholder="Buscar por cliente, dirección, ciudad o agente…"
+        visibles={filtradas.length}
+        total={visibles.length}
+        nombre="tasaciones"
+      >
+        <BotonNuevo href="/tasador/tasaciones/nueva">Nueva tasación</BotonNuevo>
+      </BarraLista>
 
       {hayMas && <AvisoListaRecortada que="tasaciones" />}
 
-      {errorInforme && (
-        <p role="alert" className="text-sm font-medium text-brand-red">
-          {errorInforme}
-        </p>
-      )}
+      <MensajeError>{errorInforme}</MensajeError>
 
       <Card className="px-5 py-4">
         <div className="flex flex-col">

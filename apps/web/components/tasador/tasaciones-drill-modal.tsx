@@ -3,7 +3,8 @@
 import type { TasacionResumenDto } from '@vacker/types';
 import { Modal } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
-import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
+import { detalleEstado, tonoEstadoTasacion } from '../../lib/tasacion-estado';
+import { Insignia } from '../piezas';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 
 interface Props {
@@ -39,11 +40,7 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
                       <span className="mt-0.5 block text-[11px] text-muted">{t.cliente}</span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}
-                      >
-                        {t.estado}
-                      </span>
+                      <Insignia tono={tonoEstadoTasacion(t.estado)}>{t.estado}</Insignia>
                       {det && <span className="mt-0.5 block text-[10px] text-muted">{det}</span>}
                     </span>
                   </div>
@@ -57,7 +54,7 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
                 </Tarjeta>
               );
             })}
-            <li className="mt-1 rounded-xl border-2 border-line bg-surface px-3 py-2.5">
+            <li className="mt-1 rounded-brand border-2 border-line bg-surface px-3 py-2.5">
               <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">
                 Total ({tasaciones.length})
               </span>
@@ -102,11 +99,7 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
                       {fmtUSD(t.valorRecomendado)}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}
-                      >
-                        {t.estado}
-                      </span>
+                      <Insignia tono={tonoEstadoTasacion(t.estado)}>{t.estado}</Insignia>
                       {det && <div className="mt-0.5 text-[11px] text-muted">{det}</div>}
                     </td>
                   </tr>
