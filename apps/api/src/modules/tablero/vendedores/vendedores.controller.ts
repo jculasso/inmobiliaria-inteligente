@@ -23,7 +23,7 @@ import {
   type ObjetivoInput,
   type UpdateVendedor,
 } from '@vacker/types';
-import { CurrentUser, Roles } from '../../../auth/decorators';
+import { CurrentUser, Modulo, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ZodValidationPipe } from '../../../common/zod-validation.pipe';
 import { uploadUnArchivo } from '../../../common/upload';
@@ -33,6 +33,7 @@ import { VendedoresService } from './vendedores.service';
 
 @ApiTags('tablero')
 @ApiBearerAuth()
+@Modulo('tablero')
 @Controller('tablero/vendedores')
 export class VendedoresController {
   constructor(private readonly vendedores: VendedoresService) {}
@@ -107,7 +108,7 @@ export class VendedoresController {
   @Delete(':id/foto')
   @Roles('direccion', 'admin_tenant')
   @ApiOperation({ summary: 'Quita la foto del vendedor' })
-  eliminarFoto(@Param('id', ParseUUIDPipe) id: string) {
-    return this.vendedores.eliminarFoto(id);
+  eliminarFoto(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
+    return this.vendedores.eliminarFoto(id, ctxDe(user));
   }
 }

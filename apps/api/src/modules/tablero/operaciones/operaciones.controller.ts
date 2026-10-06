@@ -18,7 +18,7 @@ import {
   type OperacionFiltro,
   type UpdateOperacion,
 } from '@vacker/types';
-import { CurrentUser, Roles } from '../../../auth/decorators';
+import { CurrentUser, Modulo, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ZodValidationPipe } from '../../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero.util';
@@ -40,6 +40,7 @@ const PUEDEN_ESCRIBIR = ['direccion', 'admin_tenant'] as const;
 
 @ApiTags('tablero')
 @ApiBearerAuth()
+@Modulo('tablero')
 @Controller('tablero/operaciones')
 export class OperacionesController {
   constructor(private readonly operaciones: OperacionesService) {}
