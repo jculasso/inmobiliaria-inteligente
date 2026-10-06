@@ -1,7 +1,7 @@
 // Contratos del módulo Tasador de Propiedades. Vocabulario y DTOs tomados de
 // docs/prototipos/tasador_de_propiedades.html.
 import { z } from 'zod';
-import { IsoDateSchema, TipoOperacionSchema } from './tablero';
+import { BoolQuerySchema, IsoDateSchema, TipoOperacionSchema } from './tablero';
 
 export const TipoPropiedadSchema = z.enum([
   'Departamento',
@@ -186,6 +186,34 @@ export type FuenteComparable = z.infer<typeof FuenteComparableSchema>;
 export const TipoPrecioComparableSchema = z.enum(['Publicado', 'Cierre']);
 export type TipoPrecioComparable = z.infer<typeof TipoPrecioComparableSchema>;
 
+/**
+ * Link a la publicación de un comparable. Se muestra como enlace clickeable en
+ * la ficha y en el PDF, así que solo se aceptan direcciones web: un
+ * `javascript:...` guardado acá se ejecutaba al hacer clic (auditoría del
+ * 6/10/2026). Un link pegado sin protocolo (`www.zonaprop.com.ar/...`) se
+ * completa con `https://` en vez de rechazarse: es como lo copia la gente, y
+ * las fichas ya cargadas así se tienen que poder volver a guardar.
+ *
+ * Solo para lo que ENTRA: la lectura (`ComparableDtoSchema`) acepta cualquier
+ * texto, para que una fila vieja no rompa la pantalla.
+ */
+export const LinkExternoSchema = z.preprocess(
+  (v) => {
+    if (typeof v !== 'string') return v;
+    const t = v.trim();
+    if (t === '') return null;
+    // Sin esquema (`www.x.com/...`): se asume https. Con esquema, se respeta
+    // el que vino para poder rechazarlo si no es web.
+    return /^[a-z][a-z0-9+.-]*:/i.test(t) ? t : `https://${t}`;
+  },
+  z
+    .string()
+    .max(2000)
+    .url('El link no es una dirección web válida.')
+    .refine((u) => /^https?:\/\//i.test(u), 'El link tiene que empezar con http:// o https://.')
+    .nullish(),
+);
+
 /** Comparable de mercado (3..6 por tasación cuando la sección está completa). */
 export const ComparableInputSchema = z.object({
   direccion: z.string().min(1),
@@ -208,13 +236,16 @@ export const ComparableInputSchema = z.object({
   tipoPrecio: TipoPrecioComparableSchema.default('Publicado'),
   fechaReferencia: IsoDateSchema.nullish(),
   distanciaKm: z.number().nonnegative().nullish(),
-  link: z.string().nullish(),
+  link: LinkExternoSchema,
   observaciones: z.string().nullish(),
 });
 export type ComparableInput = z.infer<typeof ComparableInputSchema>;
 
 export const ComparableDtoSchema = ComparableInputSchema.extend({
   id: z.string().uuid(),
+  // La lectura acepta cualquier texto: hay filas cargadas antes de que se
+  // validara el link al entrar, y una fila vieja no puede tumbar la ficha.
+  link: z.string().nullish(),
   // Sin `.default()`: acá describe una fila ya persistida, no un input a
   // completar — evita la divergencia Input/Output que confunde la inferencia
   // de `apiFetch<T>` en el resto del código.
@@ -413,7 +444,7 @@ export const TasacionFiltroSchema = z.object({
   estado: EstadoTasacionSchema.optional(),
   agenteId: z.string().uuid().optional(),
   /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propias tasaciones. */
-  verTodo: z.coerce.boolean().optional(),
+  verTodo: BoolQuerySchema,
 });
 export type TasacionFiltro = z.infer<typeof TasacionFiltroSchema>;
 
@@ -562,7 +593,7 @@ export const TasadorKpiFiltroSchema = z.object({
   mes: z.coerce.number().int().min(1).max(12).optional(),
   trimestre: z.coerce.number().int().min(1).max(4).optional(),
   /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propias tasaciones. */
-  verTodo: z.coerce.boolean().optional(),
+  verTodo: BoolQuerySchema,
 });
 export type TasadorKpiFiltro = z.infer<typeof TasadorKpiFiltroSchema>;
 

@@ -12,6 +12,22 @@ export const IsoDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida, se espera YYYY-MM-DD');
 
 /**
+ * Un booleano que llega por query string (`?verTodo=1`).
+ *
+ * NO es `z.coerce.boolean()`: eso aplica `Boolean(valor)`, y `Boolean('false')`
+ * y `Boolean('0')` son `true` — cualquier texto no vacío lo es. Un cliente que
+ * mandara `verTodo=false` recibía el alcance completo. Acá `'1'`/`'true'` es
+ * verdadero, `'0'`/`'false'` es falso, ausente queda `undefined` (los servicios
+ * lo leen como falso) y cualquier otra cosa es un error de validación.
+ */
+export const BoolQuerySchema = z.preprocess((v) => {
+  if (v === '1' || v === 'true' || v === 1) return true;
+  if (v === '0' || v === 'false' || v === 0) return false;
+  if (v === '') return undefined;
+  return v;
+}, z.boolean().optional());
+
+/**
  * Monto en USD. Los montos se guardan en la base como `numeric(14,2)`
  * (máximo 12 dígitos enteros): sin este tope, un valor más grande pasa la
  * validación y recién explota en Postgres como "numeric field overflow",
@@ -131,7 +147,7 @@ export const KpiFiltroSchema = z.object({
    * Check "Ver todo": expande del trabajo propio (el default) al alcance
    * máximo del rol. Ver `scopeDeVista` en la API.
    */
-  verTodo: z.coerce.boolean().optional(),
+  verTodo: BoolQuerySchema,
 });
 export type KpiFiltro = z.infer<typeof KpiFiltroSchema>;
 

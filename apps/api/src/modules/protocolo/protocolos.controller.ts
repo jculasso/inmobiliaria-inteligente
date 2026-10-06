@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from 
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import {
+  BoolQuerySchema,
   ArchivarProtocoloSchema,
   IniciarProtocoloSchema,
   ProtocoloFiltroSchema,
@@ -21,7 +22,7 @@ import { ctxDe } from '../tablero/tablero.util';
 import { ProtocolosService } from './protocolos.service';
 
 /** Query de los endpoints que solo aceptan el toggle "ver solo lo mío". */
-const VerTodoSchema = z.object({ verTodo: z.coerce.boolean().optional() });
+const VerTodoSchema = z.object({ verTodo: BoolQuerySchema });
 type VerTodoQuery = z.infer<typeof VerTodoSchema>;
 
 const ROLES_MODULO = ['vendedor', 'team_leader', 'direccion', 'admin_tenant'] as const;
