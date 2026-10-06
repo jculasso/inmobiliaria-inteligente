@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import type {
   CreateOperacion,
   EstadoAlquiler,
@@ -14,21 +14,27 @@ import type {
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createOperacion, updateOperacion } from '../../lib/tablero-api';
-import { Campo, inputClass } from '../form-ui';
+import { fmtUSD } from '../../lib/format';
+import { escribirImporte, leerImporte } from '../../lib/importe';
+import { estadoLabel } from '../../lib/operacion-estado';
+import { Campo, Seccion, inputClass } from '../form-ui';
+import { InputImporte } from '../input-importe';
+import { MensajeError } from '../piezas';
 
 const ESTADOS_VENTA: EstadoVenta[] = ['escriturada', 'senada', 'reservada', 'boleto'];
 const ESTADOS_ALQUILER: EstadoAlquiler[] = ['firmado', 'reservado', 'pendiente'];
 
-/** Etiquetas legibles para el select de estado (la base guarda el enum en minúsculas). */
-const ESTADO_LABEL: Record<string, string> = {
-  escriturada: 'Escriturada',
-  senada: 'Señada',
-  reservada: 'Reservada',
-  boleto: 'Boleto',
-  firmado: 'Firmado',
-  reservado: 'Reservado',
-  pendiente: 'Pendiente',
-};
+/**
+ * Un importe del formulario como número: vacío es 0, y lo que no se puede leer
+ * es `NaN` (el submit lo frena con un aviso).
+ *
+ * Antes era `Number(texto) || 0` sobre un campo `type=number`: «200.000»
+ * (como se escribe acá un precio) se guardaba 200, y lo ilegible se volvía 0
+ * sin avisar. `leerImporte` es el mismo lector que usa Alquileres.
+ */
+function importe(texto: string): number {
+  return leerImporte(texto) ?? 0;
+}
 
 function nuevoCodigo(tipo: TipoOperacion): string {
   const prefijo = tipo === 'venta' ? 'OP' : 'ALQ';
@@ -49,10 +55,10 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 
   const [codigo, setCodigo] = useState(operacion?.codigo ?? nuevoCodigo(tipo));
   const [direccion, setDireccion] = useState(operacion?.direccion ?? '');
-  const [precio, setPrecio] = useState(String(operacion?.precio ?? ''));
-  const [valorMensual, setValorMensual] = useState(String(operacion?.valorMensual ?? ''));
+  const [precio, setPrecio] = useState(escribirImporte(operacion?.precio));
+  const [valorMensual, setValorMensual] = useState(escribirImporte(operacion?.valorMensual));
   const [comisionAlquiler, setComisionAlquiler] = useState(
-    String(tipo === 'alquiler' ? (operacion?.comTotal ?? '') : ''),
+    tipo === 'alquiler' ? escribirImporte(operacion?.comTotal) : '',
   );
   const [estado, setEstado] = useState(
     operacion?.estado ?? (tipo === 'venta' ? 'escriturada' : 'firmado'),
@@ -61,9 +67,9 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
   const [fechaFirma, setFechaFirma] = useState(operacion?.fechaFirma ?? '');
   const [obs, setObs] = useState(operacion?.obs ?? '');
   const [usuarioIdVend, setUsuarioIdVend] = useState(puntaVendActual?.usuarioId ?? '');
-  const [comisionVend, setComisionVend] = useState(String(puntaVendActual?.comision ?? ''));
+  const [comisionVend, setComisionVend] = useState(escribirImporte(puntaVendActual?.comision));
   const [usuarioIdComp, setUsuarioIdComp] = useState(puntaCompActual?.usuarioId ?? '');
-  const [comisionComp, setComisionComp] = useState(String(puntaCompActual?.comision ?? ''));
+  const [comisionComp, setComisionComp] = useState(escribirImporte(puntaCompActual?.comision));
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,15 +83,29 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
       puntas.push({
         lado: 'vendedora',
         usuarioId: usuarioIdVend,
-        comision: Number(comisionVend) || 0,
+        comision: importe(comisionVend),
       });
     }
     if (usuarioIdComp) {
       puntas.push({
         lado: 'compradora',
         usuarioId: usuarioIdComp,
-        comision: Number(comisionComp) || 0,
+        comision: importe(comisionComp),
       });
+    }
+
+    const importes =
+      tipo === 'venta'
+        ? [
+            precio,
+            ...(usuarioIdVend ? [comisionVend] : []),
+            ...(usuarioIdComp ? [comisionComp] : []),
+          ]
+        : [valorMensual, comisionAlquiler];
+    const ilegible = importes.find((t) => Number.isNaN(importe(t)));
+    if (ilegible !== undefined) {
+      setError(`«${ilegible}» no es un importe. Escribilo con números, por ejemplo 200.000.`);
+      return;
     }
 
     if (tipo === 'venta' && puntas.length === 0) {
@@ -102,9 +122,9 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
           codigo,
           direccion,
           moneda: 'USD',
-          precio: tipo === 'venta' ? Number(precio) || 0 : null,
-          valorMensual: tipo === 'alquiler' ? Number(valorMensual) || 0 : null,
-          comision: tipo === 'alquiler' ? Number(comisionAlquiler) || 0 : 0,
+          precio: tipo === 'venta' ? importe(precio) : null,
+          valorMensual: tipo === 'alquiler' ? importe(valorMensual) : null,
+          comision: tipo === 'alquiler' ? importe(comisionAlquiler) : 0,
           estado,
           fechaReserva: fechaReserva || null,
           fechaFirma: fechaFirma || null,
@@ -123,12 +143,12 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         };
         const dto: CreateOperacion =
           tipo === 'venta'
-            ? { tipo, ...base, precio: Number(precio) || 0, estado: estado as EstadoVenta, puntas }
+            ? { tipo, ...base, precio: importe(precio), estado: estado as EstadoVenta, puntas }
             : {
                 tipo,
                 ...base,
-                valorMensual: Number(valorMensual) || 0,
-                comision: Number(comisionAlquiler) || 0,
+                valorMensual: importe(valorMensual),
+                comision: importe(comisionAlquiler),
                 estado: estado as EstadoAlquiler,
               };
         await createOperacion(accessToken, dto);
@@ -143,10 +163,11 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 
   const esVenta = tipo === 'venta';
   const estados = esVenta ? ESTADOS_VENTA : ESTADOS_ALQUILER;
+  // Mientras se escribe algo ilegible, el total no suma ese campo (no muestra NaN).
+  const sumable = (t: string) => importe(t) || 0;
   const comisionTotal = esVenta
-    ? (usuarioIdVend ? Number(comisionVend) || 0 : 0) +
-      (usuarioIdComp ? Number(comisionComp) || 0 : 0)
-    : Number(comisionAlquiler) || 0;
+    ? (usuarioIdVend ? sumable(comisionVend) : 0) + (usuarioIdComp ? sumable(comisionComp) : 0)
+    : sumable(comisionAlquiler);
 
   return (
     <Modal
@@ -181,7 +202,7 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
           {esVenta ? (
             <div className="grid gap-2.5 sm:grid-cols-2">
               <Campo label="Precio">
-                <MoneyInput value={precio} onChange={setPrecio} required />
+                <InputImporte moneda="USD" value={precio} onChange={setPrecio} required />
               </Campo>
               <Campo label="Estado">
                 <EstadoSelect value={estado} estados={estados} onChange={setEstado} />
@@ -190,10 +211,19 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
           ) : (
             <div className="grid gap-2.5 sm:grid-cols-3">
               <Campo label="Valor mensual">
-                <MoneyInput value={valorMensual} onChange={setValorMensual} required />
+                <InputImporte
+                  moneda="USD"
+                  value={valorMensual}
+                  onChange={setValorMensual}
+                  required
+                />
               </Campo>
               <Campo label="Comisión">
-                <MoneyInput value={comisionAlquiler} onChange={setComisionAlquiler} />
+                <InputImporte
+                  moneda="USD"
+                  value={comisionAlquiler}
+                  onChange={setComisionAlquiler}
+                />
               </Campo>
               <Campo label="Estado">
                 <EstadoSelect value={estado} estados={estados} onChange={setEstado} />
@@ -256,19 +286,13 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
           />
         </Seccion>
 
-        {error && (
-          <p
-            role="alert"
-            className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red sm:col-span-2"
-          >
-            {error}
-          </p>
-        )}
+        <MensajeError className="rounded-brand bg-danger/10 px-3 py-2 sm:col-span-2">
+          {error}
+        </MensajeError>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-2">
           <p className="text-sm text-muted">
-            Comisión total:{' '}
-            <span className="font-bold text-ink">USD {comisionTotal.toLocaleString('es-AR')}</span>
+            Comisión total: <span className="font-bold text-ink">{fmtUSD(comisionTotal)}</span>
           </p>
           <div className="flex gap-2">
             <Button type="button" variant="secondary" onClick={onClose}>
@@ -281,62 +305,6 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         </div>
       </form>
     </Modal>
-  );
-}
-
-function Seccion({
-  titulo,
-  icono,
-  full,
-  children,
-}: {
-  titulo: string;
-  icono: string;
-  full?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={`rounded-brand border border-line bg-white px-3 py-2.5 ${full ? 'sm:col-span-2' : ''}`}
-    >
-      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-red">
-        <span aria-hidden>{icono}</span>
-        {titulo}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-/** Input de monto con prefijo "USD" adentro. */
-function MoneyInput({
-  value,
-  onChange,
-  required,
-  disabled,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="relative">
-      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted">
-        USD
-      </span>
-      <input
-        type="number"
-        min={0}
-        step="0.01"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        disabled={disabled}
-        placeholder="0"
-        className={`${inputClass} pl-10`}
-      />
-    </div>
   );
 }
 
@@ -357,7 +325,7 @@ function EstadoSelect({
     >
       {estados.map((s) => (
         <option key={s} value={s}>
-          {ESTADO_LABEL[s] ?? s}
+          {estadoLabel(s)}
         </option>
       ))}
     </select>
@@ -395,7 +363,14 @@ function PuntaCard({
           </option>
         ))}
       </select>
-      <MoneyInput value={comision} onChange={onComision} disabled={!usuarioId} />
+      <InputImporte
+        moneda="USD"
+        value={comision}
+        onChange={onComision}
+        disabled={!usuarioId}
+        aria-label={`Comisión de la ${label.toLowerCase()}`}
+        placeholder="0,00"
+      />
     </div>
   );
 }
