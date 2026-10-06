@@ -15,6 +15,19 @@ const TENANT = (nombre: string, protocolo = true) => ({
 });
 
 describe('TareasService', () => {
+  // Una inmobiliaria suspendida no puede entrar (AuthGuard): mandarle el
+  // reporte igual sería seguir prestándole el servicio por mail.
+  it('solo recorre las inmobiliarias activas', async () => {
+    const prisma = makePrisma([]) as unknown as { tenant: { findMany: ReturnType<typeof vi.fn> } };
+    const svc = new TareasService(prisma as never, { enviar: vi.fn() } as never);
+
+    await svc.enviarReportesSemanales();
+
+    expect(prisma.tenant.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { estado: 'activo' } }),
+    );
+  });
+
   it('saltea las inmobiliarias que no tienen el módulo', async () => {
     const mail = {
       enviar: vi.fn().mockResolvedValue({ enviado: true, destinatarios: ['a@b.com'] }),

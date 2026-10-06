@@ -7,6 +7,8 @@ import {
   type UpdateTenant,
 } from '@vacker/types';
 import { SupabaseStorageService } from '../common/supabase-storage.service';
+import { extensionDe, tipoDe } from '../common/avatar';
+import { PrincipalCacheService } from '../auth/principal-cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { desencriptarSecreto, encriptarSecreto } from '../common/cripto-secreto';
@@ -34,6 +36,7 @@ export class AdminTenantsService {
     private readonly db: PrismaService,
     private readonly storage: SupabaseStorageService,
     private readonly config: ConfigService,
+    private readonly principalCache: PrincipalCacheService,
   ) {}
 
   async list() {
@@ -82,7 +85,11 @@ export class AdminTenantsService {
       data.config = { ...actualConfig, ...dto.config } as Prisma.InputJsonValue;
     }
 
-    return this.db.tenant.update({ where: { id }, data });
+    const tenant = await this.db.tenant.update({ where: { id }, data });
+    // Suspender, reactivar o cambiar los módulos tiene que aplicarse en la
+    // próxima request de cada usuario, no cuando venza su cache (30 s).
+    this.principalCache.invalidarTenant(id);
+    return tenant;
   }
 
   /**
@@ -93,16 +100,20 @@ export class AdminTenantsService {
   async subirLogo(id: string, file: LogoFile) {
     const actual = await this.db.tenant.findUnique({ where: { id }, select: { id: true } });
     if (!actual) throw new NotFoundException('Inmobiliaria no encontrada.');
-    if (!file.mimetype.startsWith('image/')) {
-      throw new BadRequestException('El archivo debe ser una imagen.');
+    // El formato se reconoce por los primeros bytes, no por lo que declara el
+    // navegador ni por el nombre: el bucket de logos es PÚBLICO, y un SVG o un
+    // HTML con extensión `.png` se serviría desde nuestro dominio de Storage
+    // con el tipo que nosotros le pusiéramos. Mismo criterio que el avatar.
+    const ext = extensionDe(file);
+    if (!ext) {
+      throw new BadRequestException('El logo tiene que ser PNG, JPG o WebP.');
     }
     if (file.size > LOGO_MAX_BYTES) {
       throw new BadRequestException('La imagen no puede superar los 5MB.');
     }
 
-    const ext = extensionDe(file.mimetype, file.originalname);
     const path = `${id}/logo${ext}`;
-    const logoUrl = await this.storage.upload(LOGO_BUCKET, path, file.buffer, file.mimetype);
+    const logoUrl = await this.storage.upload(LOGO_BUCKET, path, file.buffer, tipoDe(file));
 
     // Solo el logo: el resto de la configuración —colores, criterio de
     // tasación— se conserva. `update` mergea contra lo que ya está guardado.
@@ -205,13 +216,4 @@ export class AdminTenantsService {
     const t = await this.db.tenant.findUnique({ where: { id: tenantId }, select: { id: true } });
     if (!t) throw new NotFoundException('Inmobiliaria no encontrada.');
   }
-}
-
-function extensionDe(mimetype: string, originalname: string): string {
-  const fromName = originalname.includes('.')
-    ? originalname.slice(originalname.lastIndexOf('.'))
-    : '';
-  if (fromName) return fromName;
-  const sub = mimetype.split('/')[1];
-  return sub ? `.${sub}` : '';
 }

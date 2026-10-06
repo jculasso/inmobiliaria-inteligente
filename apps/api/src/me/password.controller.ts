@@ -1,10 +1,11 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CambiarPasswordSchema, type CambiarPassword } from '@vacker/types';
-import { CurrentUser } from '../auth/decorators';
+import { CurrentUser, PermitidoConClaveTemporal } from '../auth/decorators';
 import type { AuthPrincipal } from '../auth/auth-principal';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PasswordService } from './password.service';
+import { Costoso } from '../common/limite-solicitudes';
 
 @ApiTags('me')
 @ApiBearerAuth()
@@ -13,7 +14,9 @@ export class PasswordController {
   constructor(private readonly password: PasswordService) {}
 
   @Post('password')
+  @Costoso(5)
   @HttpCode(200)
+  @PermitidoConClaveTemporal()
   @ApiOperation({ summary: 'Cambia la contraseña del usuario autenticado' })
   cambiar(
     @Body(new ZodValidationPipe(CambiarPasswordSchema)) dto: CambiarPassword,

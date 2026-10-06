@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Inject,
   Injectable,
   UnauthorizedException,
@@ -18,7 +19,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TENANT_CTX_KEY, type TenantContext } from '../prisma/tenant-context';
 import { AUTH_PROVIDER, type AuthProvider } from './auth-provider.interface';
 import type { AuthPrincipal } from './auth-principal';
-import { IS_PUBLIC_KEY } from './decorators';
+import { CLAVE_TEMPORAL_KEY, IS_PUBLIC_KEY } from './decorators';
 import { PrincipalCacheService } from './principal-cache.service';
 
 interface RequestWithPrincipal {
@@ -54,7 +55,24 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Falta el token de acceso.');
     }
 
-    const principal = await this.resolvePrincipal(token);
+    const principal = await this.principalCache.obtener(token, () => this.resolvePrincipal(token));
+
+    // Con la contraseña temporal puesta solo se puede leer el perfil y
+    // cambiarla. La web ya redirige a /cambiar-clave, pero eso lo decide el
+    // cliente: el token sirve igual para llamar la API directo, y la clave
+    // temporal la conoce también quien la generó.
+    if (principal.debeCambiarPassword) {
+      const permitido = this.reflector.getAllAndOverride<boolean>(CLAVE_TEMPORAL_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (!permitido) {
+        throw new ForbiddenException(
+          'Tenés que elegir una contraseña propia antes de seguir. Cambiá la contraseña temporal.',
+        );
+      }
+    }
+
     req.principal = principal;
     const ctx: TenantContext = {
       tenantId: principal.tenantId,
@@ -66,9 +84,6 @@ export class AuthGuard implements CanActivate {
   }
 
   private async resolvePrincipal(token: string): Promise<AuthPrincipal> {
-    const cached = this.principalCache.get(token);
-    if (cached) return cached;
-
     const identity = await this.authProvider.verifyToken(token);
 
     // Resolución de tenant + roles desde la base (lookup por authUserId, sin
@@ -79,11 +94,25 @@ export class AuthGuard implements CanActivate {
       where: { authUserId: identity.userId },
       include: {
         roles: true,
-        tenant: { select: { nombre: true, plan: true, modulos: true, config: true } },
+        tenant: {
+          select: { nombre: true, plan: true, modulos: true, config: true, estado: true },
+        },
       },
     });
     if (!usuario || usuario.estado !== 'activo') {
       throw new UnauthorizedException('Usuario no habilitado en la plataforma.');
+    }
+    const roles = usuario.roles.map((r) => r.rol as Rol);
+
+    // Una inmobiliaria suspendida (por falta de pago, baja) no opera: hasta el
+    // 6/10/2026 el estado se guardaba pero nadie lo miraba, así que suspender
+    // no cambiaba nada. La excepción es el admin de plataforma: su cuenta vive
+    // en una inmobiliaria como cualquier otra, y tiene que poder seguir usando
+    // el panel —entre otras cosas, para reactivarla—.
+    if (usuario.tenant.estado !== 'activo' && !roles.includes('admin_plataforma')) {
+      throw new ForbiddenException(
+        'Tu inmobiliaria está suspendida. Comunicate con el administrador de la plataforma.',
+      );
     }
 
     // `plan`/`config` son columnas sueltas (String / Json) en la base, sin
@@ -101,7 +130,7 @@ export class AuthGuard implements CanActivate {
       nombre: usuario.nombre,
       fotoUrl: usuario.fotoUrl,
       tenantId: usuario.tenantId,
-      roles: usuario.roles.map((r) => r.rol as Rol),
+      roles,
       debeCambiarPassword: usuario.debeCambiarPassword,
       tenant: {
         nombre: usuario.tenant.nombre,
@@ -115,7 +144,6 @@ export class AuthGuard implements CanActivate {
         config: config.success ? config.data : TenantConfigSchema.parse({}),
       },
     };
-    this.principalCache.set(token, principal);
     return principal;
   }
 

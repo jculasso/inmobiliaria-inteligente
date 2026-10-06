@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
@@ -43,6 +44,8 @@ type VendedorRow = Prisma.UsuarioGetPayload<{ include: typeof vendedorInclude }>
  */
 @Injectable()
 export class VendedoresService {
+  private readonly logger = new Logger(VendedoresService.name);
+
   constructor(
     private readonly db: TenantPrismaService,
     private readonly supabaseAdmin: SupabaseAdminService,
@@ -62,6 +65,10 @@ export class VendedoresService {
   }
 
   async create(dto: CreateVendedor, ctx: TenantContext) {
+    // Mismo criterio que en `update`: el rol de administrador solo lo da otro
+    // administrador. Sin esto, dirección no podía AGREGARSE el rol pero sí
+    // crear una cuenta nueva con él.
+    assertPuedeDarRoles(dto.roles, ctx);
     return this.db.withTenant(async (tx) => {
       await this.assertEmailLibre(tx, dto.email);
       if (dto.liderId) await this.assertUsuarioExiste(tx, dto.liderId);
@@ -85,8 +92,21 @@ export class VendedoresService {
     });
   }
 
+  /**
+   * Edita un usuario en dos transacciones con Supabase Auth en el medio.
+   *
+   * El email también vive en Supabase Auth, que es contra lo que se valida el
+   * login. Hasta el 6/10/2026 se cambiaba DENTRO de la transacción: una llamada
+   * de red a otro servicio con la transacción abierta, ocupando una conexión
+   * del pool mientras Auth respondía. Ahora:
+   *
+   * 1. Se valida todo (permisos, email libre, líder) en una lectura.
+   * 2. Se cambia el email en Auth, fuera de la base. Si falla, no se guardó nada.
+   * 3. Se escribe en la base. Si ESTO falla, se devuelve el email de Auth al
+   *    anterior: la persona tiene que poder seguir entrando con el que figura acá.
+   */
   async update(id: string, dto: UpdateVendedor, ctx: TenantContext) {
-    return this.db.withTenant(async (tx) => {
+    const actual = await this.db.withTenant(async (tx) => {
       const actual = await tx.usuario.findUnique({
         where: { id },
         include: { roles: { select: { rol: true } } },
@@ -96,87 +116,106 @@ export class VendedoresService {
         actual.roles.map((r) => r.rol),
         ctx,
       );
-      if (
-        dto.roles?.includes('admin_tenant') &&
-        !ctx.roles.includes('admin_tenant') &&
-        !actual.roles.some((r) => r.rol === 'admin_tenant')
-      ) {
-        throw new ForbiddenException(
-          'Solo un administrador de la inmobiliaria puede dar el rol de administrador.',
-        );
+      if (!actual.roles.some((r) => r.rol === 'admin_tenant')) {
+        assertPuedeDarRoles(dto.roles ?? [], ctx);
       }
       if (dto.email !== undefined && dto.email !== actual.email) {
-        await this.assertEmailLibre(tx, dto.email, id);
-        // El email también vive en Supabase Auth, que es contra lo que se
-        // valida el login. Sin esto la persona seguía teniendo que entrar con
-        // el anterior, sin ninguna pista de por qué. Va dentro de la
-        // transacción a propósito: si Auth falla, no se guarda acá tampoco.
-        if (actual.authUserId) {
-          await this.supabaseAdmin.setEmail(actual.authUserId, dto.email);
-          this.principalCache.invalidarUsuario(id);
+        // Cambiar el email de alguien que YA entra es cambiar con qué cuenta se
+        // recupera su contraseña: quien lo cambie puede pedir «olvidé mi
+        // clave» y quedarse con el acceso. Por eso, con acceso activo, solo lo
+        // hace el administrador de la inmobiliaria.
+        if (actual.authUserId && !ctx.roles.includes('admin_tenant')) {
+          throw new ForbiddenException(
+            'El email de alguien que ya tiene acceso solo lo cambia el administrador de la inmobiliaria.',
+          );
         }
+        await this.assertEmailLibre(tx, dto.email, id);
       }
       if (dto.liderId) {
         if (dto.liderId === id)
           throw new BadRequestException('Un usuario no puede ser su propio líder.');
         await this.assertUsuarioExiste(tx, dto.liderId);
       }
-
-      const data: Prisma.UsuarioUpdateInput = {};
-      if (dto.nombre !== undefined) data.nombre = dto.nombre;
-      if (dto.email !== undefined) data.email = dto.email;
-      if (dto.estado !== undefined) data.estado = dto.estado;
-      if (dto.liderId !== undefined) {
-        data.lider = dto.liderId ? { connect: { id: dto.liderId } } : { disconnect: true };
-      }
-      await tx.usuario.update({ where: { id }, data });
-
-      if (dto.roles !== undefined) {
-        // Solo se reemplazan los roles asignables desde este formulario
-        // (vendedor/team_leader/direccion/admin_tenant). `admin_plataforma`
-        // (o cualquier otro rol fuera de ese conjunto) no es tocado — si se
-        // borrara acá, un simple "asignar líder" podría dejar sin acceso de
-        // plataforma a quien lo tuviera.
-        await tx.usuarioRol.deleteMany({
-          where: { usuarioId: id, rol: { in: [...RolAsignableSchema.options] } },
-        });
-        await tx.usuarioRol.createMany({
-          data: [...new Set(dto.roles)].map((rol) => ({
-            usuarioId: id,
-            rol,
-            tenantId: ctx.tenantId,
-          })),
-        });
-      }
-
-      if (dto.objetivo) await this.upsertObjetivo(tx, id, dto.objetivo, ctx.tenantId);
-
-      const row = await tx.usuario.findUniqueOrThrow({ where: { id }, include: vendedorInclude });
-      return toDto(row);
+      return actual;
     });
+
+    const authUserId =
+      dto.email !== undefined && dto.email !== actual.email ? actual.authUserId : null;
+    if (authUserId && dto.email) {
+      await this.supabaseAdmin.setEmail(authUserId, dto.email);
+    }
+
+    try {
+      return await this.db.withTenant(async (tx) => {
+        const data: Prisma.UsuarioUpdateInput = {};
+        if (dto.nombre !== undefined) data.nombre = dto.nombre;
+        if (dto.email !== undefined) data.email = dto.email;
+        if (dto.estado !== undefined) data.estado = dto.estado;
+        if (dto.liderId !== undefined) {
+          data.lider = dto.liderId ? { connect: { id: dto.liderId } } : { disconnect: true };
+        }
+        await tx.usuario.update({ where: { id }, data });
+
+        if (dto.roles !== undefined) {
+          // Solo se reemplazan los roles asignables desde este formulario
+          // (vendedor/team_leader/direccion/admin_tenant). `admin_plataforma`
+          // (o cualquier otro rol fuera de ese conjunto) no es tocado — si se
+          // borrara acá, un simple "asignar líder" podría dejar sin acceso de
+          // plataforma a quien lo tuviera.
+          await tx.usuarioRol.deleteMany({
+            where: { usuarioId: id, rol: { in: [...RolAsignableSchema.options] } },
+          });
+          await tx.usuarioRol.createMany({
+            data: [...new Set(dto.roles)].map((rol) => ({
+              usuarioId: id,
+              rol,
+              tenantId: ctx.tenantId,
+            })),
+          });
+        }
+
+        if (dto.objetivo) await this.upsertObjetivo(tx, id, dto.objetivo, ctx.tenantId);
+
+        const row = await tx.usuario.findUniqueOrThrow({
+          where: { id },
+          include: vendedorInclude,
+        });
+        return toDto(row);
+      });
+    } catch (err) {
+      if (authUserId) {
+        await this.supabaseAdmin.setEmail(authUserId, actual.email).catch((e: unknown) => {
+          this.logger.error(
+            `El email de ${id} quedó distinto entre la base y Supabase Auth: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        });
+      }
+      throw err;
+    } finally {
+      // Email, roles o estado: cualquiera cambia lo que el principal cacheado
+      // dice de esta persona. Una baja o un rol quitado tienen que aplicarse en
+      // la próxima request, no 30 segundos después.
+      this.principalCache.invalidarUsuario(id);
+    }
   }
 
   /** Baja lógica: marca el usuario como inactivo (no se borra por integridad histórica). */
   async desactivar(id: string, ctx: TenantContext) {
-    return this.db.withTenant(async (tx) => {
-      const actual = await tx.usuario.findUnique({
-        where: { id },
-        include: { roles: { select: { rol: true } } },
-      });
-      if (!actual) throw new NotFoundException('Usuario no encontrado.');
-      assertPuedeAdministrar(
-        actual.roles.map((r) => r.rol),
-        ctx,
-      );
+    const r = await this.db.withTenant(async (tx) => {
+      await this.assertPuedeAdministrarA(tx, id, ctx);
       await tx.usuario.update({ where: { id }, data: { estado: 'inactivo' } });
       return { id, estado: 'inactivo' as const };
     });
+    // Sin esto, la persona dada de baja seguía operando hasta que venciera el
+    // cache del principal.
+    this.principalCache.invalidarUsuario(id);
+    return r;
   }
 
   /** Crea o actualiza el objetivo anual de un vendedor (endpoint standalone). */
   async setObjetivo(id: string, dto: ObjetivoInput, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      await this.assertUsuarioExiste(tx, id);
+      await this.assertPuedeAdministrarA(tx, id, ctx);
       return this.upsertObjetivo(tx, id, dto, ctx.tenantId);
     });
   }
@@ -232,14 +271,18 @@ export class VendedoresService {
    */
   async subirFoto(id: string, file: AvatarFile, ctx: TenantContext) {
     assertAvatarValido(file);
+    await this.db.withTenant((tx) => this.assertPuedeAdministrarA(tx, id, ctx));
+    // La subida va FUERA de la transacción: con la transacción abierta, la
+    // conexión del pool quedaba tomada mientras Storage recibía la imagen. La
+    // ruta es fija por usuario, así que si lo que sigue falla no queda un
+    // huérfano: la próxima subida pisa el mismo archivo.
+    const fotoUrl = await this.storage.upload(
+      AVATAR_BUCKET,
+      rutaAvatar(ctx.tenantId, id, file),
+      file.buffer,
+      tipoDe(file),
+    );
     return this.db.withTenant(async (tx) => {
-      await this.assertUsuarioExiste(tx, id);
-      const fotoUrl = await this.storage.upload(
-        AVATAR_BUCKET,
-        rutaAvatar(ctx.tenantId, id, file),
-        file.buffer,
-        tipoDe(file),
-      );
       const row = await tx.usuario.update({
         where: { id },
         data: { fotoUrl },
@@ -249,14 +292,17 @@ export class VendedoresService {
     });
   }
 
-  async eliminarFoto(id: string) {
+  async eliminarFoto(id: string, ctx: TenantContext) {
+    const { fotoUrl } = await this.db.withTenant((tx) => this.assertPuedeAdministrarA(tx, id, ctx));
+    // Primero el archivo, fuera de la transacción: el bucket es PÚBLICO, y si
+    // el borrado fallara después de limpiar la base, la foto que la persona
+    // quiso sacar seguiría publicada en una URL conocida sin que nada la
+    // referencie. Si falla acá, no se toca nada y se puede reintentar.
+    if (fotoUrl) {
+      const path = pathDesdeUrl(fotoUrl);
+      if (path) await this.storage.remove(AVATAR_BUCKET, path);
+    }
     return this.db.withTenant(async (tx) => {
-      const actual = await tx.usuario.findUnique({ where: { id }, select: { fotoUrl: true } });
-      if (!actual) throw new BadRequestException('El usuario referenciado no existe en el tenant.');
-      if (actual.fotoUrl) {
-        const path = pathDesdeUrl(actual.fotoUrl);
-        if (path) await this.storage.remove(AVATAR_BUCKET, path);
-      }
       const row = await tx.usuario.update({
         where: { id },
         data: { fotoUrl: null },
@@ -264,6 +310,30 @@ export class VendedoresService {
       });
       return toDto(row);
     });
+  }
+
+  /**
+   * Lee al usuario y verifica que quien llama lo pueda administrar. Lo usan
+   * TODAS las acciones sobre otra persona —editar, dar de baja, objetivo,
+   * foto—: hasta el 6/10/2026 el objetivo y la foto no lo miraban, así que
+   * dirección podía cambiarle la foto a un administrador o a la cuenta de
+   * plataforma.
+   */
+  private async assertPuedeAdministrarA(
+    tx: Prisma.TransactionClient,
+    id: string,
+    ctx: TenantContext,
+  ): Promise<{ fotoUrl: string | null }> {
+    const actual = await tx.usuario.findUnique({
+      where: { id },
+      select: { fotoUrl: true, roles: { select: { rol: true } } },
+    });
+    if (!actual) throw new BadRequestException('El usuario referenciado no existe en el tenant.');
+    assertPuedeAdministrar(
+      actual.roles.map((r) => r.rol),
+      ctx,
+    );
+    return { fotoUrl: actual.fotoUrl };
   }
 
   private async assertEmailLibre(
@@ -326,6 +396,18 @@ export function assertPuedeAdministrar(
   if (rolesDelOtro.includes('admin_tenant') && !ctx.roles.includes('admin_tenant')) {
     throw new ForbiddenException(
       'A un administrador de la inmobiliaria solo lo edita otro administrador.',
+    );
+  }
+}
+
+/** El rol de administrador de la inmobiliaria solo lo da otro administrador. */
+export function assertPuedeDarRoles(
+  roles: readonly string[],
+  ctx: Pick<TenantContext, 'roles'>,
+): void {
+  if (roles.includes('admin_tenant') && !ctx.roles.includes('admin_tenant')) {
+    throw new ForbiddenException(
+      'Solo un administrador de la inmobiliaria puede dar el rol de administrador.',
     );
   }
 }

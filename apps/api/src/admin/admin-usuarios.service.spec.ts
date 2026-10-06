@@ -314,4 +314,50 @@ describe('AdminUsuariosService', () => {
     expect(storage.remove).toHaveBeenCalledWith('usuarios-avatares', 't1/auth-1.jpg');
     expect(update).toHaveBeenCalledWith({ where: { id: 'auth-1' }, data: { fotoUrl: null } });
   });
+
+  describe('update', () => {
+    function armar() {
+      const ops: string[] = [];
+      const db = makeDb({
+        findFirst: vi.fn().mockResolvedValue(usuarioRow),
+        findUniqueOrThrow: vi.fn().mockResolvedValue(usuarioRow),
+        update: vi.fn(() => (ops.push('update'), 'op-update')),
+      }) as unknown as Record<string, unknown> & { usuarioRol: Record<string, unknown> };
+      db.usuarioRol = {
+        deleteMany: vi.fn(() => (ops.push('deleteMany'), 'op-delete')),
+        createMany: vi.fn(() => (ops.push('createMany'), 'op-create')),
+      };
+      const $transaction = vi.fn(async (lote: unknown[]) => lote);
+      db.$transaction = $transaction;
+      const cache = makeCache();
+      const svc = new AdminUsuariosService(
+        db as unknown as PrismaService,
+        makeSupabaseAdmin(),
+        makeStorage(),
+        cache,
+      );
+      return { svc, $transaction, cache, ops };
+    }
+
+    // Con dos pasos sueltos, un createMany que fallaba dejaba al usuario sin
+    // ningún rol: el borrado ya se había hecho.
+    it('reemplaza los roles en UNA transacción (borrado y alta juntos)', async () => {
+      const { svc, $transaction } = armar();
+      await svc.update(TENANT_ID, 'auth-1', { roles: ['direccion'] });
+      expect($transaction).toHaveBeenCalledTimes(1);
+      expect($transaction.mock.calls[0]![0]).toEqual(['op-delete', 'op-create']);
+    });
+
+    it('una baja invalida el cache del principal en el momento', async () => {
+      const { svc, cache } = armar();
+      await svc.update(TENANT_ID, 'auth-1', { estado: 'inactivo' });
+      expect(cache.invalidarUsuario).toHaveBeenCalledWith('auth-1');
+    });
+
+    it('un cambio de roles invalida el cache del principal en el momento', async () => {
+      const { svc, cache } = armar();
+      await svc.update(TENANT_ID, 'auth-1', { roles: ['vendedor'] });
+      expect(cache.invalidarUsuario).toHaveBeenCalledWith('auth-1');
+    });
+  });
 });
