@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TodoEventoDto, TodoEventosDto, TodoVista } from '@vacker/types';
+import { Modal } from '@vacker/ui';
+import { hoyIso } from '../../lib/format';
+import { CLASE_FOCO } from '../piezas';
 
 /** Callback para abrir el detalle de un evento dentro de la app. */
 type OnSelect = (ev: TodoEventoDto) => void;
@@ -17,10 +20,13 @@ export function CalendarioTodo({
   vista,
   fecha,
   data,
+  onIrADia,
 }: {
   vista: TodoVista;
   fecha: string;
   data: TodoEventosDto | null;
+  /** En el mes, tocar un día en el teléfono lo abre en la vista de día. */
+  onIrADia?: (dia: string) => void;
 }) {
   const eventos = data?.eventos ?? [];
   // El detalle se muestra dentro de la app (no se abre Google Calendar): el
@@ -30,7 +36,7 @@ export function CalendarioTodo({
 
   const grilla =
     vista === 'mes' ? (
-      <VistaMes fecha={fecha} eventos={eventos} onSelect={setSel} />
+      <VistaMes fecha={fecha} eventos={eventos} onSelect={setSel} onIrADia={onIrADia} />
     ) : vista === 'semana' ? (
       <GrillaHoraria dias={diasSemana(fecha)} eventos={eventos} onSelect={setSel} />
     ) : (
@@ -76,7 +82,7 @@ function GrillaHoraria({
     }
   }, [desde]);
 
-  const hoy = hoyArg();
+  const hoy = hoyIso();
   const soloDia = dias.length === 1;
   const hayAllDay = dias.some((d) => eventos.some((e) => cubreDia(e, d) && e.todoElDia));
 
@@ -195,10 +201,12 @@ function VistaMes({
   fecha,
   eventos,
   onSelect,
+  onIrADia,
 }: {
   fecha: string;
   eventos: TodoEventoDto[];
   onSelect: OnSelect;
+  onIrADia?: (dia: string) => void;
 }) {
   const primero = `${fecha.slice(0, 7)}-01`;
   const mesNum = fecha.slice(5, 7);
@@ -215,7 +223,7 @@ function VistaMes({
   }
   for (const arr of porDia.values()) arr.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
-  const hoy = hoyArg();
+  const hoy = hoyIso();
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-brand border border-line bg-white">
       <div className="grid shrink-0 grid-cols-7 border-b border-line">
@@ -232,8 +240,19 @@ function VistaMes({
           return (
             <div
               key={d}
-              className={`min-h-[92px] border-b border-r border-line p-1 ${delMes ? '' : 'bg-surface/40'}`}
+              className={`relative min-h-[92px] border-b border-r border-line p-1 ${delMes ? '' : 'bg-surface/40'}`}
             >
+              {/* En el teléfono los chips miden 14 px y la celda entera es el
+                  blanco: tocarla abre ese día con todos sus eventos. Desde
+                  `sm`, con mouse, se toca cada evento. */}
+              {onIrADia && (
+                <button
+                  type="button"
+                  onClick={() => onIrADia(d)}
+                  aria-label={`Ver el ${fmtFechaLarga(d)}`}
+                  className={`absolute inset-0 z-10 sm:hidden ${CLASE_FOCO}`}
+                />
+              )}
               <div
                 className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
                   d === hoy ? 'bg-brand-red text-white' : delMes ? 'text-ink' : 'text-muted'
@@ -277,58 +296,30 @@ function ChipMes({ ev, onSelect }: { ev: TodoEventoDto; onSelect: OnSelect }) {
 // Detalle del evento (dentro de la app, sin abrir Google Calendar).
 // ---------------------------------------------------------------------------
 
+/**
+ * El modal de toda la app: en el teléfono entra desde abajo, se desplaza si
+ * la descripción es larga (antes una descripción larga se salía de la
+ * pantalla sin scroll), respeta la barra de inicio del iPhone y se cierra con
+ * Escape, el fondo o la ×.
+ */
 function DetalleEvento({ ev, onClose }: { ev: TodoEventoDto; onClose: () => void }) {
-  // Cerrar con Escape (además del click en el fondo y el botón ✕).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-brand bg-white p-5 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-base font-bold leading-snug text-ink">{ev.titulo}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink"
-          >
-            ✕
-          </button>
-        </div>
-
-        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
-          <span aria-hidden>🕑</span>
-          {rangoFecha(ev)}
-        </p>
-
+    <Modal title={ev.titulo} subtitle={rangoFecha(ev)} onClose={onClose}>
+      <div className="flex flex-col gap-3">
         {ev.ubicacion && (
-          <p className="mt-2 flex items-start gap-1.5 text-sm text-ink">
+          <p className="flex items-start gap-1.5 text-sm text-ink">
             <span aria-hidden>📍</span>
             <span>{ev.ubicacion}</span>
           </p>
         )}
 
-        {ev.descripcion && (
-          <p className="mt-3 whitespace-pre-wrap border-t border-line pt-3 text-sm text-ink">
-            {ev.descripcion}
-          </p>
+        {ev.descripcion ? (
+          <p className="whitespace-pre-wrap break-words text-sm text-ink">{ev.descripcion}</p>
+        ) : (
+          !ev.ubicacion && <p className="text-sm text-muted">Sin más detalles.</p>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -446,10 +437,6 @@ function rangoHorario(eventos: TodoEventoDto[]): { desde: number; hasta: number 
   return { desde: Math.max(0, desde), hasta: Math.max(desde, hasta) };
 }
 const DIAS_SEMANA = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
-
-function hoyArg(): string {
-  return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
-}
 
 /** Minutos desde medianoche (hora Argentina) de un ISO. */
 function minutosDelDia(iso: string): number {
