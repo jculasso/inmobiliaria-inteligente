@@ -6,6 +6,7 @@ import { esDireccionInexistente, type DestinatarioReporte } from '@vacker/types'
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { enviarReporteSemanal, getDestinatariosReporte } from '../../lib/protocolo-api';
+import { MensajeError } from '../piezas';
 
 /**
  * Confirmación del envío del reporte por mail.
@@ -143,11 +144,7 @@ export function EnviarReporteModal({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        {error && (
-          <p role="alert" className="text-sm font-semibold text-danger">
-            {error}
-          </p>
-        )}
+        <MensajeError>{error}</MensajeError>
 
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
