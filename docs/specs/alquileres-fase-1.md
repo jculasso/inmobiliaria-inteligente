@@ -261,21 +261,27 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 
 26. **Cada número del tablero abre la lista de lo que cuenta**, y esa lista
     suma exactamente el número (la misma regla del Tablero Comercial, ver
-    `apps/web/lib/drill.ts`).
+    `apps/web/lib/drill.ts`). El número y su lista llegan juntos de la API,
+    del mismo cálculo. Los gráficos no se abren: son tendencia, no números
+    para auditar, y van en pesos, la moneda de toda la cartera de Vacker.
 27. **Cartera**: contratos vigentes (vivienda y comercial), alquiler mensual
     administrado por moneda, cantidad de propietarios e inquilinos.
 28. **Cobranza del mes**: alquileres cobrados ÷ alquileres emitidos del mes,
     en cantidad y en importe, por moneda. Un alquiler cobrado parcialmente
     cuenta como no cobrado en la cantidad y por lo cobrado en el importe.
-29. **Morosidad**: deuda de inquilinos por antigüedad —0-30, 31-60, 61-90 y
-    más de 90 días desde el vencimiento—, y la evolución de 12 meses del
-    porcentaje cobrado al cierre de cada mes.
+29. **Morosidad**: deuda vencida de inquilinos por antigüedad —hasta 30,
+    31-60, 61-90 y más de 90 días desde el vencimiento—, y la evolución de 12
+    meses del porcentaje cobrado al cierre de cada mes (lo aplicado hasta el
+    último día de ese mes, sin lo de cobros anulados). Lo que un propietario
+    debe en su propio contrato no es mora: se descuenta al liquidar.
 30. **Ingresos de la inmobiliaria**: honorarios + gastos administrativos +
     punitorios cobrados, por mes, 12 meses, contra el mismo mes del año
     anterior.
 31. **Lo que hay que hacer**: indexaciones vencidas y de los próximos 30 días,
-    contratos que vencen en 30, 60 y 90 días, depósitos a devolver,
-    liquidaciones pendientes, inquilinos con deuda de más de 30 días.
+    contratos que vencen en 30, 60 y 90 días (en franjas: hasta 30, de 31 a 60,
+    de 61 a 90), depósitos a devolver (contratos terminados o que terminan en
+    30 días, con depósito y sin fecha de devolución), propietarios para
+    liquidar, inquilinos con deuda de más de 30 días.
 32. Una inmobiliaria con el módulo prendido y sin contratos ve el tablero con
     un mensaje que explica cómo empezar, **no** tarjetas en cero.
 
