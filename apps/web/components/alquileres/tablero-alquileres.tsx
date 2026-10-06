@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { NOMBRE_TIPO_CONTRATO, type Indicador, type MonedaAlquiler, type TableroAlquileresDto } from '@vacker/types';
+import { DIAS_TABLERO_PROXIMOS, NOMBRE_TIPO_CONTRATO, type FiltroTipoContrato, type Indicador, type MonedaAlquiler, type TableroAlquileresDto } from '@vacker/types';
 import { mesLargo } from '@vacker/domain';
 import { Card, KpiCard, Modal } from '@vacker/ui';
 import { fmtFecha, fmtK, fmtMoneda, fmtNum } from '../../lib/format';
@@ -33,19 +33,32 @@ const plata = (n: number) => `$${fmtK(n)}`;
 const porcentaje = (n: number) => `${Math.round(n)}%`;
 const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
 
+/** Cambia un parámetro del tablero en la dirección, sin perder los otros. */
+function useParametro() {
+  const router = useRouter();
+  const pathname = usePathname();
+  return (t: TableroAlquileresDto, cambio: { anio?: number; tipo?: FiltroTipoContrato }) => {
+    const q = new URLSearchParams();
+    const anio = cambio.anio ?? t.anio;
+    const tipo = cambio.tipo ?? t.tipo;
+    if (anio !== Number(t.hoy.slice(0, 4))) q.set('anio', String(anio));
+    if (tipo !== 'todos') q.set('tipo', tipo);
+    router.push(`${pathname}${q.toString() ? `?${q}` : ''}`);
+  };
+}
+
 /**
  * El año de los gráficos. Como el filtro del Tablero Comercial, pero sin
  * «Todos los años»: el gráfico es de doce meses de un año.
  */
-function FiltroAnioAlquileres({ anio }: { anio: number }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const hoy = new Date().getFullYear();
+function FiltroAnioAlquileres({ t }: { t: TableroAlquileresDto }) {
+  const cambiar = useParametro();
+  const hoy = Number(t.hoy.slice(0, 4));
   return (
     <select
       aria-label="Año"
-      value={anio}
-      onChange={(e) => router.push(`${pathname}?anio=${e.target.value}`)}
+      value={t.anio}
+      onChange={(e) => cambiar(t, { anio: Number(e.target.value) })}
       className="h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink"
     >
       {[hoy, hoy - 1, hoy - 2].map((a) => (
@@ -54,6 +67,151 @@ function FiltroAnioAlquileres({ anio }: { anio: number }) {
         </option>
       ))}
     </select>
+  );
+}
+
+const TIPOS: [FiltroTipoContrato, string][] = [
+  ['todos', 'Todos'],
+  ['vivienda', 'Particulares'],
+  ['comercial', 'Comerciales'],
+];
+
+/**
+ * Todos / Particulares / Comerciales (punto 8 de Javier: «es importante»).
+ * Filtra el tablero entero, como las pestañas del Tablero Comercial.
+ */
+function FiltroTipo({ t }: { t: TableroAlquileresDto }) {
+  const cambiar = useParametro();
+  return (
+    <div role="group" aria-label="Tipo de contrato" className="flex gap-1 rounded-brand border border-line bg-white p-1">
+      {TIPOS.map(([v, texto]) => (
+        <button
+          key={v}
+          type="button"
+          aria-pressed={t.tipo === v}
+          onClick={() => cambiar(t, { tipo: v })}
+          className={`rounded-brand px-3 py-1 text-sm font-semibold ${t.tipo === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
+        >
+          {texto}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** El reparto de la cartera, como en Gexion: cantidad, alquiler mensual y porcentaje de cada tipo. */
+function RepartoTipo({ porTipo }: { porTipo: TableroAlquileresDto['cartera']['porTipo'] }) {
+  if (porTipo.every((x) => x.cantidad === 0)) return null;
+  return (
+    <Card className="p-4">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
+        <span aria-hidden>⚖️</span> Particulares y comerciales · alquiler mensual en pesos
+      </p>
+      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface" aria-hidden>
+        {porTipo.map((x) => (
+          <div key={x.tipo} style={{ width: `${x.pct}%` }} className={x.tipo === 'vivienda' ? 'bg-brand-red' : 'bg-ink/60'} />
+        ))}
+      </div>
+      <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+        {porTipo.map((x) => (
+          <div key={x.tipo} className="flex items-baseline justify-between gap-3 text-sm">
+            <dt className="flex items-center gap-2 font-semibold text-ink">
+              <span aria-hidden className={`inline-block h-2.5 w-2.5 rounded-full ${x.tipo === 'vivienda' ? 'bg-brand-red' : 'bg-ink/60'}`} />
+              {x.tipo === 'vivienda' ? 'Particulares' : 'Comerciales'} · {x.cantidad}
+            </dt>
+            <dd className="whitespace-nowrap tabular-nums text-muted">
+              {fmtMoneda(x.importe, 'ARS')} · <span className="font-bold text-ink">{fmtNum(x.pct)}%</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
+  );
+}
+
+/**
+ * Contratos nuevos (punto 8, «es fundamental»): del año, por trimestre y mes a
+ * mes, como las ventas del Tablero Comercial. Un contrato es «nuevo» en el mes
+ * en que empieza.
+ */
+function ContratosNuevos({ t, onAbrir }: { t: TableroAlquileresDto; onAbrir: (titulo: string, ind: Indicador) => void }) {
+  const enCurso = t.anio === Number(t.hoy.slice(0, 4));
+  const [mes, setMes] = useState(enCurso ? Number(t.hoy.slice(5, 7)) : 12);
+  const n = t.nuevos;
+  if (n.porMes.length !== 12) return null;
+  const cantidades = n.porMes.map((i) => i.valor);
+  const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
+  const trimestre = (q: number) => cantidades.slice(q * 3, q * 3 + 3);
+  const delTrimestre = (q: number): Indicador => {
+    const filas = n.porMes.slice(q * 3, q * 3 + 3).flatMap((i) => i.filas);
+    return { valor: filas.length, filas };
+  };
+  const delAnio: Indicador = { valor: suma(cantidades), filas: n.porMes.flatMap((i) => i.filas) };
+  const filas: FilaPeriodos[] = [
+    { label: 'Contratos nuevos', valores: cantidades, total: suma(cantidades), formato: (x) => fmtNum(x), destaca: true },
+    { label: `Nuevos ${t.anio - 1}`, valores: n.anterior, total: suma(n.anterior), formato: (x) => fmtNum(x) },
+    { label: 'Alquiler inicial $', valores: n.importePorMes, total: suma(n.importePorMes), formato: plata, separa: true },
+  ];
+  return (
+    <section className="flex flex-col gap-2">
+      <TituloSeccion icono="🆕" detalle={`los que empiezan en ${t.anio}`}>
+        Contratos nuevos
+      </TituloSeccion>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <Ancha>
+          <KpiCard
+            label={`Nuevos en ${t.anio}`}
+            value={fmtNum(delAnio.valor)}
+            sub={`${fmtNum(suma(n.anterior))} en ${t.anio - 1}`}
+            icon="🆕"
+            tone="brand"
+            onClick={() => onAbrir(`Contratos nuevos de ${t.anio}`, delAnio)}
+          />
+        </Ancha>
+        {[0, 1, 2, 3].map((q) => (
+          <KpiCard
+            key={q}
+            label={`Q${q + 1}`}
+            value={fmtNum(suma(trimestre(q)))}
+            sub={`${fmtNum(suma(n.anterior.slice(q * 3, q * 3 + 3)))} en ${t.anio - 1}`}
+            onClick={() => onAbrir(`Contratos nuevos · Q${q + 1} ${t.anio}`, delTrimestre(q))}
+          />
+        ))}
+      </div>
+      <Card className="p-0">
+        <div className="flex flex-col gap-4 p-4">
+          <PeriodosChart
+            titulo={`Contratos nuevos por mes de ${t.anio}`}
+            etiquetas={ABREV_MES}
+            barras={cantidades}
+            linea={n.importePorMes}
+            formatoBarras={(x) => fmtNum(x)}
+            formatoLinea={plata}
+            nombreBarras="Contratos nuevos"
+            nombreLinea="Alquiler inicial de los nuevos $"
+            nombreLineaCorto="Alquiler inicial"
+            barrasEnteras
+            transcurridos={periodosTranscurridos(t.anio, 'mes')}
+            seleccionado={mes}
+            onSelect={setMes}
+            pista="tocá una barra o un mes"
+          />
+          <PeriodosTabla titulo={`Contratos nuevos por mes de ${t.anio}`} etiquetas={ABREV_MES} filas={filas} seleccionado={mes} onSelect={setMes} anchoMinimo="min-w-[52rem]" />
+          <p className="text-sm text-muted">
+            <span className="font-bold text-ink">{NOMBRES_MES[mes - 1]}</span>: {fmtNum(cantidades[mes - 1]!)}{' '}
+            {cantidades[mes - 1] === 1 ? 'contrato nuevo' : 'contratos nuevos'}
+            {cantidades[mes - 1]! > 0 && (
+              <>
+                {' · '}
+                <button type="button" onClick={() => onAbrir(`Contratos nuevos de ${NOMBRES_MES[mes - 1]!.toLowerCase()} ${t.anio}`, n.porMes[mes - 1]!)} className="font-semibold text-brand-red hover:underline">
+                  ver cuáles
+                </button>
+              </>
+            )}
+          </p>
+        </div>
+      </Card>
+    </section>
   );
 }
 
@@ -154,7 +312,8 @@ export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDt
 
   const tareas: [string, string, Indicador][] = [
     ['⏰', 'Indexaciones vencidas', t.tareas.indexacionesVencidas],
-    ['📈', 'Indexaciones de los próximos 30 días', t.tareas.indexacionesProximas],
+    ['📈', `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días`, t.tareas.indexacionesProximas],
+    ['🪜', `Escalones que empiezan en los próximos ${DIAS_TABLERO_PROXIMOS} días`, t.tareas.escalones],
     ...t.tareas.vencen.map(
       (v) =>
         ['📅', `Contratos que vencen ${v.dias === 30 ? 'en 30 días' : v.dias === 60 ? 'entre 31 y 60 días' : 'entre 61 y 90 días'}`, v.indicador] as [
@@ -172,7 +331,8 @@ export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDt
   return (
     <div className="flex flex-col gap-5">
       <EncabezadoPagina titulo="Dashboard">
-        <FiltroAnioAlquileres anio={t.anio} />
+        <FiltroTipo t={t} />
+        <FiltroAnioAlquileres t={t} />
       </EncabezadoPagina>
 
       <section className="flex flex-col gap-2">
@@ -203,7 +363,10 @@ export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDt
           <KpiCard label="Propietarios" value={fmtNum(t.cartera.propietarios.valor)} icon="🧑‍💼" onClick={abrir('Propietarios', t.cartera.propietarios)} />
           <KpiCard label="Inquilinos" value={fmtNum(t.cartera.inquilinos.valor)} icon="🔑" onClick={abrir('Inquilinos', t.cartera.inquilinos)} />
         </div>
+        {t.tipo === 'todos' && <RepartoTipo porTipo={t.cartera.porTipo} />}
       </section>
+
+      <ContratosNuevos key={`${t.anio}-${t.tipo}`} t={t} onAbrir={(titulo, ind) => setDetalle({ titulo, indicador: ind, moneda: 'ARS' })} />
 
       {t.cobranza.map((c) => (
         <section key={c.moneda} className="flex flex-col gap-2">

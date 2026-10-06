@@ -39,8 +39,8 @@ const base: ContratoDto = {
   propiedad: { id: 'p', direccion: 'Calle 123', unidad: null, ciudad: 'Rosario' },
   partes: [],
   tramos: [
-    { numero: 1, desde: '2024-11-01', hasta: '2025-02-28', importe: 250_000, confirmadoEl: null },
-    { numero: 2, desde: '2025-03-01', hasta: '2025-06-30', importe: null, confirmadoEl: null },
+    { numero: 1, desde: '2024-11-01', hasta: '2025-02-28', importe: 250_000, confirmadoEl: null, indiceBase: null, indiceRequerido: null, importePropuesto: null },
+    { numero: 2, desde: '2025-03-01', hasta: '2025-06-30', importe: null, confirmadoEl: null, indiceBase: null, indiceRequerido: null, importePropuesto: null },
   ],
 };
 

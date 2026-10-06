@@ -145,6 +145,13 @@ export type Registro = z.infer<typeof RegistroSchema>;
 /** Una anulación: cuándo, quién y por qué. */
 export const AnulacionSchema = z.object({ en: z.string(), motivo: z.string(), por: z.string().nullable().default(null) });
 
+/** El filtro del tablero: todos, o un tipo. */
+export const FiltroTipoContratoSchema = z.enum(['todos', 'vivienda', 'comercial']);
+export type FiltroTipoContrato = z.infer<typeof FiltroTipoContratoSchema>;
+
+/** Cuántos días adelante mira el tablero las indexaciones y los escalones (Gexion: 60). */
+export const DIAS_TABLERO_PROXIMOS = 60;
+
 export const MonedaAlquilerSchema = z.enum(['ARS', 'USD']);
 export type MonedaAlquiler = z.infer<typeof MonedaAlquilerSchema>;
 
@@ -291,6 +298,10 @@ export const ContratoDtoSchema = z.object({
       hasta: FechaIso,
       importe: z.number().nullable(),
       confirmadoEl: z.string().nullable(),
+      /** Los valores del índice con que se calculó el tramo (punto 3 de Javier). */
+      indiceBase: z.number().nullable().default(null),
+      indiceRequerido: z.number().nullable().default(null),
+      importePropuesto: z.number().nullable().default(null),
     }),
   ),
 });
@@ -882,6 +893,8 @@ export const TableroAlquileresDtoSchema = z.object({
   mes: PeriodoSchema,
   /** El año de los gráficos; `.default` por el orden de despliegue. */
   anio: z.number().int().default(new Date().getFullYear()),
+  /** Qué contratos mira el tablero: todos, solo particulares o solo comerciales (punto 8 de Javier). */
+  tipo: FiltroTipoContratoSchema.default('todos'),
   /** Regla 27. */
   cartera: z.object({
     vigentes: IndicadorSchema,
@@ -890,7 +903,27 @@ export const TableroAlquileresDtoSchema = z.object({
     alquilerMensual: z.array(z.object({ moneda: MonedaAlquilerSchema, indicador: IndicadorSchema })),
     propietarios: IndicadorSchema,
     inquilinos: IndicadorSchema,
+    /**
+     * El reparto de la cartera vigente, como en Gexion: cantidad, alquiler
+     * mensual en pesos y porcentaje de cada tipo. Siempre de todos los
+     * contratos, aunque el tablero esté filtrado.
+     */
+    porTipo: z
+      .array(z.object({ tipo: TipoContratoSchema, cantidad: z.number().int(), importe: z.number(), pct: z.number() }))
+      .default([]),
   }),
+  /**
+   * Contratos nuevos (punto 8, «es fundamental»): los que empiezan en cada mes
+   * del año elegido, con el alquiler inicial en pesos, y los del año anterior
+   * para comparar. Como las ventas del Tablero Comercial.
+   */
+  nuevos: z
+    .object({
+      porMes: z.array(IndicadorSchema),
+      importePorMes: z.array(z.number()),
+      anterior: z.array(z.number()),
+    })
+    .default({ porMes: [], importePorMes: [], anterior: [] }),
   /** Regla 28: alquileres del mes, por moneda. Uno pagado en parte no cuenta como cobrado, pero suma lo pagado. */
   cobranza: z.array(
     z.object({
@@ -925,6 +958,8 @@ export const TableroAlquileresDtoSchema = z.object({
     deudores: IndicadorSchema,
     /** Regla 36: vigentes sin el contrato firmado cargado. `.default` por el orden de despliegue. */
     sinFirmar: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /** Escalones de contratos escalonados que empiezan en los próximos 60 días (Gexion). */
+    escalones: IndicadorSchema.default({ valor: 0, filas: [] }),
   }),
 });
 export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;
@@ -991,7 +1026,38 @@ export type CambioFirmaManual = z.output<typeof CambioFirmaManualSchema>;
 
 export const UrlArchivoDtoSchema = z.object({ url: z.string().url() });
 
+// --- Índices (punto 3 de Javier: «¿dónde veo el ICL y el IPC?») -------------------
+
+export const IndicesQuerySchema = z.object({
+  indice: z.enum(['ICL', 'IPC']).default('ICL'),
+  /** Solo para el ICL, que es diario: el rango a mostrar. Sin rango, los últimos 60 días cargados. */
+  desde: FechaIso.optional(),
+  hasta: FechaIso.optional(),
+});
+export type IndicesQuery = z.infer<typeof IndicesQuerySchema>;
+
+export const IndicesDtoSchema = z.object({
+  indice: z.enum(['ICL', 'IPC']),
+  /** De dónde sale: BCRA para el ICL, INDEC para el IPC. */
+  fuente: z.string(),
+  /** El último valor cargado y cuándo se cargó. */
+  ultimaFecha: FechaIso.nullable(),
+  actualizado: z.string().nullable(),
+  valores: z.array(
+    z.object({
+      fecha: FechaIso,
+      valor: z.number(),
+      /** IPC: contra el mes anterior, en %. */
+      variacionMensual: z.number().nullable(),
+      /** IPC: contra el mismo mes del año anterior, en %. */
+      variacionInteranual: z.number().nullable(),
+    }),
+  ),
+});
+export type IndicesDto = z.infer<typeof IndicesDtoSchema>;
+
 export const TableroAlquileresQuerySchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100).optional(),
+  tipo: FiltroTipoContratoSchema.default('todos'),
 });
 export type TableroAlquileresQuery = z.infer<typeof TableroAlquileresQuerySchema>;

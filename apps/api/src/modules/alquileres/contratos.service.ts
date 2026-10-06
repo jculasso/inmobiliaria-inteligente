@@ -416,6 +416,9 @@ function aDto(f: FilaContrato, nombres: Map<string, string>): ContratoDto {
       hasta: fromDate(t.hasta)!,
       importe: t.importe == null ? null : decToNum(t.importe),
       confirmadoEl: t.confirmadoEl ? t.confirmadoEl.toISOString() : null,
+      indiceBase: t.indiceBase == null ? null : decToNum(t.indiceBase),
+      indiceRequerido: t.indiceRequerido == null ? null : decToNum(t.indiceRequerido),
+      importePropuesto: t.importePropuesto == null ? null : decToNum(t.importePropuesto),
     })),
   };
 }

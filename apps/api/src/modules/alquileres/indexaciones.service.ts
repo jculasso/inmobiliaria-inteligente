@@ -62,12 +62,13 @@ const clave = (indice: string, fecha: string) => `${indice}:${fecha}`;
 export class IndexacionesService {
   constructor(private readonly db: TenantPrismaService) {}
 
-  async bandeja(hoy = hoyArgentina()): Promise<BandejaIndexacionDto> {
+  /** `dias`: cuánto adelante mira. La bandeja usa 30; el tablero, 60 (como Gexion). */
+  async bandeja(hoy = hoyArgentina(), dias = DIAS_ANTICIPACION_INDEXACION): Promise<BandejaIndexacionDto> {
     return this.db.withTenant(async (tx) => {
       const filas = await tx.alqTramo.findMany({
         where: {
           importe: null,
-          desde: { lte: toDate(sumarDiasIso(hoy, DIAS_ANTICIPACION_INDEXACION))! },
+          desde: { lte: toDate(sumarDiasIso(hoy, dias))! },
           contrato: { estado: 'vigente', ajuste: 'indexado' },
         },
         include: INCLUIR,
