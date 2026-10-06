@@ -183,17 +183,27 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 
 15. Un cobro se imputa a conceptos del inquilino; si no se eligen, se imputa
     **del más viejo al más nuevo**. Se permite el pago parcial: el concepto
-    queda con saldo.
+    queda con saldo. Si al inquilino se le debe un reintegro (un gasto del
+    dueño que pagó él, regla 14), se **compensa** contra lo que debe y paga la
+    diferencia. Los **honorarios** no se cobran por caja: se descuentan en la
+    liquidación (regla 20).
 16. Si se cobra después del día de vencimiento, el sistema **propone** un
-    punitorio = alquiler × tasa diaria del contrato × días de atraso. Se puede
-    condonar total o parcialmente, con motivo obligatorio.
+    punitorio = saldo del alquiler × tasa diaria del contrato × días de
+    atraso. Los días corren desde el vencimiento o, si ya se cobró un
+    punitorio por ese alquiler, desde ese cobro: un pago parcial no hace
+    cobrar dos veces los mismos días. Se puede condonar total o parcialmente,
+    con motivo obligatorio, que queda escrito en el cobro. El punitorio es
+    ingreso de la inmobiliaria (regla 30).
 17. Lo que se cobra de más queda como **saldo a favor** del inquilino y se usa
     en el próximo cobro.
 18. Cada persona tiene una cuenta corriente **por moneda**. Un saldo nunca
     mezcla pesos y dólares; un contrato en USD genera conceptos en USD.
 19. Un cobro, una liquidación o un concepto **no se borran**: se anulan, con
     motivo, usuario y fecha. La anulación revierte su efecto en la cuenta
-    corriente y queda a la vista.
+    corriente y queda a la vista. Anular un cobro anula también los
+    punitorios que nacieron con él. Un cobro cuyo saldo a favor ya se usó en
+    otro posterior no se anula hasta anular ese otro: si no, el recibo
+    posterior diría que aplicó una plata que ya no existe.
 
 ### Liquidación al propietario
 
