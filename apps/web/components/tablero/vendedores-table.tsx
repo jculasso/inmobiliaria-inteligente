@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { VendedorDto } from '@vacker/types';
-import { Avatar, Button } from '@vacker/ui';
+import { Avatar } from '@vacker/ui';
 import { AvatarUploader } from '../avatar-uploader';
 import { getAccessToken } from '../../lib/supabase/client';
 import {
@@ -14,6 +14,15 @@ import {
 } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
+import {
+  AccionesFila,
+  BarraLista,
+  BotonNuevo,
+  CLASE_FOCO,
+  CLASE_LISTA_MOVIL,
+  CLASE_TABLA_ANCHA,
+  CLASE_TH,
+} from '../piezas';
 import { VendedorFormModal } from './vendedor-form-modal';
 
 export function VendedoresTable({
@@ -80,23 +89,51 @@ export function VendedoresTable({
     );
   }
 
+  /**
+   * La insignia de estado, que para quien gestiona es además el botón que
+   * activa o desactiva. Dice qué hace y a quién: «Activo» solo no dice que
+   * tocarlo lo desactiva.
+   */
+  // Una función y no un componente: definido adentro, cada render sería un
+  // componente nuevo y el botón perdería el foco al refrescar.
+  function estadoVendedor(v: VendedorDto) {
+    const activo = v.estado === 'activo';
+    return (
+      <button
+        type="button"
+        disabled={!puedeGestionar || loadingId === v.id}
+        onClick={() => toggleEstado(v)}
+        aria-label={
+          puedeGestionar
+            ? `${activo ? 'Activo' : 'Inactivo'}: ${activo ? 'desactivar' : 'activar'} a ${v.nombre}`
+            : undefined
+        }
+        title={puedeGestionar ? (activo ? 'Desactivar' : 'Activar') : undefined}
+        className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${CLASE_FOCO} ${
+          activo ? 'bg-success/10 text-success' : 'bg-ink/5 text-muted'
+        } ${puedeGestionar ? 'cursor-pointer' : 'cursor-default'}`}
+      >
+        {activo ? 'Activo' : 'Inactivo'}
+      </button>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre…"
-          className="h-9 w-full max-w-sm rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red"
-        />
+      <BarraLista
+        busqueda={busqueda}
+        onBusqueda={setBusqueda}
+        placeholder="Buscar por nombre…"
+        visibles={filtrados.length}
+        total={vendedores.length}
+        nombre="vendedores"
+      >
         {puedeGestionar && (
-          <Button variant="primary" size="sm" onClick={() => setModal('create')}>
-            ＋ Nuevo vendedor
-          </Button>
+          <BotonNuevo onClick={() => setModal('create')}>Nuevo vendedor</BotonNuevo>
         )}
-      </div>
+      </BarraLista>
 
-      <div className="rounded-brand border border-line bg-white sm:hidden">
+      <div className={CLASE_LISTA_MOVIL}>
         {filtrados.length === 0 ? (
           <p className="px-4 py-6 text-center text-muted">Sin vendedores para mostrar.</p>
         ) : (
@@ -110,18 +147,7 @@ export function VendedoresTable({
                     <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">
                       {v.nombre}
                     </span>
-                    <button
-                      type="button"
-                      disabled={!puedeGestionar || loadingId === v.id}
-                      onClick={() => toggleEstado(v)}
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        v.estado === 'activo'
-                          ? 'bg-success/10 text-success'
-                          : 'bg-surface text-muted'
-                      }`}
-                    >
-                      {v.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                    </button>
+                    {estadoVendedor(v)}
                   </div>
 
                   <CamposTarjeta>
@@ -138,15 +164,7 @@ export function VendedoresTable({
                   </CamposTarjeta>
 
                   {puedeGestionar && (
-                    <div className="mt-2 flex justify-end border-t border-line pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setModal(v)}
-                        className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
-                      >
-                        ✏️ Editar
-                      </button>
-                    </div>
+                    <AccionesFila nombre={`a ${v.nombre}`} onEditar={() => setModal(v)} tarjeta />
                   )}
                 </Tarjeta>
               );
@@ -155,15 +173,19 @@ export function VendedoresTable({
         )}
       </div>
 
-      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
+      <div className={CLASE_TABLA_ANCHA}>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-2">Vendedor</th>
-              <th className="px-4 py-2">Estado</th>
-              <th className="px-4 py-2">Rol / equipo</th>
-              <th className="px-4 py-2">Obj. comisión {anioActual}</th>
-              {puedeGestionar && <th className="px-4 py-2" />}
+            <tr>
+              <th className={CLASE_TH}>Vendedor</th>
+              <th className={CLASE_TH}>Estado</th>
+              <th className={CLASE_TH}>Rol / equipo</th>
+              <th className={CLASE_TH}>Obj. comisión {anioActual}</th>
+              {puedeGestionar && (
+                <th className={CLASE_TH}>
+                  <span className="sr-only">Acciones</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -184,20 +206,7 @@ export function VendedoresTable({
                         {v.nombre}
                       </div>
                     </td>
-                    <td className="px-4 py-2">
-                      <button
-                        type="button"
-                        disabled={!puedeGestionar || loadingId === v.id}
-                        onClick={() => toggleEstado(v)}
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          v.estado === 'activo'
-                            ? 'bg-success/10 text-success'
-                            : 'bg-surface text-muted'
-                        } ${puedeGestionar ? 'cursor-pointer' : 'cursor-default'}`}
-                      >
-                        {v.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                      </button>
-                    </td>
+                    <td className="px-4 py-2">{estadoVendedor(v)}</td>
                     <td className="px-4 py-2 text-muted">
                       {v.roles.includes('team_leader')
                         ? '👔 Líder'
@@ -208,14 +217,7 @@ export function VendedoresTable({
                     <td className="px-4 py-2">{fmtUSD(objetivo?.objComision ?? 0)}</td>
                     {puedeGestionar && (
                       <td className="px-4 py-2">
-                        <button
-                          type="button"
-                          onClick={() => setModal(v)}
-                          aria-label="Editar"
-                          className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
-                        >
-                          ✏️
-                        </button>
+                        <AccionesFila nombre={`a ${v.nombre}`} onEditar={() => setModal(v)} />
                       </td>
                     )}
                   </tr>

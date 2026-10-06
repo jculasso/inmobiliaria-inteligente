@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CLASE_FOCO } from './piezas';
 
 /**
  * Piezas compartidas para reemplazar las tablas anchas por tarjetas en el
@@ -33,7 +34,14 @@ export function TablaAncha({ children }: { children: ReactNode }) {
   return <div className="hidden overflow-x-auto overscroll-x-contain sm:block">{children}</div>;
 }
 
-/** Una fila como tarjeta. `onClick` la vuelve accionable (equivale a tocar la fila). */
+/**
+ * Una fila como tarjeta. `onClick` la vuelve accionable (equivale a tocar la fila).
+ *
+ * Con `onClick` el contenido queda dentro de un `<button>`, que solo admite
+ * contenido de frase: por eso `CampoTarjeta` y `CamposTarjeta` son `<span>`
+ * con `display` de bloque y no `<div>` (un `<div>` adentro de un botón es HTML
+ * inválido, y algunos lectores de pantalla lo leen partido).
+ */
 export function Tarjeta({
   children,
   onClick,
@@ -45,7 +53,7 @@ export function Tarjeta({
   destacada?: boolean;
   titulo?: string;
 }) {
-  const clases = `block rounded-xl border px-3 py-2.5 text-left ${
+  const clases = `block rounded-brand border px-3 py-2.5 text-left ${
     destacada ? 'border-brand-red/30 bg-brand-red/5' : 'border-line bg-white'
   }`;
 
@@ -56,7 +64,7 @@ export function Tarjeta({
         type="button"
         onClick={onClick}
         title={titulo}
-        className={`${clases} w-full active:bg-surface`}
+        className={`${clases} w-full active:bg-surface ${CLASE_FOCO}`}
       >
         {children}
       </button>
@@ -70,14 +78,14 @@ export function Tarjeta({
  */
 export function CampoTarjeta({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <div className="min-w-0">
+    <span className="block min-w-0">
       <span className="block text-[10px] uppercase tracking-wide text-muted">{etiqueta}</span>
       <span className="block truncate text-sm text-ink">{children}</span>
-    </div>
+    </span>
   );
 }
 
 /** Grilla de campos dentro de una tarjeta. */
 export function CamposTarjeta({ children }: { children: ReactNode }) {
-  return <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">{children}</div>;
+  return <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">{children}</span>;
 }

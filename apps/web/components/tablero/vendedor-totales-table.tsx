@@ -5,6 +5,7 @@ import type { RankingItem } from '@vacker/types';
 import { Avatar } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, TablaAncha, Tarjeta } from '../tabla-movil';
+import { CLASE_FOCO, Segmentado } from '../piezas';
 import { DetalleDrillModal } from './detalle-drill-modal';
 
 const MEDALLAS = ['🥇', '🥈', '🥉'];
@@ -129,23 +130,12 @@ export function VendedorTotalesTable({
         <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
           Ordenar por
         </span>
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Ordenar por">
-          {CRITERIOS.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => setCriterio(c.key)}
-              aria-pressed={criterio === c.key}
-              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                criterio === c.key
-                  ? 'bg-brand-red text-white'
-                  : 'bg-surface text-muted hover:text-ink'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
+        <Segmentado
+          etiqueta="Ordenar por"
+          opciones={CRITERIOS.map((c) => [c.key, c.label] as const)}
+          valor={criterio}
+          onCambio={setCriterio}
+        />
       </div>
 
       <ListaTarjetas etiqueta="Totales por vendedor">
@@ -156,7 +146,7 @@ export function VendedorTotalesTable({
             onClick={() => setDrill(item)}
             titulo={`Ver operaciones de ${item.nombre}`}
           >
-            <div className="flex items-center gap-2">
+            <span className="flex items-center gap-2">
               <span className="w-6 shrink-0 text-center text-sm font-extrabold text-muted">
                 {MEDALLAS[i] ?? i + 1}
               </span>
@@ -175,7 +165,7 @@ export function VendedorTotalesTable({
                 )}
                 {Math.round(peso[i]! * 100)}%
               </span>
-            </div>
+            </span>
             <CamposTarjeta>
               <CampoTarjeta etiqueta="Volumen">{fmtUSD(item.volumen)}</CampoTarjeta>
               <CampoTarjeta etiqueta="Puntas">{fmtNum(item.puntas)}</CampoTarjeta>
@@ -185,7 +175,7 @@ export function VendedorTotalesTable({
           </Tarjeta>
         ))}
 
-        <li className="mt-1 rounded-xl border-2 border-line bg-surface px-3 py-2.5">
+        <li className="mt-1 rounded-brand border-2 border-line bg-surface px-3 py-2.5">
           <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">
             Total general
           </span>
@@ -233,7 +223,7 @@ export function VendedorTotalesTable({
                   <button
                     type="button"
                     onClick={() => setDrill(item)}
-                    className="flex items-center gap-2 hover:text-brand-red hover:underline"
+                    className={`flex items-center gap-2 rounded hover:text-brand-red hover:underline ${CLASE_FOCO}`}
                   >
                     <Avatar nombre={item.nombre} fotoUrl={item.fotoUrl} size="sm" />
                     {item.nombre}

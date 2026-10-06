@@ -1,3 +1,5 @@
+import type { TonoInsignia } from '../components/piezas';
+
 /**
  * Estado de una operación, en un solo lugar.
  *
@@ -22,14 +24,23 @@ export function estadoLabel(estado: string): string {
   return ESTADO_LABEL[estado] ?? estado;
 }
 
-/** Verde para lo cerrado (escriturada/firmado), rojo de marca para lo que sigue en curso. */
-export function estadoClass(estado: string): string {
-  return estado === 'escriturada' || estado === 'firmado'
-    ? 'bg-success/10 text-success'
-    : 'bg-brand-red/10 text-brand-red';
-}
+/** Lo cerrado: la operación ya está hecha. */
+const CERRADOS = new Set(['escriturada', 'firmado']);
+/** Lo que sigue en curso: falta un paso para cerrarse. */
+const EN_CURSO = new Set(['senada', 'reservada', 'boleto', 'reservado', 'pendiente']);
 
-/** Clases de la insignia completa, para no repetir el pill en cada tabla. */
-export function estadoBadgeClass(estado: string): string {
-  return `inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(estado)}`;
+/**
+ * El tono de la insignia (`Insignia` de `components/piezas`): verde lo cerrado,
+ * ámbar lo que sigue en curso y gris lo que no se reconoce (un estado
+ * cancelado o anulado, si algún día existe, ya no cuenta).
+ *
+ * Lo en curso iba en `brand-red`, el color de cada inmobiliaria: en una marca
+ * verde, una seña se veía igual que una escritura, y en la roja de Vacker
+ * parecía un error. Una seña no es urgente ni está mal: está pendiente
+ * (CONVENCIONES_TECNICAS §13).
+ */
+export function estadoTono(estado: string): TonoInsignia {
+  if (CERRADOS.has(estado)) return 'exito';
+  if (EN_CURSO.has(estado)) return 'aviso';
+  return 'neutro';
 }

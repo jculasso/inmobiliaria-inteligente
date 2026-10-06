@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getOrFetch } from './kpi-cache';
+import { alcanceDe, getOrFetch } from './kpi-cache';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -43,5 +43,33 @@ describe('getOrFetch', () => {
 
     await expect(getOrFetch('k:error', fetcher)).rejects.toThrow('falló');
     expect(await getOrFetch('k:error', fetcher)).toBe('ok');
+  });
+});
+
+describe('getOrFetch · por persona', () => {
+  /** Un JWT de mentira con el `sub` dado (la firma no se mira). */
+  const jwt = (sub: string) => `x.${btoa(JSON.stringify({ sub })).replace(/=+$/, '')}.firma`;
+
+  it('la misma combinación de filtros, pedida por otra persona, no reutiliza lo de la primera', async () => {
+    // Un celular compartido: sale Ana, entra Beto, y en los segundos del TTL
+    // Beto veía los números de Ana.
+    const deAna = vi.fn().mockResolvedValue('de Ana');
+    const deBeto = vi.fn().mockResolvedValue('de Beto');
+
+    expect(await getOrFetch('resumen:2026:anual:persona', deAna, jwt('ana'))).toBe('de Ana');
+    expect(await getOrFetch('resumen:2026:anual:persona', deBeto, jwt('beto'))).toBe('de Beto');
+    expect(deBeto).toHaveBeenCalledTimes(1);
+  });
+
+  it('la misma persona con el token renovado sigue compartiendo la consulta', async () => {
+    const fetcher = vi.fn().mockResolvedValue('datos');
+    await getOrFetch('resumen:2026:renovado', fetcher, jwt('ana'));
+    await getOrFetch('resumen:2026:renovado', fetcher, `${jwt('ana')}-renovado`);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('alcanceDe toma el sub del token, o el token entero si no es un JWT', () => {
+    expect(alcanceDe(jwt('u-123'))).toBe('u-123');
+    expect(alcanceDe('no-es-jwt')).toBe('no-es-jwt');
   });
 });

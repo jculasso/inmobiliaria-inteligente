@@ -5,8 +5,9 @@ import type { LadoPunta, OperacionFiltro } from '@vacker/types';
 import { Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { listOperaciones } from '../../lib/tablero-api';
-import { fmtNum, fmtUSD } from '../../lib/format';
-import { estadoBadgeClass, estadoLabel } from '../../lib/operacion-estado';
+import { fmtFecha, fmtNum, fmtUSD } from '../../lib/format';
+import { estadoLabel, estadoTono } from '../../lib/operacion-estado';
+import { Insignia, MensajeError } from '../piezas';
 import { contarVentas, resumirVentas, type FocoDrill } from '../../lib/drill';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 
@@ -107,11 +108,7 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
   return (
     <Modal title={titulo} subtitle={subtitulo} onClose={onClose} size="xl">
       {loading && <p className="py-6 text-sm text-muted">Cargando…</p>}
-      {error && (
-        <p role="alert" className="text-sm font-medium text-brand-red">
-          {error}
-        </p>
-      )}
+      <MensajeError>{error}</MensajeError>
 
       {operaciones && !loading && (
         <dl aria-label="Resumen del detalle" className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -149,12 +146,12 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-bold text-ink">{fila.op.direccion}</span>
                       <span className="mt-0.5 block text-[11px] text-muted">
-                        {fila.op.codigo} · Firma {fila.op.fechaFirma ?? '—'}
+                        {fila.op.codigo} · Firma {fmtFecha(fila.op.fechaFirma)}
                       </span>
                     </span>
-                    <span className={`shrink-0 ${estadoBadgeClass(fila.op.estado)}`}>
+                    <Insignia tono={estadoTono(fila.op.estado)}>
                       {estadoLabel(fila.op.estado)}
-                    </span>
+                    </Insignia>
                   </div>
                   <CamposTarjeta>
                     <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>
@@ -208,7 +205,7 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
                   >
                     <td className="px-3 py-2.5 text-xs text-muted">{fila.op.codigo}</td>
                     <td className="px-3 py-2.5 tabular-nums text-muted">
-                      {fila.op.fechaFirma ?? '—'}
+                      {fmtFecha(fila.op.fechaFirma)}
                     </td>
                     <td className="px-3 py-2.5 font-semibold text-ink">{fila.op.direccion}</td>
                     <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">
@@ -225,9 +222,9 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
                       {fmtUSD(fila.comision)}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className={estadoBadgeClass(fila.op.estado)}>
+                      <Insignia tono={estadoTono(fila.op.estado)}>
                         {estadoLabel(fila.op.estado)}
-                      </span>
+                      </Insignia>
                     </td>
                   </tr>
                 ))
