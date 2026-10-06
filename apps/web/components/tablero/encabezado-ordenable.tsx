@@ -28,7 +28,15 @@ interface Props {
  * la activa en descendente, que es lo que se quiere mirar: el número más alto
  * y la firma más reciente arriba.
  */
-export function EncabezadoOrdenable({ columna, activa, dir, enMemoria, onOrdenar, thClass = '', children }: Props) {
+export function EncabezadoOrdenable({
+  columna,
+  activa,
+  dir,
+  enMemoria,
+  onOrdenar,
+  thClass = '',
+  children,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

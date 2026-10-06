@@ -25,7 +25,13 @@ const SOLA = {
 describe('contarVentas / resumirVentas — la ventana suma lo mismo que la tarjeta', () => {
   it('sin acotar: el volumen suma el precio una vez por punta, como el tablero', () => {
     const r = resumirVentas(contarVentas([COMPARTIDA, SOLA]));
-    expect(r).toEqual({ operaciones: 2, puntas: 3, volumen: 500_000, ticket: 500_000 / 3, comision: 13_000 });
+    expect(r).toEqual({
+      operaciones: 2,
+      puntas: 3,
+      volumen: 500_000,
+      ticket: 500_000 / 3,
+      comision: 13_000,
+    });
   });
 
   it('la comisión es la de las puntas, no el `comTotal` de la operación', () => {

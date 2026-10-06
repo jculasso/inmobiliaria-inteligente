@@ -65,7 +65,10 @@ export function MenuModulos({ modulos }: { modulos: ModulosTenant }) {
       >
         <span aria-hidden>⊞</span>
         Módulos
-        <span aria-hidden className={`text-xs text-muted transition-transform ${abierto ? 'rotate-180' : ''}`}>
+        <span
+          aria-hidden
+          className={`text-xs text-muted transition-transform ${abierto ? 'rotate-180' : ''}`}
+        >
           ▾
         </span>
       </button>

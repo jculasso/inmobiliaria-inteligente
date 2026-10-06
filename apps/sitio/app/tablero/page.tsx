@@ -38,15 +38,15 @@ export default function Tablero() {
             <p>
               Venta o alquiler, la propiedad, el monto, la moneda y{' '}
               <strong className="font-semibold text-ink">las dos puntas</strong>: quién captó y
-              quién vendió. Si son dos vendedores distintos, el sistema lo sabe y no hay que
-              acordar nada después.
+              quién vendió. Si son dos vendedores distintos, el sistema lo sabe y no hay que acordar
+              nada después.
             </p>
           </Paso>
           <Paso numero={2} titulo="Las comisiones salen del reglamento, no de la memoria">
             <p>
               Los porcentajes están configurados una vez, por tipo de operación y por punta. Se
-              calculan solos y siempre igual, que es lo que evita la conversación incómoda de fin
-              de mes.
+              calculan solos y siempre igual, que es lo que evita la conversación incómoda de fin de
+              mes.
             </p>
           </Paso>
           <Paso numero={3} titulo="Los objetivos se miden solos">
@@ -56,9 +56,7 @@ export default function Tablero() {
             </p>
           </Paso>
           <Paso numero={4} titulo="El ranking pone el mes en una pantalla">
-            <p>
-              Quién está vendiendo, quién está captando, qué se facturó. Sin exportar nada.
-            </p>
+            <p>Quién está vendiendo, quién está captando, qué se facturó. Sin exportar nada.</p>
           </Paso>
         </ol>
         <Captura
@@ -80,7 +78,10 @@ export default function Tablero() {
 
       <Bloque kicker="Quién ve qué" titulo="Lo mismo que en el resto del sistema." fondo>
         <div className="mt-2">
-          <Rol rol="Vendedor" ve="Sus operaciones, sus comisiones y su objetivo. No los de los demás." />
+          <Rol
+            rol="Vendedor"
+            ve="Sus operaciones, sus comisiones y su objetivo. No los de los demás."
+          />
           <Rol rol="Team leader" ve="Su equipo completo, con el detalle de cada uno." />
           <Rol rol="Dirección" ve="Toda la inmobiliaria, y la comparación entre equipos." />
         </div>

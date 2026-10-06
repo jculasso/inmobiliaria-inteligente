@@ -46,7 +46,9 @@ async function pedir(url: string | URL, init: RequestInit, limiteMs?: number): P
 
 /** Detalle de validación por campo (forma que emite ZodValidationPipe). */
 function esDetalleCampo(x: unknown): x is { path?: string; message: string } {
-  return typeof x === 'object' && x !== null && typeof (x as { message?: unknown }).message === 'string';
+  return (
+    typeof x === 'object' && x !== null && typeof (x as { message?: unknown }).message === 'string'
+  );
 }
 
 /** Arma un mensaje legible a partir del error de la API, priorizando el detalle de validación por campo. */
@@ -107,7 +109,9 @@ export async function apiFetch<T>(
   const json: unknown = await res.json();
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
-    throw new ApiError(`La respuesta de ${method} ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`);
+    throw new ApiError(
+      `La respuesta de ${method} ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`,
+    );
   }
   return parsed.data;
 }
@@ -152,7 +156,9 @@ export async function apiFetchForm<T>(
   const json: unknown = await res.json();
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
-    throw new ApiError(`La respuesta de POST ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`);
+    throw new ApiError(
+      `La respuesta de POST ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`,
+    );
   }
   return parsed.data;
 }
@@ -174,7 +180,15 @@ export interface PdfGenerado {
  */
 export async function apiFetchPdf(
   path: string,
-  { accessToken, searchParams, body }: { accessToken: string; searchParams?: Record<string, string | number | undefined>; body?: unknown },
+  {
+    accessToken,
+    searchParams,
+    body,
+  }: {
+    accessToken: string;
+    searchParams?: Record<string, string | number | undefined>;
+    body?: unknown;
+  },
 ): Promise<PdfGenerado> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
@@ -186,12 +200,19 @@ export async function apiFetchPdf(
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
 
-  const res = await pedir(url, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    cache: 'no-store',
-  }, 120_000); // un PDF tarda; más de dos minutos es que algo se colgó
+  const res = await pedir(
+    url,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      cache: 'no-store',
+    },
+    120_000,
+  ); // un PDF tarda; más de dos minutos es que algo se colgó
 
   if (!res.ok) {
     const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
@@ -200,7 +221,10 @@ export async function apiFetchPdf(
       code: errorBody?.error?.code,
     });
   }
-  return { blob: await res.blob(), nombre: nombreDeDisposition(res.headers.get('content-disposition')) };
+  return {
+    blob: await res.blob(),
+    nombre: nombreDeDisposition(res.headers.get('content-disposition')),
+  };
 }
 
 /**
@@ -243,10 +267,16 @@ export async function apiFetchZip(
   });
   if (!res.ok) {
     const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
-    throw new ApiError(mensajeDeError(errorBody, `No se pudo generar el archivo (${res.status}).`), {
-      status: res.status,
-      code: errorBody?.error?.code,
-    });
+    throw new ApiError(
+      mensajeDeError(errorBody, `No se pudo generar el archivo (${res.status}).`),
+      {
+        status: res.status,
+        code: errorBody?.error?.code,
+      },
+    );
   }
-  return { blob: await res.blob(), nombre: nombreDeDisposition(res.headers.get('content-disposition')) };
+  return {
+    blob: await res.blob(),
+    nombre: nombreDeDisposition(res.headers.get('content-disposition')),
+  };
 }

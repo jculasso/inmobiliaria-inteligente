@@ -1,6 +1,22 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ContactosInputSchema, CuentasBancariasInputSchema, PersonaInputSchema, ROLES_ADMINISTRACION_ALQUILERES, type Persona } from '@vacker/types';
+import {
+  ContactosInputSchema,
+  CuentasBancariasInputSchema,
+  PersonaInputSchema,
+  ROLES_ADMINISTRACION_ALQUILERES,
+  type Persona,
+} from '@vacker/types';
 import type { z } from 'zod';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
@@ -30,27 +46,38 @@ export class PersonasController {
   @Post()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Da de alta una persona' })
-  crear(@Body(new ZodValidationPipe(PersonaInputSchema)) dto: Persona, @CurrentUser() user: AuthPrincipal) {
+  crear(
+    @Body(new ZodValidationPipe(PersonaInputSchema)) dto: Persona,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.personas.crear(ctxDe(user), dto);
   }
 
   @Patch(':id')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Edita una persona' })
-  actualizar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(PersonaInputSchema)) dto: Persona, @CurrentUser() user: AuthPrincipal) {
+  actualizar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(PersonaInputSchema)) dto: Persona,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.personas.actualizar(ctxDe(user), id, dto);
   }
 
   @Delete(':id')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Borra una persona sin historia; si la tiene, responde 409 diciendo qué tiene' })
+  @ApiOperation({
+    summary: 'Borra una persona sin historia; si la tiene, responde 409 diciendo qué tiene',
+  })
   borrar(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
     return this.personas.borrar(ctxDe(user), id);
   }
 
   @Get(':id/historial')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Quién hizo qué y cuándo con esta persona: altas, cobros, liquidaciones' })
+  @ApiOperation({
+    summary: 'Quién hizo qué y cuándo con esta persona: altas, cobros, liquidaciones',
+  })
   historialDe(@Param('id', ParseUUIDPipe) id: string) {
     return this.historial.dePersona(id);
   }
@@ -64,10 +91,14 @@ export class PersonasController {
 
   @Put(':id/cuentas')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Guarda las cuentas bancarias de la persona (la lista completa); CBU y alias validados' })
+  @ApiOperation({
+    summary:
+      'Guarda las cuentas bancarias de la persona (la lista completa); CBU y alias validados',
+  })
   guardarCuentas(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(CuentasBancariasInputSchema)) body: z.output<typeof CuentasBancariasInputSchema>,
+    @Body(new ZodValidationPipe(CuentasBancariasInputSchema))
+    body: z.output<typeof CuentasBancariasInputSchema>,
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.personas.guardarCuentas(ctxDe(user), id, body.cuentas);

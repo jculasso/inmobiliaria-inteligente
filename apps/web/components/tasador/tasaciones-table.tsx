@@ -72,7 +72,11 @@ export function TasacionesTable({ tasaciones, puedeBorrar }: Props) {
           <span className="whitespace-nowrap text-xs text-muted">
             {filtradas.length} de {tasaciones.length} tasaciones
           </span>
-          <Button variant="primary" size="sm" onClick={() => router.push('/tasador/tasaciones/nueva')}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => router.push('/tasador/tasaciones/nueva')}
+          >
             ＋ Nueva tasación
           </Button>
         </div>

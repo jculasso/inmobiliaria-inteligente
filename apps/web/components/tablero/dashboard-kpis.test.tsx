@@ -7,7 +7,17 @@ import { DashboardKpis } from './dashboard-kpis';
 const filtrosDelDetalle: unknown[] = [];
 const abiertoCon: { titulo: string; foco?: string; lado?: string }[] = [];
 vi.mock('./detalle-drill-modal', () => ({
-  DetalleDrillModal: ({ titulo, filtro, foco, lado }: { titulo: string; filtro: unknown; foco?: string; lado?: string }) => {
+  DetalleDrillModal: ({
+    titulo,
+    filtro,
+    foco,
+    lado,
+  }: {
+    titulo: string;
+    filtro: unknown;
+    foco?: string;
+    lado?: string;
+  }) => {
     filtrosDelDetalle.push(filtro);
     abiertoCon.push({ titulo, foco, lado });
     return <div data-testid="detalle">{titulo}</div>;
@@ -66,7 +76,12 @@ describe('DashboardKpis — la tarjeta de alquileres', () => {
     filtrosDelDetalle.length = 0;
     render(<DashboardKpis resumen={RESUMEN} anio={2026} mes={7} verTodo={false} verAlquileres />);
     await userEvent.click(screen.getByText('Alquileres firmados · 2026'));
-    expect(filtrosDelDetalle.at(-1)).toEqual({ anio: 2026, tipo: 'alquiler', estado: 'firmado', verTodo: true });
+    expect(filtrosDelDetalle.at(-1)).toEqual({
+      anio: 2026,
+      tipo: 'alquiler',
+      estado: 'firmado',
+      verTodo: true,
+    });
   });
 });
 
@@ -95,8 +110,16 @@ describe('DashboardKpis — cada tarjeta abre lo suyo', () => {
       render(<DashboardKpis resumen={RESUMEN} anio={2026} mes={7} verAlquileres={false} />);
       // La primera fila es la del mes seleccionado.
       await userEvent.click(screen.getAllByRole('button', { name: tarjeta })[0]!);
-      expect(filtrosDelDetalle.at(-1)).toEqual({ anio: 2026, mes: 7, tipo: 'venta', estado: 'escriturada' });
-      expect({ foco: abiertoCon.at(-1)!.foco, ...(abiertoCon.at(-1)!.lado ? { lado: abiertoCon.at(-1)!.lado } : {}) }).toEqual(esperado);
+      expect(filtrosDelDetalle.at(-1)).toEqual({
+        anio: 2026,
+        mes: 7,
+        tipo: 'venta',
+        estado: 'escriturada',
+      });
+      expect({
+        foco: abiertoCon.at(-1)!.foco,
+        ...(abiertoCon.at(-1)!.lado ? { lado: abiertoCon.at(-1)!.lado } : {}),
+      }).toEqual(esperado);
     });
   }
 

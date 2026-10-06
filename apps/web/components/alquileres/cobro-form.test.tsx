@@ -5,7 +5,9 @@ import type { CandidatoDto, PreparacionCobroDto } from '@vacker/types';
 const prepararCobro = vi.fn();
 const registrarCobro = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn().mockResolvedValue('token') }));
+vi.mock('../../lib/supabase/client', () => ({
+  getAccessToken: vi.fn().mockResolvedValue('token'),
+}));
 vi.mock('../../lib/abrir-pdf', () => ({ abrirPdfEnPestana: vi.fn() }));
 vi.mock('../../lib/alquileres-api', () => ({
   prepararCobro: (...a: unknown[]) => prepararCobro(...a),
@@ -25,8 +27,26 @@ const prep = (over: Partial<PreparacionCobroDto> = {}): PreparacionCobroDto => (
   moneda: 'ARS',
   fecha: '2026-11-15',
   deudas: [
-    { conceptoId: ALQ, contrato: { id: crypto.randomUUID(), codigo: '5' }, tipo: 'alquiler', descripcion: 'Alquiler noviembre 2026', vencimiento: '2026-11-05', importe: 1_137_518, saldo: 1_137_518, punitorio: { dias: 10, importe: 11_375.18 } },
-    { conceptoId: GAS, contrato: { id: crypto.randomUUID(), codigo: '5' }, tipo: 'gastos_adm', descripcion: 'Gastos administrativos noviembre 2026', vencimiento: '2026-11-05', importe: 27_527.94, saldo: 27_527.94, punitorio: null },
+    {
+      conceptoId: ALQ,
+      contrato: { id: crypto.randomUUID(), codigo: '5' },
+      tipo: 'alquiler',
+      descripcion: 'Alquiler noviembre 2026',
+      vencimiento: '2026-11-05',
+      importe: 1_137_518,
+      saldo: 1_137_518,
+      punitorio: { dias: 10, importe: 11_375.18 },
+    },
+    {
+      conceptoId: GAS,
+      contrato: { id: crypto.randomUUID(), codigo: '5' },
+      tipo: 'gastos_adm',
+      descripcion: 'Gastos administrativos noviembre 2026',
+      vencimiento: '2026-11-05',
+      importe: 27_527.94,
+      saldo: 27_527.94,
+      punitorio: null,
+    },
   ],
   compensables: [],
   creditos: [],
@@ -34,13 +54,30 @@ const prep = (over: Partial<PreparacionCobroDto> = {}): PreparacionCobroDto => (
 });
 
 const inquilinos: CandidatoDto[] = [
-  { persona: { id: PERSONA, nombre: 'Romina Inquilina' }, papel: 'inquilino', contratos: [{ id: crypto.randomUUID(), codigo: 'ALT-0005', propiedad: 'Calle 1' }], pendiente: [{ moneda: 'ARS', importe: 1_165_045.94 }] },
-  { persona: { id: crypto.randomUUID(), nombre: 'Pedro Al Día' }, papel: 'inquilino', contratos: [{ id: crypto.randomUUID(), codigo: 'ALT-0002', propiedad: 'Paraguay 925' }], pendiente: [] },
+  {
+    persona: { id: PERSONA, nombre: 'Romina Inquilina' },
+    papel: 'inquilino',
+    contratos: [{ id: crypto.randomUUID(), codigo: 'ALT-0005', propiedad: 'Calle 1' }],
+    pendiente: [{ moneda: 'ARS', importe: 1_165_045.94 }],
+  },
+  {
+    persona: { id: crypto.randomUUID(), nombre: 'Pedro Al Día' },
+    papel: 'inquilino',
+    contratos: [{ id: crypto.randomUUID(), codigo: 'ALT-0002', propiedad: 'Paraguay 925' }],
+    pendiente: [],
+  },
 ];
 
 const abrir = async (p = prep()) => {
   prepararCobro.mockResolvedValue(p);
-  render(<CobroForm inquilinos={inquilinos} propietarios={[]} personaInicial={PERSONA} hoy="2026-11-15" />);
+  render(
+    <CobroForm
+      inquilinos={inquilinos}
+      propietarios={[]}
+      personaInicial={PERSONA}
+      hoy="2026-11-15"
+    />,
+  );
   await screen.findByText('Alquiler noviembre 2026', { exact: false });
 };
 
@@ -57,7 +94,9 @@ describe('CobroForm', () => {
 
   // Regla 17: el saldo a favor se descuenta solo.
   it('el saldo a favor de un recibo anterior baja lo sugerido', async () => {
-    await abrir(prep({ creditos: [{ cobroId: crypto.randomUUID(), numero: 7, disponible: 76_421.12 }] }));
+    await abrir(
+      prep({ creditos: [{ cobroId: crypto.randomUUID(), numero: 7, disponible: 76_421.12 }] }),
+    );
     expect(screen.getByText(/A su favor del recibo 000007/)).toBeInTheDocument();
     expect(screen.getByText(/Para cancelar lo elegido: \$ 1\.100\.000,00/)).toBeInTheDocument();
   });
@@ -65,8 +104,12 @@ describe('CobroForm', () => {
   // Regla 16: condonar pide motivo, y no se manda nada hasta tenerlo.
   it('bajar el punitorio pide el motivo antes de registrar', async () => {
     await abrir();
-    fireEvent.change(screen.getByLabelText('Punitorio de Alquiler noviembre 2026'), { target: { value: '0' } });
-    fireEvent.change(screen.getByLabelText('Importe recibido'), { target: { value: '1.165.045,94' } });
+    fireEvent.change(screen.getByLabelText('Punitorio de Alquiler noviembre 2026'), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByLabelText('Importe recibido'), {
+      target: { value: '1.165.045,94' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /Registrar el cobro/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent('hace falta el motivo');
     expect(registrarCobro).not.toHaveBeenCalled();
@@ -74,10 +117,19 @@ describe('CobroForm', () => {
 
   // Regla 15: el navegador manda qué se elige y el punitorio; la imputación la hace la API.
   it('registra con lo elegido y el punitorio, sin imputaciones calculadas en el navegador', async () => {
-    registrarCobro.mockResolvedValueOnce({ id: crypto.randomUUID(), numero: 8, persona: { id: PERSONA, nombre: 'Romina Inquilina' }, importe: 1_148_893.18, moneda: 'ARS', aFavor: 0 });
+    registrarCobro.mockResolvedValueOnce({
+      id: crypto.randomUUID(),
+      numero: 8,
+      persona: { id: PERSONA, nombre: 'Romina Inquilina' },
+      importe: 1_148_893.18,
+      moneda: 'ARS',
+      aFavor: 0,
+    });
     await abrir();
     fireEvent.click(screen.getByLabelText(/Gastos administrativos noviembre 2026/));
-    fireEvent.change(screen.getByLabelText('Importe recibido'), { target: { value: '1.148.893,18' } });
+    fireEvent.change(screen.getByLabelText('Importe recibido'), {
+      target: { value: '1.148.893,18' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /Registrar el cobro/ }));
     await waitFor(() => expect(registrarCobro).toHaveBeenCalled());
     const dto = registrarCobro.mock.calls[0]![1];
@@ -102,9 +154,12 @@ describe('CobroForm', () => {
     expect(gastos()).not.toBeChecked();
     prepararCobro.mockResolvedValue(prep({ fecha: '2026-11-20' }));
     fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-11-20' } });
-    await waitFor(() => expect(prepararCobro).toHaveBeenLastCalledWith('token', PERSONA, 'ARS', '2026-11-20'));
-    await waitFor(() => expect(screen.getByRole('checkbox', { name: /Alquiler noviembre/ })).toBeChecked());
+    await waitFor(() =>
+      expect(prepararCobro).toHaveBeenLastCalledWith('token', PERSONA, 'ARS', '2026-11-20'),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: /Alquiler noviembre/ })).toBeChecked(),
+    );
     expect(gastos()).not.toBeChecked();
   });
 });
-

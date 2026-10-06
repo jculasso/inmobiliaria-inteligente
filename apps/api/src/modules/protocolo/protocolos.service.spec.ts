@@ -26,7 +26,9 @@ function makeTx(over: Record<string, unknown> = {}) {
 }
 
 function makeDb(tx: unknown): TenantPrismaService {
-  return { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
+  return {
+    withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+  } as unknown as TenantPrismaService;
 }
 
 /** Storage stub: los casos testeados no llegan a firmar fotos. */
@@ -49,7 +51,9 @@ const TASACION_CAPTADA = {
 describe('ProtocolosService — iniciar', () => {
   it('rechaza una tasación que no está Captada', async () => {
     const tx = makeTx();
-    tx.tasacion.findUnique = vi.fn().mockResolvedValue({ ...TASACION_CAPTADA, estado: 'Presentada' });
+    tx.tasacion.findUnique = vi
+      .fn()
+      .mockResolvedValue({ ...TASACION_CAPTADA, estado: 'Presentada' });
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
     await expect(svc.iniciar({ tasacionId: 'tas1', moneda: 'USD' }, CTX_DIRECCION)).rejects.toThrow(
@@ -60,7 +64,9 @@ describe('ProtocolosService — iniciar', () => {
 
   it('rechaza si la propiedad ya tiene un protocolo', async () => {
     const tx = makeTx();
-    tx.tasacion.findUnique = vi.fn().mockResolvedValue({ ...TASACION_CAPTADA, protocolo: { id: 'p1' } });
+    tx.tasacion.findUnique = vi
+      .fn()
+      .mockResolvedValue({ ...TASACION_CAPTADA, protocolo: { id: 'p1' } });
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
     await expect(svc.iniciar({ tasacionId: 'tas1', moneda: 'USD' }, CTX_DIRECCION)).rejects.toThrow(
@@ -85,7 +91,10 @@ describe('ProtocolosService — iniciar', () => {
     tx.protocolo.findUniqueOrThrow = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
-    await svc.iniciar({ tasacionId: 'tas1', moneda: 'USD', fechaInicio: '2026-07-01' }, CTX_DIRECCION);
+    await svc.iniciar(
+      { tasacionId: 'tas1', moneda: 'USD', fechaInicio: '2026-07-01' },
+      CTX_DIRECCION,
+    );
 
     const data = tx.protocolo.create.mock.calls[0]![0].data;
     expect(data.acciones.create).toHaveLength(PLANTILLA_ACCIONES.length);
@@ -102,7 +111,10 @@ describe('ProtocolosService — iniciar', () => {
     tx.protocolo.findUniqueOrThrow = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
-    await svc.iniciar({ tasacionId: 'tas1', moneda: 'USD', fechaInicio: '2026-07-01' }, CTX_DIRECCION);
+    await svc.iniciar(
+      { tasacionId: 'tas1', moneda: 'USD', fechaInicio: '2026-07-01' },
+      CTX_DIRECCION,
+    );
 
     const acciones = tx.protocolo.create.mock.calls[0]![0].data.acciones.create;
     const semana1 = acciones.find((a: { semana: number }) => a.semana === 1);
@@ -133,9 +145,11 @@ describe('ProtocolosService — acceso por rol', () => {
 describe('ProtocolosService — acciones', () => {
   it('al marcar realizada sin fecha, completa con hoy', async () => {
     const tx = makeTx();
-    tx.protocoloAccion.findUnique = vi
-      .fn()
-      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1', updatedAt: new Date() } });
+    tx.protocoloAccion.findUnique = vi.fn().mockResolvedValue({
+      protocoloId: 'p1',
+      fechaRealizada: null,
+      protocolo: { agenteId: 'u1', updatedAt: new Date() },
+    });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
@@ -146,13 +160,20 @@ describe('ProtocolosService — acciones', () => {
 
   it('no pisa la fecha si el usuario mandó una', async () => {
     const tx = makeTx();
-    tx.protocoloAccion.findUnique = vi
-      .fn()
-      .mockResolvedValue({ protocoloId: 'p1', fechaRealizada: null, protocolo: { agenteId: 'u1', updatedAt: new Date() } });
+    tx.protocoloAccion.findUnique = vi.fn().mockResolvedValue({
+      protocoloId: 'p1',
+      fechaRealizada: null,
+      protocolo: { agenteId: 'u1', updatedAt: new Date() },
+    });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo());
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
-    await svc.updateAccion('p1', 'a1', { estado: 'realizada', fechaRealizada: '2026-07-03' }, CTX_VENDEDOR);
+    await svc.updateAccion(
+      'p1',
+      'a1',
+      { estado: 'realizada', fechaRealizada: '2026-07-03' },
+      CTX_VENDEDOR,
+    );
 
     const fecha = tx.protocoloAccion.update.mock.calls[0]![0].data.fechaRealizada as Date;
     expect(fecha.toISOString().slice(0, 10)).toBe('2026-07-03');
@@ -160,14 +181,16 @@ describe('ProtocolosService — acciones', () => {
 
   it('rechaza una acción que es de otro protocolo', async () => {
     const tx = makeTx();
-    tx.protocoloAccion.findUnique = vi
-      .fn()
-      .mockResolvedValue({ protocoloId: 'OTRO', fechaRealizada: null, protocolo: { agenteId: 'u1', updatedAt: new Date() } });
+    tx.protocoloAccion.findUnique = vi.fn().mockResolvedValue({
+      protocoloId: 'OTRO',
+      fechaRealizada: null,
+      protocolo: { agenteId: 'u1', updatedAt: new Date() },
+    });
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
-    await expect(svc.updateAccion('p1', 'a1', { estado: 'realizada' }, CTX_VENDEDOR)).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      svc.updateAccion('p1', 'a1', { estado: 'realizada' }, CTX_VENDEDOR),
+    ).rejects.toThrow(NotFoundException);
   });
 });
 
@@ -248,15 +271,21 @@ describe('ProtocolosService — edición simultánea', () => {
 describe('ProtocolosService — archivar', () => {
   it('no deja archivar dos veces', async () => {
     const tx = makeTx();
-    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'archivada', updatedAt: new Date() });
+    tx.protocolo.findUnique = vi
+      .fn()
+      .mockResolvedValue({ agenteId: 'u1', estado: 'archivada', updatedAt: new Date() });
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 
-    await expect(svc.archivar('p1', { motivo: 'vendida' }, CTX_VENDEDOR)).rejects.toThrow(ConflictException);
+    await expect(svc.archivar('p1', { motivo: 'vendida' }, CTX_VENDEDOR)).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('guarda motivo y fecha de archivo', async () => {
     const tx = makeTx();
-    tx.protocolo.findUnique = vi.fn().mockResolvedValue({ agenteId: 'u1', estado: 'activa', updatedAt: new Date() });
+    tx.protocolo.findUnique = vi
+      .fn()
+      .mockResolvedValue({ agenteId: 'u1', estado: 'activa', updatedAt: new Date() });
     tx.protocolo.update = vi.fn().mockResolvedValue(filaProtocolo({ estado: 'archivada' }));
     const svc = new ProtocolosService(makeDb(tx), makeStorage());
 

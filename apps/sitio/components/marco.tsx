@@ -58,8 +58,7 @@ export function Encabezado() {
           href="/"
           className="shrink-0 text-[13px] font-extrabold leading-[1.15] text-ink sm:text-[15px] sm:leading-none"
         >
-          Inmobiliaria{' '}
-          <span className="block text-plataforma sm:inline">Inteligente</span>
+          Inmobiliaria <span className="block text-plataforma sm:inline">Inteligente</span>
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex">

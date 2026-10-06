@@ -1,7 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { RolAsignableSchema, type CreateVendedor, type ObjetivoInput, type UpdateVendedor } from '@vacker/types';
+import {
+  RolAsignableSchema,
+  type CreateVendedor,
+  type ObjetivoInput,
+  type UpdateVendedor,
+} from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { SupabaseAdminService } from '../../../admin/supabase-admin.service';
@@ -77,11 +87,23 @@ export class VendedoresService {
 
   async update(id: string, dto: UpdateVendedor, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const actual = await tx.usuario.findUnique({ where: { id }, include: { roles: { select: { rol: true } } } });
+      const actual = await tx.usuario.findUnique({
+        where: { id },
+        include: { roles: { select: { rol: true } } },
+      });
       if (!actual) throw new NotFoundException('Usuario no encontrado.');
-      assertPuedeAdministrar(actual.roles.map((r) => r.rol), ctx);
-      if (dto.roles?.includes('admin_tenant') && !ctx.roles.includes('admin_tenant') && !actual.roles.some((r) => r.rol === 'admin_tenant')) {
-        throw new ForbiddenException('Solo un administrador de la inmobiliaria puede dar el rol de administrador.');
+      assertPuedeAdministrar(
+        actual.roles.map((r) => r.rol),
+        ctx,
+      );
+      if (
+        dto.roles?.includes('admin_tenant') &&
+        !ctx.roles.includes('admin_tenant') &&
+        !actual.roles.some((r) => r.rol === 'admin_tenant')
+      ) {
+        throw new ForbiddenException(
+          'Solo un administrador de la inmobiliaria puede dar el rol de administrador.',
+        );
       }
       if (dto.email !== undefined && dto.email !== actual.email) {
         await this.assertEmailLibre(tx, dto.email, id);
@@ -95,7 +117,8 @@ export class VendedoresService {
         }
       }
       if (dto.liderId) {
-        if (dto.liderId === id) throw new BadRequestException('Un usuario no puede ser su propio líder.');
+        if (dto.liderId === id)
+          throw new BadRequestException('Un usuario no puede ser su propio líder.');
         await this.assertUsuarioExiste(tx, dto.liderId);
       }
 
@@ -118,7 +141,11 @@ export class VendedoresService {
           where: { usuarioId: id, rol: { in: [...RolAsignableSchema.options] } },
         });
         await tx.usuarioRol.createMany({
-          data: [...new Set(dto.roles)].map((rol) => ({ usuarioId: id, rol, tenantId: ctx.tenantId })),
+          data: [...new Set(dto.roles)].map((rol) => ({
+            usuarioId: id,
+            rol,
+            tenantId: ctx.tenantId,
+          })),
         });
       }
 
@@ -132,9 +159,15 @@ export class VendedoresService {
   /** Baja lógica: marca el usuario como inactivo (no se borra por integridad histórica). */
   async desactivar(id: string, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const actual = await tx.usuario.findUnique({ where: { id }, include: { roles: { select: { rol: true } } } });
+      const actual = await tx.usuario.findUnique({
+        where: { id },
+        include: { roles: { select: { rol: true } } },
+      });
       if (!actual) throw new NotFoundException('Usuario no encontrado.');
-      assertPuedeAdministrar(actual.roles.map((r) => r.rol), ctx);
+      assertPuedeAdministrar(
+        actual.roles.map((r) => r.rol),
+        ctx,
+      );
       await tx.usuario.update({ where: { id }, data: { estado: 'inactivo' } });
       return { id, estado: 'inactivo' as const };
     });
@@ -162,7 +195,11 @@ export class VendedoresService {
   ) {
     const obj = await tx.objetivo.upsert({
       where: { tenantId_usuarioId_anio: { tenantId, usuarioId, anio: dto.anio } },
-      update: { objComision: dto.objComision, objVolumen: dto.objVolumen, objPuntas: dto.objPuntas },
+      update: {
+        objComision: dto.objComision,
+        objVolumen: dto.objVolumen,
+        objPuntas: dto.objPuntas,
+      },
       create: {
         tenantId,
         usuarioId,
@@ -277,11 +314,18 @@ function toDto(row: VendedorRow) {
  *   desde el panel de plataforma.
  * - A un administrador de la inmobiliaria solo lo edita otro administrador.
  */
-export function assertPuedeAdministrar(rolesDelOtro: string[], ctx: Pick<TenantContext, 'roles'>): void {
+export function assertPuedeAdministrar(
+  rolesDelOtro: string[],
+  ctx: Pick<TenantContext, 'roles'>,
+): void {
   if (rolesDelOtro.includes('admin_plataforma')) {
-    throw new ForbiddenException('Esta cuenta la administra la plataforma: no se puede editar desde acá.');
+    throw new ForbiddenException(
+      'Esta cuenta la administra la plataforma: no se puede editar desde acá.',
+    );
   }
   if (rolesDelOtro.includes('admin_tenant') && !ctx.roles.includes('admin_tenant')) {
-    throw new ForbiddenException('A un administrador de la inmobiliaria solo lo edita otro administrador.');
+    throw new ForbiddenException(
+      'A un administrador de la inmobiliaria solo lo edita otro administrador.',
+    );
   }
 }

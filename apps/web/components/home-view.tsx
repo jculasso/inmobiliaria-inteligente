@@ -100,7 +100,9 @@ export function HomeView({ sesion }: HomeViewProps) {
   const anio = new Date().getFullYear();
   const config = sesion?.tenant.config;
   const modulos = sesion?.tenant.modulos;
-  const nombreMarca = sesion ? (config?.nombreCorto ?? sesion.tenant.nombre) : 'Inmobiliaria Inteligente';
+  const nombreMarca = sesion
+    ? (config?.nombreCorto ?? sesion.tenant.nombre)
+    : 'Inmobiliaria Inteligente';
 
   /*
    * Sin sesión manda la marca de la PLATAFORMA, no la de un cliente.
@@ -112,10 +114,7 @@ export function HomeView({ sesion }: HomeViewProps) {
   const marca = sesion ? tenantBrandStyle(config) : marcaPlataformaStyle();
 
   return (
-    <main
-      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8"
-      style={marca}
-    >
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8" style={marca}>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {config?.logoUrl ? (
@@ -196,7 +195,11 @@ export function HomeView({ sesion }: HomeViewProps) {
             un menú, no debería obligar a scrollear para ver un módulo. */}
         <section
           className={`grid gap-4 sm:grid-cols-2 ${
-            bloqueada ? 'xl:grid-cols-2' : visibles.length > 4 ? 'lg:grid-cols-3 xl:grid-cols-5' : 'lg:grid-cols-4'
+            bloqueada
+              ? 'xl:grid-cols-2'
+              : visibles.length > 4
+                ? 'lg:grid-cols-3 xl:grid-cols-5'
+                : 'lg:grid-cols-4'
           }`}
         >
           {visibles.map((m) => {

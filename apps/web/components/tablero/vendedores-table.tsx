@@ -107,13 +107,17 @@ export function VendedoresTable({
                 <Tarjeta key={v.id}>
                   <div className="flex items-center gap-2">
                     <AvatarDe v={v} />
-                    <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{v.nombre}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">
+                      {v.nombre}
+                    </span>
                     <button
                       type="button"
                       disabled={!puedeGestionar || loadingId === v.id}
                       onClick={() => toggleEstado(v)}
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        v.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-surface text-muted'
+                        v.estado === 'activo'
+                          ? 'bg-success/10 text-success'
+                          : 'bg-surface text-muted'
                       }`}
                     >
                       {v.estado === 'activo' ? 'Activo' : 'Inactivo'}
@@ -186,7 +190,9 @@ export function VendedoresTable({
                         disabled={!puedeGestionar || loadingId === v.id}
                         onClick={() => toggleEstado(v)}
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          v.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-surface text-muted'
+                          v.estado === 'activo'
+                            ? 'bg-success/10 text-success'
+                            : 'bg-surface text-muted'
                         } ${puedeGestionar ? 'cursor-pointer' : 'cursor-default'}`}
                       >
                         {v.estado === 'activo' ? 'Activo' : 'Inactivo'}

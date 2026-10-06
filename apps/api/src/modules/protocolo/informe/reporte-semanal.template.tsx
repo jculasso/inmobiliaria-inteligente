@@ -180,9 +180,16 @@ function Tira({ propiedad, e }: { propiedad: PropiedadEnReporte; e: Estilos }) {
          * incrustada sea Montserrat.
          */
         const valor =
-          s.estado === 'futura' ? '·' : s.atrasadas > 0 ? String(s.atrasadas) : String(s.pendientes);
+          s.estado === 'futura'
+            ? '·'
+            : s.atrasadas > 0
+              ? String(s.atrasadas)
+              : String(s.pendientes);
         return (
-          <View key={s.semana} style={[e.celda, { backgroundColor: c.fondo, borderColor: c.borde }]}>
+          <View
+            key={s.semana}
+            style={[e.celda, { backgroundColor: c.fondo, borderColor: c.borde }]}
+          >
             <Text style={[e.celdaSemana, { color: c.texto }]}>S{s.semana}</Text>
             <Text style={[e.celdaValor, { color: c.texto }]}>{valor}</Text>
           </View>
@@ -215,7 +222,9 @@ function Propiedad({ propiedad, e }: { propiedad: PropiedadEnReporte; e: Estilos
       <Tira propiedad={propiedad} e={e} />
 
       {cierre && (
-        <Text style={[e.cierre, { color: propiedad.pendientesArrastrados > 0 ? WARNING : SUCCESS }]}>
+        <Text
+          style={[e.cierre, { color: propiedad.pendientesArrastrados > 0 ? WARNING : SUCCESS }]}
+        >
           {cierre}
         </Text>
       )}
@@ -289,7 +298,12 @@ export function ReporteSemanalDocument({
           </View>
           <View style={e.resumenCard}>
             <Text style={e.resumenLabel}>AUTORIZACIONES</Text>
-            <Text style={[e.resumenValor, { color: resumen.autorizacionesEnRiesgo > 0 ? WARNING : INK }]}>
+            <Text
+              style={[
+                e.resumenValor,
+                { color: resumen.autorizacionesEnRiesgo > 0 ? WARNING : INK },
+              ]}
+            >
               {resumen.autorizacionesEnRiesgo}
             </Text>
             <Text style={e.resumenSub}>Vencidas o por vencer</Text>
@@ -306,9 +320,7 @@ export function ReporteSemanalDocument({
         </View>
 
         {reporte.porVendedor.length === 0 ? (
-          <Text style={e.vacio}>
-            Todavía no hay propiedades en comercialización.
-          </Text>
+          <Text style={e.vacio}>Todavía no hay propiedades en comercialización.</Text>
         ) : (
           <>
             {reporte.hayUrgencias && (
@@ -343,9 +355,7 @@ export function ReporteSemanalDocument({
         )}
 
         <View style={e.pie} fixed>
-          <Text>
-            {tenantNombre} · Reporte semanal del Protocolo 5 Semanas
-          </Text>
+          <Text>{tenantNombre} · Reporte semanal del Protocolo 5 Semanas</Text>
           <Text render={({ pageNumber, totalPages }) => `${pageNumber} de ${totalPages}`} />
         </View>
       </Page>

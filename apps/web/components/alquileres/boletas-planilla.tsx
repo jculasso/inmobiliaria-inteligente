@@ -3,7 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { sumarMesesIso } from '@vacker/domain';
-import { BoletaItemSchema, cuotaSiguiente, NOMBRE_QUIEN_PAGA, type FilaPlanilla, type LoteBoletasResultado, type PlanillaBoletasDto } from '@vacker/types';
+import {
+  BoletaItemSchema,
+  cuotaSiguiente,
+  NOMBRE_QUIEN_PAGA,
+  type FilaPlanilla,
+  type LoteBoletasResultado,
+  type PlanillaBoletasDto,
+} from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cargarLoteBoletas } from '../../lib/alquileres-api';
@@ -31,7 +38,8 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
   const [resultado, setResultado] = useState<LoteBoletasResultado | null>(null);
   const [enviando, setEnviando] = useState(false);
   const de = (id: string) => carga[id] ?? VACIA;
-  const poner = (id: string, campo: keyof Carga, valor: string) => setCarga((c) => ({ ...c, [id]: { ...(c[id] ?? VACIA), [campo]: valor } }));
+  const poner = (id: string, campo: keyof Carga, valor: string) =>
+    setCarga((c) => ({ ...c, [id]: { ...(c[id] ?? VACIA), [campo]: valor } }));
   const listas = Object.entries(carga).filter(([, c]) => llena(c));
   const total = listas.reduce((s, [, c]) => s + num(c.importe), 0);
 
@@ -55,19 +63,28 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
   }
 
   async function guardar() {
-    const boletas = listas.map(([cuentaId, c]) => ({ cuentaId, cuota: c.cuota || null, vencimiento: c.vencimiento, importe: num(c.importe) }));
+    const boletas = listas.map(([cuentaId, c]) => ({
+      cuentaId,
+      cuota: c.cuota || null,
+      vencimiento: c.vencimiento,
+      importe: num(c.importe),
+    }));
     for (const b of boletas) {
       const r = BoletaItemSchema.safeParse(b);
       if (!r.success) {
         const f = planilla.filas.find((x) => x.cuenta.id === b.cuentaId)!;
-        setError(`${f.cuenta.servicio.nombre} de ${f.cuenta.propiedad.direccion}: ${b.vencimiento ? (r.error.issues[0]?.message ?? 'revisá los datos') : 'falta el vencimiento'}.`);
+        setError(
+          `${f.cuenta.servicio.nombre} de ${f.cuenta.propiedad.direccion}: ${b.vencimiento ? (r.error.issues[0]?.message ?? 'revisá los datos') : 'falta el vencimiento'}.`,
+        );
         return;
       }
     }
     setError(null);
     setEnviando(true);
     try {
-      setResultado(await cargarLoteBoletas(await getAccessToken(), { periodo: planilla.periodo, boletas }));
+      setResultado(
+        await cargarLoteBoletas(await getAccessToken(), { periodo: planilla.periodo, boletas }),
+      );
       setCarga({});
       router.refresh();
     } catch (err) {
@@ -83,18 +100,31 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
       titulo={`Cargar boletas de ${mes}`}
       detalle={`${planilla.filas.length} cuentas`}
       acciones={
-        <Button variant="secondary" size="sm" onClick={copiarAnterior} disabled={!planilla.filas.some((f) => f.anterior)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={copiarAnterior}
+          disabled={!planilla.filas.some((f) => f.anterior)}
+        >
           📋 Copiar el mes anterior
         </Button>
       }
     >
       {planilla.filas.length === 0 ? (
-        <VacioBloque>Todavía ninguna propiedad tiene impuestos o servicios asignados: hacelo abajo, en «Cuentas por propiedad».</VacioBloque>
+        <VacioBloque>
+          Todavía ninguna propiedad tiene impuestos o servicios asignados: hacelo abajo, en «Cuentas
+          por propiedad».
+        </VacioBloque>
       ) : (
         <>
           <ul className="divide-y divide-line">
             {planilla.filas.map((f) => (
-              <FilaCarga key={f.cuenta.id} fila={f} carga={de(f.cuenta.id)} poner={(campo, valor) => poner(f.cuenta.id, campo, valor)} />
+              <FilaCarga
+                key={f.cuenta.id}
+                fila={f}
+                carga={de(f.cuenta.id)}
+                poner={(campo, valor) => poner(f.cuenta.id, campo, valor)}
+              />
             ))}
           </ul>
           <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line px-4 py-3">
@@ -102,7 +132,10 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
               <p role="status" className="mr-auto text-sm text-success">
                 Se cargaron {resultado.creadas} {resultado.creadas === 1 ? 'boleta' : 'boletas'}
                 {resultado.repetidas ? `; ${resultado.repetidas} ya estaban` : ''}
-                {resultado.sinContrato ? `; ${resultado.sinContrato} sin contrato ese mes, solo para control` : ''}.
+                {resultado.sinContrato
+                  ? `; ${resultado.sinContrato} sin contrato ese mes, solo para control`
+                  : ''}
+                .
               </p>
             )}
             {error && (
@@ -111,7 +144,8 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
               </p>
             )}
             <span className="text-sm text-muted tabular-nums">
-              {listas.length} {listas.length === 1 ? 'boleta' : 'boletas'} · {fmtMoneda(total, 'ARS')}
+              {listas.length} {listas.length === 1 ? 'boleta' : 'boletas'} ·{' '}
+              {fmtMoneda(total, 'ARS')}
             </span>
             <Button variant="primary" onClick={guardar} disabled={enviando || listas.length === 0}>
               {enviando ? 'Guardando…' : 'Guardar'}
@@ -123,7 +157,15 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
   );
 }
 
-function FilaCarga({ fila: f, carga, poner }: { fila: FilaPlanilla; carga: Carga; poner: (campo: keyof Carga, valor: string) => void }) {
+function FilaCarga({
+  fila: f,
+  carga,
+  poner,
+}: {
+  fila: FilaPlanilla;
+  carga: Carga;
+  poner: (campo: keyof Carga, valor: string) => void;
+}) {
   const c = f.cuenta;
   const vivas = f.cargadas.filter((b) => b.estado !== 'anulada');
   const etiqueta = `${c.servicio.nombre} de ${c.propiedad.direccion}`;
@@ -131,17 +173,39 @@ function FilaCarga({ fila: f, carga, poner }: { fila: FilaPlanilla; carga: Carga
     <li className="grid gap-2 px-4 py-2.5 text-sm sm:grid-cols-[minmax(0,1fr)_5rem_10rem_9rem] sm:items-center">
       <span className="min-w-0">
         <span className="block truncate font-semibold text-ink">
-          {c.propiedad.direccion} <span className="font-normal text-muted">· {c.servicio.nombre}</span>
+          {c.propiedad.direccion}{' '}
+          <span className="font-normal text-muted">· {c.servicio.nombre}</span>
         </span>
         <span className="block text-xs text-muted">
-          {c.numeroCuenta ? `Cuenta ${c.numeroCuenta} · ` : ''}la debe el {c.aCargoDe}, paga {NOMBRE_QUIEN_PAGA[c.paga].toLowerCase()}
+          {c.numeroCuenta ? `Cuenta ${c.numeroCuenta} · ` : ''}la debe el {c.aCargoDe}, paga{' '}
+          {NOMBRE_QUIEN_PAGA[c.paga].toLowerCase()}
           {c.contrato ? ` · ${c.contrato.codigo}` : ' · sin contrato'}
-          {vivas.length > 0 && <span className="text-success"> · ya cargada: {vivas.map((b) => `${b.cuota ? `${b.cuota} ` : ''}${fmtMoneda(b.importe, 'ARS')}`).join(', ')}</span>}
+          {vivas.length > 0 && (
+            <span className="text-success">
+              {' '}
+              · ya cargada:{' '}
+              {vivas
+                .map((b) => `${b.cuota ? `${b.cuota} ` : ''}${fmtMoneda(b.importe, 'ARS')}`)
+                .join(', ')}
+            </span>
+          )}
         </span>
       </span>
       <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-2 sm:contents">
-        <input aria-label={`Cuota de ${etiqueta}`} className={`${inputClass} text-center`} placeholder="3/6" value={carga.cuota} onChange={(e) => poner('cuota', e.target.value)} />
-        <input aria-label={`Vencimiento de ${etiqueta}`} type="date" className={inputClass} value={carga.vencimiento} onChange={(e) => poner('vencimiento', e.target.value)} />
+        <input
+          aria-label={`Cuota de ${etiqueta}`}
+          className={`${inputClass} text-center`}
+          placeholder="3/6"
+          value={carga.cuota}
+          onChange={(e) => poner('cuota', e.target.value)}
+        />
+        <input
+          aria-label={`Vencimiento de ${etiqueta}`}
+          type="date"
+          className={inputClass}
+          value={carga.vencimiento}
+          onChange={(e) => poner('vencimiento', e.target.value)}
+        />
         <InputImporte
           aria-label={`Importe de ${etiqueta}`}
           className="col-span-2 sm:col-span-1"

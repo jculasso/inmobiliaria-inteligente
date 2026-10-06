@@ -74,7 +74,9 @@ export function Modal({
 
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="text-balance text-base font-extrabold tracking-tight text-ink sm:text-lg">{title}</h2>
+            <h2 className="text-balance text-base font-extrabold tracking-tight text-ink sm:text-lg">
+              {title}
+            </h2>
             {/* El subtítulo explica: cortado con «…» en el teléfono no servía. */}
             {subtitle && <p className="mt-0.5 text-xs leading-snug text-muted">{subtitle}</p>}
           </div>
@@ -89,7 +91,9 @@ export function Modal({
         </div>
 
         {/* Abajo, el margen de la barra de inicio del iPhone: la hoja nace pegada al borde. */}
-        <div className="overflow-y-auto overflow-x-hidden p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6">{children}</div>
+        <div className="overflow-y-auto overflow-x-hidden p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6">
+          {children}
+        </div>
       </div>
     </div>
   );

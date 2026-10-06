@@ -4,6 +4,7 @@
 > **Regla de oro:** ante cualquier duda de stack, alcance o convención, este archivo y `/docs/Arquitectura_Inmobiliaria_Inteligente.md` mandan. No reinventes decisiones ya cerradas.
 >
 > **Los tres documentos y para qué sirve cada uno:**
+>
 > - **`CLAUDE.md`** (este) — qué se está construyendo y con qué reglas. Se lee entero en cada sesión.
 > - **`docs/Arquitectura_Inmobiliaria_Inteligente.md`** — las decisiones grandes y su porqué. **La sección 20 es el estado real** del sistema y manda sobre lo planificado en el resto.
 > - **`docs/CONVENCIONES_TECNICAS.md`** — el cómo del día a día: las reglas que ya nos costaron una vez. **Leerlo antes de tocar RLS, permisos, el middleware, la PWA o de correr SQL en producción.**
@@ -35,21 +36,21 @@ En la base conviven **dos inmobiliarias**: Vacker (el cliente real) y Sanso Prop
 
 ## 3. Stack cerrado (Fase 1)
 
-| Capa | Tecnología | Notas |
-|---|---|---|
-| Monorepo | pnpm + Turborepo | `apps/` y `packages/` |
-| Backend / API | **NestJS** (TypeScript), monolito modular | Módulos con fronteras claras |
-| ORM / migraciones | Prisma | Migraciones versionadas en el repo |
-| Base de datos | **PostgreSQL** (vía Supabase) + **RLS** | Supabase free al inicio |
-| Auth / Identidad | **Supabase Auth** (OIDC/JWT) | Detrás de una capa de abstracción propia para poder migrar a Keycloak/Auth0 luego |
-| Storage | Supabase Storage (S3-compatible) | PDFs, fotos, adjuntos |
-| Frontend web | **Next.js** (App Router) + TypeScript, PWA | Reutiliza patrones del prototipo React |
-| Design system | Tailwind + Radix, tokens de marca Vacker | Ver §6 |
-| Validación | Zod (compartido back/front vía `packages/`) | Contratos tipados |
-| Tests | Vitest (unit) + Supertest (API) + Playwright (e2e) | |
-| CI/CD | GitHub Actions | Lint + typecheck + test en cada PR |
-| Hosting web | Vercel (free) | |
-| Hosting API | Render (free) | Ojo: se duerme por inactividad |
+| Capa              | Tecnología                                         | Notas                                                                             |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Monorepo          | pnpm + Turborepo                                   | `apps/` y `packages/`                                                             |
+| Backend / API     | **NestJS** (TypeScript), monolito modular          | Módulos con fronteras claras                                                      |
+| ORM / migraciones | Prisma                                             | Migraciones versionadas en el repo                                                |
+| Base de datos     | **PostgreSQL** (vía Supabase) + **RLS**            | Supabase free al inicio                                                           |
+| Auth / Identidad  | **Supabase Auth** (OIDC/JWT)                       | Detrás de una capa de abstracción propia para poder migrar a Keycloak/Auth0 luego |
+| Storage           | Supabase Storage (S3-compatible)                   | PDFs, fotos, adjuntos                                                             |
+| Frontend web      | **Next.js** (App Router) + TypeScript, PWA         | Reutiliza patrones del prototipo React                                            |
+| Design system     | Tailwind + Radix, tokens de marca Vacker           | Ver §6                                                                            |
+| Validación        | Zod (compartido back/front vía `packages/`)        | Contratos tipados                                                                 |
+| Tests             | Vitest (unit) + Supertest (API) + Playwright (e2e) |                                                                                   |
+| CI/CD             | GitHub Actions                                     | Lint + typecheck + test en cada PR                                                |
+| Hosting web       | Vercel (free)                                      |                                                                                   |
+| Hosting API       | Render (free)                                      | Ojo: se duerme por inactividad                                                    |
 
 **No usar** (decisiones ya tomadas): Railway/Fly.io para hosting (sin free tier real hoy), AWS/Terraform (se difiere a fase de escala), Redis/colas (se difiere), microservicios (monolito modular por ahora).
 
@@ -121,6 +122,7 @@ Estados de UI ya definidos en el prototipo de la Home: badge `Activo` (verde), `
 ## 7. Definición de hecho (aplica a cada paso)
 
 Un paso está "hecho" solo si:
+
 - Compila y pasa `typecheck` sin errores.
 - Tiene tests y **todos pasan** (incluido, en el núcleo, el test de aislamiento multi-tenant).
 - La API nueva está reflejada en el contrato OpenAPI.
@@ -176,21 +178,21 @@ veces a mano y que conviene que salgan siempre igual. Se invocan por nombre.
 **Antes de codificar** — se encadenan, y para un cambio chico se puede entrar
 directo por la última:
 
-| Skill | Cuándo | Qué evita |
-|---|---|---|
-| **`ordenar-pedido`** | Un mensaje con varios pedidos mezclados, ambiguos o que se contradicen | Codificar la lectura equivocada de un pedido largo |
-| **`indagar`** | Un módulo nuevo, un cambio de reglas, un pedido de terceros | Implementar bien la interpretación equivocada |
-| **`especificar`** | Cuando lo acordado tiene que quedar escrito | Reglas que no se pueden comprobar, o sea que no se pueden testear |
-| **`plan-tecnico`** | Antes de la primera línea de código | Escribir la misma constante dos veces; queries que crecen con las filas |
+| Skill                | Cuándo                                                                 | Qué evita                                                               |
+| -------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **`ordenar-pedido`** | Un mensaje con varios pedidos mezclados, ambiguos o que se contradicen | Codificar la lectura equivocada de un pedido largo                      |
+| **`indagar`**        | Un módulo nuevo, un cambio de reglas, un pedido de terceros            | Implementar bien la interpretación equivocada                           |
+| **`especificar`**    | Cuando lo acordado tiene que quedar escrito                            | Reglas que no se pueden comprobar, o sea que no se pueden testear       |
+| **`plan-tecnico`**   | Antes de la primera línea de código                                    | Escribir la misma constante dos veces; queries que crecen con las filas |
 
 **Al ejecutar:**
 
-| Skill | Cuándo | Qué evita |
-|---|---|---|
-| **`sql-produccion`** | Antes de cualquier DELETE/UPDATE masivo en la base real | La purga del 28/07 que alcanzó a un tenant que nadie recordaba |
-| **`verificar-ui`** | Al tocar componentes, estilos, responsive o PWA | Dar por hecho algo que renderiza pero no se ve |
-| **`e2e`** | Al sumar cobertura de navegador o tocar `apps/web/e2e/` | Una prueba que alcance la base de producción; medir el desborde con el método que miente |
-| **`ship`** | Cuando un cambio está terminado y hay que publicarlo | Mergear antes de que CI reporte; saltear la definición de hecho |
+| Skill                | Cuándo                                                  | Qué evita                                                                                |
+| -------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **`sql-produccion`** | Antes de cualquier DELETE/UPDATE masivo en la base real | La purga del 28/07 que alcanzó a un tenant que nadie recordaba                           |
+| **`verificar-ui`**   | Al tocar componentes, estilos, responsive o PWA         | Dar por hecho algo que renderiza pero no se ve                                           |
+| **`e2e`**            | Al sumar cobertura de navegador o tocar `apps/web/e2e/` | Una prueba que alcance la base de producción; medir el desborde con el método que miente |
+| **`ship`**           | Cuando un cambio está terminado y hay que publicarlo    | Mergear antes de que CI reporte; saltear la definición de hecho                          |
 
 No reemplazan a `docs/CONVENCIONES_TECNICAS.md`: lo ejecutan. El documento
 explica el porqué, la skill da los pasos.

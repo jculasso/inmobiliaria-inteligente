@@ -59,7 +59,9 @@ describe('operaciones-table · el scroll del listado', () => {
     const esquina = fuente.match(/thClass="sticky left-0 top-0 z-(\d+) bg-white"/);
     expect(esquina).not.toBeNull();
     const zEsquina = Number(esquina![1]);
-    const zResto = (fuente.match(/sticky top-0 z-(\d+)/g) ?? []).map((c) => Number(c.match(/z-(\d+)/)![1]));
+    const zResto = (fuente.match(/sticky top-0 z-(\d+)/g) ?? []).map((c) =>
+      Number(c.match(/z-(\d+)/)![1]),
+    );
     expect(Math.min(...zResto)).toBeGreaterThan(0);
     expect(zEsquina).toBeGreaterThan(Math.max(...zResto));
   });

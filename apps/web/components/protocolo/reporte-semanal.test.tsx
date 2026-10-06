@@ -61,7 +61,9 @@ describe('ReporteSemanalVista', () => {
   it('sin nada urgente lo dice en una línea y no arma la sección de atención', () => {
     render(<ReporteSemanalVista reporte={reporte()} />);
 
-    expect(screen.getByText(/Ninguna propiedad necesita atención esta semana/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Ninguna propiedad necesita atención esta semana/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Necesita atención')).not.toBeInTheDocument();
   });
 
@@ -188,18 +190,18 @@ describe('ReporteSemanalVista', () => {
     });
     render(<ReporteSemanalVista reporte={r} />);
 
-    const conSemana = screen.getAllByRole('link').find((a) =>
-      a.textContent?.includes('2 acciones atrasadas'),
-    );
+    const conSemana = screen
+      .getAllByRole('link')
+      .find((a) => a.textContent?.includes('2 acciones atrasadas'));
     expect(conSemana).toHaveAttribute(
       'href',
       '/protocolo/11111111-1111-4111-8111-111111111111?semana=2',
     );
 
     // Las que no son de una semana llevan a la ficha, sin parámetro.
-    const sinSemana = screen.getAllByRole('link').find((a) =>
-      a.textContent?.includes('Autorización vencida'),
-    );
+    const sinSemana = screen
+      .getAllByRole('link')
+      .find((a) => a.textContent?.includes('Autorización vencida'));
     expect(sinSemana).toHaveAttribute('href', '/protocolo/11111111-1111-4111-8111-111111111111');
   });
 
@@ -248,10 +250,7 @@ describe('ReporteSemanalVista', () => {
     render(<ReporteSemanalVista reporte={reporte()} />);
 
     const s3 = screen.getAllByRole('link').find((a) => a.textContent?.startsWith('S3'));
-    expect(s3).toHaveAttribute(
-      'href',
-      '/protocolo/11111111-1111-4111-8111-111111111111?semana=3',
-    );
+    expect(s3).toHaveAttribute('href', '/protocolo/11111111-1111-4111-8111-111111111111?semana=3');
   });
 });
 

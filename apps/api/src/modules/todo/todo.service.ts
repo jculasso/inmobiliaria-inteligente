@@ -1,6 +1,12 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { TodoEstadoDto, TodoEventoDto, TodoEventosDto, TodoEventosQuery, TodoVista } from '@vacker/types';
+import type {
+  TodoEstadoDto,
+  TodoEventoDto,
+  TodoEventosDto,
+  TodoEventosQuery,
+  TodoVista,
+} from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { GoogleService, type GoogleEvento } from './google.service';
@@ -134,7 +140,9 @@ export class TodoService {
       throw new BadRequestException('El parámetro de estado del OAuth es inválido.');
     }
     if (!payload.t || !payload.u || !payload.ts || Date.now() - payload.ts > STATE_TTL_MS) {
-      throw new BadRequestException('El estado del OAuth venció o es inválido. Reintentá la conexión.');
+      throw new BadRequestException(
+        'El estado del OAuth venció o es inválido. Reintentá la conexión.',
+      );
     }
     return { tenantId: payload.t, userId: payload.u };
   }
@@ -161,7 +169,10 @@ function mapEvento(e: GoogleEvento): TodoEventoDto {
 }
 
 /** Calcula [desde, hasta) en UTC para la vista y la fecha ancla (hora Argentina). */
-function rangoDe(vista: TodoVista, fecha?: string): { vista: TodoVista; desde: string; hasta: string } {
+function rangoDe(
+  vista: TodoVista,
+  fecha?: string,
+): { vista: TodoVista; desde: string; hasta: string } {
   const ancla = fecha ?? hoyArgentina();
   const inicioDia = new Date(`${ancla}T00:00:00${TZ_OFFSET}`);
 

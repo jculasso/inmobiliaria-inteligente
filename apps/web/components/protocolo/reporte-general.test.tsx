@@ -13,7 +13,13 @@ vi.mock('../../lib/protocolo-api', () => ({
   desarchivarProtocolo: vi.fn(),
 }));
 
-const AGENTE = { id: 'u1', nombre: 'Ana Gómez', email: 'ana@vacker.com', telefono: null, fotoUrl: null };
+const AGENTE = {
+  id: 'u1',
+  nombre: 'Ana Gómez',
+  email: 'ana@vacker.com',
+  telefono: null,
+  fotoUrl: null,
+};
 
 function protocolo(over: Partial<ProtocoloResumenDto> = {}): ProtocoloResumenDto {
   return {
@@ -86,9 +92,9 @@ function renderReporte(over: Partial<Parameters<typeof ReporteGeneral>[0]> = {})
 }
 
 describe('ReporteGeneral', () => {
-// Cada propiedad se dibuja dos veces: tabla en pantalla ancha y tarjetas en el
-// celular (lo decide el CSS, que jsdom no aplica). Estos tests miran la tabla.
-const enLaTabla = () => within(screen.getByRole('table'));
+  // Cada propiedad se dibuja dos veces: tabla en pantalla ancha y tarjetas en el
+  // celular (lo decide el CSS, que jsdom no aplica). Estos tests miran la tabla.
+  const enLaTabla = () => within(screen.getByRole('table'));
 
   it('abre en "En comercialización" y muestra la cantidad de cada grupo', () => {
     renderReporte();

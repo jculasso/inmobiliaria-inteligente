@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   LIMITE_CONCEPTOS_MES,
@@ -11,7 +16,13 @@ import {
   type SentidoConcepto,
   type TipoConcepto,
 } from '@vacker/types';
-import { diasDelMes, generarPeriodo, mesLargo, repartir, type ContratoParaGenerar } from '@vacker/domain';
+import {
+  diasDelMes,
+  generarPeriodo,
+  mesLargo,
+  repartir,
+  type ContratoParaGenerar,
+} from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
@@ -19,7 +30,14 @@ import { IMPUTACION_ACTIVA } from './imputacion-activa';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 
 const INCLUIR_CONCEPTO = {
-  contrato: { select: { id: true, codigo: true, propiedad: { select: { direccion: true } }, partes: { select: { personaId: true, papel: true } } } },
+  contrato: {
+    select: {
+      id: true,
+      codigo: true,
+      propiedad: { select: { direccion: true } },
+      partes: { select: { personaId: true, papel: true } },
+    },
+  },
   persona: { select: { id: true, nombre: true } },
   imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
 } satisfies Prisma.AlqConceptoInclude;
@@ -29,7 +47,10 @@ type FilaConcepto = Prisma.AlqConceptoGetPayload<{ include: typeof INCLUIR_CONCE
 /** Primer y último día de un período `AAAA-MM`. */
 function limites(periodo: string): { desde: string; hasta: string } {
   const [anio, mes] = periodo.split('-').map(Number) as [number, number];
-  return { desde: `${periodo}-01`, hasta: `${periodo}-${String(diasDelMes(anio, mes)).padStart(2, '0')}` };
+  return {
+    desde: `${periodo}-01`,
+    hasta: `${periodo}-${String(diasDelMes(anio, mes)).padStart(2, '0')}`,
+  };
 }
 
 /**
@@ -53,7 +74,10 @@ export class ConceptosService {
   async generar(ctx: TenantContext, periodo: string): Promise<ResultadoGeneracionDto> {
     const { desde, hasta } = limites(periodo);
     return this.db.withTenant(async (tx) => {
-      const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } });
+      const tenant = await tx.tenant.findUniqueOrThrow({
+        where: { id: ctx.tenantId },
+        select: { config: true },
+      });
       const iva = TenantConfigSchema.parse(tenant.config ?? {}).ivaHonorariosPct;
 
       const contratos = await tx.alqContrato.findMany({
@@ -65,7 +89,10 @@ export class ConceptosService {
         include: {
           propiedad: { select: { direccion: true } },
           partes: { select: { personaId: true, papel: true, porcentaje: true } },
-          tramos: { select: { numero: true, desde: true, hasta: true, importe: true }, orderBy: { numero: 'asc' } },
+          tramos: {
+            select: { numero: true, desde: true, hasta: true, importe: true },
+            orderBy: { numero: 'asc' },
+          },
         },
       });
 
@@ -89,7 +116,14 @@ export class ConceptosService {
           });
         }
         for (const p of r.sinIndexar) {
-          sinIndexar.push({ contratoId: c.id, codigo: c.codigo, direccion: c.propiedad.direccion, tramo: p.tramo, desde: p.desde, hasta: p.hasta });
+          sinIndexar.push({
+            contratoId: c.id,
+            codigo: c.codigo,
+            direccion: c.propiedad.direccion,
+            tramo: p.tramo,
+            desde: p.desde,
+            hasta: p.hasta,
+          });
         }
       }
 
@@ -97,11 +131,22 @@ export class ConceptosService {
       // generó algo de verdad. Una consulta, sean cuantos sean.
       const claves = conceptos.map((k) => k.claveGeneracion!).filter(Boolean);
       const yaEstaban = new Set(
-        claves.length ? (await tx.alqConcepto.findMany({ where: { claveGeneracion: { in: claves } }, select: { claveGeneracion: true } })).map((k) => k.claveGeneracion) : [],
+        claves.length
+          ? (
+              await tx.alqConcepto.findMany({
+                where: { claveGeneracion: { in: claves } },
+                select: { claveGeneracion: true },
+              })
+            ).map((k) => k.claveGeneracion)
+          : [],
       );
-      const { count } = conceptos.length ? await tx.alqConcepto.createMany({ data: conceptos, skipDuplicates: true }) : { count: 0 };
+      const { count } = conceptos.length
+        ? await tx.alqConcepto.createMany({ data: conceptos, skipDuplicates: true })
+        : { count: 0 };
       const nuevosPorContrato = new Map<string, number>();
-      for (const k of conceptos) if (!yaEstaban.has(k.claveGeneracion!)) nuevosPorContrato.set(k.contratoId!, (nuevosPorContrato.get(k.contratoId!) ?? 0) + 1);
+      for (const k of conceptos)
+        if (!yaEstaban.has(k.claveGeneracion!))
+          nuevosPorContrato.set(k.contratoId!, (nuevosPorContrato.get(k.contratoId!) ?? 0) + 1);
       await registrarEventos(
         tx,
         ctx,
@@ -113,7 +158,13 @@ export class ConceptosService {
           resumen: `Generó ${mesLargo(`${periodo}-01`)}: ${n} ${n === 1 ? 'concepto' : 'conceptos'}`,
         })),
       );
-      return { periodo, contratos: contratos.length, creados: count, existentes: conceptos.length - count, sinIndexar };
+      return {
+        periodo,
+        contratos: contratos.length,
+        creados: count,
+        existentes: conceptos.length - count,
+        sinIndexar,
+      };
     });
   }
 
@@ -122,12 +173,20 @@ export class ConceptosService {
     const { desde, hasta } = limites(periodo);
     return this.db.withTenant(async (tx) => {
       const filas = await tx.alqConcepto.findMany({
-        where: { OR: [{ periodo }, { periodo: null, vencimiento: { gte: toDate(desde)!, lte: toDate(hasta)! } }] },
+        where: {
+          OR: [
+            { periodo },
+            { periodo: null, vencimiento: { gte: toDate(desde)!, lte: toDate(hasta)! } },
+          ],
+        },
         include: INCLUIR_CONCEPTO,
         orderBy: [{ contrato: { codigo: 'asc' } }, { vencimiento: 'asc' }, { createdAt: 'asc' }],
         take: LIMITE_CONCEPTOS_MES + 1,
       });
-      const nombres = await nombresDeUsuarios(tx, filas.flatMap((f) => [f.creadoPorId, f.anuladoPorId]));
+      const nombres = await nombresDeUsuarios(
+        tx,
+        filas.flatMap((f) => [f.creadoPorId, f.anuladoPorId]),
+      );
       return filas.map((f) => aDto(f, nombres));
     });
   }
@@ -141,14 +200,23 @@ export class ConceptosService {
     return this.db.withTenant(async (tx) => {
       const c = await tx.alqContrato.findUnique({
         where: { id: dto.contratoId },
-        select: { id: true, moneda: true, estado: true, partes: { select: { personaId: true, papel: true, porcentaje: true } } },
+        select: {
+          id: true,
+          moneda: true,
+          estado: true,
+          partes: { select: { personaId: true, papel: true, porcentaje: true } },
+        },
       });
       if (!c) throw new NotFoundException('El contrato no existe.');
-      if (c.estado === 'borrador') throw new BadRequestException('Un contrato en borrador todavía no tiene cuenta: activalo primero.');
+      if (c.estado === 'borrador')
+        throw new BadRequestException(
+          'Un contrato en borrador todavía no tiene cuenta: activalo primero.',
+        );
 
       const lado = (papel: 'inquilino' | 'propietario') => repartoDe(c.partes, papel, dto.importe);
       const cargos = lado(dto.aCargoDe);
-      if (cargos.length === 0) throw new BadRequestException(`El contrato no tiene ${dto.aCargoDe}.`);
+      if (cargos.length === 0)
+        throw new BadRequestException(`El contrato no tiene ${dto.aCargoDe}.`);
 
       const base = {
         tenantId: ctx.tenantId,
@@ -170,9 +238,17 @@ export class ConceptosService {
       }));
       if (dto.pagadoPor === 'inquilino' || dto.pagadoPor === 'propietario') {
         const reconocimientos = lado(dto.pagadoPor);
-        if (reconocimientos.length === 0) throw new BadRequestException(`El contrato no tiene ${dto.pagadoPor}.`);
+        if (reconocimientos.length === 0)
+          throw new BadRequestException(`El contrato no tiene ${dto.pagadoPor}.`);
         for (const { personaId, importe } of reconocimientos) {
-          filas.push({ ...base, id: randomUUID(), personaId, sentido: 'a_pagar', importe, origenId: filas[0]!.id });
+          filas.push({
+            ...base,
+            id: randomUUID(),
+            personaId,
+            sentido: 'a_pagar',
+            importe,
+            origenId: filas[0]!.id,
+          });
         }
       }
       await tx.alqConcepto.createMany({ data: filas });
@@ -183,7 +259,10 @@ export class ConceptosService {
         accion: 'alta',
         resumen: `Cargó «${dto.descripcion ?? dto.tipo}» por ${plata(dto.importe, c.moneda)}, a cargo del ${dto.aCargoDe}`,
       });
-      const creados = await tx.alqConcepto.findMany({ where: { id: { in: filas.map((f) => f.id!) } }, include: INCLUIR_CONCEPTO });
+      const creados = await tx.alqConcepto.findMany({
+        where: { id: { in: filas.map((f) => f.id!) } },
+        include: INCLUIR_CONCEPTO,
+      });
       const nombres = await nombresDeUsuarios(tx, [ctx.userId]);
       return creados.map((f) => aDto(f, nombres));
     });
@@ -216,13 +295,21 @@ export class ConceptosService {
       if (!c) throw new NotFoundException('El concepto no existe.');
       if (c.anuladoEn) throw new ConflictException('El concepto ya está anulado.');
       if (c._count.imputaciones > 0 || c.liquidacionId) {
-        throw new BadRequestException('El concepto tiene cobros o pagos aplicados: primero hay que anular esos movimientos.');
+        throw new BadRequestException(
+          'El concepto tiene cobros o pagos aplicados: primero hay que anular esos movimientos.',
+        );
       }
       const { count } = await tx.alqConcepto.updateMany({
-        where: { OR: [{ id }, { origenId: id }], anuladoEn: null, liquidacionId: null, imputaciones: { none: IMPUTACION_ACTIVA } },
+        where: {
+          OR: [{ id }, { origenId: id }],
+          anuladoEn: null,
+          liquidacionId: null,
+          imputaciones: { none: IMPUTACION_ACTIVA },
+        },
         data: { anuladoEn: new Date(), anuladoPorId: ctx.userId, motivoAnulacion: motivo },
       });
-      if (count === 0) throw new ConflictException('El concepto cambió mientras tanto. Recargá la página.');
+      if (count === 0)
+        throw new ConflictException('El concepto cambió mientras tanto. Recargá la página.');
       await registrarEventos(tx, ctx, {
         entidad: 'concepto',
         entidadId: id,
@@ -249,7 +336,8 @@ type FilaContrato = Prisma.AlqContratoGetPayload<{
  * persona; si cambiara entre corridas, el mismo mes se generaría dos veces.
  */
 function aParaGenerar(c: FilaContrato): ContratoParaGenerar {
-  const de = (papel: string) => c.partes.filter((p) => p.papel === papel).sort((a, b) => (a.personaId < b.personaId ? -1 : 1));
+  const de = (papel: string) =>
+    c.partes.filter((p) => p.papel === papel).sort((a, b) => (a.personaId < b.personaId ? -1 : 1));
   return {
     id: c.id,
     moneda: c.moneda,
@@ -261,8 +349,16 @@ function aParaGenerar(c: FilaContrato): ContratoParaGenerar {
     honorariosPct: decToNum(c.honorariosPct),
     gastosAdmPct: decToNum(c.gastosAdmPct),
     ivaPct: decToNum(c.ivaPct),
-    tramos: c.tramos.map((t) => ({ numero: t.numero, desde: fromDate(t.desde)!, hasta: fromDate(t.hasta)!, importe: t.importe == null ? null : decToNum(t.importe) })),
-    propietarios: de('propietario').map((p) => ({ personaId: p.personaId, porcentaje: p.porcentaje == null ? 100 : decToNum(p.porcentaje) })),
+    tramos: c.tramos.map((t) => ({
+      numero: t.numero,
+      desde: fromDate(t.desde)!,
+      hasta: fromDate(t.hasta)!,
+      importe: t.importe == null ? null : decToNum(t.importe),
+    })),
+    propietarios: de('propietario').map((p) => ({
+      personaId: p.personaId,
+      porcentaje: p.porcentaje == null ? 100 : decToNum(p.porcentaje),
+    })),
     inquilinos: de('inquilino').map((p) => ({ personaId: p.personaId })),
   };
 }
@@ -273,9 +369,15 @@ export function repartoDe(
   papel: 'inquilino' | 'propietario',
   importe: number,
 ): { personaId: string; importe: number }[] {
-  const lado = partes.filter((p) => p.papel === papel).sort((a, b) => (a.personaId < b.personaId ? -1 : 1));
-  if (papel === 'inquilino') return lado.slice(0, 1).map((p) => ({ personaId: p.personaId, importe }));
-  const importes = repartir(importe, lado.map((p) => (p.porcentaje == null ? 100 : decToNum(p.porcentaje))));
+  const lado = partes
+    .filter((p) => p.papel === papel)
+    .sort((a, b) => (a.personaId < b.personaId ? -1 : 1));
+  if (papel === 'inquilino')
+    return lado.slice(0, 1).map((p) => ({ personaId: p.personaId, importe }));
+  const importes = repartir(
+    importe,
+    lado.map((p) => (p.porcentaje == null ? 100 : decToNum(p.porcentaje))),
+  );
   return lado.map((p, i) => ({ personaId: p.personaId, importe: importes[i]! }));
 }
 
@@ -293,7 +395,9 @@ function aDto(f: FilaConcepto, nombres: Map<string, string>): ConceptoDto {
   const saldo = Math.round((importe - pagado) * 100) / 100;
   return {
     id: f.id,
-    contrato: f.contrato ? { id: f.contrato.id, codigo: f.contrato.codigo, direccion: f.contrato.propiedad.direccion } : null,
+    contrato: f.contrato
+      ? { id: f.contrato.id, codigo: f.contrato.codigo, direccion: f.contrato.propiedad.direccion }
+      : null,
     persona: { id: f.persona.id, nombre: f.persona.nombre },
     tipo: f.tipo as TipoConcepto,
     sentido: f.sentido as SentidoConcepto,
@@ -305,10 +409,23 @@ function aDto(f: FilaConcepto, nombres: Map<string, string>): ConceptoDto {
     descripcion: f.descripcion,
     generado: f.claveGeneracion != null,
     aplicado: f.imputaciones.length > 0 || f.liquidacionId != null,
-    anulado: f.anuladoEn ? { en: f.anuladoEn.toISOString(), motivo: f.motivoAnulacion ?? '', por: f.anuladoPorId ? (nombres.get(f.anuladoPorId) ?? null) : null } : null,
+    anulado: f.anuladoEn
+      ? {
+          en: f.anuladoEn.toISOString(),
+          motivo: f.motivoAnulacion ?? '',
+          por: f.anuladoPorId ? (nombres.get(f.anuladoPorId) ?? null) : null,
+        }
+      : null,
     saldo: f.anuladoEn || f.liquidacionId ? 0 : saldo,
-    papel: (f.contrato?.partes.find((p) => p.personaId === f.personaId && p.papel !== 'garante')?.papel as ConceptoDto['papel']) ?? null,
+    papel:
+      (f.contrato?.partes.find((p) => p.personaId === f.personaId && p.papel !== 'garante')
+        ?.papel as ConceptoDto['papel']) ?? null,
     estado: estadoDe(f, pagado, saldo),
-    registrado: f.claveGeneracion ? null : { en: f.createdAt.toISOString(), por: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null },
+    registrado: f.claveGeneracion
+      ? null
+      : {
+          en: f.createdAt.toISOString(),
+          por: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null,
+        },
   };
 }

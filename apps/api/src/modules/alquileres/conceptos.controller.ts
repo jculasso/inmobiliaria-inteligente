@@ -35,15 +35,25 @@ export class ConceptosController {
   @Post('generar')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Genera los alquileres, gastos y honorarios de un mes; correrlo de nuevo no duplica' })
-  generar(@Body(new ZodValidationPipe(GenerarPeriodoSchema)) dto: GenerarPeriodo, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary: 'Genera los alquileres, gastos y honorarios de un mes; correrlo de nuevo no duplica',
+  })
+  generar(
+    @Body(new ZodValidationPipe(GenerarPeriodoSchema)) dto: GenerarPeriodo,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.conceptos.generar(ctxDe(user), dto.periodo);
   }
 
   @Post()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Carga un gasto suelto de un contrato: expensas, impuestos, servicios, reparaciones' })
-  crearSuelto(@Body(new ZodValidationPipe(ConceptoSueltoInputSchema)) dto: ConceptoSuelto, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary: 'Carga un gasto suelto de un contrato: expensas, impuestos, servicios, reparaciones',
+  })
+  crearSuelto(
+    @Body(new ZodValidationPipe(ConceptoSueltoInputSchema)) dto: ConceptoSuelto,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.conceptos.crearSuelto(ctxDe(user), dto);
   }
 

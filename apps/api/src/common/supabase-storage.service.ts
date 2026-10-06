@@ -40,7 +40,12 @@ export class SupabaseStorageService {
    * Sube a un bucket PRIVADO (informes, fotos). No devuelve URL: el acceso se
    * hace después con `signedUrl`/`signedUrls`. Devuelve la key (path) guardada.
    */
-  async uploadPrivado(bucket: string, path: string, buffer: Buffer, contentType: string): Promise<string> {
+  async uploadPrivado(
+    bucket: string,
+    path: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<string> {
     await this.subirConReintento(bucket, path, buffer, contentType, false);
     return path;
   }
@@ -51,12 +56,19 @@ export class SupabaseStorageService {
       headers: this.headers(),
       signal: AbortSignal.timeout(30_000),
     });
-    if (!res.ok) throw new InternalServerErrorException(`No se pudo leer el archivo de Supabase Storage (${res.status}).`);
+    if (!res.ok)
+      throw new InternalServerErrorException(
+        `No se pudo leer el archivo de Supabase Storage (${res.status}).`,
+      );
     return Buffer.from(await res.arrayBuffer());
   }
 
   /** URL firmada (vida corta) de un objeto de un bucket privado. */
-  async signedUrl(bucket: string, path: string, expiresIn: number = SIGNED_URL_TTL): Promise<string> {
+  async signedUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number = SIGNED_URL_TTL,
+  ): Promise<string> {
     const res = await fetch(`${this.baseUrl()}/storage/v1/object/sign/${bucket}/${path}`, {
       method: 'POST',
       headers: { ...this.headers(), 'Content-Type': 'application/json' },
@@ -69,7 +81,8 @@ export class SupabaseStorageService {
     }
     const data = (await res.json()) as { signedURL?: string; signedUrl?: string };
     const rel = data.signedURL ?? data.signedUrl;
-    if (!rel) throw new InternalServerErrorException('Supabase Storage no devolvió la URL firmada.');
+    if (!rel)
+      throw new InternalServerErrorException('Supabase Storage no devolvió la URL firmada.');
     return `${this.baseUrl()}/storage/v1${rel}`;
   }
 
@@ -77,7 +90,11 @@ export class SupabaseStorageService {
    * URLs firmadas en lote (una sola llamada de red). Preserva el orden de
    * `paths`; si alguna falla, esa entrada viene como cadena vacía.
    */
-  async signedUrls(bucket: string, paths: string[], expiresIn: number = SIGNED_URL_TTL): Promise<string[]> {
+  async signedUrls(
+    bucket: string,
+    paths: string[],
+    expiresIn: number = SIGNED_URL_TTL,
+  ): Promise<string[]> {
     if (paths.length === 0) return [];
     const res = await fetch(`${this.baseUrl()}/storage/v1/object/sign/${bucket}`, {
       method: 'POST',
@@ -121,7 +138,9 @@ export class SupabaseStorageService {
     });
     if (!res.ok && res.status !== 404) {
       const body = await res.text().catch(() => '');
-      throw new InternalServerErrorException(`No se pudo borrar el archivo de Supabase Storage: ${body}`);
+      throw new InternalServerErrorException(
+        `No se pudo borrar el archivo de Supabase Storage: ${body}`,
+      );
     }
   }
 
@@ -135,10 +154,14 @@ export class SupabaseStorageService {
   ): Promise<void> {
     let res = await this.subir(bucket, path, buffer, contentType);
     if (!res.ok) {
-      const body = await res.clone().text().catch(() => '');
+      const body = await res
+        .clone()
+        .text()
+        .catch(() => '');
       // Supabase Storage no siempre devuelve el 404 como status HTTP real — a
       // veces responde 400 con el 404 como texto en el body.
-      const bucketNoExiste = res.status === 404 || /"statusCode":"?404"?/.test(body) || /bucket not found/i.test(body);
+      const bucketNoExiste =
+        res.status === 404 || /"statusCode":"?404"?/.test(body) || /bucket not found/i.test(body);
       if (bucketNoExiste) {
         await this.asegurarBucket(bucket, publico);
         res = await this.subir(bucket, path, buffer, contentType);
@@ -146,11 +169,18 @@ export class SupabaseStorageService {
     }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      throw new InternalServerErrorException(`No se pudo subir el archivo a Supabase Storage: ${body}`);
+      throw new InternalServerErrorException(
+        `No se pudo subir el archivo a Supabase Storage: ${body}`,
+      );
     }
   }
 
-  private subir(bucket: string, path: string, buffer: Buffer, contentType: string): Promise<Response> {
+  private subir(
+    bucket: string,
+    path: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<Response> {
     return fetch(`${this.baseUrl()}/storage/v1/object/${bucket}/${path}`, {
       method: 'POST',
       headers: { ...this.headers(), 'Content-Type': contentType, 'x-upsert': 'true' },
@@ -171,7 +201,8 @@ export class SupabaseStorageService {
     });
     if (res.ok) return;
     const body = await res.text().catch(() => '');
-    const yaExiste = res.status === 409 || /"statusCode":"?409"?/.test(body) || /duplicate/i.test(body);
+    const yaExiste =
+      res.status === 409 || /"statusCode":"?409"?/.test(body) || /duplicate/i.test(body);
     if (yaExiste) return;
     throw new InternalServerErrorException(`No se pudo crear el bucket de Storage: ${body}`);
   }

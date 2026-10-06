@@ -24,7 +24,10 @@ export async function getCredencial(accessToken: string): Promise<CredencialEsta
   return apiFetch('/publicacion/credencial', CredencialEstadoSchema, { accessToken });
 }
 
-export async function guardarCredencial(accessToken: string, secreto: string): Promise<CredencialEstado> {
+export async function guardarCredencial(
+  accessToken: string,
+  secreto: string,
+): Promise<CredencialEstado> {
   return apiFetch('/publicacion/credencial', CredencialEstadoSchema, {
     accessToken,
     method: 'PUT',

@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { TenantConfigSchema, type ConfiguracionAlquileres, type ResumenAlquileres } from '@vacker/types';
+import {
+  TenantConfigSchema,
+  type ConfiguracionAlquileres,
+  type ResumenAlquileres,
+} from '@vacker/types';
 import type { Prisma } from '@prisma/client';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -32,17 +36,29 @@ export class AlquileresService {
   /** La configuración del módulo: IVA de honorarios, cargos de ingreso y depósito (entrega 14). */
   async configuracion(ctx: TenantContext): Promise<ConfiguracionAlquileres> {
     return this.db.withTenant(async (tx) => {
-      const t = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } });
+      const t = await tx.tenant.findUniqueOrThrow({
+        where: { id: ctx.tenantId },
+        select: { config: true },
+      });
       return deConfig(TenantConfigSchema.parse(t.config ?? {}));
     });
   }
 
   /** Se mezcla con el resto de la configuración (logo, colores): no se pisa lo que no es del módulo. */
-  async guardarConfiguracion(ctx: TenantContext, dto: ConfiguracionAlquileres): Promise<ConfiguracionAlquileres> {
+  async guardarConfiguracion(
+    ctx: TenantContext,
+    dto: ConfiguracionAlquileres,
+  ): Promise<ConfiguracionAlquileres> {
     return this.db.withTenant(async (tx) => {
-      const t = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } });
+      const t = await tx.tenant.findUniqueOrThrow({
+        where: { id: ctx.tenantId },
+        select: { config: true },
+      });
       const config = { ...((t.config ?? {}) as object), ...dto };
-      await tx.tenant.update({ where: { id: ctx.tenantId }, data: { config: config as Prisma.InputJsonValue } });
+      await tx.tenant.update({
+        where: { id: ctx.tenantId },
+        data: { config: config as Prisma.InputJsonValue },
+      });
       return deConfig(TenantConfigSchema.parse(config));
     });
   }

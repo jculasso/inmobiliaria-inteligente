@@ -13,7 +13,15 @@ import { Campo, inputClass, textareaClass } from '../form-ui';
  * o rescisión, no a mano: cambiarlos por debajo dejaría cobros calculados con
  * reglas que ya no están a la vista.
  */
-export function DatosContratoModal({ contratoId, onClose, onSaved }: { contratoId: string; onClose: () => void; onSaved: () => void }) {
+export function DatosContratoModal({
+  contratoId,
+  onClose,
+  onSaved,
+}: {
+  contratoId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [contrato, setContrato] = useState<ContratoDto | null>(null);
   const [fechaFirma, setFechaFirma] = useState('');
   const [diaVencimiento, setDiaVencimiento] = useState('5');
@@ -61,24 +69,41 @@ export function DatosContratoModal({ contratoId, onClose, onSaved }: { contratoI
 
   const dias = Array.from({ length: 28 }, (_, i) => i + 1);
   return (
-    <Modal title={contrato ? `Editar el contrato ${contrato.codigo}` : 'Editar el contrato'} subtitle="Está vigente: se edita lo que no toca plata." onClose={onClose}>
+    <Modal
+      title={contrato ? `Editar el contrato ${contrato.codigo}` : 'Editar el contrato'}
+      subtitle="Está vigente: se edita lo que no toca plata."
+      onClose={onClose}
+    >
       {!contrato && !error ? (
         <p className="text-sm text-muted">Cargando…</p>
       ) : (
         <div className="flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <Campo label="Fecha de firma">
-              <input type="date" className={inputClass} value={fechaFirma} onChange={(e) => setFechaFirma(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={fechaFirma}
+                onChange={(e) => setFechaFirma(e.target.value)}
+              />
             </Campo>
             <Campo label="Vence el inquilino el día">
-              <select className={inputClass} value={diaVencimiento} onChange={(e) => setDiaVencimiento(e.target.value)}>
+              <select
+                className={inputClass}
+                value={diaVencimiento}
+                onChange={(e) => setDiaVencimiento(e.target.value)}
+              >
                 {dias.map((d) => (
                   <option key={d}>{d}</option>
                 ))}
               </select>
             </Campo>
             <Campo label="Se le paga al propietario el día">
-              <select className={inputClass} value={diaPagoPropietario} onChange={(e) => setDiaPagoPropietario(e.target.value)}>
+              <select
+                className={inputClass}
+                value={diaPagoPropietario}
+                onChange={(e) => setDiaPagoPropietario(e.target.value)}
+              >
                 {dias.map((d) => (
                   <option key={d}>{d}</option>
                 ))}
@@ -86,9 +111,17 @@ export function DatosContratoModal({ contratoId, onClose, onSaved }: { contratoI
             </Campo>
           </div>
           <Campo label="Observaciones">
-            <textarea className={textareaClass} rows={3} value={obs} onChange={(e) => setObs(e.target.value)} />
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={obs}
+              onChange={(e) => setObs(e.target.value)}
+            />
           </Campo>
-          <p className="text-xs text-muted">Los importes, los tramos y los porcentajes no se editan en un contrato vigente: cambian al indexar o al rescindir.</p>
+          <p className="text-xs text-muted">
+            Los importes, los tramos y los porcentajes no se editan en un contrato vigente: cambian
+            al indexar o al rescindir.
+          </p>
           {error && (
             <p role="alert" className="text-sm font-medium text-danger">
               {error}

@@ -20,16 +20,36 @@ export class ReciboService {
     private readonly liquidaciones: LiquidacionesService,
   ) {}
 
-  async generar(ctx: TenantContext, cobroId: string): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+  async generar(
+    ctx: TenantContext,
+    cobroId: string,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     // El MISMO método que sirve la pantalla: el recibo no puede decir otra cosa.
     const [cobro, marca] = await Promise.all([this.cobros.obtener(cobroId), marcaDe(this.db, ctx)]);
-    const buffer = await renderToBuffer(<ReciboDocument cobro={cobro} tenantNombre={marca.nombre} logoUrl={marca.logoUrl} colorPrimario={marca.colorPrimario} />);
+    const buffer = await renderToBuffer(
+      <ReciboDocument
+        cobro={cobro}
+        tenantNombre={marca.nombre}
+        logoUrl={marca.logoUrl}
+        colorPrimario={marca.colorPrimario}
+      />,
+    );
     return { buffer, nombreArchivo: `Recibo-${numero(cobro.numero)}` };
   }
 
-  async liquidacion(ctx: TenantContext, id: string): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+  async liquidacion(
+    ctx: TenantContext,
+    id: string,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     const [liq, marca] = await Promise.all([this.liquidaciones.obtener(id), marcaDe(this.db, ctx)]);
-    const buffer = await renderToBuffer(<LiquidacionDocument liquidacion={liq} tenantNombre={marca.nombre} logoUrl={marca.logoUrl} colorPrimario={marca.colorPrimario} />);
+    const buffer = await renderToBuffer(
+      <LiquidacionDocument
+        liquidacion={liq}
+        tenantNombre={marca.nombre}
+        logoUrl={marca.logoUrl}
+        colorPrimario={marca.colorPrimario}
+      />,
+    );
     return { buffer, nombreArchivo: `Liquidacion-${numero(liq.numero)}` };
   }
 }

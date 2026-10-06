@@ -20,11 +20,7 @@ const BASE = {
 
 const fila = (extra: Record<string, unknown>) =>
   render(
-    <TasacionFila
-      tasacion={{ ...BASE, ...extra } as never}
-      onEstado={() => {}}
-      onVer={() => {}}
-    />,
+    <TasacionFila tasacion={{ ...BASE, ...extra } as never} onEstado={() => {}} onVer={() => {}} />,
   );
 
 /**

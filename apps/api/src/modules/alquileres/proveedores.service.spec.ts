@@ -15,7 +15,9 @@ const INQ = '22222222-2222-4222-8222-222222222222';
 function armar(over: { aplicados?: number } = {}) {
   const tx = {
     ...mocksDeHistorial(),
-    alqProveedor: { findUnique: vi.fn().mockResolvedValue({ nombre: 'Juan Plomero', rubro: 'plomero' }) },
+    alqProveedor: {
+      findUnique: vi.fn().mockResolvedValue({ nombre: 'Juan Plomero', rubro: 'plomero' }),
+    },
     alqContrato: {
       findUnique: vi.fn().mockResolvedValue({
         codigo: 'ALT-0005',
@@ -26,7 +28,11 @@ function armar(over: { aplicados?: number } = {}) {
           { personaId: INQ, papel: 'inquilino', porcentaje: null },
         ],
       }),
-      findMany: vi.fn().mockResolvedValue([{ id: C5, codigo: 'ALT-0005', propiedad: { direccion: 'Mendoza 3340', unidad: null } }]),
+      findMany: vi
+        .fn()
+        .mockResolvedValue([
+          { id: C5, codigo: 'ALT-0005', propiedad: { direccion: 'Mendoza 3340', unidad: null } },
+        ]),
     },
     alqComprobante: {
       create: vi.fn(),
@@ -50,46 +56,93 @@ function armar(over: { aplicados?: number } = {}) {
       update: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
-    alqConcepto: { createMany: vi.fn(), count: vi.fn().mockResolvedValue(over.aplicados ?? 0), findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
+    alqConcepto: {
+      createMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(over.aplicados ?? 0),
+      findMany: vi.fn().mockResolvedValue([]),
+      updateMany: vi.fn(),
+    },
   };
-  const db = { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
+  const db = {
+    withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+  } as unknown as TenantPrismaService;
   return { tx, servicio: new ProveedoresService(db) };
 }
 
 const comprobante = (over: Record<string, unknown> = {}) =>
-  ComprobanteInputSchema.parse({ proveedorId: PROV, contratoId: C5, fecha: '2026-10-06', descripcion: 'Cambio de flexible', importe: 85_000, ...over });
+  ComprobanteInputSchema.parse({
+    proveedorId: PROV,
+    contratoId: C5,
+    fecha: '2026-10-06',
+    descripcion: 'Cambio de flexible',
+    importe: 85_000,
+    ...over,
+  });
 
 describe('ProveedoresService (entrega 18: «les paga la inmobiliaria y se lo retiene al propietario»)', () => {
   it('a cargo del propietario: concepto adelantado, repartido por porcentaje, que se descuenta en la liquidación', async () => {
     const { tx, servicio } = armar();
     await servicio.cargarComprobante(CTX, comprobante());
-    expect(tx.alqConcepto.createMany.mock.calls[0]![0].data.map((k: { personaId: string; importe: number; adelantadoPorInmobiliaria: boolean; tipo: string }) => [k.personaId, k.importe, k.adelantadoPorInmobiliaria, k.tipo])).toEqual([
+    expect(
+      tx.alqConcepto.createMany.mock.calls[0]![0].data.map(
+        (k: {
+          personaId: string;
+          importe: number;
+          adelantadoPorInmobiliaria: boolean;
+          tipo: string;
+        }) => [k.personaId, k.importe, k.adelantadoPorInmobiliaria, k.tipo],
+      ),
+    ).toEqual([
       [D1, 51_000, true, 'reparacion'],
       [D2, 34_000, true, 'reparacion'],
     ]);
-    expect(tx.alqConcepto.createMany.mock.calls[0]![0].data[0].descripcion).toBe('Plomero: Cambio de flexible (Juan Plomero)');
+    expect(tx.alqConcepto.createMany.mock.calls[0]![0].data[0].descripcion).toBe(
+      'Plomero: Cambio de flexible (Juan Plomero)',
+    );
   });
 
   it('a cargo del inquilino: se le cobra a él', async () => {
     const { tx, servicio } = armar();
     await servicio.cargarComprobante(CTX, comprobante({ aCargoDe: 'inquilino' }));
-    expect(tx.alqConcepto.createMany.mock.calls[0]![0].data).toEqual([expect.objectContaining({ personaId: INQ, importe: 85_000, adelantadoPorInmobiliaria: false })]);
+    expect(tx.alqConcepto.createMany.mock.calls[0]![0].data).toEqual([
+      expect.objectContaining({
+        personaId: INQ,
+        importe: 85_000,
+        adelantadoPorInmobiliaria: false,
+      }),
+    ]);
   });
 
   it('gasto de la inmobiliaria: no le carga nada a nadie', async () => {
     const { tx, servicio } = armar();
-    await servicio.cargarComprobante(CTX, comprobante({ aCargoDe: 'inmobiliaria', contratoId: null, pagado: true }));
+    await servicio.cargarComprobante(
+      CTX,
+      comprobante({ aCargoDe: 'inmobiliaria', contratoId: null, pagado: true }),
+    );
     expect(tx.alqConcepto.createMany).not.toHaveBeenCalled();
-    expect(tx.alqComprobante.create.mock.calls[0]![0].data).toMatchObject({ pagadoPorId: 'u1', medio: 'transferencia' });
+    expect(tx.alqComprobante.create.mock.calls[0]![0].data).toMatchObject({
+      pagadoPorId: 'u1',
+      medio: 'transferencia',
+    });
   });
 
   it('si lo cargado ya se liquidó, no se anula', async () => {
     const { tx, servicio } = armar({ aplicados: 1 });
-    await expect(servicio.anular(CTX, 'x', 'Error de carga')).rejects.toThrow(/ya se cobró o se liquidó/);
+    await expect(servicio.anular(CTX, 'x', 'Error de carga')).rejects.toThrow(
+      /ya se cobró o se liquidó/,
+    );
     expect(tx.alqComprobante.update).not.toHaveBeenCalled();
   });
 
   it('el comprobante a cargo de una parte necesita el contrato', () => {
-    expect(ComprobanteInputSchema.safeParse({ proveedorId: PROV, fecha: '2026-10-06', descripcion: 'Pintura', importe: 1, aCargoDe: 'propietario' }).success).toBe(false);
+    expect(
+      ComprobanteInputSchema.safeParse({
+        proveedorId: PROV,
+        fecha: '2026-10-06',
+        descripcion: 'Pintura',
+        importe: 1,
+        aCargoDe: 'propietario',
+      }).success,
+    ).toBe(false);
   });
 });

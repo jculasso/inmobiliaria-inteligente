@@ -5,7 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import type { TodoEventosDto, TodoVista } from '@vacker/types';
 import { getAccessToken } from '../../lib/supabase/client';
-import { desconectarTodo, getTodoConnectUrl, getTodoEstado, getTodoEventos } from '../../lib/todo-api';
+import {
+  desconectarTodo,
+  getTodoConnectUrl,
+  getTodoEstado,
+  getTodoEventos,
+} from '../../lib/todo-api';
 import { CalendarioTodo } from './todo-calendar';
 
 const TZ = 'America/Argentina/Buenos_Aires';
@@ -26,7 +31,9 @@ export function TodoView() {
   const [fecha, setFecha] = useState<string>(() => hoyArg());
   const [data, setData] = useState<TodoEventosDto | null>(null);
   const [cargandoEventos, setCargandoEventos] = useState(false);
-  const [error, setError] = useState<string | null>(googleParam === 'error' ? 'No se pudo conectar tu Google. Reintentá.' : null);
+  const [error, setError] = useState<string | null>(
+    googleParam === 'error' ? 'No se pudo conectar tu Google. Reintentá.' : null,
+  );
   const [ocupado, setOcupado] = useState(false);
 
   const cargarEstado = useCallback(async () => {
@@ -95,10 +102,13 @@ export function TodoView() {
   if (estado === 'desconectado') {
     return (
       <div className="rounded-brand border border-line bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-red/10 text-2xl">🗓️</div>
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-red/10 text-2xl">
+          🗓️
+        </div>
         <h2 className="mt-4 text-lg font-bold text-ink">Conectá tu Google Calendar</h2>
         <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-          Vas a ver acá tus eventos del calendario (solo lectura), en vistas por día, semana y mes. No modificamos nada de tu agenda.
+          Vas a ver acá tus eventos del calendario (solo lectura), en vistas por día, semana y mes.
+          No modificamos nada de tu agenda.
         </p>
         {error && <p className="mt-3 text-sm font-medium text-brand-red">{error}</p>}
         <div className="mt-5">
@@ -166,7 +176,12 @@ export function TodoView() {
         {googleEmail && (
           <span className="text-xs text-muted">
             {googleEmail} ·{' '}
-            <button type="button" onClick={desconectar} disabled={ocupado} className="font-semibold text-brand-red hover:underline">
+            <button
+              type="button"
+              onClick={desconectar}
+              disabled={ocupado}
+              className="font-semibold text-brand-red hover:underline"
+            >
               desconectar
             </button>
           </span>
@@ -211,7 +226,8 @@ function addDias(s: string, n: number): string {
 
 function labelRango(vista: TodoVista, fecha: string): string {
   if (vista === 'dia') return fmtFecha(fecha, { weekday: 'long', day: 'numeric', month: 'long' });
-  if (vista === 'mes') return fmtFecha(`${fecha.slice(0, 7)}-01`, { month: 'long', year: 'numeric' });
+  if (vista === 'mes')
+    return fmtFecha(`${fecha.slice(0, 7)}-01`, { month: 'long', year: 'numeric' });
   const dow = new Date(`${fecha}T12:00:00-03:00`).getUTCDay();
   const lunes = addDias(fecha, -((dow + 6) % 7));
   const domingo = addDias(lunes, 6);
@@ -223,7 +239,9 @@ function capFirst(s: string): string {
 }
 
 function fmtFecha(dia: string, opts: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, ...opts }).format(new Date(`${dia}T12:00:00-03:00`));
+  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, ...opts }).format(
+    new Date(`${dia}T12:00:00-03:00`),
+  );
 }
 
 function mensaje(err: unknown): string {

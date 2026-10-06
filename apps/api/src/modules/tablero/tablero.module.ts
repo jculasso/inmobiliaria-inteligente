@@ -11,6 +11,12 @@ import { VendedoresService } from './vendedores/vendedores.service';
 /** Módulo Tablero Comercial (Paso 3): operaciones, vendedores y KPIs. */
 @Module({
   controllers: [OperacionesController, VendedoresController, KpisController],
-  providers: [SupabaseAdminService, SupabaseStorageService, OperacionesService, VendedoresService, KpisService],
+  providers: [
+    SupabaseAdminService,
+    SupabaseStorageService,
+    OperacionesService,
+    VendedoresService,
+    KpisService,
+  ],
 })
 export class TableroModule {}

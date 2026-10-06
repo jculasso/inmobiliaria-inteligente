@@ -18,7 +18,15 @@ const valor = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 
 function Origen({ d }: { d: IndicesDto }) {
   return (
     <p className="text-sm text-muted">
-      {d.fuente}. Último valor: <span className="font-semibold text-ink">{d.ultimaFecha ? (d.indice === 'IPC' ? NOMBRES_MES[Number(d.ultimaFecha.slice(5, 7)) - 1] + ' ' + d.ultimaFecha.slice(0, 4) : fmtFecha(d.ultimaFecha)) : 'sin valores'}</span> · actualizado el {fmtFechaHora(d.actualizado)}.
+      {d.fuente}. Último valor:{' '}
+      <span className="font-semibold text-ink">
+        {d.ultimaFecha
+          ? d.indice === 'IPC'
+            ? NOMBRES_MES[Number(d.ultimaFecha.slice(5, 7)) - 1] + ' ' + d.ultimaFecha.slice(0, 4)
+            : fmtFecha(d.ultimaFecha)
+          : 'sin valores'}
+      </span>{' '}
+      · actualizado el {fmtFechaHora(d.actualizado)}.
     </p>
   );
 }
@@ -41,13 +49,26 @@ function Icl({ d }: { d: IndicesDto }) {
       >
         <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider text-muted">
           Desde
-          <input type="date" className={`${inputClass} w-44`} value={desde} onChange={(e) => setDesde(e.target.value)} />
+          <input
+            type="date"
+            className={`${inputClass} w-44`}
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+          />
         </label>
         <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider text-muted">
           Hasta
-          <input type="date" className={`${inputClass} w-44`} value={hasta} onChange={(e) => setHasta(e.target.value)} />
+          <input
+            type="date"
+            className={`${inputClass} w-44`}
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+          />
         </label>
-        <button type="submit" className={`h-10 rounded-brand bg-brand-red px-4 text-sm font-semibold text-white ${CLASE_FOCO}`}>
+        <button
+          type="submit"
+          className={`h-10 rounded-brand bg-brand-red px-4 text-sm font-semibold text-white ${CLASE_FOCO}`}
+        >
           Buscar
         </button>
       </form>
@@ -70,7 +91,9 @@ function Icl({ d }: { d: IndicesDto }) {
               d.valores.map((v) => (
                 <tr key={v.fecha} className="border-b border-line last:border-0">
                   <td className="px-3 py-1.5 tabular-nums text-muted">{fmtFecha(v.fecha)}</td>
-                  <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-ink">{valor(v.valor)}</td>
+                  <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-ink">
+                    {valor(v.valor)}
+                  </td>
                 </tr>
               ))
             )}
@@ -87,24 +110,39 @@ function Icl({ d }: { d: IndicesDto }) {
  * los meses cargados.
  */
 function Ipc({ d }: { d: IndicesDto }) {
-  const anios = [...new Set(d.valores.map((v) => Number(v.fecha.slice(0, 4))))].sort((a, b) => b - a);
+  const anios = [...new Set(d.valores.map((v) => Number(v.fecha.slice(0, 4))))].sort(
+    (a, b) => b - a,
+  );
   const [anio, setAnio] = useState(anios[0] ?? new Date().getFullYear());
-  const delAnio = (m: number) => d.valores.find((v) => v.fecha === `${anio}-${String(m).padStart(2, '0')}-01`);
+  const delAnio = (m: number) =>
+    d.valores.find((v) => v.fecha === `${anio}-${String(m).padStart(2, '0')}-01`);
   const meses = Array.from({ length: 12 }, (_, i) => delAnio(i + 1));
   const mensual = meses.map((v) => v?.variacionMensual ?? 0);
   const interanual = meses.map((v) => v?.variacionInteranual ?? 0);
   const cargados = meses.filter(Boolean).length;
   const [mes, setMes] = useState(Math.max(cargados, 1));
   // En la planilla, un mes sin dato dice «—», no «+0,0%».
-  const enTabla = (f: (v: NonNullable<(typeof meses)[number]>) => number | null) => meses.map((v) => (v ? (f(v) ?? Number.NaN) : Number.NaN));
+  const enTabla = (f: (v: NonNullable<(typeof meses)[number]>) => number | null) =>
+    meses.map((v) => (v ? (f(v) ?? Number.NaN) : Number.NaN));
   const acumulada = (() => {
     const ultimo = [...meses].reverse().find(Boolean);
     const base = d.valores.find((v) => v.fecha === `${anio - 1}-12-01`);
-    return ultimo && base ? ((ultimo.valor / base.valor - 1) * 100) : null;
+    return ultimo && base ? (ultimo.valor / base.valor - 1) * 100 : null;
   })();
   const filas: FilaPeriodos[] = [
-    { label: 'Variación mensual', valores: enTabla((v) => v.variacionMensual), total: acumulada ?? Number.NaN, formato: fmtVariacion, destaca: true },
-    { label: 'Interanual', valores: enTabla((v) => v.variacionInteranual), total: cargados ? (interanual[cargados - 1] ?? Number.NaN) : Number.NaN, formato: fmtVariacion },
+    {
+      label: 'Variación mensual',
+      valores: enTabla((v) => v.variacionMensual),
+      total: acumulada ?? Number.NaN,
+      formato: fmtVariacion,
+      destaca: true,
+    },
+    {
+      label: 'Interanual',
+      valores: enTabla((v) => v.variacionInteranual),
+      total: cargados ? (interanual[cargados - 1] ?? Number.NaN) : Number.NaN,
+      formato: fmtVariacion,
+    },
   ];
   return (
     <div className="flex flex-col gap-4">
@@ -116,7 +154,9 @@ function Ipc({ d }: { d: IndicesDto }) {
           onChange={(e) => {
             setAnio(Number(e.target.value));
             setMes(1);
-          }} className="h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink">
+          }}
+          className="h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink"
+        >
           {anios.map((a) => (
             <option key={a}>{a}</option>
           ))}
@@ -136,8 +176,17 @@ function Ipc({ d }: { d: IndicesDto }) {
         onSelect={setMes}
         pista="tocá una barra o un mes"
       />
-      <PeriodosTabla titulo={`IPC por mes de ${anio}`} etiquetas={ABREV_MES} filas={filas} seleccionado={mes} onSelect={setMes} anchoMinimo="min-w-[52rem]" />
-      <p className="text-xs text-muted">El total de la variación mensual es la acumulada del año: contra diciembre de {anio - 1}.</p>
+      <PeriodosTabla
+        titulo={`IPC por mes de ${anio}`}
+        etiquetas={ABREV_MES}
+        filas={filas}
+        seleccionado={mes}
+        onSelect={setMes}
+        anchoMinimo="min-w-[52rem]"
+      />
+      <p className="text-xs text-muted">
+        El total de la variación mensual es la acumulada del año: contra diciembre de {anio - 1}.
+      </p>
       <div className="max-h-[clamp(20rem,50vh,32rem)] overflow-y-auto rounded-brand border border-line bg-white">
         <table className="w-full text-sm">
           <thead>
@@ -155,8 +204,12 @@ function Ipc({ d }: { d: IndicesDto }) {
                   {ABREV_MES[Number(v.fecha.slice(5, 7)) - 1]} {v.fecha.slice(0, 4)}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-ink">{valor(v.valor)}</td>
-                <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-ink">{fmtVariacion(v.variacionMensual)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{fmtVariacion(v.variacionInteranual)}</td>
+                <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-ink">
+                  {fmtVariacion(v.variacionMensual)}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted">
+                  {fmtVariacion(v.variacionInteranual)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -170,7 +223,15 @@ function Ipc({ d }: { d: IndicesDto }) {
  * La pestaña «Índices» (punto 3 de Javier: «¿dónde veo el ICL y el IPC?»).
  * Las pestañas internas, como las del Tablero Comercial.
  */
-export function IndicesVista({ icl, ipc, ver: inicial }: { icl: IndicesDto; ipc: IndicesDto; ver: 'icl' | 'ipc' }) {
+export function IndicesVista({
+  icl,
+  ipc,
+  ver: inicial,
+}: {
+  icl: IndicesDto;
+  ipc: IndicesDto;
+  ver: 'icl' | 'ipc';
+}) {
   const [ver, setVer] = useState(inicial);
   return (
     <div className="flex flex-col gap-4">

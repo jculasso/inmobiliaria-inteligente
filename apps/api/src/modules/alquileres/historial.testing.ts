@@ -8,7 +8,9 @@ export function mocksDeHistorial(nombre = 'Lucía Operadora') {
   return {
     usuario: {
       findUnique: vi.fn().mockResolvedValue({ nombre }),
-      findMany: vi.fn(async (args: { where: { id: { in: string[] } } }) => args.where.id.in.map((id) => ({ id, nombre }))),
+      findMany: vi.fn(async (args: { where: { id: { in: string[] } } }) =>
+        args.where.id.in.map((id) => ({ id, nombre })),
+      ),
       count: vi.fn().mockResolvedValue(1),
     },
     alqEvento: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },

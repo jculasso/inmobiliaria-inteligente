@@ -1,7 +1,30 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Param, ParseUUIDPipe, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiExcludeController, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CambioFirmaManualSchema, ROLES_ADMINISTRACION_ALQUILERES, type CambioFirmaManual } from '@vacker/types';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiExcludeController,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
+  CambioFirmaManualSchema,
+  ROLES_ADMINISTRACION_ALQUILERES,
+  type CambioFirmaManual,
+} from '@vacker/types';
 import { CurrentUser, Modulo, Public, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { uploadPdf } from '../../../common/upload';
@@ -34,15 +57,24 @@ export class FirmaController {
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', uploadPdf))
-  @ApiOperation({ summary: 'Carga o cambia el PDF del contrato, mientras no se haya enviado a firmar' })
-  cargar(@Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: ArchivoPdf | undefined, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary: 'Carga o cambia el PDF del contrato, mientras no se haya enviado a firmar',
+  })
+  cargar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: ArchivoPdf | undefined,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.firma.cargar(ctxDe(user), id, conArchivo(file));
   }
 
   @Post('documentos/:id/enviar')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Lo manda a firmar con el proveedor configurado (o lo marca como enviado, con el manual)' })
+  @ApiOperation({
+    summary:
+      'Lo manda a firmar con el proveedor configurado (o lo marca como enviado, con el manual)',
+  })
   enviar(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
     return this.firma.enviar(ctxDe(user), id);
   }
@@ -51,7 +83,11 @@ export class FirmaController {
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Carga a mano quién firmó, o que venció' })
-  cambiar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(CambioFirmaManualSchema)) dto: CambioFirmaManual, @CurrentUser() user: AuthPrincipal) {
+  cambiar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(CambioFirmaManualSchema)) dto: CambioFirmaManual,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.firma.cambiar(ctxDe(user), id, dto);
   }
 
@@ -60,7 +96,11 @@ export class FirmaController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', uploadPdf))
   @ApiOperation({ summary: 'Sube el PDF firmado: firmaron todos' })
-  cargarFirmado(@Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: ArchivoPdf | undefined, @CurrentUser() user: AuthPrincipal) {
+  cargarFirmado(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: ArchivoPdf | undefined,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.firma.cargarFirmado(ctxDe(user), id, conArchivo(file));
   }
 
@@ -85,7 +125,11 @@ export class FirmaAvisosController {
   @Post(':proveedor')
   @Public()
   @HttpCode(200)
-  recibir(@Param('proveedor') proveedor: string, @Headers() cabeceras: Record<string, string | string[] | undefined>, @Body() cuerpo: unknown) {
+  recibir(
+    @Param('proveedor') proveedor: string,
+    @Headers() cabeceras: Record<string, string | string[] | undefined>,
+    @Body() cuerpo: unknown,
+  ) {
     return this.avisos.procesar(proveedor, cabeceras, cuerpo);
   }
 }

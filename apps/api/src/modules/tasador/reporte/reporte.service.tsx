@@ -34,56 +34,60 @@ export class ReporteService {
     private readonly storage: SupabaseStorageService,
   ) {}
 
-  async generar(filtro: TasadorKpiFiltro, ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+  async generar(
+    filtro: TasadorKpiFiltro,
+    ctx: TenantContext,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     // Antes: resumen() y ranking() traían las tasaciones del período cada uno
     // en su propia transacción, y esta función las volvía a traer una
     // tercera vez con otro `select` para armar la tabla — 3 round trips
     // trayendo básicamente las mismas filas. Ahora se trae una sola vez
     // (con el `select` que alcanza para las tres cosas) y el resumen/ranking
     // se calculan en memoria con las mismas funciones puras de kpis.calc.
-    const { filas, resumen, ranking, tenantNombre, logoUrl, colorPrimario } = await this.db.withTenant(async (tx) => {
-      // El reporte es el PDF de lo que la pantalla está mostrando: si el
-      // usuario tiene el check en "lo mío", el PDF sale con lo mío.
-      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
-      const where: Prisma.TasacionWhereInput = { fecha: rangoDeFiltro(filtro) };
-      if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
+    const { filas, resumen, ranking, tenantNombre, logoUrl, colorPrimario } =
+      await this.db.withTenant(async (tx) => {
+        // El reporte es el PDF de lo que la pantalla está mostrando: si el
+        // usuario tiene el check en "lo mío", el PDF sale con lo mío.
+        const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
+        const where: Prisma.TasacionWhereInput = { fecha: rangoDeFiltro(filtro) };
+        if (scope.usuarioIds !== null) where.agenteId = { in: scope.usuarioIds };
 
-      const [rows, tenant] = await Promise.all([
-        tx.tasacion.findMany({ where, select: filaSelect, orderBy: { fecha: 'desc' } }),
-        tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
-      ]);
+        const [rows, tenant] = await Promise.all([
+          tx.tasacion.findMany({ where, select: filaSelect, orderBy: { fecha: 'desc' } }),
+          tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
+        ]);
 
-      const scopeSet = scope.usuarioIds === null ? null : new Set(scope.usuarioIds);
-      const calc: TasacionCalc[] = rows.map((r) => ({
-        id: r.id,
-        agenteId: r.agenteId,
-        nombre: r.agente.nombre,
-        fotoUrl: r.agente.fotoUrl,
-        estado: r.estado as EstadoTasacion,
-      }));
+        const scopeSet = scope.usuarioIds === null ? null : new Set(scope.usuarioIds);
+        const calc: TasacionCalc[] = rows.map((r) => ({
+          id: r.id,
+          agenteId: r.agenteId,
+          nombre: r.agente.nombre,
+          fotoUrl: r.agente.fotoUrl,
+          estado: r.estado as EstadoTasacion,
+        }));
 
-      const config = tenant.config as { logoUrl?: string; colorPrimario?: string } | null;
-      const mapped: ReporteFila[] = rows.map((r) => ({
-        id: r.id,
-        fecha: r.fecha.toISOString().slice(0, 10),
-        direccion: r.direccion,
-        barrio: r.barrio,
-        cliente: r.cliente,
-        agenteNombre: r.agente.nombre,
-        estado: r.estado as EstadoTasacion,
-        exclusividad: r.exclusividad as ReporteFila['exclusividad'],
-        motivoNoCaptada: r.motivoNoCaptada,
-        valorRecomendado: r.valorRecomendado == null ? null : decToNum(r.valorRecomendado),
-      }));
-      return {
-        filas: mapped,
-        resumen: agregar(calc, scopeSet),
-        ranking: rankingDe(calc, scopeSet),
-        tenantNombre: tenant.nombre,
-        logoUrl: config?.logoUrl ?? null,
-        colorPrimario: config?.colorPrimario ?? null,
-      };
-    });
+        const config = tenant.config as { logoUrl?: string; colorPrimario?: string } | null;
+        const mapped: ReporteFila[] = rows.map((r) => ({
+          id: r.id,
+          fecha: r.fecha.toISOString().slice(0, 10),
+          direccion: r.direccion,
+          barrio: r.barrio,
+          cliente: r.cliente,
+          agenteNombre: r.agente.nombre,
+          estado: r.estado as EstadoTasacion,
+          exclusividad: r.exclusividad as ReporteFila['exclusividad'],
+          motivoNoCaptada: r.motivoNoCaptada,
+          valorRecomendado: r.valorRecomendado == null ? null : decToNum(r.valorRecomendado),
+        }));
+        return {
+          filas: mapped,
+          resumen: agregar(calc, scopeSet),
+          ranking: rankingDe(calc, scopeSet),
+          tenantNombre: tenant.nombre,
+          logoUrl: config?.logoUrl ?? null,
+          colorPrimario: config?.colorPrimario ?? null,
+        };
+      });
 
     const periodoLabel = etiquetaPeriodo(filtro);
     const buffer = await renderToBuffer(
@@ -105,7 +109,20 @@ export class ReporteService {
   }
 }
 
-const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const MESES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
 
 function etiquetaPeriodo(filtro: TasadorKpiFiltro): string {
   if (filtro.periodo === 'mensual') return `${MESES[(filtro.mes ?? 1) - 1]} ${filtro.anio}`;

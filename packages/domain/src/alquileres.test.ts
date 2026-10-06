@@ -62,7 +62,11 @@ describe('generarTramos (regla 1)', () => {
   });
 
   it('lo que genera siempre pasa la validación', () => {
-    for (const [i, f, p] of [['2025-01-31', '2027-01-30', 3], ['2024-02-29', '2026-02-28', 6], ['2026-03-15', '2029-03-14', 4]] as const) {
+    for (const [i, f, p] of [
+      ['2025-01-31', '2027-01-30', 3],
+      ['2024-02-29', '2026-02-28', 6],
+      ['2026-03-15', '2029-03-14', 4],
+    ] as const) {
       expect(validarTramos(i, f, generarTramos(i, f, p))).toEqual([]);
     }
   });
@@ -85,16 +89,22 @@ describe('validarTramos (regla 1)', () => {
 
   it('un hueco se nombra con sus fechas', () => {
     const t = [base[0]!, { ...base[1]!, desde: '2026-05-15' }];
-    expect(validarTramos('2026-01-01', '2026-08-31', t)).toEqual(['Del 01/05/2026 al 14/05/2026 no hay tramo.']);
+    expect(validarTramos('2026-01-01', '2026-08-31', t)).toEqual([
+      'Del 01/05/2026 al 14/05/2026 no hay tramo.',
+    ]);
   });
 
   it('una superposición se nombra con los tramos', () => {
     const t = [base[0]!, { ...base[1]!, desde: '2026-04-20' }];
-    expect(validarTramos('2026-01-01', '2026-08-31', t)).toEqual(['Los tramos 1 y 2 se superponen desde el 20/04/2026.']);
+    expect(validarTramos('2026-01-01', '2026-08-31', t)).toEqual([
+      'Los tramos 1 y 2 se superponen desde el 20/04/2026.',
+    ]);
   });
 
   it('falta cubrir el final del contrato', () => {
-    expect(validarTramos('2026-01-01', '2026-12-31', base)).toEqual(['Del 01/09/2026 al 31/12/2026 no hay tramo.']);
+    expect(validarTramos('2026-01-01', '2026-12-31', base)).toEqual([
+      'Del 01/09/2026 al 31/12/2026 no hay tramo.',
+    ]);
   });
 
   it('sin tramos', () => {
@@ -156,7 +166,12 @@ describe('proponerIndexacion (reglas 6 y 7)', () => {
   const valor = (_i: string, f: string) => IPC[f];
 
   it('con los dos valores cargados propone el importe, con qué índices', () => {
-    const p = proponerIndexacion('IPC', { desde: '2026-04-15', importe: 1_043_387 }, { desde: '2026-08-15' }, valor);
+    const p = proponerIndexacion(
+      'IPC',
+      { desde: '2026-04-15', importe: 1_043_387 },
+      { desde: '2026-08-15' },
+      valor,
+    );
     expect(p).toEqual({
       estado: 'lista',
       fechaBase: '2026-03-01',
@@ -169,19 +184,33 @@ describe('proponerIndexacion (reglas 6 y 7)', () => {
 
   // Regla 7: el IPC de un mes sale a mediados del siguiente.
   it('sin el índice del período: pendiente de índice, y dice cuál falta', () => {
-    const p = proponerIndexacion('IPC', { desde: '2026-08-15', importe: 1_137_518 }, { desde: '2026-12-15' }, valor);
+    const p = proponerIndexacion(
+      'IPC',
+      { desde: '2026-08-15', importe: 1_137_518 },
+      { desde: '2026-12-15' },
+      valor,
+    );
     expect(p).toMatchObject({ estado: 'pendiente_indice', falta: ['el IPC de noviembre de 2026'] });
   });
 
   it('Casa Propia no tiene fuente: el importe va a mano', () => {
-    expect(proponerIndexacion('CCP', { desde: '2026-01-01', importe: 1 }, { desde: '2026-05-01' }, valor)).toEqual({ estado: 'manual' });
+    expect(
+      proponerIndexacion(
+        'CCP',
+        { desde: '2026-01-01', importe: 1 },
+        { desde: '2026-05-01' },
+        valor,
+      ),
+    ).toEqual({ estado: 'manual' });
   });
 });
 
 describe('alertaIndice (regla 8)', () => {
   it('ICL: avisa a los 3 días sin valores nuevos, no antes', () => {
     expect(alertaIndice('ICL', '2026-10-16', '2026-10-05', '2026-10-08')).toBeNull();
-    expect(alertaIndice('ICL', '2026-10-16', '2026-10-05', '2026-10-09')).toMatch(/desde el 05\/10\/2026/);
+    expect(alertaIndice('ICL', '2026-10-16', '2026-10-05', '2026-10-09')).toMatch(
+      /desde el 05\/10\/2026/,
+    );
   });
 
   it('IPC: pasado el 20, el del mes anterior tiene que estar', () => {
@@ -198,20 +227,30 @@ describe('alertaIndice (regla 8)', () => {
 });
 
 describe('validarPartes (regla 4)', () => {
-  const P = (personaId: string, papel: 'propietario' | 'inquilino' | 'garante', porcentaje?: number) => ({ personaId, papel, porcentaje });
+  const P = (
+    personaId: string,
+    papel: 'propietario' | 'inquilino' | 'garante',
+    porcentaje?: number,
+  ) => ({ personaId, papel, porcentaje });
 
   it('un propietario sin porcentaje y un inquilino: está bien', () => {
     expect(validarPartes([P('a', 'propietario'), P('b', 'inquilino')])).toEqual([]);
   });
 
   it('dos propietarios que suman 100, con decimales', () => {
-    expect(validarPartes([P('a', 'propietario', 33.33), P('c', 'propietario', 66.67), P('b', 'inquilino')])).toEqual([]);
+    expect(
+      validarPartes([
+        P('a', 'propietario', 33.33),
+        P('c', 'propietario', 66.67),
+        P('b', 'inquilino'),
+      ]),
+    ).toEqual([]);
   });
 
   it('porcentajes que no suman 100', () => {
-    expect(validarPartes([P('a', 'propietario', 50), P('c', 'propietario', 40), P('b', 'inquilino')])).toEqual([
-      'Los porcentajes de los propietarios suman 90%, y tienen que sumar 100%.',
-    ]);
+    expect(
+      validarPartes([P('a', 'propietario', 50), P('c', 'propietario', 40), P('b', 'inquilino')]),
+    ).toEqual(['Los porcentajes de los propietarios suman 90%, y tienen que sumar 100%.']);
   });
 
   it('sin propietario o sin inquilino', () => {
@@ -220,9 +259,9 @@ describe('validarPartes (regla 4)', () => {
   });
 
   it('la misma persona dos veces con el mismo papel', () => {
-    expect(validarPartes([P('a', 'propietario'), P('b', 'inquilino'), P('b', 'inquilino')])).toContain(
-      'Hay una persona cargada dos veces con el mismo papel.',
-    );
+    expect(
+      validarPartes([P('a', 'propietario'), P('b', 'inquilino'), P('b', 'inquilino')]),
+    ).toContain('Hay una persona cargada dos veces con el mismo papel.');
   });
 });
 
@@ -244,7 +283,15 @@ describe('partesDelMes (regla 13)', () => {
 
   it('septiembre: el mes entero de un solo tramo, sin prorratear', () => {
     expect(partesDelMes(2026, 9, tramos)).toEqual([
-      { tramo: 4, desde: '2026-09-01', hasta: '2026-09-30', dias: 30, diasDelMes: 30, importe: 1_137_518, proporcional: false },
+      {
+        tramo: 4,
+        desde: '2026-09-01',
+        hasta: '2026-09-30',
+        dias: 30,
+        diasDelMes: 30,
+        importe: 1_137_518,
+        proporcional: false,
+      },
     ]);
   });
 
@@ -363,7 +410,9 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
       ['alquiler', 508_350.45],
       ['gastos_adm', 12_302.08],
     ]);
-    expect(r.conceptos.filter((x) => x.tipo === 'honorarios').map((x) => x.importe)).toEqual([37_158.71, 49_208.33]);
+    expect(r.conceptos.filter((x) => x.tipo === 'honorarios').map((x) => x.importe)).toEqual([
+      37_158.71, 49_208.33,
+    ]);
     expect(r.conceptos[0]!.descripcion).toBe('Alquiler 01/12 al 14/12/2025 (14/31 días)');
   });
 
@@ -388,7 +437,10 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
 
   it('el primer mes, proporcional desde el inicio', () => {
     const r = generarPeriodo(c5(), '2025-08', 21);
-    expect(r.conceptos[0]).toMatchObject({ importe: 466_129.03, descripcion: 'Alquiler 15/08 al 31/08/2025 (17/31 días)' });
+    expect(r.conceptos[0]).toMatchObject({
+      importe: 466_129.03,
+      descripcion: 'Alquiler 15/08 al 31/08/2025 (17/31 días)',
+    });
   });
 
   it('fuera del contrato no genera nada', () => {
@@ -397,7 +449,9 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
 
   // Regla 3: rescindido, hasta el mes de la rescisión inclusive.
   it('rescindido: genera el mes de la rescisión, no los siguientes', () => {
-    expect(generarPeriodo(c5({ rescindidoEl: '2026-03-20' }), '2026-03', 21).conceptos).toHaveLength(4);
+    expect(
+      generarPeriodo(c5({ rescindidoEl: '2026-03-20' }), '2026-03', 21).conceptos,
+    ).toHaveLength(4);
     expect(generarPeriodo(c5({ rescindidoEl: '2026-03-20' }), '2026-04', 21).conceptos).toEqual([]);
   });
 
@@ -408,7 +462,16 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
   });
 
   it('dos propietarios: el alquiler y los honorarios por su parte, sin perder centavos', () => {
-    const r = generarPeriodo(c5({ propietarios: [{ personaId: 'a', porcentaje: 50 }, { personaId: 'b', porcentaje: 50 }] }), '2026-12', 21);
+    const r = generarPeriodo(
+      c5({
+        propietarios: [
+          { personaId: 'a', porcentaje: 50 },
+          { personaId: 'b', porcentaje: 50 },
+        ],
+      }),
+      '2026-12',
+      21,
+    );
     const aPagar = r.conceptos.filter((x) => x.sentido === 'a_pagar').map((x) => x.importe);
     expect(aPagar).toEqual([256_858.91, 256_858.9]);
     expect(aPagar[0]! + aPagar[1]!).toBeCloseTo(513_717.81, 2);
@@ -424,7 +487,11 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
   });
 
   it('un contrato en dólares genera en dólares (regla 18)', () => {
-    expect(generarPeriodo(c5({ moneda: 'USD' }), '2026-11', 21).conceptos.every((x) => x.moneda === 'USD')).toBe(true);
+    expect(
+      generarPeriodo(c5({ moneda: 'USD' }), '2026-11', 21).conceptos.every(
+        (x) => x.moneda === 'USD',
+      ),
+    ).toBe(true);
   });
 });
 
@@ -433,7 +500,12 @@ describe('planificarCobro (reglas 15 y 17)', () => {
   const gastos = { conceptoId: 'gas', saldo: 27_527.94 };
 
   it('paga del más viejo al más nuevo y el último queda parcial', () => {
-    const p = planificarCobro({ importe: 1_150_000, creditos: [], compensables: [], deudas: [alquiler, gastos] });
+    const p = planificarCobro({
+      importe: 1_150_000,
+      creditos: [],
+      compensables: [],
+      deudas: [alquiler, gastos],
+    });
     expect(p.imputaciones).toEqual([
       { cobroId: null, conceptoId: 'alq', importe: 1_137_518 },
       { cobroId: null, conceptoId: 'gas', importe: 12_482 },
@@ -443,11 +515,23 @@ describe('planificarCobro (reglas 15 y 17)', () => {
 
   // Regla 17.
   it('lo que sobra queda a favor', () => {
-    expect(planificarCobro({ importe: 1_200_000, creditos: [], compensables: [], deudas: [alquiler, gastos] }).sobrante).toBe(34_954.06);
+    expect(
+      planificarCobro({
+        importe: 1_200_000,
+        creditos: [],
+        compensables: [],
+        deudas: [alquiler, gastos],
+      }).sobrante,
+    ).toBe(34_954.06);
   });
 
   it('el saldo a favor de un cobro anterior se usa primero', () => {
-    const p = planificarCobro({ importe: 1_130_000, creditos: [{ cobroId: 'viejo', disponible: 34_954.06 }], compensables: [], deudas: [alquiler] });
+    const p = planificarCobro({
+      importe: 1_130_000,
+      creditos: [{ cobroId: 'viejo', disponible: 34_954.06 }],
+      compensables: [],
+      deudas: [alquiler],
+    });
     expect(p.imputaciones).toEqual([
       { cobroId: 'viejo', conceptoId: 'alq', importe: 34_954.06 },
       { cobroId: null, conceptoId: 'alq', importe: 1_102_563.94 },
@@ -457,7 +541,12 @@ describe('planificarCobro (reglas 15 y 17)', () => {
 
   // El inquilino pagó una reparación del dueño: se le descuenta de lo que debe.
   it('un reintegro a favor se compensa contra la deuda', () => {
-    const p = planificarCobro({ importe: 996_819, creditos: [], compensables: [{ conceptoId: 'rep', saldo: 140_699 }], deudas: [alquiler] });
+    const p = planificarCobro({
+      importe: 996_819,
+      creditos: [],
+      compensables: [{ conceptoId: 'rep', saldo: 140_699 }],
+      deudas: [alquiler],
+    });
     expect(p.imputaciones).toEqual([
       { cobroId: null, conceptoId: 'rep', importe: 140_699 },
       { cobroId: null, conceptoId: 'alq', importe: 1_137_518 },
@@ -466,13 +555,26 @@ describe('planificarCobro (reglas 15 y 17)', () => {
   });
 
   it('el reintegro no se compensa más allá de la deuda', () => {
-    const p = planificarCobro({ importe: 1, creditos: [], compensables: [{ conceptoId: 'rep', saldo: 500 }], deudas: [{ conceptoId: 'x', saldo: 200 }] });
+    const p = planificarCobro({
+      importe: 1,
+      creditos: [],
+      compensables: [{ conceptoId: 'rep', saldo: 500 }],
+      deudas: [{ conceptoId: 'x', saldo: 200 }],
+    });
     expect(p.compensado).toBe(200);
     expect(p.sobrante).toBe(1);
   });
 
   it('centavos exactos, sin restos de coma flotante', () => {
-    const p = planificarCobro({ importe: 0.3, creditos: [], compensables: [], deudas: [{ conceptoId: 'a', saldo: 0.1 }, { conceptoId: 'b', saldo: 0.2 }] });
+    const p = planificarCobro({
+      importe: 0.3,
+      creditos: [],
+      compensables: [],
+      deudas: [
+        { conceptoId: 'a', saldo: 0.1 },
+        { conceptoId: 'b', saldo: 0.2 },
+      ],
+    });
     expect(p.imputaciones.map((i) => i.importe)).toEqual([0.1, 0.2]);
     expect(p.sobrante).toBe(0);
   });
@@ -480,12 +582,21 @@ describe('planificarCobro (reglas 15 y 17)', () => {
 
 describe('proponerPunitorio (regla 16)', () => {
   it('saldo × tasa diaria × días de atraso', () => {
-    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-15', 0.1)).toEqual({ dias: 10, importe: 11_375.18 });
+    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-15', 0.1)).toEqual({
+      dias: 10,
+      importe: 11_375.18,
+    });
   });
 
   it('pagado en fecha o antes, nada', () => {
-    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-05', 0.1)).toEqual({ dias: 0, importe: 0 });
-    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-02', 0.1)).toEqual({ dias: 0, importe: 0 });
+    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-05', 0.1)).toEqual({
+      dias: 0,
+      importe: 0,
+    });
+    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-02', 0.1)).toEqual({
+      dias: 0,
+      importe: 0,
+    });
   });
 
   it('sin tasa en el contrato, nada', () => {
@@ -496,9 +607,30 @@ describe('proponerPunitorio (regla 16)', () => {
 describe('proponerLiquidacion (reglas 20 a 22)', () => {
   /* Noviembre de 2026 del contrato #5, como lo genera generarPeriodo. */
   const parte = 'alq|c5|2026-11|2026-11-01';
-  const alquiler = { id: 'alq', tipo: 'alquiler', sentido: 'a_pagar' as const, saldo: 1_137_518, clave: `${parte}|alquiler|a_pagar|dueno`, pagoGarantizado: false };
-  const honorarios = { id: 'hon', tipo: 'honorarios', sentido: 'a_cobrar' as const, saldo: 110_111.74, clave: `${parte}|honorarios|a_cobrar|dueno`, pagoGarantizado: false };
-  const reparacion = { id: 'rep', tipo: 'reparacion', sentido: 'a_cobrar' as const, saldo: 140_699, clave: null, pagoGarantizado: false };
+  const alquiler = {
+    id: 'alq',
+    tipo: 'alquiler',
+    sentido: 'a_pagar' as const,
+    saldo: 1_137_518,
+    clave: `${parte}|alquiler|a_pagar|dueno`,
+    pagoGarantizado: false,
+  };
+  const honorarios = {
+    id: 'hon',
+    tipo: 'honorarios',
+    sentido: 'a_cobrar' as const,
+    saldo: 110_111.74,
+    clave: `${parte}|honorarios|a_cobrar|dueno`,
+    pagoGarantizado: false,
+  };
+  const reparacion = {
+    id: 'rep',
+    tipo: 'reparacion',
+    sentido: 'a_cobrar' as const,
+    saldo: 140_699,
+    clave: null,
+    pagoGarantizado: false,
+  };
 
   it('la parte de una clave es contrato, período y desde', () => {
     expect(parteDeClave(alquiler.clave)).toBe(parte);
@@ -507,7 +639,10 @@ describe('proponerLiquidacion (reglas 20 a 22)', () => {
 
   // Regla 20: neto = alquiler cobrado − honorarios − gastos suyos.
   it('inquilino al día: alquiler menos honorarios menos la reparación', () => {
-    const p = proponerLiquidacion([alquiler, honorarios, reparacion], new Set([`${parte}#alquiler`]));
+    const p = proponerLiquidacion(
+      [alquiler, honorarios, reparacion],
+      new Set([`${parte}#alquiler`]),
+    );
     expect(p.aPagar.map((x) => x.id)).toEqual(['alq']);
     expect(p.aDescontar.map((x) => x.id)).toEqual(['hon', 'rep']);
     expect(p.neto).toBe(886_707.26);
@@ -529,14 +664,29 @@ describe('proponerLiquidacion (reglas 20 a 22)', () => {
   });
 
   it('un reintegro a su favor se le paga', () => {
-    const reintegro = { id: 'rei', tipo: 'reparacion', sentido: 'a_pagar' as const, saldo: 50_000, clave: null, pagoGarantizado: false };
+    const reintegro = {
+      id: 'rei',
+      tipo: 'reparacion',
+      sentido: 'a_pagar' as const,
+      saldo: 50_000,
+      clave: null,
+      pagoGarantizado: false,
+    };
     expect(proponerLiquidacion([reintegro], new Set()).neto).toBe(50_000);
   });
 });
 
 describe('tramoDeMora (regla 29)', () => {
   it('cada borde cae en su tramo', () => {
-    expect([1, 30, 31, 60, 61, 90, 91].map(tramoDeMora)).toEqual(['1-30', '1-30', '31-60', '31-60', '61-90', '61-90', '90+']);
+    expect([1, 30, 31, 60, 61, 90, 91].map(tramoDeMora)).toEqual([
+      '1-30',
+      '1-30',
+      '31-60',
+      '31-60',
+      '61-90',
+      '61-90',
+      '90+',
+    ]);
   });
 });
 
@@ -573,12 +723,19 @@ describe('enLetras y plantillas (entrega 15)', () => {
   });
 
   it('el importe en letras con su moneda y los centavos', () => {
-    expect(importeEnLetras(254_100.5, 'ARS')).toBe('pesos doscientos cincuenta y cuatro mil cien con 50/100');
+    expect(importeEnLetras(254_100.5, 'ARS')).toBe(
+      'pesos doscientos cincuenta y cuatro mil cien con 50/100',
+    );
     expect(importeEnLetras(1500, 'USD')).toBe('dólares estadounidenses mil quinientos');
   });
 
   it('completa las variables y deja a la vista las que faltan', () => {
-    expect(completarPlantilla('Entre {{propietarios}} y {{ inquilinos }}, por {{nada}}.', { propietarios: 'Juan', inquilinos: 'Ana' })).toBe('Entre Juan y Ana, por [falta: nada].');
+    expect(
+      completarPlantilla('Entre {{propietarios}} y {{ inquilinos }}, por {{nada}}.', {
+        propietarios: 'Juan',
+        inquilinos: 'Ana',
+      }),
+    ).toBe('Entre Juan y Ana, por [falta: nada].');
   });
 });
 
@@ -594,7 +751,17 @@ describe('alquilerDeHoy y proximoCambio (una sola definición)', () => {
   });
   it('el próximo cambio es el primer tramo sin importe, aunque ya haya pasado', () => {
     expect(proximoCambio(tramos, '2026-06-15')).toBe('2026-05-01');
-    expect(proximoCambio([{ numero: 1, desde: '2026-01-01', importe: 1 }, { numero: 2, desde: '2026-07-01', importe: 2 }], '2026-06-15')).toBe('2026-07-01');
-    expect(proximoCambio([{ numero: 1, desde: '2026-01-01', importe: 1 }], '2026-06-15')).toBeNull();
+    expect(
+      proximoCambio(
+        [
+          { numero: 1, desde: '2026-01-01', importe: 1 },
+          { numero: 2, desde: '2026-07-01', importe: 2 },
+        ],
+        '2026-06-15',
+      ),
+    ).toBe('2026-07-01');
+    expect(
+      proximoCambio([{ numero: 1, desde: '2026-01-01', importe: 1 }], '2026-06-15'),
+    ).toBeNull();
   });
 });

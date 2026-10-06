@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { analizarComparables, valuationSurface, type ComparableCalc, type PropiedadCalc } from './valuacion';
+import {
+  analizarComparables,
+  valuationSurface,
+  type ComparableCalc,
+  type PropiedadCalc,
+} from './valuacion';
 import { COEFICIENTES_POR_DEFECTO as VACKER } from './tasador';
 
 const propiedad: PropiedadCalc = {
@@ -33,7 +38,9 @@ function comp(over: Partial<ComparableCalc>): ComparableCalc {
 
 describe('valuationSurface', () => {
   it('pondera descubierta al 30% (cubierta + semi + desc×0.3)', () => {
-    expect(valuationSurface({ supCubierta: 78, supSemi: 7, supDescubierta: 10 }, 'Departamento', VACKER)).toBe(88);
+    expect(
+      valuationSurface({ supCubierta: 78, supSemi: 7, supDescubierta: 10 }, 'Departamento', VACKER),
+    ).toBe(88);
   });
   it('Terreno usa la superficie de terreno', () => {
     expect(valuationSurface({ supCubierta: 0, supTerreno: 300 }, 'Terreno', VACKER)).toBe(300);
@@ -52,13 +59,21 @@ describe('analizarComparables', () => {
   });
 
   it('descarta comparables sin precio o sin superficie del cálculo', () => {
-    const r = analizarComparables([comp({ precio: 0 }), comp({ supCubierta: 0, superficie: 0 })], propiedad, VACKER);
+    const r = analizarComparables(
+      [comp({ precio: 0 }), comp({ supCubierta: 0, superficie: 0 })],
+      propiedad,
+      VACKER,
+    );
     expect(r.count).toBe(0);
   });
 
   it('calcula count, min/max/promedio y USD/m² sobre los válidos', () => {
     const r = analizarComparables(
-      [comp({ precio: 125000, supCubierta: 80 }), comp({ precio: 100000, supCubierta: 80 }), comp({ precio: 150000, supCubierta: 100 })],
+      [
+        comp({ precio: 125000, supCubierta: 80 }),
+        comp({ precio: 100000, supCubierta: 80 }),
+        comp({ precio: 150000, supCubierta: 100 }),
+      ],
       propiedad,
       VACKER,
     );
@@ -78,7 +93,11 @@ describe('analizarComparables', () => {
       VACKER,
     );
     const conCierre = analizarComparables(
-      [comp({ precio: 120000, fuente: 'Cierre real' }), comp({ precio: 125000 }), comp({ precio: 130000 })],
+      [
+        comp({ precio: 120000, fuente: 'Cierre real' }),
+        comp({ precio: 125000 }),
+        comp({ precio: 130000 }),
+      ],
       propiedad,
       VACKER,
     );
@@ -88,7 +107,13 @@ describe('analizarComparables', () => {
   it('más comparables similares y poco dispersos → confianza Alta', () => {
     const r = analizarComparables(
       [
-        comp({ precio: 124000, dormitorios: 2, banos: 2, estado: 'Muy bueno', fuente: 'Cierre real' }),
+        comp({
+          precio: 124000,
+          dormitorios: 2,
+          banos: 2,
+          estado: 'Muy bueno',
+          fuente: 'Cierre real',
+        }),
         comp({ precio: 125000, dormitorios: 2, banos: 2, estado: 'Muy bueno' }),
         comp({ precio: 126000, dormitorios: 2, banos: 2, estado: 'Muy bueno' }),
         comp({ precio: 125500, dormitorios: 2, banos: 2, estado: 'Muy bueno' }),

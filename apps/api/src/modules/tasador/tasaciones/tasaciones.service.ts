@@ -2,7 +2,13 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { LIMITE_LISTA_CON_SONDA, TenantConfigSchema } from '@vacker/types';
 import { usdM2, valuationSurface, type Coeficientes } from '@vacker/domain';
-import type { CambiarEstado, ComparableInput, CreateTasacion, TasacionFiltro, UpdateTasacion } from '@vacker/types';
+import type {
+  CambiarEstado,
+  ComparableInput,
+  CreateTasacion,
+  TasacionFiltro,
+  UpdateTasacion,
+} from '@vacker/types';
 import { DomainEventsService } from '../../../common/domain-events.service';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import type { TenantContext } from '../../../prisma/tenant-context';
@@ -214,7 +220,11 @@ export class TasacionesService {
         ...datosCaracteristicas(dto, coef),
         ...datosValoresYComercial(dto),
         ...(dto.comparables !== undefined
-          ? { comparables: { create: dto.comparables.map((c) => comparableCreate(c, ctx.tenantId)) } }
+          ? {
+              comparables: {
+                create: dto.comparables.map((c) => comparableCreate(c, ctx.tenantId)),
+              },
+            }
           : {}),
       } as Prisma.TasacionUncheckedCreateInput;
       return tx.tasacion.create({ data, select: { id: true } });
@@ -257,7 +267,10 @@ export class TasacionesService {
         data,
         datosCaracteristicas(
           dto,
-          { semicubierta: decToNum(actual.coefSemicubierta), descubierta: decToNum(actual.coefDescubierta) },
+          {
+            semicubierta: decToNum(actual.coefSemicubierta),
+            descubierta: decToNum(actual.coefDescubierta),
+          },
           actual,
         ),
       );
@@ -291,7 +304,8 @@ export class TasacionesService {
 
       const exclusividad = dto.estado === 'Captada' ? dto.exclusividad : null;
       const motivoNoCaptada = dto.estado === 'No captada' ? dto.motivoNoCaptada : null;
-      const detalle = dto.estado === 'Captada' ? exclusividad : motivoNoCaptada ? { motivoNoCaptada } : null;
+      const detalle =
+        dto.estado === 'Captada' ? exclusividad : motivoNoCaptada ? { motivoNoCaptada } : null;
 
       // Ya estamos dentro de la transacción que abre `withTenant`: ambas
       // escrituras son atómicas sin necesitar un `$transaction` anidado.
@@ -376,7 +390,8 @@ function datosCaracteristicas(
   const supCubierta = dto.supCubierta ?? (actual ? decToNum(actual.supCubierta) : 0);
   const supSemicubierta = dto.supSemicubierta ?? (actual ? decToNum(actual.supSemicubierta) : 0);
   const supDescubierta = dto.supDescubierta ?? (actual ? decToNum(actual.supDescubierta) : 0);
-  const supTerreno = dto.supTerreno ?? (actual?.supTerreno != null ? decToNum(actual.supTerreno) : null);
+  const supTerreno =
+    dto.supTerreno ?? (actual?.supTerreno != null ? decToNum(actual.supTerreno) : null);
   const tipoPropiedad = dto.tipoPropiedad ?? actual?.tipoPropiedad ?? '';
 
   const data: Record<string, unknown> = {
@@ -437,7 +452,8 @@ function datosValoresYComercial(dto: Partial<CreateTasacion>): Record<string, un
   if (dto.valorRecomendado !== undefined) data.valorRecomendado = dto.valorRecomendado ?? null;
   if (dto.valorAspiracional !== undefined) data.valorAspiracional = dto.valorAspiracional ?? null;
   if (dto.margenNegociacion !== undefined) data.margenNegociacion = dto.margenNegociacion ?? null;
-  if (dto.escenarioRecomendado !== undefined) data.escenarioRecomendado = dto.escenarioRecomendado ?? null;
+  if (dto.escenarioRecomendado !== undefined)
+    data.escenarioRecomendado = dto.escenarioRecomendado ?? null;
   if (dto.plazoEstimado !== undefined) data.plazoEstimado = dto.plazoEstimado ?? null;
   if (dto.analisisComercial !== undefined) {
     data.analisisComercial = (dto.analisisComercial ?? null) as Prisma.InputJsonValue;
@@ -449,7 +465,10 @@ function datosValoresYComercial(dto: Partial<CreateTasacion>): Record<string, un
 }
 
 /** Rechaza el acceso si la tasación no cae en el alcance del rol. */
-export function assertEnScope(row: Pick<TasacionRow, 'agenteId'>, scope: { usuarioIds: string[] | null }): void {
+export function assertEnScope(
+  row: Pick<TasacionRow, 'agenteId'>,
+  scope: { usuarioIds: string[] | null },
+): void {
   if (scope.usuarioIds === null) return;
   if (!scope.usuarioIds.includes(row.agenteId)) {
     throw new NotFoundException('Tasación no encontrada.');

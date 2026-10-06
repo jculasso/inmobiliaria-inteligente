@@ -37,7 +37,9 @@ export class CobrosController {
 
   @Get('cobros/preparar')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Lo que debe una persona a una fecha, con punitorios propuestos y saldo a favor' })
+  @ApiOperation({
+    summary: 'Lo que debe una persona a una fecha, con punitorios propuestos y saldo a favor',
+  })
   preparar(@Query(new ZodValidationPipe(PrepararCobroSchema)) q: PrepararCobro) {
     return this.cobros.preparar(q.personaId, q.moneda, q.fecha);
   }
@@ -59,7 +61,10 @@ export class CobrosController {
   @Post('cobros')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Registra un cobro; la imputación la calcula la API' })
-  registrar(@Body(new ZodValidationPipe(CobroInputSchema)) dto: Cobro, @CurrentUser() user: AuthPrincipal) {
+  registrar(
+    @Body(new ZodValidationPipe(CobroInputSchema)) dto: Cobro,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.cobros.registrar(ctxDe(user), dto);
   }
 
@@ -67,7 +72,11 @@ export class CobrosController {
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Anula un cobro: revierte lo que canceló y los punitorios que creó' })
-  anular(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(AnularCobroSchema)) dto: AnularCobro, @CurrentUser() user: AuthPrincipal) {
+  anular(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(AnularCobroSchema)) dto: AnularCobro,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.cobros.anular(ctxDe(user), id, dto.motivo);
   }
 
@@ -92,7 +101,11 @@ export class CobrosController {
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Manda el recibo por mail (Resend); queda en el historial' })
-  enviar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(EnviarPorMailSchema)) body: EnviarPorMail, @CurrentUser() user: AuthPrincipal) {
+  enviar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(EnviarPorMailSchema)) body: EnviarPorMail,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.envios.recibo(ctxDe(user), id, body.para);
   }
 }

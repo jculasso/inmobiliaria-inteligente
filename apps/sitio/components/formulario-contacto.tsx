@@ -11,8 +11,20 @@ import { useState } from 'react';
  */
 const CAMPOS = [
   { name: 'nombre', label: 'Nombre y apellido', type: 'text', required: true, auto: 'name' },
-  { name: 'inmobiliaria', label: 'Inmobiliaria', type: 'text', required: true, auto: 'organization' },
-  { name: 'vendedores', label: 'Cantidad de vendedores', type: 'number', required: false, auto: 'off' },
+  {
+    name: 'inmobiliaria',
+    label: 'Inmobiliaria',
+    type: 'text',
+    required: true,
+    auto: 'organization',
+  },
+  {
+    name: 'vendedores',
+    label: 'Cantidad de vendedores',
+    type: 'number',
+    required: false,
+    auto: 'off',
+  },
   { name: 'email', label: 'Correo', type: 'email', required: true, auto: 'email' },
   { name: 'telefono', label: 'Teléfono', type: 'tel', required: true, auto: 'tel' },
 ] as const;
@@ -32,7 +44,8 @@ export function FormularioContacto() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos),
       });
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.mensaje ?? 'No se pudo enviar.');
+      if (!r.ok)
+        throw new Error((await r.json().catch(() => null))?.mensaje ?? 'No se pudo enviar.');
       setEstado('listo');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo enviar la consulta.');

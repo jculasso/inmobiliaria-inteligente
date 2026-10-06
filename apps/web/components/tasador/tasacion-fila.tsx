@@ -65,7 +65,11 @@ export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar
           {t.estado}
         </button>
         {det && (
-          <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${estadoClass(t.estado)}`}>{det}</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${estadoClass(t.estado)}`}
+          >
+            {det}
+          </span>
         )}
       </div>
       <div className="flex items-center justify-end gap-1.5">

@@ -99,11 +99,41 @@ describe('VendedorTotalesTable — el detalle hereda el alcance', () => {
  */
 const TRES = [
   // Mucho volumen, poca comisión, pocas puntas, ticket enorme.
-  { usuarioId: 'u-1', nombre: 'Ana Volumen', fotoUrl: null, volumen: 900_000, comision: 5_000, puntas: 2, ticketPromedio: 450_000, operaciones: 2, peso: 0.6 },
+  {
+    usuarioId: 'u-1',
+    nombre: 'Ana Volumen',
+    fotoUrl: null,
+    volumen: 900_000,
+    comision: 5_000,
+    puntas: 2,
+    ticketPromedio: 450_000,
+    operaciones: 2,
+    peso: 0.6,
+  },
   // Volumen medio, la comisión más alta, ticket chico.
-  { usuarioId: 'u-2', nombre: 'Beto Comisión', fotoUrl: null, volumen: 400_000, comision: 30_000, puntas: 5, ticketPromedio: 80_000, operaciones: 4, peso: 0.27 },
+  {
+    usuarioId: 'u-2',
+    nombre: 'Beto Comisión',
+    fotoUrl: null,
+    volumen: 400_000,
+    comision: 30_000,
+    puntas: 5,
+    ticketPromedio: 80_000,
+    operaciones: 4,
+    peso: 0.27,
+  },
   // El que menos factura, pero el que más puntas hizo.
-  { usuarioId: 'u-3', nombre: 'Caro Puntas', fotoUrl: null, volumen: 200_000, comision: 12_000, puntas: 9, ticketPromedio: 22_222, operaciones: 8, peso: 0.13 },
+  {
+    usuarioId: 'u-3',
+    nombre: 'Caro Puntas',
+    fotoUrl: null,
+    volumen: 200_000,
+    comision: 12_000,
+    puntas: 9,
+    ticketPromedio: 22_222,
+    operaciones: 8,
+    peso: 0.13,
+  },
 ];
 
 /** El orden en que quedan los vendedores en la tabla de escritorio. */
@@ -230,7 +260,9 @@ describe('VendedorTotalesTable — el peso sigue al criterio', () => {
 
   it('los tres criterios que se suman dan porcentajes que cierran en 100', () => {
     for (const criterio of ['Volumen', 'Comisión', 'Puntas']) {
-      const { container, unmount } = render(<VendedorTotalesTable items={TRES as never} anio={2026} />);
+      const { container, unmount } = render(
+        <VendedorTotalesTable items={TRES as never} anio={2026} />,
+      );
       fireEvent.click(within(container).getAllByRole('button', { name: criterio })[0]!);
       const suma = pesosEnPantalla(container).reduce((a, b) => a + b, 0);
       // 99..101 por el redondeo de cada fila a un entero.

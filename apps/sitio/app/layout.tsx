@@ -26,8 +26,7 @@ export const metadata: Metadata = {
     'Su CRM guarda las propiedades. Inmobiliaria Inteligente le dice cómo va su negocio y qué no se está haciendo. Desarrollado junto a una inmobiliaria en operación.',
   openGraph: {
     title: 'Inmobiliaria Inteligente',
-    description:
-      'Su CRM guarda las propiedades. Nosotros le decimos cómo va su negocio.',
+    description: 'Su CRM guarda las propiedades. Nosotros le decimos cómo va su negocio.',
     locale: 'es_AR',
     type: 'website',
   },

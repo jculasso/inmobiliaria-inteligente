@@ -20,8 +20,8 @@ export function AvisoListaRecortada({ que }: { que: string }) {
         Se están mostrando {LIMITE_LISTA} {que}, y hay más.
       </p>
       <p className="mt-0.5 text-[13px] leading-relaxed text-ink/80">
-        La lista muestra las más recientes. Para ver el resto, usá los filtros de arriba —por año o por
-        período— hasta que el resultado baje de {LIMITE_LISTA}.
+        La lista muestra las más recientes. Para ver el resto, usá los filtros de arriba —por año o
+        por período— hasta que el resultado baje de {LIMITE_LISTA}.
       </p>
     </div>
   );

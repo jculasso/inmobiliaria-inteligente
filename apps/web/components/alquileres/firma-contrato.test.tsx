@@ -4,7 +4,9 @@ import type { DocumentoContratoDto } from '@vacker/types';
 
 const cambiarFirma = vi.fn();
 const enviarAFirmar = vi.fn();
-vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn().mockResolvedValue('token') }));
+vi.mock('../../lib/supabase/client', () => ({
+  getAccessToken: vi.fn().mockResolvedValue('token'),
+}));
 vi.mock('../../lib/alquileres-api', () => ({
   cambiarFirma: (...a: unknown[]) => cambiarFirma(...a),
   enviarAFirmar: (...a: unknown[]) => enviarAFirmar(...a),
@@ -25,10 +27,30 @@ const doc = (over: Partial<DocumentoContratoDto> = {}): DocumentoContratoDto => 
   nombreArchivo: 'Contrato 5.pdf',
   tieneFirmado: false,
   firmantes: [
-    { personaId: DUENO, nombre: 'Dueño', papel: 'propietario', estado: 'pendiente', firmadoEl: null },
-    { personaId: INQ, nombre: 'Inquilina', papel: 'inquilino', estado: 'pendiente', firmadoEl: null },
+    {
+      personaId: DUENO,
+      nombre: 'Dueño',
+      papel: 'propietario',
+      estado: 'pendiente',
+      firmadoEl: null,
+    },
+    {
+      personaId: INQ,
+      nombre: 'Inquilina',
+      papel: 'inquilino',
+      estado: 'pendiente',
+      firmadoEl: null,
+    },
   ],
-  eventos: [{ fecha: '2026-10-06T13:00:00Z', estadoAnterior: 'sin_enviar', estadoNuevo: 'enviado', origen: 'manual', detalle: 'Se marcó como enviado.' }],
+  eventos: [
+    {
+      fecha: '2026-10-06T13:00:00Z',
+      estadoAnterior: 'sin_enviar',
+      estadoNuevo: 'enviado',
+      origen: 'manual',
+      detalle: 'Se marcó como enviado.',
+    },
+  ],
   ...over,
 });
 
@@ -46,7 +68,11 @@ describe('FirmaContrato', () => {
     render(<FirmaContrato contratoId="c" documento={doc()} />);
     fireEvent.change(screen.getByLabelText('Firma de Dueño'), { target: { value: 'firmado' } });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar las firmas' }));
-    await waitFor(() => expect(cambiarFirma).toHaveBeenCalledWith('token', doc().id, { firmantes: [{ personaId: DUENO, estado: 'firmado' }] }));
+    await waitFor(() =>
+      expect(cambiarFirma).toHaveBeenCalledWith('token', doc().id, {
+        firmantes: [{ personaId: DUENO, estado: 'firmado' }],
+      }),
+    );
     expect(await screen.findByText('Firmado en parte')).toBeInTheDocument();
   });
 
@@ -59,6 +85,8 @@ describe('FirmaContrato', () => {
 
   it('el historial muestra cada cambio con su origen', () => {
     render(<FirmaContrato contratoId="c" documento={doc()} />);
-    expect(screen.getByText(/Sin enviar → Enviado a firmar · a mano · Se marcó como enviado\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sin enviar → Enviado a firmar · a mano · Se marcó como enviado\./),
+    ).toBeInTheDocument();
   });
 });

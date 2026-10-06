@@ -17,7 +17,15 @@ import { NOMBRE_INDICE } from './nombres';
  * la extensión empieza al día siguiente del fin. Indexado: los tramos nuevos
  * se indexan como cualquiera. Escalonado: se indica el importe.
  */
-export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: ContratoDto; onClose: () => void; onDone: () => void }) {
+export function ExtenderModal({
+  contrato: c,
+  onClose,
+  onDone,
+}: {
+  contrato: ContratoDto;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const desde = sumarDiasIso(c.fin, 1);
   const [meses, setMeses] = useState(12);
   const [nuevoFin, setNuevoFin] = useState(sumarDiasIso(sumarMesesIso(desde, 12), -1));
@@ -30,7 +38,10 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
     setError(null);
     setEnviando(true);
     try {
-      await extenderContrato(await getAccessToken(), c.id, { nuevoFin, importeBase: escalonado ? leerImporte(importe) || null : null });
+      await extenderContrato(await getAccessToken(), c.id, {
+        nuevoFin,
+        importeBase: escalonado ? leerImporte(importe) || null : null,
+      });
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo extender.');
@@ -39,7 +50,11 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
   }
 
   return (
-    <Modal title={`Extender el contrato ${c.codigo}`} subtitle={`Hoy termina el ${fmtFecha(c.fin)}. La extensión empieza el ${fmtFecha(desde)}.`} onClose={onClose}>
+    <Modal
+      title={`Extender el contrato ${c.codigo}`}
+      subtitle={`Hoy termina el ${fmtFecha(c.fin)}. La extensión empieza el ${fmtFecha(desde)}.`}
+      onClose={onClose}
+    >
       <div className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Cuántos meses">
@@ -57,7 +72,13 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
             />
           </Campo>
           <Campo label="Nueva fecha de fin">
-            <input type="date" className={inputClass} value={nuevoFin} min={desde} onChange={(e) => setNuevoFin(e.target.value)} />
+            <input
+              type="date"
+              className={inputClass}
+              value={nuevoFin}
+              min={desde}
+              onChange={(e) => setNuevoFin(e.target.value)}
+            />
           </Campo>
         </div>
         {escalonado ? (
@@ -66,7 +87,8 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
           </Campo>
         ) : (
           <p className="text-sm text-muted">
-            Se suman tramos de {c.periodicidadMeses} meses que se indexan con {c.indice ? NOMBRE_INDICE[c.indice] : 'el índice del contrato'} como los demás.
+            Se suman tramos de {c.periodicidadMeses} meses que se indexan con{' '}
+            {c.indice ? NOMBRE_INDICE[c.indice] : 'el índice del contrato'} como los demás.
           </p>
         )}
         {error && (
@@ -78,7 +100,11 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={extender} disabled={enviando || nuevoFin < desde || (escalonado && !importe)}>
+          <Button
+            variant="primary"
+            onClick={extender}
+            disabled={enviando || nuevoFin < desde || (escalonado && !importe)}
+          >
             {enviando ? 'Extendiendo…' : `📆 Extender hasta el ${fmtFecha(nuevoFin)}`}
           </Button>
         </div>

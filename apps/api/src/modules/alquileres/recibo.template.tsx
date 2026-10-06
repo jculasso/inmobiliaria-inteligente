@@ -23,7 +23,14 @@ export const MEDIO: Record<CobroDto['medio'], string> = {
 
 export function crearEstilos(red: string) {
   return StyleSheet.create({
-    page: { paddingTop: 36, paddingHorizontal: 36, paddingBottom: 52, fontSize: 9, color: INK, fontFamily: FUENTE_MARCA },
+    page: {
+      paddingTop: 36,
+      paddingHorizontal: 36,
+      paddingBottom: 52,
+      fontSize: 9,
+      color: INK,
+      fontFamily: FUENTE_MARCA,
+    },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
     logoBox: { flexDirection: 'row', alignItems: 'center', gap: 14 },
     logoImg: { width: 72, height: 72, objectFit: 'contain' },
@@ -38,8 +45,18 @@ export function crearEstilos(red: string) {
     datos: { flexDirection: 'row', gap: 24, marginBottom: 14 },
     datoLabel: { fontSize: 6.5, fontWeight: 700, color: MUTED, letterSpacing: 0.5 },
     datoValor: { fontSize: 10, fontWeight: 700, marginTop: 2 },
-    fila: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE, paddingVertical: 6 },
-    filaHead: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: INK, paddingVertical: 4 },
+    fila: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: LINE,
+      paddingVertical: 6,
+    },
+    filaHead: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: INK,
+      paddingVertical: 4,
+    },
     th: { fontSize: 6.5, fontWeight: 700, color: MUTED, letterSpacing: 0.5 },
     colContrato: { width: '14%' },
     colConcepto: { width: '62%' },
@@ -50,8 +67,26 @@ export function crearEstilos(red: string) {
     totalValor: { fontSize: 14, fontWeight: 800 },
     aFavor: { textAlign: 'right', marginTop: 4, fontSize: 9, color: MUTED },
     obs: { marginTop: 14, fontSize: 8, color: MUTED },
-    anulado: { marginTop: 14, padding: 10, borderWidth: 1.5, borderColor: DANGER, color: DANGER, fontSize: 11, fontWeight: 800, textAlign: 'center' },
-    pie: { position: 'absolute', bottom: 24, left: 36, right: 36, textAlign: 'center', fontSize: 8, fontWeight: 700, color: MUTED },
+    anulado: {
+      marginTop: 14,
+      padding: 10,
+      borderWidth: 1.5,
+      borderColor: DANGER,
+      color: DANGER,
+      fontSize: 11,
+      fontWeight: 800,
+      textAlign: 'center',
+    },
+    pie: {
+      position: 'absolute',
+      bottom: 24,
+      left: 36,
+      right: 36,
+      textAlign: 'center',
+      fontSize: 8,
+      fontWeight: 700,
+      color: MUTED,
+    },
   });
 }
 
@@ -123,8 +158,14 @@ export function ReciboDocument({
             <Text style={e.colContrato}>{i.contrato?.codigo ?? '—'}</Text>
             <View style={e.colConcepto}>
               <Text>{i.descripcion}</Text>
-              {i.sentido === 'a_pagar' && <Text style={e.nota}>Reintegro a su favor, descontado de lo que debía</Text>}
-              {i.deSaldoAFavor != null && <Text style={e.nota}>Pagado con el saldo a favor del recibo {String(i.deSaldoAFavor).padStart(6, '0')}</Text>}
+              {i.sentido === 'a_pagar' && (
+                <Text style={e.nota}>Reintegro a su favor, descontado de lo que debía</Text>
+              )}
+              {i.deSaldoAFavor != null && (
+                <Text style={e.nota}>
+                  Pagado con el saldo a favor del recibo {String(i.deSaldoAFavor).padStart(6, '0')}
+                </Text>
+              )}
             </View>
             <Text style={e.colImporte}>
               {i.sentido === 'a_pagar' ? '− ' : ''}
@@ -137,9 +178,17 @@ export function ReciboDocument({
           <Text style={e.totalLabel}>TOTAL RECIBIDO</Text>
           <Text style={e.totalValor}>{pesos(cobro.importe, cobro.moneda)}</Text>
         </View>
-        {cobro.aFavor > 0 && <Text style={e.aFavor}>Queda a su favor para el próximo pago: {pesos(cobro.aFavor, cobro.moneda)}</Text>}
+        {cobro.aFavor > 0 && (
+          <Text style={e.aFavor}>
+            Queda a su favor para el próximo pago: {pesos(cobro.aFavor, cobro.moneda)}
+          </Text>
+        )}
         {cobro.obs && <Text style={e.obs}>{cobro.obs}</Text>}
-        {cobro.anulado && <Text style={e.anulado}>{`RECIBO ANULADO · ${cobro.anulado.motivo}${cobro.anulado.por ? ` · ${cobro.anulado.por}` : ''}`}</Text>}
+        {cobro.anulado && (
+          <Text
+            style={e.anulado}
+          >{`RECIBO ANULADO · ${cobro.anulado.motivo}${cobro.anulado.por ? ` · ${cobro.anulado.por}` : ''}`}</Text>
+        )}
 
         <Text style={e.pie} fixed>
           {LEYENDA_NO_FACTURA}

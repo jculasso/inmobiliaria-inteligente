@@ -21,17 +21,17 @@ el celular. PNG.
 
 ## Las de pantalla (las saca el script)
 
-| Archivo | Qué |
-|---|---|
-| `tasador-wizard.png` | Paso de comparables, con el resumen automático |
-| `tasador-tasaciones.png` | El listado con el estado de captación |
-| `protocolo-ficha.png` | **Alsina 3841** — semana 4, 6 acciones atrasadas |
-| `protocolo-ficha-telefono.png` | La misma ficha desde el celular |
-| `protocolo-panel.png` | El panel: 4 en comercialización, 2 con alertas |
-| `protocolo-correo-lunes.png` | El reporte semanal en pantalla, desde el celular |
-| `tablero-kpis.png` | KPIs del período y acumulado del año |
-| `tablero-objetivos.png` | Seguimiento contra la meta |
-| `tablero-telefono.png` | El tablero desde el celular |
+| Archivo                        | Qué                                              |
+| ------------------------------ | ------------------------------------------------ |
+| `tasador-wizard.png`           | Paso de comparables, con el resumen automático   |
+| `tasador-tasaciones.png`       | El listado con el estado de captación            |
+| `protocolo-ficha.png`          | **Alsina 3841** — semana 4, 6 acciones atrasadas |
+| `protocolo-ficha-telefono.png` | La misma ficha desde el celular                  |
+| `protocolo-panel.png`          | El panel: 4 en comercialización, 2 con alertas   |
+| `protocolo-correo-lunes.png`   | El reporte semanal en pantalla, desde el celular |
+| `tablero-kpis.png`             | KPIs del período y acumulado del año             |
+| `tablero-objetivos.png`        | Seguimiento contra la meta                       |
+| `tablero-telefono.png`         | El tablero desde el celular                      |
 
 ## Las de PDF (a mano, porque son descargas)
 
@@ -49,11 +49,11 @@ muestra a 700px. Con las cuatro páginas a tamaño completo, el optimizador de
 imágenes de Next tardaba tanto que los tests de navegador fallaban por
 timeout.
 
-| Archivo | De dónde |
-|---|---|
-| `tasador-informe.png` | Tasador → Tasaciones → **Ver**. La de Belgrano 2087, que es la única de la demostración con fotos, servicios y amenities cargados |
-| `protocolo-informe.png` | Protocolo → una propiedad → **Informe** |
-| `protocolo-reporte-semanal.png` | Protocolo → **Reporte** → descargar |
+| Archivo                         | De dónde                                                                                                                          |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `tasador-informe.png`           | Tasador → Tasaciones → **Ver**. La de Belgrano 2087, que es la única de la demostración con fotos, servicios y amenities cargados |
+| `protocolo-informe.png`         | Protocolo → una propiedad → **Informe**                                                                                           |
+| `protocolo-reporte-semanal.png` | Protocolo → **Reporte** → descargar                                                                                               |
 
 ## El To Do List no tiene captura
 

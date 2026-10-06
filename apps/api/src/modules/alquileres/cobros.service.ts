@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   LIMITE_LISTA_CON_SONDA,
@@ -40,10 +45,21 @@ const INCLUIR_COBRO = {
       cobroId: true,
       importe: true,
       cobro: { select: { numero: true } },
-      concepto: { select: { id: true, descripcion: true, tipo: true, sentido: true, contrato: { select: { id: true, codigo: true } } } },
+      concepto: {
+        select: {
+          id: true,
+          descripcion: true,
+          tipo: true,
+          sentido: true,
+          contrato: { select: { id: true, codigo: true } },
+        },
+      },
     },
   },
-  imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true, concepto: { select: { sentido: true } } } },
+  imputaciones: {
+    where: IMPUTACION_ACTIVA,
+    select: { importe: true, concepto: { select: { sentido: true } } },
+  },
 } satisfies Prisma.AlqCobroInclude;
 
 type FilaCobro = Prisma.AlqCobroGetPayload<{ include: typeof INCLUIR_COBRO }>;
@@ -78,7 +94,11 @@ interface ConceptoConSaldo {
 export class CobrosService {
   constructor(private readonly db: TenantPrismaService) {}
 
-  async preparar(personaId: string, moneda: MonedaAlquiler, fecha: string): Promise<PreparacionCobroDto> {
+  async preparar(
+    personaId: string,
+    moneda: MonedaAlquiler,
+    fecha: string,
+  ): Promise<PreparacionCobroDto> {
     return this.db.withTenant(async (tx) => {
       const persona = await this.persona(tx, personaId);
       const { conceptos, creditos } = await this.estado(tx, personaId, moneda);
@@ -87,7 +107,11 @@ export class CobrosService {
         moneda,
         fecha,
         deudas: deudasDe(conceptos).map((c) => aDeuda(c, propuesta(c, conceptos, fecha))),
-        compensables: compensablesDe(conceptos).map((c) => ({ conceptoId: c.id, descripcion: c.descripcion, saldo: c.saldo })),
+        compensables: compensablesDe(conceptos).map((c) => ({
+          conceptoId: c.id,
+          descripcion: c.descripcion,
+          saldo: c.saldo,
+        })),
         creditos,
       };
     });
@@ -108,7 +132,10 @@ export class CobrosService {
       if (dto.conceptoIds) {
         const elegidos = new Set(dto.conceptoIds);
         const ajenos = dto.conceptoIds.filter((id) => !deudas.some((d) => d.id === id));
-        if (ajenos.length) throw new BadRequestException('Uno de los conceptos elegidos no es una deuda pendiente de esta persona.');
+        if (ajenos.length)
+          throw new BadRequestException(
+            'Uno de los conceptos elegidos no es una deuda pendiente de esta persona.',
+          );
         deudas = deudas.filter((d) => elegidos.has(d.id));
       }
 
@@ -117,15 +144,25 @@ export class CobrosService {
       const condonaciones: string[] = [];
       for (const p of dto.punitorios) {
         const alquiler = deudas.find((d) => d.id === p.conceptoId && d.tipo === 'alquiler');
-        if (!alquiler) throw new BadRequestException('Un punitorio tiene que ser de un alquiler que se está cobrando.');
+        if (!alquiler)
+          throw new BadRequestException(
+            'Un punitorio tiene que ser de un alquiler que se está cobrando.',
+          );
         const prop = propuesta(alquiler, conceptos, dto.fecha);
         if (p.importe > prop.importe + 0.005) {
-          throw new BadRequestException(`El punitorio de «${alquiler.descripcion}» no puede superar lo calculado: ${prop.importe}.`);
+          throw new BadRequestException(
+            `El punitorio de «${alquiler.descripcion}» no puede superar lo calculado: ${prop.importe}.`,
+          );
         }
         const condonado = redondear2(prop.importe - p.importe);
         if (condonado > 0) {
-          if (!p.motivo || p.motivo.length < 3) throw new BadRequestException(`Para condonar el punitorio de «${alquiler.descripcion}» hace falta el motivo.`);
-          condonaciones.push(`Punitorio condonado de ${alquiler.descripcion}: $ ${condonado.toLocaleString('es-AR')} (${p.motivo}).`);
+          if (!p.motivo || p.motivo.length < 3)
+            throw new BadRequestException(
+              `Para condonar el punitorio de «${alquiler.descripcion}» hace falta el motivo.`,
+            );
+          condonaciones.push(
+            `Punitorio condonado de ${alquiler.descripcion}: $ ${condonado.toLocaleString('es-AR')} (${p.motivo}).`,
+          );
         }
         if (p.importe > 0) {
           punitorios.push({
@@ -150,7 +187,9 @@ export class CobrosService {
       // Cada punitorio se cancela junto a su alquiler, no al final de la fila.
       const filaDeudas = deudas.flatMap((d) => [
         { conceptoId: d.id, saldo: d.saldo },
-        ...punitorios.filter((p) => p.origenId === d.id).map((p) => ({ conceptoId: p.id!, saldo: Number(p.importe) })),
+        ...punitorios
+          .filter((p) => p.origenId === d.id)
+          .map((p) => ({ conceptoId: p.id!, saldo: Number(p.importe) })),
       ]);
       const plan = planificarCobro({
         importe: dto.importe,
@@ -191,7 +230,9 @@ export class CobrosService {
           })),
         });
       }
-      const contratos = [...new Set(deudas.map((d) => d.contrato?.id).filter((x): x is string => !!x))];
+      const contratos = [
+        ...new Set(deudas.map((d) => d.contrato?.id).filter((x): x is string => !!x)),
+      ];
       await registrarEventos(tx, ctx, {
         entidad: 'cobro',
         entidadId: cobroId,
@@ -202,7 +243,10 @@ export class CobrosService {
         resumen: `Recibo ${String(numero).padStart(6, '0')} por ${plata(dto.importe, dto.moneda)}`,
         detalle: { contratos },
       });
-      return this.dto(tx, await tx.alqCobro.findUniqueOrThrow({ where: { id: cobroId }, include: INCLUIR_COBRO }));
+      return this.dto(
+        tx,
+        await tx.alqCobro.findUniqueOrThrow({ where: { id: cobroId }, include: INCLUIR_COBRO }),
+      );
     });
   }
 
@@ -227,7 +271,10 @@ export class CobrosService {
         orderBy: { numero: 'desc' },
         take: LIMITE_LISTA_CON_SONDA,
       });
-      const nombres = await nombresDeUsuarios(tx, filas.map((c) => c.creadoPorId));
+      const nombres = await nombresDeUsuarios(
+        tx,
+        filas.map((c) => c.creadoPorId),
+      );
       return filas.map((c) => ({
         id: c.id,
         numero: c.numero,
@@ -261,19 +308,32 @@ export class CobrosService {
             select: { registradaEnCobro: { select: { numero: true } } },
           },
           conceptos: {
-            select: { imputaciones: { where: { ...IMPUTACION_ACTIVA, cobroId: { not: id } }, select: { id: true } } },
+            select: {
+              imputaciones: {
+                where: { ...IMPUTACION_ACTIVA, cobroId: { not: id } },
+                select: { id: true },
+              },
+            },
           },
-          registradas: { select: { concepto: { select: { claveGeneracion: true, tipo: true, contratoId: true } } } },
+          registradas: {
+            select: {
+              concepto: { select: { claveGeneracion: true, tipo: true, contratoId: true } },
+            },
+          },
         },
       });
       if (!c) throw new NotFoundException('El cobro no existe.');
       if (c.anuladoEn) throw new ConflictException('El cobro ya está anulado.');
       const posterior = c.imputaciones[0]?.registradaEnCobro.numero;
       if (posterior != null) {
-        throw new BadRequestException(`El saldo a favor de este cobro se usó en el recibo ${posterior}: anulá ese primero.`);
+        throw new BadRequestException(
+          `El saldo a favor de este cobro se usó en el recibo ${posterior}: anulá ese primero.`,
+        );
       }
       if (c.conceptos.some((k) => k.imputaciones.length > 0)) {
-        throw new BadRequestException('Un punitorio de este cobro tiene pagos de otro cobro: anulá ese primero.');
+        throw new BadRequestException(
+          'Un punitorio de este cobro tiene pagos de otro cobro: anulá ese primero.',
+        );
       }
       // Si lo que canceló ya se le liquidó al propietario, anular dejaría al
       // dueño cobrado de un alquiler que el inquilino no pagó (regla 22).
@@ -292,13 +352,21 @@ export class CobrosService {
             liquidacion: { anuladoEn: null },
             contrato: { pagoGarantizado: false },
             // Por contrato primero: el prefijo de la clave no usa índice, el contrato sí.
-            contratoId: { in: [...new Set(c.registradas.map((i) => i.concepto.contratoId).filter((x): x is string => !!x))] },
+            contratoId: {
+              in: [
+                ...new Set(
+                  c.registradas.map((i) => i.concepto.contratoId).filter((x): x is string => !!x),
+                ),
+              ],
+            },
             OR: partes.map((p) => ({ claveGeneracion: { startsWith: `${p}|` } })),
           },
           select: { liquidacion: { select: { numero: true } } },
         });
         if (liquidado?.liquidacion) {
-          throw new BadRequestException(`Lo que canceló este cobro ya se le liquidó al propietario (liquidación ${liquidado.liquidacion.numero}): anulá esa primero.`);
+          throw new BadRequestException(
+            `Lo que canceló este cobro ya se le liquidó al propietario (liquidación ${liquidado.liquidacion.numero}): anulá esa primero.`,
+          );
         }
       }
       const ahora = new Date();
@@ -306,10 +374,15 @@ export class CobrosService {
         where: { id, anuladoEn: null },
         data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: motivo },
       });
-      if (count === 0) throw new ConflictException('El cobro cambió mientras tanto. Recargá la página.');
+      if (count === 0)
+        throw new ConflictException('El cobro cambió mientras tanto. Recargá la página.');
       await tx.alqConcepto.updateMany({
         where: { cobroId: id, anuladoEn: null },
-        data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: `Anulación del recibo ${c.numero}` },
+        data: {
+          anuladoEn: ahora,
+          anuladoPorId: ctx.userId,
+          motivoAnulacion: `Anulación del recibo ${c.numero}`,
+        },
       });
       const fila = await tx.alqCobro.findUniqueOrThrow({ where: { id }, include: INCLUIR_COBRO });
       await registrarEventos(tx, ctx, {
@@ -330,9 +403,34 @@ export class CobrosService {
       const { conceptos, cobros, creditos } = await this.estado(tx, personaId);
       // Lo que se le pagó al propietario (regla 20): salda lo que se le debía.
       const liquidaciones = (
-        await tx.alqLiquidacion.findMany({ where: { personaId }, select: { id: true, numero: true, moneda: true, fecha: true, neto: true, anuladoEn: true, createdAt: true } })
-      ).map((l) => ({ id: l.id, numero: l.numero, moneda: l.moneda, fecha: fromDate(l.fecha)!, neto: decToNum(l.neto), anulado: l.anuladoEn != null, createdAt: l.createdAt }));
-      const monedas = [...new Set([...conceptos.map((c) => c.moneda), ...cobros.map((c) => c.moneda), ...liquidaciones.map((l) => l.moneda)])].sort() as MonedaAlquiler[];
+        await tx.alqLiquidacion.findMany({
+          where: { personaId },
+          select: {
+            id: true,
+            numero: true,
+            moneda: true,
+            fecha: true,
+            neto: true,
+            anuladoEn: true,
+            createdAt: true,
+          },
+        })
+      ).map((l) => ({
+        id: l.id,
+        numero: l.numero,
+        moneda: l.moneda,
+        fecha: fromDate(l.fecha)!,
+        neto: decToNum(l.neto),
+        anulado: l.anuladoEn != null,
+        createdAt: l.createdAt,
+      }));
+      const monedas = [
+        ...new Set([
+          ...conceptos.map((c) => c.moneda),
+          ...cobros.map((c) => c.moneda),
+          ...liquidaciones.map((l) => l.moneda),
+        ]),
+      ].sort() as MonedaAlquiler[];
       return {
         persona,
         monedas: monedas.map((moneda) => {
@@ -426,7 +524,12 @@ export class CobrosService {
       }),
       tx.alqCobro.findMany({
         where: { personaId, ...(moneda ? { moneda } : {}) },
-        include: { imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true, concepto: { select: { sentido: true } } } } },
+        include: {
+          imputaciones: {
+            where: IMPUTACION_ACTIVA,
+            select: { importe: true, concepto: { select: { sentido: true } } },
+          },
+        },
         orderBy: { numero: 'asc' },
       }),
     ]);
@@ -447,7 +550,13 @@ export class CobrosService {
         periodo: k.periodo,
         origenId: k.origenId,
         descripcion: k.descripcion ?? k.tipo,
-        contrato: k.contrato ? { id: k.contrato.id, codigo: k.contrato.codigo, punitorioDiarioPct: decToNum(k.contrato.punitorioDiarioPct) } : null,
+        contrato: k.contrato
+          ? {
+              id: k.contrato.id,
+              codigo: k.contrato.codigo,
+              punitorioDiarioPct: decToNum(k.contrato.punitorioDiarioPct),
+            }
+          : null,
         anulado: k.anuladoEn != null,
       };
     });
@@ -463,38 +572,70 @@ export class CobrosService {
     }));
     const creditos = cobros
       .filter((c) => c.disponible > 0)
-      .map((c) => ({ cobroId: c.id, numero: c.numero, disponible: c.disponible, moneda: c.moneda }));
+      .map((c) => ({
+        cobroId: c.id,
+        numero: c.numero,
+        disponible: c.disponible,
+        moneda: c.moneda,
+      }));
     return { conceptos, cobros, creditos };
   }
 }
 
 /** Lo que le queda a un cobro: su importe, más lo compensado de reintegros, menos lo imputado a deudas. */
-function disponibleDe(importe: number, imputaciones: { importe: Prisma.Decimal; concepto: { sentido: string } }[]): number {
-  const neto = imputaciones.reduce((s, i) => s + (i.concepto.sentido === 'a_pagar' ? 1 : -1) * decToNum(i.importe), importe);
+function disponibleDe(
+  importe: number,
+  imputaciones: { importe: Prisma.Decimal; concepto: { sentido: string } }[],
+): number {
+  const neto = imputaciones.reduce(
+    (s, i) => s + (i.concepto.sentido === 'a_pagar' ? 1 : -1) * decToNum(i.importe),
+    importe,
+  );
   return redondear2(neto);
 }
 
 const porAntiguedad = (a: ConceptoConSaldo, b: ConceptoConSaldo) =>
-  a.vencimiento === b.vencimiento ? a.createdAt.getTime() - b.createdAt.getTime() : a.vencimiento < b.vencimiento ? -1 : 1;
+  a.vencimiento === b.vencimiento
+    ? a.createdAt.getTime() - b.createdAt.getTime()
+    : a.vencimiento < b.vencimiento
+      ? -1
+      : 1;
 
 /** Regla 15: lo que se cobra, del vencimiento más viejo al más nuevo. */
 function deudasDe(conceptos: ConceptoConSaldo[]): ConceptoConSaldo[] {
   return conceptos
-    .filter((c) => !c.anulado && c.sentido === 'a_cobrar' && c.saldo > 0 && !TIPOS_QUE_SE_LIQUIDAN.includes(c.tipo))
+    .filter(
+      (c) =>
+        !c.anulado &&
+        c.sentido === 'a_cobrar' &&
+        c.saldo > 0 &&
+        !TIPOS_QUE_SE_LIQUIDAN.includes(c.tipo),
+    )
     .sort(porAntiguedad);
 }
 
 function compensablesDe(conceptos: ConceptoConSaldo[]): ConceptoConSaldo[] {
-  return conceptos.filter((c) => !c.anulado && c.sentido === 'a_pagar' && c.saldo > 0 && TIPOS_COMPENSABLES.includes(c.tipo)).sort(porAntiguedad);
+  return conceptos
+    .filter(
+      (c) =>
+        !c.anulado && c.sentido === 'a_pagar' && c.saldo > 0 && TIPOS_COMPENSABLES.includes(c.tipo),
+    )
+    .sort(porAntiguedad);
 }
 
 /**
  * Regla 16: solo los alquileres llevan punitorio. Los días corren desde el
  * vencimiento o desde el último punitorio cobrado por ese alquiler.
  */
-function propuesta(c: ConceptoConSaldo, todos: ConceptoConSaldo[], fecha: string): { dias: number; importe: number } {
+function propuesta(
+  c: ConceptoConSaldo,
+  todos: ConceptoConSaldo[],
+  fecha: string,
+): { dias: number; importe: number } {
   if (c.tipo !== 'alquiler' || !c.contrato) return { dias: 0, importe: 0 };
-  const anteriores = todos.filter((k) => k.tipo === 'punitorio' && k.origenId === c.id && !k.anulado).map((k) => k.vencimiento);
+  const anteriores = todos
+    .filter((k) => k.tipo === 'punitorio' && k.origenId === c.id && !k.anulado)
+    .map((k) => k.vencimiento);
   const desde = [c.vencimiento, ...anteriores].sort().at(-1)!;
   return proponerPunitorio(c.saldo, desde, fecha, c.contrato.punitorioDiarioPct);
 }
@@ -532,8 +673,13 @@ function aDto(c: FilaCobro, nombres: Map<string, string>): CobroDto {
     obs: c.obs,
     imputaciones,
     aFavor: c.anuladoEn ? 0 : disponibleDe(decToNum(c.importe), c.imputaciones),
-    anulado: c.anuladoEn ? { en: c.anuladoEn.toISOString(), motivo: c.motivoAnulacion ?? '', por: c.anuladoPorId ? (nombres.get(c.anuladoPorId) ?? null) : null } : null,
+    anulado: c.anuladoEn
+      ? {
+          en: c.anuladoEn.toISOString(),
+          motivo: c.motivoAnulacion ?? '',
+          por: c.anuladoPorId ? (nombres.get(c.anuladoPorId) ?? null) : null,
+        }
+      : null,
     registradoPor: c.creadoPorId ? (nombres.get(c.creadoPorId) ?? null) : null,
   };
 }
-

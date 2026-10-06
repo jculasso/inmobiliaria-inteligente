@@ -74,7 +74,9 @@ export class AdminUsuariosController {
 
   @Post(':id/activar-acceso')
   @Roles('admin_plataforma')
-  @ApiOperation({ summary: 'Crea la cuenta de Supabase Auth para un usuario que todavía no tiene login' })
+  @ApiOperation({
+    summary: 'Crea la cuenta de Supabase Auth para un usuario que todavía no tiene login',
+  })
   activarAcceso(
     @Param('tenantId', ParseUUIDPipe) tenantId: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -100,7 +102,10 @@ export class AdminUsuariosController {
   @Delete(':id/foto')
   @Roles('admin_plataforma')
   @ApiOperation({ summary: 'Elimina la foto de perfil de un usuario' })
-  eliminarFoto(@Param('tenantId', ParseUUIDPipe) tenantId: string, @Param('id', ParseUUIDPipe) id: string) {
+  eliminarFoto(
+    @Param('tenantId', ParseUUIDPipe) tenantId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.usuarios.eliminarFoto(tenantId, id);
   }
 }

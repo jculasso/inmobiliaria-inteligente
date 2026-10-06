@@ -23,7 +23,9 @@ export function Bloque({
   fondo?: boolean;
 }) {
   return (
-    <section className={fondo ? 'border-y border-line bg-surface py-16 sm:py-20' : 'py-16 sm:py-20'}>
+    <section
+      className={fondo ? 'border-y border-line bg-surface py-16 sm:py-20' : 'py-16 sm:py-20'}
+    >
       <div className={ANCHO}>
         <Kicker>{kicker}</Kicker>
         <h2 className="mt-4 max-w-3xl text-balance text-2xl font-extrabold leading-tight sm:text-4xl">

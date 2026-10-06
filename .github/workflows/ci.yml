@@ -230,7 +230,6 @@ jobs:
       - name: Dependencias del sistema
         run: pnpm --filter @vacker/web exec playwright install-deps chromium webkit
 
-
       # La descarga de los navegadores, en cambio, se saltea entera cuando el
       # caché acierta. Antes esto y el paso de arriba iban juntos en un
       # `--with-deps`, y el caché no servía de nada porque el comando corría

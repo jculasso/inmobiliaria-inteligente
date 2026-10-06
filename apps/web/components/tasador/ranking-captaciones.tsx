@@ -42,17 +42,24 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
                 titulo={`Ver captaciones de ${r.nombre}`}
               >
                 <div className="flex items-center gap-2">
-                  <span aria-hidden className="w-6 shrink-0 text-center text-sm font-extrabold text-muted">
+                  <span
+                    aria-hidden
+                    className="w-6 shrink-0 text-center text-sm font-extrabold text-muted"
+                  >
                     {medalla(i)}
                   </span>
                   <Avatar nombre={r.nombre} fotoUrl={r.fotoUrl} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{r.nombre}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">
+                    {r.nombre}
+                  </span>
                   <span className="shrink-0 text-xs font-bold text-muted">{fmtPct(r.peso)}</span>
                 </div>
                 <CamposTarjeta>
                   <CampoTarjeta etiqueta="Captadas">{fmtNum(r.captadas)}</CampoTarjeta>
                   <CampoTarjeta etiqueta="Total">{fmtNum(r.total)}</CampoTarjeta>
-                  <CampoTarjeta etiqueta="Tasa de captación">{fmtPct(r.tasaCaptacion)}</CampoTarjeta>
+                  <CampoTarjeta etiqueta="Tasa de captación">
+                    {fmtPct(r.tasaCaptacion)}
+                  </CampoTarjeta>
                 </CamposTarjeta>
               </Tarjeta>
             ))}
@@ -106,7 +113,10 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
                   <td className="px-4 py-2">
                     <span className="flex items-center gap-2">
                       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface">
-                        <span className="block h-full rounded-full bg-brand-red" style={{ width: `${r.peso * 100}%` }} />
+                        <span
+                          className="block h-full rounded-full bg-brand-red"
+                          style={{ width: `${r.peso * 100}%` }}
+                        />
                       </span>
                       <span className="text-muted">{fmtPct(r.peso)}</span>
                     </span>

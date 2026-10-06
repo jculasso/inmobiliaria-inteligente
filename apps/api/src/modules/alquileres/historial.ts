@@ -33,10 +33,17 @@ export interface EventoNuevo {
  * para todos los eventos, aunque sean cien (generar el mes escribe uno por
  * contrato).
  */
-export async function registrarEventos(tx: Tx, ctx: TenantContext, eventos: EventoNuevo | EventoNuevo[]): Promise<void> {
+export async function registrarEventos(
+  tx: Tx,
+  ctx: TenantContext,
+  eventos: EventoNuevo | EventoNuevo[],
+): Promise<void> {
   const lista = Array.isArray(eventos) ? eventos : [eventos];
   if (lista.length === 0) return;
-  const usuario = await tx.usuario.findUnique({ where: { id: ctx.userId }, select: { nombre: true } });
+  const usuario = await tx.usuario.findUnique({
+    where: { id: ctx.userId },
+    select: { nombre: true },
+  });
   await tx.alqEvento.createMany({
     data: lista.map((e) => ({
       tenantId: ctx.tenantId,
@@ -58,10 +65,16 @@ export async function registrarEventos(tx: Tx, ctx: TenantContext, eventos: Even
  * consulta. Los `*PorId` no tienen clave foránea (son auditoría), así que el
  * nombre se busca aparte; un id que ya no existe queda sin nombre.
  */
-export async function nombresDeUsuarios(tx: Tx, ids: (string | null | undefined)[]): Promise<Map<string, string>> {
+export async function nombresDeUsuarios(
+  tx: Tx,
+  ids: (string | null | undefined)[],
+): Promise<Map<string, string>> {
   const unicos = [...new Set(ids.filter((x): x is string => !!x))];
   if (unicos.length === 0) return new Map();
-  const filas = await tx.usuario.findMany({ where: { id: { in: unicos } }, select: { id: true, nombre: true } });
+  const filas = await tx.usuario.findMany({
+    where: { id: { in: unicos } },
+    select: { id: true, nombre: true },
+  });
   return new Map(filas.map((u) => [u.id, u.nombre]));
 }
 
@@ -83,7 +96,11 @@ export class HistorialService {
 
   private async leer(where: Prisma.AlqEventoWhereInput): Promise<EventoDto[]> {
     return this.db.withTenant(async (tx) => {
-      const filas = await tx.alqEvento.findMany({ where, orderBy: { en: 'desc' }, take: TOPE_HISTORIAL });
+      const filas = await tx.alqEvento.findMany({
+        where,
+        orderBy: { en: 'desc' },
+        take: TOPE_HISTORIAL,
+      });
       return filas.map((e) => ({
         id: e.id,
         en: e.en.toISOString(),

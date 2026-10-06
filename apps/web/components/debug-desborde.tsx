@@ -27,7 +27,13 @@ interface Hallazgo {
 
 /** Nombre corto y legible de un elemento, para poder buscarlo en el código. */
 function describir(el: Element): string {
-  const clases = (el.className || '').toString().trim().split(/\s+/).filter(Boolean).slice(0, 4).join(' ');
+  const clases = (el.className || '')
+    .toString()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(' ');
   return `${el.tagName.toLowerCase()}${clases ? ` .${clases}` : ''}`;
 }
 
@@ -51,7 +57,10 @@ function medir(): Hallazgo {
       }
       return true;
     })
-    .map((el) => ({ descripcion: describir(el), px: Math.round(el.getBoundingClientRect().right - ancho) }))
+    .map((el) => ({
+      descripcion: describir(el),
+      px: Math.round(el.getBoundingClientRect().right - ancho),
+    }))
     .sort((a, b) => b.px - a.px)
     .slice(0, 3);
 
@@ -101,7 +110,8 @@ export function DebugDesborde() {
 
   if (!activo || !datos) return null;
 
-  const limpio = datos.desborde <= 0 && datos.culpables.length === 0 && datos.deslizables.length === 0;
+  const limpio =
+    datos.desborde <= 0 && datos.culpables.length === 0 && datos.deslizables.length === 0;
 
   return (
     <div

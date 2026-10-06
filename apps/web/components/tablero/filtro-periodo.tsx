@@ -14,7 +14,12 @@ export function FiltroPeriodo({ anio, mes }: { anio: number; mes: number }) {
   const searchParams = useSearchParams();
 
   const hoy = new Date();
-  const anios = [hoy.getFullYear() + 1, hoy.getFullYear(), hoy.getFullYear() - 1, hoy.getFullYear() - 2];
+  const anios = [
+    hoy.getFullYear() + 1,
+    hoy.getFullYear(),
+    hoy.getFullYear() - 1,
+    hoy.getFullYear() - 2,
+  ];
 
   function actualizar(next: { anio?: number; mes?: number }) {
     const params = new URLSearchParams(searchParams);

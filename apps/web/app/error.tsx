@@ -9,7 +9,12 @@ import { PantallaError } from '../components/pantalla-error';
  * acá, con un mensaje correcto. También atrapa los errores de los layouts de
  * cada módulo: el error.tsx de un segmento no envuelve a su propio layout.
  */
-export default function HomeError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function HomeError({
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   return (
     <PantallaError
       titulo="No pudimos conectar con el servidor"

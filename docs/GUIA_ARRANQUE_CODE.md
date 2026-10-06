@@ -9,8 +9,9 @@ Guía paso a paso para pasar del prototipo a la versión productiva usando Claud
 El agente escribe el código, pero no puede crear cuentas ni tener tus llaves. Preparar esto primero evita frenarse a mitad de camino.
 
 ### 0.1 Cuentas (todas tienen free tier)
+
 1. **GitHub** — crear un repositorio vacío y privado: `inmobiliaria-inteligente`.
-2. **Supabase** — crear un proyecto (elegí región cercana, ej. São Paulo). Guardá de *Project Settings → API* y *Database*:
+2. **Supabase** — crear un proyecto (elegí región cercana, ej. São Paulo). Guardá de _Project Settings → API_ y _Database_:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (secreta, no la expongas en el front)
@@ -21,13 +22,16 @@ El agente escribe el código, pero no puede crear cuentas ni tener tus llaves. P
 > Nota sobre el free tier de Supabase: el proyecto se **pausa tras ~1 semana sin actividad**. Mientras desarrollás activo no molesta; si lo dejás quieto, entrá al dashboard o corré una consulta para reactivarlo. Cuando entre el primer cliente pago, se pasa a Supabase Pro.
 
 ### 0.2 Herramientas locales
+
 - Node.js LTS y **pnpm** (`npm i -g pnpm`).
 - Git configurado.
 - Claude Code instalado.
 - Editor (VS Code o el que uses).
 
 ### 0.3 Los documentos del kit
+
 Tené a mano estos archivos (los generamos juntos) para copiarlos al repo:
+
 - `CLAUDE.md`
 - `docs/Arquitectura_Inmobiliaria_Inteligente.md`
 - `docs/MODELO_DATOS_TABLERO.md`
@@ -63,6 +67,7 @@ Con esto, cuando abras Claude Code en esta carpeta, ya tiene todo el contexto (l
 **El patrón que funciona:** un paso de la Fase 1 = una sesión enfocada = un PR. No le pidas "construí todo"; avanzá paso por paso, revisando y commiteando.
 
 Ciclo por cada paso:
+
 1. Abrí Claude Code en la carpeta del repo.
 2. Elegí el modelo según la tarea (ver §3) y pegá el prompt correspondiente de `PROMPTS_INICIALES_CODE.md`.
 3. Dejá que planifique; **leé el plan antes de que ejecute**. Si algo se desvía del `CLAUDE.md`, corregilo ahí mismo.
@@ -71,6 +76,7 @@ Ciclo por cada paso:
 6. Commit + push + PR. Recién ahí pasás al siguiente paso.
 
 Consejos:
+
 - **Contexto fresco por paso.** Cuando termines un paso, empezá el siguiente en una sesión nueva para no arrastrar ruido.
 - **Pedile tests siempre.** Sobre todo el test de aislamiento multi-tenant en el paso del núcleo.
 - **Nunca commitees `.env`.** Que genere `.env.example`; las llaves reales las ponés vos localmente y en Render/Vercel.
@@ -80,14 +86,14 @@ Consejos:
 
 ## 3. Qué modelo usar en cada paso
 
-| Paso | Modelo | Por qué |
-|---|---|---|
-| 1. Fundaciones (monorepo, DS, CI) | **Opus 4.8** | Decisiones de estructura que condicionan todo |
-| 2. Núcleo (tenant, RLS, auth, RBAC) | **Opus 4.8** | Lo más delicado del proyecto |
-| 3. Módulo Tablero (API + KPIs) | **Opus 4.8** para el diseño de servicios y cálculos; **Sonnet 5** para el CRUD | Mezcla lógica no trivial + volumen |
-| 4. Home autenticada | **Sonnet 5** | Bien especificado |
-| 5. Tablero web con datos reales | **Sonnet 5** | Integración guiada por el prototipo |
-| Ediciones triviales, renombres | **Haiku 4.5** | Rápido y barato |
+| Paso                                | Modelo                                                                         | Por qué                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------- |
+| 1. Fundaciones (monorepo, DS, CI)   | **Opus 4.8**                                                                   | Decisiones de estructura que condicionan todo |
+| 2. Núcleo (tenant, RLS, auth, RBAC) | **Opus 4.8**                                                                   | Lo más delicado del proyecto                  |
+| 3. Módulo Tablero (API + KPIs)      | **Opus 4.8** para el diseño de servicios y cálculos; **Sonnet 5** para el CRUD | Mezcla lógica no trivial + volumen            |
+| 4. Home autenticada                 | **Sonnet 5**                                                                   | Bien especificado                             |
+| 5. Tablero web con datos reales     | **Sonnet 5**                                                                   | Integración guiada por el prototipo           |
+| Ediciones triviales, renombres      | **Haiku 4.5**                                                                  | Rápido y barato                               |
 
 Regla: **lo estructural con Opus, el volumen con Sonnet.**
 

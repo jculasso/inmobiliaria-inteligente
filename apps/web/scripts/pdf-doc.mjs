@@ -72,7 +72,10 @@ function aHtml(md) {
   while (i < lineas.length) {
     const l = lineas[i];
 
-    if (!l.trim()) { i++; continue; }
+    if (!l.trim()) {
+      i++;
+      continue;
+    }
 
     // Tabla: encabezado, separador de guiones, y filas hasta que se corte.
     if (l.trim().startsWith('|') && (lineas[i + 1] ?? '').includes('---')) {
@@ -94,7 +97,11 @@ function aHtml(md) {
       continue;
     }
 
-    if (l.trim() === '---') { salida.push('<hr>'); i++; continue; }
+    if (l.trim() === '---') {
+      salida.push('<hr>');
+      i++;
+      continue;
+    }
 
     if (l.startsWith('> ')) {
       const cita = [];
@@ -111,7 +118,10 @@ function aHtml(md) {
       const ordenada = /\d/.test(lista[2]);
       const items = [];
       // Las continuaciones de un item vienen indentadas: se pegan al mismo.
-      while (i < lineas.length && (lineas[i].match(/^(\s*)([-*]|\d+\.) /) || /^\s{2,}\S/.test(lineas[i]))) {
+      while (
+        i < lineas.length &&
+        (lineas[i].match(/^(\s*)([-*]|\d+\.) /) || /^\s{2,}\S/.test(lineas[i]))
+      ) {
         if (lineas[i].match(/^(\s*)([-*]|\d+\.) /)) {
           items.push(lineas[i].replace(/^\s*([-*]|\d+\.) /, ''));
         } else {
@@ -126,7 +136,11 @@ function aHtml(md) {
 
     // Párrafo: junta las líneas hasta el próximo renglón en blanco.
     const parrafo = [];
-    while (i < lineas.length && lineas[i].trim() && !/^(#{1,3} |---|>|\||\s*([-*]|\d+\.) )/.test(lineas[i])) {
+    while (
+      i < lineas.length &&
+      lineas[i].trim() &&
+      !/^(#{1,3} |---|>|\||\s*([-*]|\d+\.) )/.test(lineas[i])
+    ) {
       parrafo.push(lineas[i].trim());
       i++;
     }

@@ -58,10 +58,7 @@ export async function POST(req: Request) {
   const clave = process.env.RESEND_API_KEY;
   if (!clave) {
     console.error('Falta RESEND_API_KEY: la consulta NO se envió.', { de: c.email });
-    return NextResponse.json(
-      { mensaje: MENSAJE_DE_ERROR },
-      { status: 500 },
-    );
+    return NextResponse.json({ mensaje: MENSAJE_DE_ERROR }, { status: 500 });
   }
 
   const filas: [string, string][] = [
@@ -101,10 +98,7 @@ export async function POST(req: Request) {
     // El detalle va al log, no al visitante: puede traer información del
     // proveedor que no le corresponde ver.
     console.error('Resend rechazó la consulta:', res.status, await res.text().catch(() => ''));
-    return NextResponse.json(
-      { mensaje: MENSAJE_DE_ERROR },
-      { status: 502 },
-    );
+    return NextResponse.json({ mensaje: MENSAJE_DE_ERROR }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true });

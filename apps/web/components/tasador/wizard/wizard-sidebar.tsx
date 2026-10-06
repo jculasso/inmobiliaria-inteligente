@@ -34,7 +34,10 @@ export function WizardSidebar({ activa, onCambiar }: Props) {
           </span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
-          <div className="h-full rounded-full bg-brand-red transition-all" style={{ width: `${progreso}%` }} />
+          <div
+            className="h-full rounded-full bg-brand-red transition-all"
+            style={{ width: `${progreso}%` }}
+          />
         </div>
       </div>
 
@@ -51,7 +54,9 @@ export function WizardSidebar({ activa, onCambiar }: Props) {
             aria-label={s.nombre}
             aria-current={activa === s.id ? 'step' : undefined}
             className={`flex flex-1 items-center justify-center gap-2.5 rounded-brand px-1 py-2.5 text-sm transition-colors lg:flex-none lg:justify-start lg:px-3 lg:text-left ${
-              activa === s.id ? 'bg-brand-red/10 font-semibold text-brand-red' : 'text-ink hover:bg-surface'
+              activa === s.id
+                ? 'bg-brand-red/10 font-semibold text-brand-red'
+                : 'text-ink hover:bg-surface'
             }`}
           >
             <span
@@ -69,7 +74,6 @@ export function WizardSidebar({ activa, onCambiar }: Props) {
       <p className="-mt-2 text-sm font-bold text-ink lg:hidden">
         {SECCIONES.find((s) => s.id === activa)?.nombre}
       </p>
-
     </aside>
   );
 }

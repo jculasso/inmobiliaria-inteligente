@@ -57,7 +57,16 @@ export function ConceptoSueltoModal({
       setError('Cargá el importe.');
       return;
     }
-    const dto: ConceptoSueltoInput = { contratoId, tipo, aCargoDe, pagadoPor, importe: monto, vencimiento, periodo, descripcion };
+    const dto: ConceptoSueltoInput = {
+      contratoId,
+      tipo,
+      aCargoDe,
+      pagadoPor,
+      importe: monto,
+      vencimiento,
+      periodo,
+      descripcion,
+    };
     setGuardando(true);
     try {
       const creados = await crearConceptoSuelto(await getAccessToken(), dto);
@@ -72,7 +81,12 @@ export function ConceptoSueltoModal({
     <Modal title="Gasto suelto" onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3">
         <Campo label="Contrato" requerido>
-          <select className={inputClass} value={contratoId} onChange={(e) => setContratoId(e.target.value)} required>
+          <select
+            className={inputClass}
+            value={contratoId}
+            onChange={(e) => setContratoId(e.target.value)}
+            required
+          >
             {vigentes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.codigo} · {c.propiedad.direccion}
@@ -83,7 +97,11 @@ export function ConceptoSueltoModal({
         </Campo>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Tipo">
-            <select className={inputClass} value={tipo} onChange={(e) => setTipo(e.target.value as TipoConceptoSuelto)}>
+            <select
+              className={inputClass}
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as TipoConceptoSuelto)}
+            >
               {Object.entries(NOMBRE_TIPO_SUELTO).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v}
@@ -92,7 +110,11 @@ export function ConceptoSueltoModal({
             </select>
           </Campo>
           <Campo label="Importe" requerido>
-            <InputImporte moneda={vigentes.find((c) => c.id === contratoId)?.moneda ?? 'ARS'} value={importe} onChange={setImporte} />
+            <InputImporte
+              moneda={vigentes.find((c) => c.id === contratoId)?.moneda ?? 'ARS'}
+              value={importe}
+              onChange={setImporte}
+            />
           </Campo>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -110,8 +132,15 @@ export function ConceptoSueltoModal({
               <option value="propietario">El propietario</option>
             </select>
           </Campo>
-          <Campo label="Ya lo pagó" hint={pagadoPor === otra ? `Se le reconoce al ${otra} en su cuenta.` : undefined}>
-            <select className={inputClass} value={pagadoPor} onChange={(e) => setPagadoPor(e.target.value as Pagador)}>
+          <Campo
+            label="Ya lo pagó"
+            hint={pagadoPor === otra ? `Se le reconoce al ${otra} en su cuenta.` : undefined}
+          >
+            <select
+              className={inputClass}
+              value={pagadoPor}
+              onChange={(e) => setPagadoPor(e.target.value as Pagador)}
+            >
               <option value="nadie">Nadie todavía</option>
               <option value="inmobiliaria">La inmobiliaria</option>
               <option value={otra}>El {otra}</option>
@@ -119,10 +148,21 @@ export function ConceptoSueltoModal({
           </Campo>
         </div>
         <Campo label="Vence">
-          <input type="date" className={inputClass} value={vencimiento} onChange={(e) => setVencimiento(e.target.value)} required />
+          <input
+            type="date"
+            className={inputClass}
+            value={vencimiento}
+            onChange={(e) => setVencimiento(e.target.value)}
+            required
+          />
         </Campo>
         <Campo label="Descripción" requerido={tipo === 'otro'}>
-          <input className={inputClass} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej.: arreglo del calefón" />
+          <input
+            className={inputClass}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Ej.: arreglo del calefón"
+          />
         </Campo>
         {error && (
           <p role="alert" className="text-sm font-medium text-danger">

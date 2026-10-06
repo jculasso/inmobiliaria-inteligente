@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { EstadoTasacion, RankingCaptacionItem, ResumenTasadorKpi, TasacionResumenDto, TasadorKpiFiltro } from '@vacker/types';
+import type {
+  EstadoTasacion,
+  RankingCaptacionItem,
+  ResumenTasadorKpi,
+  TasacionResumenDto,
+  TasadorKpiFiltro,
+} from '@vacker/types';
 import { EstadoTasacionSchema, ESTADO_TASACION_COLOR } from '@vacker/types';
 import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -26,7 +32,20 @@ const PERIODOS: { key: Periodo; label: string }[] = [
   { key: 'mensual', label: 'Mensual' },
 ];
 
-const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const MESES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
 const ESTADOS = EstadoTasacionSchema.options;
 
 /**
@@ -72,7 +91,11 @@ export function ReporteView({
         : { anio, periodo, verTodo };
 
   const periodoLabel =
-    periodo === 'mensual' ? `${MESES[mes - 1]} ${anio}` : periodo === 'trimestral' ? `Trimestre ${trimestre} · ${anio}` : `Año ${anio}`;
+    periodo === 'mensual'
+      ? `${MESES[mes - 1]} ${anio}`
+      : periodo === 'trimestral'
+        ? `Trimestre ${trimestre} · ${anio}`
+        : `Año ${anio}`;
 
   useEffect(() => {
     let cancelado = false;
@@ -97,7 +120,8 @@ export function ReporteView({
         setTasaciones(t);
       })
       .catch((err) => {
-        if (!cancelado) setError(err instanceof Error ? err.message : 'No se pudo cargar el reporte.');
+        if (!cancelado)
+          setError(err instanceof Error ? err.message : 'No se pudo cargar el reporte.');
       })
       .finally(() => {
         if (!cancelado) setLoading(false);
@@ -168,7 +192,12 @@ export function ReporteView({
               ))}
             </select>
           )}
-          <Button type="button" variant="primary" onClick={handleGenerarPdf} disabled={generando || loading}>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleGenerarPdf}
+            disabled={generando || loading}
+          >
             {generando ? 'Generando…' : '🖨 Guardar PDF'}
           </Button>
         </div>
@@ -191,21 +220,38 @@ export function ReporteView({
             <KpiCard label="Tasaciones" value={String(resumen.total)} icon="📄" />
             <KpiCard
               label="Captadas"
-              value={String(resumen.distribucionEstado.find((d) => d.estado === 'Captada')?.cantidad ?? 0)}
+              value={String(
+                resumen.distribucionEstado.find((d) => d.estado === 'Captada')?.cantidad ?? 0,
+              )}
               icon="✅"
               tone="success"
             />
-            <KpiCard label="Tasa de captación" value={`${Math.round(resumen.tasaCaptacion * 100)}%`} icon="🎯" />
-            <KpiCard label="Valor publicación total" value={fmtUSD(valorTotal)} icon="💵" tone="brand" />
+            <KpiCard
+              label="Tasa de captación"
+              value={`${Math.round(resumen.tasaCaptacion * 100)}%`}
+              icon="🎯"
+            />
+            <KpiCard
+              label="Valor publicación total"
+              value={fmtUSD(valorTotal)}
+              icon="💵"
+              tone="brand"
+            />
           </div>
 
           <Card>
-            <EstadoDistribucion distribucion={resumen.distribucionEstado} periodoLabel={periodoLabel} />
+            <EstadoDistribucion
+              distribucion={resumen.distribucionEstado}
+              periodoLabel={periodoLabel}
+            />
           </Card>
 
           <div className="flex flex-wrap gap-1.5">
             {(['Todas', ...ESTADOS] as const).map((op) => {
-              const n = op === 'Todas' ? tasaciones.length : tasaciones.filter((t) => t.estado === op).length;
+              const n =
+                op === 'Todas'
+                  ? tasaciones.length
+                  : tasaciones.filter((t) => t.estado === op).length;
               return (
                 <button
                   key={op}

@@ -12,6 +12,10 @@ export function marcaDe(db: TenantPrismaService, ctx: TenantContext): Promise<Ma
   return db.withTenant(async (tx) => {
     const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } });
     const config = tenant.config as { logoUrl?: string; colorPrimario?: string } | null;
-    return { nombre: tenant.nombre, logoUrl: config?.logoUrl ?? null, colorPrimario: config?.colorPrimario ?? null };
+    return {
+      nombre: tenant.nombre,
+      logoUrl: config?.logoUrl ?? null,
+      colorPrimario: config?.colorPrimario ?? null,
+    };
   }, ctx);
 }

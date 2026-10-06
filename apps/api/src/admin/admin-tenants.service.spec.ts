@@ -94,7 +94,9 @@ describe('AdminTenantsService', () => {
   it('update mergea config en vez de reemplazarlo', async () => {
     const update = vi.fn().mockResolvedValue({ id: 't1' });
     const db = makeDb({
-      findUnique: vi.fn().mockResolvedValue({ id: 't1', slug: 'vacker', config: { logoUrl: 'https://x/logo.png' } }),
+      findUnique: vi
+        .fn()
+        .mockResolvedValue({ id: 't1', slug: 'vacker', config: { logoUrl: 'https://x/logo.png' } }),
       update,
     });
     const service = new AdminTenantsService(db, storage, makeConfig());
@@ -136,8 +138,9 @@ describe('AdminTenantsService — credencial de Tokko', () => {
 
     const r = await svc.guardarCredencial(TENANT, SECRETO, 'admin-1');
 
-    const upsert = (db as unknown as { integracionCredencial: { upsert: ReturnType<typeof vi.fn> } })
-      .integracionCredencial.upsert;
+    const upsert = (
+      db as unknown as { integracionCredencial: { upsert: ReturnType<typeof vi.fn> } }
+    ).integracionCredencial.upsert;
     const data = upsert.mock.calls[0]![0].create;
     expect(data.secretoEnc).not.toContain(SECRETO);
     expect(data.secretoEnc.split('.')).toHaveLength(3); // iv.tag.ciphertext
@@ -179,7 +182,9 @@ describe('AdminTenantsService — credencial de Tokko', () => {
   });
 
   it('si Tokko rechaza la clave, lo dice con esas palabras', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('no', { status: 401 }));
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('no', { status: 401 }));
     const { encriptarSecreto } = await import('../common/cripto-secreto');
     const db = dbCon({
       findFirst: vi.fn().mockResolvedValue({ secretoEnc: encriptarSecreto(SECRETO, ENC) }),

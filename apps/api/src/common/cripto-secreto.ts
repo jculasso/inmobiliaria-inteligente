@@ -56,5 +56,8 @@ export function desencriptarSecreto(
   }
   const decipher = createDecipheriv(ALGO, key, Buffer.from(ivB64, 'base64'), { authTagLength: 16 });
   decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
-  return Buffer.concat([decipher.update(Buffer.from(dataB64, 'base64')), decipher.final()]).toString('utf8');
+  return Buffer.concat([
+    decipher.update(Buffer.from(dataB64, 'base64')),
+    decipher.final(),
+  ]).toString('utf8');
 }

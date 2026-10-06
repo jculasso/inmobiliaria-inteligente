@@ -21,10 +21,9 @@ for (const ruta of RUTAS_PUBLICAS) {
     // `poll` y no una medición suelta: la Home hace una navegación del cliente
     // al montar, y medir justo ahí tira "execution context destroyed".
     await expect
-      .poll(
-        () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
-        { message: `${ruta} desborda a lo ancho` },
-      )
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), {
+        message: `${ruta} desborda a lo ancho`,
+      })
       .toBeLessThanOrEqual(0);
   });
 
@@ -33,22 +32,24 @@ for (const ruta of RUTAS_PUBLICAS) {
 
     const buscarCulpables = () =>
       page.evaluate(() => {
-      const ancho = window.innerWidth;
-      return [...document.querySelectorAll('body *')]
-        .filter((el) => {
-          const r = el.getBoundingClientRect();
-          if (r.width === 0 || r.right <= ancho + 1) return false;
-          // Lo que vive dentro de un panel deslizable no cuenta: ahí pasarse
-          // del ancho es lo esperable.
-          let p = el.parentElement;
-          while (p) {
-            const ov = getComputedStyle(p).overflowX;
-            if (ov === 'auto' || ov === 'scroll') return false;
-            p = p.parentElement;
-          }
-          return true;
-        })
-          .map((el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().slice(0, 40)}`);
+        const ancho = window.innerWidth;
+        return [...document.querySelectorAll('body *')]
+          .filter((el) => {
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.right <= ancho + 1) return false;
+            // Lo que vive dentro de un panel deslizable no cuenta: ahí pasarse
+            // del ancho es lo esperable.
+            let p = el.parentElement;
+            while (p) {
+              const ov = getComputedStyle(p).overflowX;
+              if (ov === 'auto' || ov === 'scroll') return false;
+              p = p.parentElement;
+            }
+            return true;
+          })
+          .map(
+            (el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().slice(0, 40)}`,
+          );
       });
 
     await expect

@@ -27,7 +27,12 @@ function principal(roles: Rol[]): AuthPrincipal {
     tenantId: 't',
     debeCambiarPassword: false,
     roles,
-    tenant: { nombre: 'Test', plan: 'basico', modulos: MODULOS_DEFAULT, config: configPorDefecto() },
+    tenant: {
+      nombre: 'Test',
+      plan: 'basico',
+      modulos: MODULOS_DEFAULT,
+      config: configPorDefecto(),
+    },
   };
 }
 
@@ -44,7 +49,9 @@ describe('RolesGuard', () => {
 
   it('rechaza si el principal no tiene ninguno de los roles requeridos', () => {
     const guard = new RolesGuard(makeReflector(['admin_tenant']));
-    expect(() => guard.canActivate(makeContext(principal(['vendedor'])))).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(makeContext(principal(['vendedor'])))).toThrow(
+      ForbiddenException,
+    );
   });
 
   it('rechaza si no hay principal', () => {

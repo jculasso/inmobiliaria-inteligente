@@ -249,7 +249,13 @@ export async function getAgregadosPorTrimestre(
  */
 export async function getResumenPeriodo(
   accessToken: string,
-  opts: { anio: number; periodo: PeriodoResumen; mes?: number; trimestre?: number; verTodo?: boolean },
+  opts: {
+    anio: number;
+    periodo: PeriodoResumen;
+    mes?: number;
+    trimestre?: number;
+    verTodo?: boolean;
+  },
 ): Promise<ResumenPeriodoResult> {
   const { anio, periodo, mes, trimestre, verTodo } = opts;
 

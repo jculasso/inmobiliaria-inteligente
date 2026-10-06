@@ -55,14 +55,14 @@ export function OlvideClave() {
     <div className="mt-3 rounded-brand border border-line bg-surface p-3">
       {!POR_EMAIL ? (
         <p className="text-xs leading-relaxed text-muted">
-          Escribile a la persona que administra la plataforma en tu inmobiliaria: puede generarte una
-          contraseña temporal en el momento. Cuando entres con ella, el sistema te va a pedir que elijas
-          una propia.
+          Escribile a la persona que administra la plataforma en tu inmobiliaria: puede generarte
+          una contraseña temporal en el momento. Cuando entres con ella, el sistema te va a pedir
+          que elijas una propia.
         </p>
       ) : enviado ? (
         <p className="text-xs leading-relaxed text-success">
-          Listo. Si <strong>{email}</strong> tiene una cuenta, te llega un correo con el enlace para elegir
-          una contraseña nueva. Revisá también el correo no deseado.
+          Listo. Si <strong>{email}</strong> tiene una cuenta, te llega un correo con el enlace para
+          elegir una contraseña nueva. Revisá también el correo no deseado.
         </p>
       ) : (
         <form className="flex flex-col gap-2" onSubmit={enviar}>

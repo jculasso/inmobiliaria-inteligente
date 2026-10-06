@@ -69,7 +69,10 @@ function filas(periodos: AlquileresPeriodo[], anual: AlquileresPeriodo): FilaPer
  * cuentan, con su número resaltado — Vacker pidió el 26/09/2026 la de
  * «Alquileres firmados»; el 5/10 se sumaron las otras dos, como en ventas.
  */
-function tarjetas(p: AlquileresPeriodo, verCuales: (titulo: string, foco: FocoDrill | 'valor') => () => void) {
+function tarjetas(
+  p: AlquileresPeriodo,
+  verCuales: (titulo: string, foco: FocoDrill | 'valor') => () => void,
+) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <KpiCard
@@ -78,7 +81,12 @@ function tarjetas(p: AlquileresPeriodo, verCuales: (titulo: string, foco: FocoDr
         tone="brand"
         onClick={verCuales('Alquileres firmados', 'operaciones')}
       />
-      <KpiCard label="Comisión" value={fmtUSD(p.comision)} tone="success" onClick={verCuales('Comisión', 'comision')} />
+      <KpiCard
+        label="Comisión"
+        value={fmtUSD(p.comision)}
+        tone="success"
+        onClick={verCuales('Comisión', 'comision')}
+      />
       <KpiCard
         label="Valor promedio"
         value={fmtUSD(p.valorPromedio)}
@@ -102,13 +110,23 @@ function tarjetas(p: AlquileresPeriodo, verCuales: (titulo: string, foco: FocoDr
  * ahí, sumando. Así el mensual, el trimestral y el anual no pueden
  * contradecirse: salen del mismo número.
  */
-export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mesSeleccionado: number }) {
+export function AlquileresSeccion({
+  anio,
+  mesSeleccionado,
+}: {
+  anio: number;
+  mesSeleccionado: number;
+}) {
   const [tab, setTab] = useState<Tab>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
   const [mes, setMes] = useState(mesSeleccionado);
   const [meses, setMeses] = useState<AlquileresMes[] | null>(null);
   const [error, setError] = useState(false);
-  const [lista, setLista] = useState<{ titulo: string; filtro: OperacionFiltro; foco: FocoDrill | 'valor' } | null>(null);
+  const [lista, setLista] = useState<{
+    titulo: string;
+    filtro: OperacionFiltro;
+    foco: FocoDrill | 'valor';
+  } | null>(null);
 
   useEffect(() => {
     setMes(mesSeleccionado);
@@ -137,7 +155,9 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
   const calculo = useMemo(() => {
     if (!meses) return null;
     const porMes = meses.map((m) => sumarAlquileres([m]));
-    const porTrimestre = [1, 2, 3, 4].map((q) => sumarAlquileres(mesesDelTrimestre(q).map((m) => meses[m - 1]!)));
+    const porTrimestre = [1, 2, 3, 4].map((q) =>
+      sumarAlquileres(mesesDelTrimestre(q).map((m) => meses[m - 1]!)),
+    );
     return { porMes, porTrimestre, anual: sumarAlquileres(meses) };
   }, [meses]);
 
@@ -145,20 +165,31 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
 
   let cuerpo: React.ReactNode;
   if (error) {
-    cuerpo = <p className="p-5 text-sm text-muted">No se pudieron cargar los alquileres. Probá recargar la página.</p>;
+    cuerpo = (
+      <p className="p-5 text-sm text-muted">
+        No se pudieron cargar los alquileres. Probá recargar la página.
+      </p>
+    );
   } else if (!calculo) {
     cuerpo = <p className="p-5 text-sm text-muted">Cargando…</p>;
   } else if (calculo.anual.firmados === 0) {
-    cuerpo = <p className="p-5 text-sm text-muted">Todavía no hay alquileres firmados en {anio}.</p>;
+    cuerpo = (
+      <p className="p-5 text-sm text-muted">Todavía no hay alquileres firmados en {anio}.</p>
+    );
   } else {
     const { porMes, porTrimestre, anual } = calculo;
     const periodos = tab === 'mensual' ? porMes : porTrimestre;
     const etiquetas = tab === 'mensual' ? ABREV_MES : ETIQUETAS_TRIMESTRE;
     const seleccionado = tab === 'mensual' ? mes : trimestre;
     const elegir = tab === 'mensual' ? setMes : setTrimestre;
-    const delPeriodo = tab === 'anual' ? anual : tab === 'mensual' ? porMes[mes - 1]! : porTrimestre[trimestre - 1]!;
+    const delPeriodo =
+      tab === 'anual' ? anual : tab === 'mensual' ? porMes[mes - 1]! : porTrimestre[trimestre - 1]!;
     const nombrePeriodo =
-      tab === 'anual' ? `Año ${anio}` : tab === 'mensual' ? `${NOMBRES_MES[mes - 1]} ${anio}` : `Q${trimestre} ${anio}`;
+      tab === 'anual'
+        ? `Año ${anio}`
+        : tab === 'mensual'
+          ? `${NOMBRES_MES[mes - 1]} ${anio}`
+          : `Q${trimestre} ${anio}`;
 
     cuerpo = (
       <>
@@ -210,30 +241,32 @@ export function AlquileresSeccion({ anio, mesSeleccionado }: { anio: number; mes
 
         <div className="flex flex-col gap-2 p-5">
           <p className="text-sm font-bold text-ink">{nombrePeriodo}</p>
-          {tarjetas(delPeriodo, (titulo, foco) => () =>
-            setLista({
-              titulo: `${titulo} · ${nombrePeriodo}`,
-              foco,
-              /*
-               * El listado filtra por las MISMAS columnas —`anio` y `mes`,
-               * derivadas de la fecha de firma— que los números de esta
-               * sección, así que la lista trae exactamente los que cuenta la
-               * tarjeta, en cualquier período.
-               *
-               * `verTodo: true` por lo mismo que en la tarjeta de arriba del
-               * tablero: el listado filtra por puntas cuando el alcance es «lo
-               * mío», y los alquileres no tienen. El servidor evalúa el tilde
-               * por rol, y esta sección solo existe para quien puede ver los
-               * alquileres de toda la inmobiliaria.
-               */
-              filtro: {
-                anio,
-                tipo: 'alquiler',
-                estado: 'firmado',
-                verTodo: true,
-                ...(tab === 'mensual' ? { mes } : tab === 'trimestral' ? { trimestre } : {}),
-              },
-            }),
+          {tarjetas(
+            delPeriodo,
+            (titulo, foco) => () =>
+              setLista({
+                titulo: `${titulo} · ${nombrePeriodo}`,
+                foco,
+                /*
+                 * El listado filtra por las MISMAS columnas —`anio` y `mes`,
+                 * derivadas de la fecha de firma— que los números de esta
+                 * sección, así que la lista trae exactamente los que cuenta la
+                 * tarjeta, en cualquier período.
+                 *
+                 * `verTodo: true` por lo mismo que en la tarjeta de arriba del
+                 * tablero: el listado filtra por puntas cuando el alcance es «lo
+                 * mío», y los alquileres no tienen. El servidor evalúa el tilde
+                 * por rol, y esta sección solo existe para quien puede ver los
+                 * alquileres de toda la inmobiliaria.
+                 */
+                filtro: {
+                  anio,
+                  tipo: 'alquiler',
+                  estado: 'firmado',
+                  verTodo: true,
+                  ...(tab === 'mensual' ? { mes } : tab === 'trimestral' ? { trimestre } : {}),
+                },
+              }),
           )}
         </div>
       </>

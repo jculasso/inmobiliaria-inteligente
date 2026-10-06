@@ -12,7 +12,12 @@ interface Props {
   coeficientes: Coeficientes;
 }
 
-export function Seccion4Comparables({ comparables, setComparables, analisis, coeficientes }: Props) {
+export function Seccion4Comparables({
+  comparables,
+  setComparables,
+  analisis,
+  coeficientes,
+}: Props) {
   return (
     <div className="flex flex-col gap-3">
       <PasoHeader

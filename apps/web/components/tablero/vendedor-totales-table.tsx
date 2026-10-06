@@ -90,7 +90,8 @@ export function VendedorTotalesTable({
    * tabla se vuelve a dibujar, y el que mira cree que pasó algo.
    */
   const ordenado = [...items].sort(
-    (a, b) => b[criterio] - a[criterio] || b.volumen - a.volumen || a.nombre.localeCompare(b.nombre),
+    (a, b) =>
+      b[criterio] - a[criterio] || b.volumen - a.volumen || a.nombre.localeCompare(b.nombre),
   );
   /*
    * El peso se recalcula acá y NO se usa el que manda el servidor. El del
@@ -125,7 +126,9 @@ export function VendedorTotalesTable({
         calle sin poder mirar la tabla como quiere.
       */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line px-4 py-2.5 sm:px-5">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-muted">Ordenar por</span>
+        <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
+          Ordenar por
+        </span>
         <div className="flex flex-wrap gap-1" role="group" aria-label="Ordenar por">
           {CRITERIOS.map((c) => (
             <button
@@ -158,7 +161,9 @@ export function VendedorTotalesTable({
                 {MEDALLAS[i] ?? i + 1}
               </span>
               <Avatar nombre={item.nombre} fotoUrl={item.fotoUrl} size="sm" />
-              <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{item.nombre}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">
+                {item.nombre}
+              </span>
               {/*
                 En la tarjeta no hay encabezado de columna, así que un «140%»
                 suelto no dice contra qué. Cuando el número deja de ser una
@@ -181,7 +186,9 @@ export function VendedorTotalesTable({
         ))}
 
         <li className="mt-1 rounded-xl border-2 border-line bg-surface px-3 py-2.5">
-          <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">Total general</span>
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-muted">
+            Total general
+          </span>
           <CamposTarjeta>
             <CampoTarjeta etiqueta="Volumen">{fmtUSD(totales.volumen)}</CampoTarjeta>
             <CampoTarjeta etiqueta="Puntas">{fmtNum(totales.puntas)}</CampoTarjeta>
@@ -193,80 +200,89 @@ export function VendedorTotalesTable({
 
       <TablaAncha>
         <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs uppercase tracking-wide text-muted">
-            <th className="px-5 py-2">#</th>
-            <th className="px-5 py-2">Vendedor</th>
-            {/*
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wide text-muted">
+              <th className="px-5 py-2">#</th>
+              <th className="px-5 py-2">Vendedor</th>
+              {/*
               La columna por la que se está ordenando se marca en el
               encabezado. Sin esto, con la tabla ordenada por comisión, los
               números de volumen se ven desordenados y parece un error.
             */}
-            {CRITERIOS.map((c) => (
-              <th
-                key={c.key}
-                aria-sort={criterio === c.key ? 'descending' : 'none'}
-                className={`px-5 py-2 ${criterio === c.key ? 'text-ink' : ''}`}
-              >
-                {c.label}
-                {criterio === c.key && <span aria-hidden> ▾</span>}
-              </th>
-            ))}
-            <th className="px-5 py-2">{etiquetaDelPeso(criterio)}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ordenado.map((item, i) => (
-            <tr key={item.usuarioId} className={`border-t border-line ${i === 0 ? 'bg-brand-red/5' : ''}`}>
-              <td className="px-5 py-2 text-muted">{MEDALLAS[i] ?? i + 1}</td>
-              <td className="px-5 py-2 font-medium text-ink">
-                <button
-                  type="button"
-                  onClick={() => setDrill(item)}
-                  className="flex items-center gap-2 hover:text-brand-red hover:underline"
+              {CRITERIOS.map((c) => (
+                <th
+                  key={c.key}
+                  aria-sort={criterio === c.key ? 'descending' : 'none'}
+                  className={`px-5 py-2 ${criterio === c.key ? 'text-ink' : ''}`}
                 >
-                  <Avatar nombre={item.nombre} fotoUrl={item.fotoUrl} size="sm" />
-                  {item.nombre}
-                </button>
-              </td>
-              <td className="px-5 py-2">{fmtUSD(item.volumen)}</td>
-              <td className="px-5 py-2">{fmtNum(item.puntas)}</td>
-              <td className="px-5 py-2">{fmtUSD(item.comision)}</td>
-              <td className="px-5 py-2">{fmtUSD(item.ticketPromedio)}</td>
-              <td className="px-5 py-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface">
-                    <div
-                      className="h-full rounded-full bg-brand-red"
-                      style={{ width: `${(peso[i]! / maxPeso) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-muted">{Math.round(peso[i]! * 100)}%</span>
-                </div>
-              </td>
+                  {c.label}
+                  {criterio === c.key && <span aria-hidden> ▾</span>}
+                </th>
+              ))}
+              <th className="px-5 py-2">{etiquetaDelPeso(criterio)}</th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-line font-bold text-ink">
-            <td className="px-5 py-2" colSpan={2}>
-              TOTAL GENERAL
-            </td>
-            <td className="px-5 py-2">{fmtUSD(totales.volumen)}</td>
-            <td className="px-5 py-2">{fmtNum(totales.puntas)}</td>
-            <td className="px-5 py-2">{fmtUSD(totales.comision)}</td>
-            <td className="px-5 py-2">{fmtUSD(ticketTotal)}</td>
-            <td className="px-5 py-2" />
-          </tr>
-        </tfoot>
-      </table>
+          </thead>
+          <tbody>
+            {ordenado.map((item, i) => (
+              <tr
+                key={item.usuarioId}
+                className={`border-t border-line ${i === 0 ? 'bg-brand-red/5' : ''}`}
+              >
+                <td className="px-5 py-2 text-muted">{MEDALLAS[i] ?? i + 1}</td>
+                <td className="px-5 py-2 font-medium text-ink">
+                  <button
+                    type="button"
+                    onClick={() => setDrill(item)}
+                    className="flex items-center gap-2 hover:text-brand-red hover:underline"
+                  >
+                    <Avatar nombre={item.nombre} fotoUrl={item.fotoUrl} size="sm" />
+                    {item.nombre}
+                  </button>
+                </td>
+                <td className="px-5 py-2">{fmtUSD(item.volumen)}</td>
+                <td className="px-5 py-2">{fmtNum(item.puntas)}</td>
+                <td className="px-5 py-2">{fmtUSD(item.comision)}</td>
+                <td className="px-5 py-2">{fmtUSD(item.ticketPromedio)}</td>
+                <td className="px-5 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-brand-red"
+                        style={{ width: `${(peso[i]! / maxPeso) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted">{Math.round(peso[i]! * 100)}%</span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-line font-bold text-ink">
+              <td className="px-5 py-2" colSpan={2}>
+                TOTAL GENERAL
+              </td>
+              <td className="px-5 py-2">{fmtUSD(totales.volumen)}</td>
+              <td className="px-5 py-2">{fmtNum(totales.puntas)}</td>
+              <td className="px-5 py-2">{fmtUSD(totales.comision)}</td>
+              <td className="px-5 py-2">{fmtUSD(ticketTotal)}</td>
+              <td className="px-5 py-2" />
+            </tr>
+          </tfoot>
+        </table>
       </TablaAncha>
 
       {drill && (
         <DetalleDrillModal
           titulo={drill.nombre}
           subtitulo={`Ventas escrituradas · Año ${anio}`}
-          filtro={{ anio, usuarioId: drill.usuarioId, verTodo, tipo: 'venta', estado: 'escriturada' }}
+          filtro={{
+            anio,
+            usuarioId: drill.usuarioId,
+            verTodo,
+            tipo: 'venta',
+            estado: 'escriturada',
+          }}
           onClose={() => setDrill(null)}
         />
       )}

@@ -14,7 +14,12 @@ import {
 } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarLiquidacionPdf, liquidar, prepararLiquidacion, enviarLiquidacionPorMail } from '../../lib/alquileres-api';
+import {
+  generarLiquidacionPdf,
+  liquidar,
+  prepararLiquidacion,
+  enviarLiquidacionPorMail,
+} from '../../lib/alquileres-api';
 import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtMoneda } from '../../lib/format';
@@ -36,7 +41,13 @@ export function inquilinosDe(c: ContratoDeLiquidacion | null): { rotulo: string;
  * (pedido de Javier del 6/10/2026: «Inquilino, Propiedad, Propietario, todo
  * bien organizado»). La misma forma que en el PDF.
  */
-export function FichaPropiedad({ contrato, propietario }: { contrato: ContratoDeLiquidacion | null; propietario: string }) {
+export function FichaPropiedad({
+  contrato,
+  propietario,
+}: {
+  contrato: ContratoDeLiquidacion | null;
+  propietario: string;
+}) {
   const inq = inquilinosDe(contrato);
   return (
     <div className="border-b border-line bg-surface/40 px-4 py-3">
@@ -46,7 +57,10 @@ export function FichaPropiedad({ contrato, propietario }: { contrato: ContratoDe
           {contrato?.propiedad || 'Sin propiedad'}
         </span>
         {contrato && (
-          <Link href={`/alquileres/contratos/${contrato.id}`} className={`rounded text-xs font-semibold text-muted hover:text-brand-red hover:underline ${CLASE_FOCO}`}>
+          <Link
+            href={`/alquileres/contratos/${contrato.id}`}
+            className={`rounded text-xs font-semibold text-muted hover:text-brand-red hover:underline ${CLASE_FOCO}`}
+          >
             Contrato {contrato.codigo}
           </Link>
         )}
@@ -70,11 +84,15 @@ function PanelResumen({ prep, grupos }: { prep: PreparacionLiquidacionDto; grupo
   return (
     <dl className="grid gap-3 sm:grid-cols-[2fr_1fr]">
       <div className="min-w-0 rounded-brand border border-line bg-white p-4 shadow-sm">
-        <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">🧑‍💼 Propietario</dt>
+        <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">
+          🧑‍💼 Propietario
+        </dt>
         <dd className="mt-1 text-lg font-extrabold text-ink">{prep.persona.nombre}</dd>
       </div>
       <div className="rounded-brand border border-line bg-white p-4 shadow-sm">
-        <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">🏠 Propiedades</dt>
+        <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">
+          🏠 Propiedades
+        </dt>
         <dd className="mt-1 text-lg font-extrabold tabular-nums text-ink">{grupos}</dd>
       </div>
     </dl>
@@ -114,10 +132,17 @@ export function LiquidacionForm({
     setError(null);
     (async () => {
       try {
-        const p = await prepararLiquidacion(await getAccessToken(), personaId, moneda, hoy, excluidos);
+        const p = await prepararLiquidacion(
+          await getAccessToken(),
+          personaId,
+          moneda,
+          hoy,
+          excluidos,
+        );
         if (vigente) setPrep(p);
       } catch (err) {
-        if (vigente) setError(err instanceof Error ? err.message : 'No se pudo armar la liquidación.');
+        if (vigente)
+          setError(err instanceof Error ? err.message : 'No se pudo armar la liquidación.');
       } finally {
         if (vigente) setCargando(false);
       }
@@ -127,13 +152,16 @@ export function LiquidacionForm({
     };
   }, [personaId, moneda, hoy, excluidos]);
 
-  const alternar = (id: string) => setExcluidos((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]));
+  const alternar = (id: string) =>
+    setExcluidos((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]));
 
   async function confirmar() {
     setError(null);
     setEnviando(true);
     try {
-      setHecha(await liquidar(await getAccessToken(), { personaId, moneda, fecha: hoy, medio, excluidos }));
+      setHecha(
+        await liquidar(await getAccessToken(), { personaId, moneda, fecha: hoy, medio, excluidos }),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo liquidar.');
     } finally {
@@ -145,7 +173,13 @@ export function LiquidacionForm({
     return (
       <Confirmacion
         titulo={`Liquidación ${numero(hecha.numero)} · ${fmtMoneda(hecha.neto, hecha.moneda)} a ${hecha.persona.nombre}`}
-        detalle={error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
+        detalle={
+          error && (
+            <p role="alert" className="text-sm font-medium text-danger">
+              {error}
+            </p>
+          )
+        }
         volver={{ href: '/alquileres/liquidaciones', texto: 'Volver a liquidaciones' }}
       >
         <Button asChild variant="primary">
@@ -153,7 +187,12 @@ export function LiquidacionForm({
         </Button>
         <Button
           variant="secondary"
-          onClick={() => abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), hecha.id), { titulo: `Liquidación ${numero(hecha.numero)}`, onError: setError })}
+          onClick={() =>
+            abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), hecha.id), {
+              titulo: `Liquidación ${numero(hecha.numero)}`,
+              onError: setError,
+            })
+          }
         >
           📄 Abrir la liquidación
         </Button>
@@ -161,14 +200,19 @@ export function LiquidacionForm({
           ✉️ Enviar por mail
         </Button>
         {/* Sin el propietario en la dirección: el de recién ya no tiene nada para liquidar. */}
-        <Button variant="secondary" onClick={() => window.location.assign('/alquileres/liquidaciones/nueva')}>
+        <Button
+          variant="secondary"
+          onClick={() => window.location.assign('/alquileres/liquidaciones/nueva')}
+        >
           🧾 Otra liquidación
         </Button>
         {mandando && (
           <EnviarMailModal
             titulo={`Enviar la liquidación ${numero(hecha.numero)} por mail`}
             personaId={hecha.persona.id}
-            enviar={async (para) => enviarLiquidacionPorMail(await getAccessToken(), hecha.id, para)}
+            enviar={async (para) =>
+              enviarLiquidacionPorMail(await getAccessToken(), hecha.id, para)
+            }
             onClose={() => setMandando(false)}
           />
         )}
@@ -176,7 +220,15 @@ export function LiquidacionForm({
     );
   }
 
-  const Linea = ({ x, signo, enEspera = false }: { x: LineaLiquidacion; signo: string; enEspera?: boolean }) => (
+  const Linea = ({
+    x,
+    signo,
+    enEspera = false,
+  }: {
+    x: LineaLiquidacion;
+    signo: string;
+    enEspera?: boolean;
+  }) => (
     <li className="flex items-start gap-3 px-4 py-2">
       {enEspera ? (
         <span aria-hidden className="w-4 shrink-0" />
@@ -189,15 +241,21 @@ export function LiquidacionForm({
           onChange={() => alternar(x.conceptoId)}
         />
       )}
-      <span className={`min-w-0 flex-1 ${enEspera ? 'text-muted' : 'text-ink'}`}>{x.descripcion}</span>
-      <span className={`shrink-0 whitespace-nowrap font-semibold tabular-nums ${enEspera ? 'text-muted' : 'text-ink'}`}>
+      <span className={`min-w-0 flex-1 ${enEspera ? 'text-muted' : 'text-ink'}`}>
+        {x.descripcion}
+      </span>
+      <span
+        className={`shrink-0 whitespace-nowrap font-semibold tabular-nums ${enEspera ? 'text-muted' : 'text-ink'}`}
+      >
         {signo}
         {fmtMoneda(x.importe, moneda)}
       </span>
     </li>
   );
   const Rotulo = ({ children }: { children: React.ReactNode }) => (
-    <li className="bg-surface/50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted">{children}</li>
+    <li className="bg-surface/50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+      {children}
+    </li>
   );
 
   // Lo que se destildó sigue a la vista, para poder volver a tildarlo.
@@ -206,7 +264,10 @@ export function LiquidacionForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <EncabezadoPagina titulo="Nueva liquidación" volver={{ href: '/alquileres/liquidaciones', texto: 'Liquidaciones' }} />
+      <EncabezadoPagina
+        titulo="Nueva liquidación"
+        volver={{ href: '/alquileres/liquidaciones', texto: 'Liquidaciones' }}
+      />
       <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-2">
         <div className="sm:col-span-2">
           <SelectorPersona
@@ -221,13 +282,21 @@ export function LiquidacionForm({
           />
         </div>
         <Campo label="Moneda">
-          <select className={inputClass} value={moneda} onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}>
+          <select
+            className={inputClass}
+            value={moneda}
+            onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}
+          >
             <option value="ARS">Pesos</option>
             <option value="USD">Dólares</option>
           </select>
         </Campo>
         <Campo label="Se le paga por">
-          <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
+          <select
+            className={inputClass}
+            value={medio}
+            onChange={(e) => setMedio(e.target.value as MedioCobro)}
+          >
             {MEDIOS_COBRO.map((v) => (
               <option key={v} value={v}>
                 {NOMBRE_MEDIO[v]}
@@ -243,9 +312,17 @@ export function LiquidacionForm({
       {prep && !cargando && (
         <>
           <PanelResumen prep={prep} grupos={grupos.length} />
-          {grupos.length === 0 && <p className="text-sm text-muted">No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}.</p>}
+          {grupos.length === 0 && (
+            <p className="text-sm text-muted">
+              No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}.
+            </p>
+          )}
           {grupos.map((g) => (
-            <section key={g.contrato?.id ?? 'otros'} className="overflow-hidden rounded-brand border border-line bg-white shadow-sm" aria-label={`Propiedad ${g.contrato?.propiedad ?? ''}`}>
+            <section
+              key={g.contrato?.id ?? 'otros'}
+              className="overflow-hidden rounded-brand border border-line bg-white shadow-sm"
+              aria-label={`Propiedad ${g.contrato?.propiedad ?? ''}`}
+            >
               <FichaPropiedad contrato={g.contrato} propietario={prep.persona.nombre} />
               <ul className="divide-y divide-line text-sm">
                 {g.aPagar.length > 0 && <Rotulo>💵 Cobrado a su favor</Rotulo>}
@@ -259,11 +336,15 @@ export function LiquidacionForm({
                 {(g.aPagar.length > 0 || g.aDescontar.length > 0) && (
                   <li className="flex items-baseline justify-between gap-3 bg-surface/60 px-4 py-2.5 font-bold">
                     <span>Subtotal de la propiedad</span>
-                    <span className="whitespace-nowrap tabular-nums">{fmtMoneda(g.subtotal, moneda)}</span>
+                    <span className="whitespace-nowrap tabular-nums">
+                      {fmtMoneda(g.subtotal, moneda)}
+                    </span>
                   </li>
                 )}
                 {/* Después del subtotal: lo que espera no suma. */}
-                {g.enEspera.length > 0 && <Rotulo>⏳ En espera: el inquilino todavía no pagó</Rotulo>}
+                {g.enEspera.length > 0 && (
+                  <Rotulo>⏳ En espera: el inquilino todavía no pagó</Rotulo>
+                )}
                 {g.enEspera.map((x) => (
                   <Linea key={x.conceptoId} x={x} signo="" enEspera />
                 ))}
@@ -272,22 +353,42 @@ export function LiquidacionForm({
           ))}
           {dejados > 0 && (
             <p className="text-sm text-muted">
-              {dejados === 1 ? 'Un concepto queda' : `${dejados} conceptos quedan`} para la próxima liquidación.{' '}
-              <button type="button" className={`rounded font-semibold text-brand-red hover:underline ${CLASE_FOCO}`} onClick={() => setExcluidos([])}>
+              {dejados === 1 ? 'Un concepto queda' : `${dejados} conceptos quedan`} para la próxima
+              liquidación.{' '}
+              <button
+                type="button"
+                className={`rounded font-semibold text-brand-red hover:underline ${CLASE_FOCO}`}
+                onClick={() => setExcluidos([])}
+              >
                 Volver a incluir todo
               </button>
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-brand border border-line bg-white px-4 py-3 shadow-sm">
             <span>
-              <span className="block text-[11px] font-bold uppercase tracking-wider text-muted">💰 Neto a pagar</span>
-              <span className={`text-2xl font-extrabold tabular-nums ${prep.neto < 0 ? 'text-danger' : 'text-ink'}`}>{fmtMoneda(prep.neto, moneda)}</span>
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-muted">
+                💰 Neto a pagar
+              </span>
+              <span
+                className={`text-2xl font-extrabold tabular-nums ${prep.neto < 0 ? 'text-danger' : 'text-ink'}`}
+              >
+                {fmtMoneda(prep.neto, moneda)}
+              </span>
             </span>
-            <Button variant="primary" onClick={confirmar} disabled={enviando || prep.aPagar.length === 0 || prep.neto < 0}>
+            <Button
+              variant="primary"
+              onClick={confirmar}
+              disabled={enviando || prep.aPagar.length === 0 || prep.neto < 0}
+            >
               {enviando ? 'Liquidando…' : 'Liquidar'}
             </Button>
           </div>
-          {prep.neto < 0 && <p className="text-sm font-medium text-danger">Lo que se descuenta supera lo que se le paga: destildá algún descuento para la próxima.</p>}
+          {prep.neto < 0 && (
+            <p className="text-sm font-medium text-danger">
+              Lo que se descuenta supera lo que se le paga: destildá algún descuento para la
+              próxima.
+            </p>
+          )}
         </>
       )}
 

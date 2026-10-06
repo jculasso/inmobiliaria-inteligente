@@ -76,7 +76,9 @@ export function armarMailDelReporte(
 
   const celdasKpi = kpis
     .map(
-      (k) => `<td style="width:25%;padding:10px 8px;border:1px solid ${LINE};border-radius:6px;vertical-align:top">
+      (
+        k,
+      ) => `<td style="width:25%;padding:10px 8px;border:1px solid ${LINE};border-radius:6px;vertical-align:top">
   <div style="font-size:10px;font-weight:700;color:${MUTED};letter-spacing:.5px;text-transform:uppercase">${esc(k.label)}</div>
   <div style="font-size:24px;font-weight:800;color:${k.color};padding-top:4px">${k.valor}</div>
 </td>`,
@@ -87,12 +89,15 @@ export function armarMailDelReporte(
     ? `<h2 style="font-size:13px;font-weight:800;color:${DANGER};letter-spacing:1px;text-transform:uppercase;margin:26px 0 8px">Necesita atención</h2>
 ${reporte.urgencias
   .map(
-    (u) => `<div style="border:1px solid #EFC2C7;border-left:3px solid ${DANGER};border-radius:6px;padding:10px 12px;margin-bottom:8px">
+    (
+      u,
+    ) => `<div style="border:1px solid #EFC2C7;border-left:3px solid ${DANGER};border-radius:6px;padding:10px 12px;margin-bottom:8px">
   <div style="font-size:15px;font-weight:700;color:${INK}">${esc(u.direccion)}</div>
   <div style="font-size:12px;color:${MUTED};padding-bottom:4px">${esc(u.vendedorNombre)}</div>
   ${u.alertas
     .map(
-      (a) => `<div style="font-size:13px;color:#8F0D18;padding-top:3px">• <strong>${esc(a.titulo)}</strong> — ${esc(a.detalle)}</div>`,
+      (a) =>
+        `<div style="font-size:13px;color:#8F0D18;padding-top:3px">• <strong>${esc(a.titulo)}</strong> — ${esc(a.detalle)}</div>`,
     )
     .join('')}
 </div>`,
@@ -109,7 +114,9 @@ ${reporte.urgencias
     ? `<h2 style="font-size:13px;font-weight:800;color:${MUTED};letter-spacing:1px;text-transform:uppercase;margin:26px 0 8px">Detalle por vendedor</h2>
 ${reporte.porVendedor
   .map(
-    (v) => `<div style="border-bottom:1px solid ${LINE};padding:10px 0 4px;font-size:14px;font-weight:800;color:${INK}">
+    (
+      v,
+    ) => `<div style="border-bottom:1px solid ${LINE};padding:10px 0 4px;font-size:14px;font-weight:800;color:${INK}">
   ${esc(v.vendedorNombre)}
   <span style="font-weight:400;font-size:12px;color:${v.conRojas > 0 ? DANGER : MUTED}"> · ${v.propiedades.length} ${v.propiedades.length === 1 ? 'propiedad' : 'propiedades'}</span>
 </div>

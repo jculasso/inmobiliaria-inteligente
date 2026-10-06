@@ -8,6 +8,9 @@ export const metadata = { title: 'Nuevo contrato · Alquileres' };
 export default async function NuevoContratoPage() {
   const ctx = await requireServerPrincipal();
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
-  const [personas, propiedades] = await Promise.all([listPersonas(ctx.accessToken), listPropiedadesAlquiler(ctx.accessToken)]);
+  const [personas, propiedades] = await Promise.all([
+    listPersonas(ctx.accessToken),
+    listPropiedadesAlquiler(ctx.accessToken),
+  ]);
   return <ContratoForm personas={personas} propiedades={propiedades} />;
 }

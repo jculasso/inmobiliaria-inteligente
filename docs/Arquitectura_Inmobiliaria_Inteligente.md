@@ -6,7 +6,7 @@ NEGOCIOS INMOBILIARIOS
 
 Documento preliminar de arquitectura
 
-*Para discusión con el equipo técnico*
+_Para discusión con el equipo técnico_
 
 Versión 0.3 · Julio 2026
 
@@ -54,7 +54,7 @@ Versión 0.3 · Julio 2026
 
 19. Plan de pasaje a CODE — Fase 1 (MVP productivo)
 
-1. Resumen ejecutivo
+20. Resumen ejecutivo
 
 Inmobiliaria Inteligente 2.0 es la evolución del conjunto de herramientas internas de Vacker hacia una plataforma SaaS multi-tenant: un sistema único, modular y accesible desde cualquier dispositivo, pensado para ser comercializado a múltiples inmobiliarias y usado por muchos usuarios dentro de cada una.
 
@@ -94,14 +94,14 @@ La plataforma distingue dos planos: los usuarios de cada inmobiliaria (plano ten
 
 Actores y ámbito
 
-| **Actor** | **Ámbito** | **Accede principalmente a** | **Ejemplos de permisos** |
-| --- | --- | --- | --- |
-| **Agente / Vendedor** | Tenant | Tasador, sus operaciones y sus clientes | Crear tasaciones, gestionar su cartera |
-| Team Leader | Tenant | Tablero de su equipo, tasaciones del equipo | Ver KPIs, reasignar, aprobar captaciones |
-| **Dirección / CEO** | Tenant | Todos los módulos y KPIs globales del tenant | Configurar objetivos, visión total |
-| **Administración (****tenant**** ****admin****)** | Tenant | Usuarios, roles y plan del tenant | Alta/baja de usuarios, gestión de suscripción |
-| **Soporte / ****Admin**** de plataforma** | Plataforma | Backoffice: todos los tenants (con control) | Gestión de tenants, soporte, impersonación auditada |
-| **Finanzas / Facturación** | Plataforma | Medición de uso, planes y cobranzas | Emitir facturas, ver consumo por tenant |
+| **Actor**                                         | **Ámbito** | **Accede principalmente a**                  | **Ejemplos de permisos**                            |
+| ------------------------------------------------- | ---------- | -------------------------------------------- | --------------------------------------------------- |
+| **Agente / Vendedor**                             | Tenant     | Tasador, sus operaciones y sus clientes      | Crear tasaciones, gestionar su cartera              |
+| Team Leader                                       | Tenant     | Tablero de su equipo, tasaciones del equipo  | Ver KPIs, reasignar, aprobar captaciones            |
+| **Dirección / CEO**                               | Tenant     | Todos los módulos y KPIs globales del tenant | Configurar objetivos, visión total                  |
+| **Administración (****tenant**** ****admin****)** | Tenant     | Usuarios, roles y plan del tenant            | Alta/baja de usuarios, gestión de suscripción       |
+| **Soporte / ****Admin**** de plataforma**         | Plataforma | Backoffice: todos los tenants (con control)  | Gestión de tenants, soporte, impersonación auditada |
+| **Finanzas / Facturación**                        | Plataforma | Medición de uso, planes y cobranzas          | Emitir facturas, ver consumo por tenant             |
 
 Canales de acceso
 
@@ -115,17 +115,17 @@ Canales de acceso
 
 Los siguientes objetivos guían las decisiones de arquitectura. Son metas iniciales, a validar y ajustar con el equipo.
 
-| **Categoría** | **Objetivo de referencia** |
-| --- | --- |
-| **Disponibilidad** | 99,9% objetivo, con degradación elegante ante fallos parciales |
-| **Rendimiento** | Latencia P95 < 300 ms en operaciones de lectura de la API |
-| **Escalabilidad** | Crecer en tenants y usuarios sin rediseño (escalado horizontal) |
-| **Multi-dispositivo** | Experiencia consistente en web responsive y apps nativas |
-| **Aislamiento** | Separación estricta de datos entre tenants |
-| **Seguridad** | Cifrado en tránsito y reposo, MFA, mínimo privilegio |
-| **Cumplimiento** | Ley 25.326 (Protección de Datos Personales, AR) y buenas prácticas tipo GDPR |
-| **Observabilidad** | Trazabilidad extremo a extremo (logs, métricas, trazas) |
-| **Mantenibilidad** | Base de código modular, tipada y con pruebas automatizadas |
+| **Categoría**         | **Objetivo de referencia**                                                   |
+| --------------------- | ---------------------------------------------------------------------------- |
+| **Disponibilidad**    | 99,9% objetivo, con degradación elegante ante fallos parciales               |
+| **Rendimiento**       | Latencia P95 < 300 ms en operaciones de lectura de la API                    |
+| **Escalabilidad**     | Crecer en tenants y usuarios sin rediseño (escalado horizontal)              |
+| **Multi-dispositivo** | Experiencia consistente en web responsive y apps nativas                     |
+| **Aislamiento**       | Separación estricta de datos entre tenants                                   |
+| **Seguridad**         | Cifrado en tránsito y reposo, MFA, mínimo privilegio                         |
+| **Cumplimiento**      | Ley 25.326 (Protección de Datos Personales, AR) y buenas prácticas tipo GDPR |
+| **Observabilidad**    | Trazabilidad extremo a extremo (logs, métricas, trazas)                      |
+| **Mantenibilidad**    | Base de código modular, tipada y con pruebas automatizadas                   |
 
 > **Aplicabilidad por fase.** Estos objetivos corresponden al estado productivo con tenants pagos. En la Fase 1 gratuita (sección 19) se aceptan explícitamente concesiones —cold starts del hosting free y pausa por inactividad de la base de datos— porque el objetivo de esa fase es validar con un único tenant (Vacker), no cumplir el SLA de disponibilidad. El 99,9% es un disparador de la fase de escala.
 
@@ -133,7 +133,7 @@ Los siguientes objetivos guían las decisiones de arquitectura. Son metas inicia
 
 La plataforma se organiza en capas: canales de cliente, una capa de borde que concentra el acceso, servicios de aplicación modulares protegidos por identidad y acceso, y una capa de datos. Servicios transversales (observabilidad, CI/CD, infraestructura como código, backups y gestión de secretos) atraviesan todo el sistema.
 
-*Figura 1. Arquitectura lógica de alto nivel.*
+_Figura 1. Arquitectura lógica de alto nivel._
 
 El principio rector es API-first: toda la funcionalidad se expone a través de una API bien definida, de modo que web, apps móviles y backoffice sean clientes de la misma capa de servicios. Esto evita duplicar lógica de negocio por canal y facilita agregar módulos y clientes nuevos.
 
@@ -141,11 +141,11 @@ El principio rector es API-first: toda la funcionalidad se expone a través de u
 
 Multi-tenancy es la característica central: una sola plataforma sirve a muchas inmobiliarias manteniendo sus datos y su configuración aislados. Hay tres modelos habituales, que pueden convivir.
 
-| **Modelo** | **Descripción** | **Ventajas** | **Contras** |
-| --- | --- | --- | --- |
-| **Pooled**** (recomendado)** | BD compartida; cada fila lleva tenant_id; aislamiento por Row-Level Security | Costo eficiente, operación simple, escala a muchos tenants | Aislamiento lógico (no físico); exige rigor en RLS |
-| **Bridge** | Un esquema de BD por tenant en una misma instancia | Mejor aislamiento; migraciones por tenant | Más complejidad operativa; límite práctico de esquemas |
-| **Silo** | BD o infraestructura dedicada por tenant | Aislamiento máximo; ideal para enterprise/regulados | Costo y operación altos; no escala a muchos tenants chicos |
+| **Modelo**                   | **Descripción**                                                              | **Ventajas**                                               | **Contras**                                                |
+| ---------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| **Pooled**** (recomendado)** | BD compartida; cada fila lleva tenant_id; aislamiento por Row-Level Security | Costo eficiente, operación simple, escala a muchos tenants | Aislamiento lógico (no físico); exige rigor en RLS         |
+| **Bridge**                   | Un esquema de BD por tenant en una misma instancia                           | Mejor aislamiento; migraciones por tenant                  | Más complejidad operativa; límite práctico de esquemas     |
+| **Silo**                     | BD o infraestructura dedicada por tenant                                     | Aislamiento máximo; ideal para enterprise/regulados        | Costo y operación altos; no escala a muchos tenants chicos |
 
 **Recomendación: **comenzar con el modelo pooled (PostgreSQL + Row-Level Security), que ofrece el mejor equilibrio costo/simplicidad para captar muchas inmobiliarias. Diseñar desde el inicio con tenant_id en todas las entidades y reglas RLS, dejando la puerta abierta a promover a un modelo silo a clientes grandes que lo requieran, sin cambiar el modelo de datos.
 
@@ -155,21 +155,21 @@ Multi-tenancy es la característica central: una sola plataforma sirve a muchas 
 
 La recomendación prioriza un ecosistema unificado en TypeScript (web, móvil y backend comparten lenguaje y parte de la lógica), reaprovechando el trabajo en React del MVP. Todas las alternativas listadas son válidas; la elección final depende de las preferencias y experiencia del equipo.
 
-| **Capa** | **Recomendación** | **Alternativas** | **Notas** |
-| --- | --- | --- | --- |
-| **Frontend**** web** | React + Next.js (TypeScript), PWA | Angular, Vue/Nuxt, SvelteKit | Reutiliza el React del MVP; SSR/SEO y PWA |
-| **Design**** ****system** | Librería propia (tokens rojo Vacker) sobre Tailwind + Radix | MUI, Chakra UI | Consistencia entre módulos y canales |
-| **Backend**** / API** | Node + NestJS (TS), monolito modular | Django/DRF (Python), .NET, Rails | Un lenguaje full-stack; extraer servicios luego |
-| **Estilo de API** | REST + OpenAPI | GraphQL, tRPC | BFF para móvil si conviene optimizar payloads |
-| **Base de datos** | PostgreSQL + Row-Level Security | MySQL/MariaDB, Aurora | RLS clave para el aislamiento multi-tenant |
-| **Caché / colas** | Redis + BullMQ | RabbitMQ, AWS SQS | Jobs async: PDF, metering, emails |
-| **Almacenamiento** | Object storage S3-compatible | GCS, Azure Blob | PDFs de tasación, fotos, adjuntos |
-| **Identidad / ****Auth** | Keycloak (self-host) o Auth0 / Cognito | Clerk, WorkOS, Supabase Auth | OIDC/OAuth2, multi-tenant, SSO y MFA |
-| **Apps móviles** | React Native (Expo) | Flutter, nativo puro, PWA | Comparte TS y dominio con la web |
-| **Infraestructura** | Contenedores en AWS (ECS Fargate) + Terraform | GCP / Azure, Kubernetes | IaC desde el día 1; K8s si crece la complejidad |
-| **CI/CD** | GitHub Actions | GitLab CI, CircleCI | Pipelines por entorno con despliegue automatizado |
-| **Pagos / ****billing** | Stripe (Billing + usage) + AFIP (factura AR) | Mercado Pago, Paddle | Suscripción + medición de uso |
-| **Observabilidad** | OpenTelemetry + Grafana (Loki/Tempo) | Datadog, New Relic, ELK | Trazas, métricas y logs correlacionados |
+| **Capa**                  | **Recomendación**                                           | **Alternativas**                 | **Notas**                                         |
+| ------------------------- | ----------------------------------------------------------- | -------------------------------- | ------------------------------------------------- |
+| **Frontend**** web**      | React + Next.js (TypeScript), PWA                           | Angular, Vue/Nuxt, SvelteKit     | Reutiliza el React del MVP; SSR/SEO y PWA         |
+| **Design**** ****system** | Librería propia (tokens rojo Vacker) sobre Tailwind + Radix | MUI, Chakra UI                   | Consistencia entre módulos y canales              |
+| **Backend**** / API**     | Node + NestJS (TS), monolito modular                        | Django/DRF (Python), .NET, Rails | Un lenguaje full-stack; extraer servicios luego   |
+| **Estilo de API**         | REST + OpenAPI                                              | GraphQL, tRPC                    | BFF para móvil si conviene optimizar payloads     |
+| **Base de datos**         | PostgreSQL + Row-Level Security                             | MySQL/MariaDB, Aurora            | RLS clave para el aislamiento multi-tenant        |
+| **Caché / colas**         | Redis + BullMQ                                              | RabbitMQ, AWS SQS                | Jobs async: PDF, metering, emails                 |
+| **Almacenamiento**        | Object storage S3-compatible                                | GCS, Azure Blob                  | PDFs de tasación, fotos, adjuntos                 |
+| **Identidad / ****Auth**  | Keycloak (self-host) o Auth0 / Cognito                      | Clerk, WorkOS, Supabase Auth     | OIDC/OAuth2, multi-tenant, SSO y MFA              |
+| **Apps móviles**          | React Native (Expo)                                         | Flutter, nativo puro, PWA        | Comparte TS y dominio con la web                  |
+| **Infraestructura**       | Contenedores en AWS (ECS Fargate) + Terraform               | GCP / Azure, Kubernetes          | IaC desde el día 1; K8s si crece la complejidad   |
+| **CI/CD**                 | GitHub Actions                                              | GitLab CI, CircleCI              | Pipelines por entorno con despliegue automatizado |
+| **Pagos / ****billing**   | Stripe (Billing + usage) + AFIP (factura AR)                | Mercado Pago, Paddle             | Suscripción + medición de uso                     |
+| **Observabilidad**        | OpenTelemetry + Grafana (Loki/Tempo)                        | Datadog, New Relic, ELK          | Trazas, métricas y logs correlacionados           |
 
 > **Mapa objetivo → Fase 1.** El stack de esta tabla es el objetivo productivo. En la Fase 1 gratuita (sección 19) se usa una implementación equivalente y de costo cero que preserva las mismas piezas: NestJS (idéntico) para el backend, PostgreSQL + RLS servido por Supabase (que además aporta Auth OIDC y storage S3-compatible), Next.js en Vercel para la web, y despliegue del backend en Render. La caché/colas (Redis) y la observabilidad avanzada se difieren a la fase de escala.
 
@@ -193,13 +193,13 @@ La autenticación se resuelve con un proveedor de identidad basado en OIDC/OAuth
 
 Matriz de acceso por rol (ejemplo inicial)
 
-| **Rol** | **Tablero** | **Tasador** | **To Do List** | **Usuarios/****Config** | **Facturación** |
-| --- | --- | --- | --- | --- | --- |
-| **Agente / Vendedor** | Propio | Crear/editar propias | Propio (su agenda) | — | — |
-| Team Leader | Equipo | Ver equipo | Equipo (agenda propia + visibilidad del equipo) | — | — |
-| **Dirección / CEO** | Total (tenant) | Total (tenant) | Total (tenant) | Ver | Ver |
-| **Admin**** del ****tenant** | Ver | Ver | Ver | Gestionar | Gestionar plan |
-| **Admin**** de plataforma** | Soporte | Soporte | Soporte | Global | Global |
+| **Rol**                      | **Tablero**    | **Tasador**          | **To Do List**                                  | **Usuarios/****Config** | **Facturación** |
+| ---------------------------- | -------------- | -------------------- | ----------------------------------------------- | ----------------------- | --------------- |
+| **Agente / Vendedor**        | Propio         | Crear/editar propias | Propio (su agenda)                              | —                       | —               |
+| Team Leader                  | Equipo         | Ver equipo           | Equipo (agenda propia + visibilidad del equipo) | —                       | —               |
+| **Dirección / CEO**          | Total (tenant) | Total (tenant)       | Total (tenant)                                  | Ver                     | Ver             |
+| **Admin**** del ****tenant** | Ver            | Ver                  | Ver                                             | Gestionar               | Gestionar plan  |
+| **Admin**** de plataforma**  | Soporte        | Soporte              | Soporte                                         | Global                  | Global          |
 
 Recomendaciones: aplicar MFA al menos para roles con privilegios (dirección, administración), soportar SSO para inmobiliarias que lo requieran, y registrar en auditoría los accesos y las acciones sensibles (incluida la impersonación de soporte).
 
@@ -209,12 +209,12 @@ Recomendaciones: aplicar MFA al menos para roles con privilegios (dirección, ad
 
 El requisito es doble: acceso web desde cualquier dispositivo y apps dedicadas para vendedor, supervisor y CEO en Android e iOS. Se comparan los enfoques principales.
 
-| **Enfoque** | **Ventajas** | **Contras** |
-| --- | --- | --- |
-| **PWA (web instalable)** | Un solo código; despliegue inmediato; sin tiendas | Límites en iOS (push, hardware, background) |
-| **React**** Native (recomendado)** | Experiencia nativa; comparte TS/dominio con la web; push y offline | Requiere builds y publicación en tiendas |
-| **Flutter** | Alto rendimiento y UI muy pulida | Otro lenguaje (Dart); no reaprovecha React |
-| **Nativo puro (Swift/****Kotlin****)** | Máximo control y rendimiento | Doble base de código; mayor costo y tiempo |
+| **Enfoque**                            | **Ventajas**                                                       | **Contras**                                 |
+| -------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------- |
+| **PWA (web instalable)**               | Un solo código; despliegue inmediato; sin tiendas                  | Límites en iOS (push, hardware, background) |
+| **React**** Native (recomendado)**     | Experiencia nativa; comparte TS/dominio con la web; push y offline | Requiere builds y publicación en tiendas    |
+| **Flutter**                            | Alto rendimiento y UI muy pulida                                   | Otro lenguaje (Dart); no reaprovecha React  |
+| **Nativo puro (Swift/****Kotlin****)** | Máximo control y rendimiento                                       | Doble base de código; mayor costo y tiempo  |
 
 **Recomendación: **estrategia en dos tiempos. Primero, una web responsive/PWA que ya cubre todos los dispositivos y permite validar rápido. Luego, una app en React Native (Expo) para los roles de campo, compartiendo la capa de dominio en TypeScript y sumando notificaciones push y modo offline parcial. Se evita mantener dos apps nativas separadas.
 
@@ -310,14 +310,14 @@ El diseño escala horizontalmente: la API es sin estado y crece con réplicas; P
 
 Camino sugerido desde el MVP actual hacia el sistema definitivo. Las fases son incrementales y cada una deja valor utilizable.
 
-| **Fase** | **Foco** | **Entregables clave** |
-| --- | --- | --- |
-| **Fase 0 — Actual** | Validación funcional | Prototipos HTML/React: home (3 módulos), tablero y tasador con historial y captación |
-| **Fase 1 — Fundaciones (free)** | Base de plataforma sin costo | Monorepo TS, identidad + multi-tenant (RLS), design system, backend NestJS y **Tablero Comercial** productivo con datos reales; Home autenticada; hosting free (ver sección 19) |
-| **Fase 2 — Núcleo comercial** | Datos reales y accesos | RBAC completo, web responsive/PWA endurecida, Tablero consolidado con objetivos y ranking en vivo |
-| **Fase 3 — Movilidad** | Trabajo de campo | App React Native, notificaciones push, offline parcial |
-| **Fase 4 — Módulos y comercialización** | Sumar módulos y convertirlo en SaaS | **Tasador** productivo, **To Do List** con integración Google Calendar, facturación por uso, backoffice de plataforma, onboarding self-service, planes |
-| **Fase 5 — Escala** | Crecer y endurecer | Migración a AWS + IaC, nuevos módulos (CRM, Documentación), observabilidad avanzada, hardening y certificaciones |
+| **Fase**                                | **Foco**                            | **Entregables clave**                                                                                                                                                           |
+| --------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fase 0 — Actual**                     | Validación funcional                | Prototipos HTML/React: home (3 módulos), tablero y tasador con historial y captación                                                                                            |
+| **Fase 1 — Fundaciones (free)**         | Base de plataforma sin costo        | Monorepo TS, identidad + multi-tenant (RLS), design system, backend NestJS y **Tablero Comercial** productivo con datos reales; Home autenticada; hosting free (ver sección 19) |
+| **Fase 2 — Núcleo comercial**           | Datos reales y accesos              | RBAC completo, web responsive/PWA endurecida, Tablero consolidado con objetivos y ranking en vivo                                                                               |
+| **Fase 3 — Movilidad**                  | Trabajo de campo                    | App React Native, notificaciones push, offline parcial                                                                                                                          |
+| **Fase 4 — Módulos y comercialización** | Sumar módulos y convertirlo en SaaS | **Tasador** productivo, **To Do List** con integración Google Calendar, facturación por uso, backoffice de plataforma, onboarding self-service, planes                          |
+| **Fase 5 — Escala**                     | Crecer y endurecer                  | Migración a AWS + IaC, nuevos módulos (CRM, Documentación), observabilidad avanzada, hardening y certificaciones                                                                |
 
 > **Orden de los módulos.** El primer módulo productivo es el Tablero Comercial (su MVP ya está listo). El Tasador se incorpora una vez cerrado su MVP, y el To Do List una vez cerrado el suyo. El detalle de la secuencia de implementación está en la sección 19.
 
@@ -327,15 +327,15 @@ Camino sugerido desde el MVP actual hacia el sistema definitivo. Las fases son i
 
 Puntos a debatir y cerrar antes de iniciar el desarrollo definitivo. Se marca el estado tras la revisión v0.2.
 
-| **Tema** | **Opciones a evaluar** | **Estado (v0.2)** |
-| --- | --- | --- |
-| **Proveedor de nube** | AWS (recomendado por madurez) vs GCP vs Azure | **Diferido** — arrancar en PaaS free; decidir nube al escalar |
-| **Identidad: construir vs comprar** | Keycloak self-host vs Auth0 / Cognito / Supabase Auth (gestionado) | **Cerrado (Fase 1)** — comprar/gestionado (Supabase Auth), abstraído para migrar luego |
-| **Momento de la app nativa** | Ahora en paralelo vs después de consolidar la PWA | **Cerrado** — después de la PWA |
-| **Facturación en Argentina** | Integración AFIP directa vs proveedor local (Mercado Pago, etc.) | Abierto — se resuelve en Fase 4 |
-| **Umbral monolito → microservicios** | Cuándo y qué módulos extraer primero | Abierto — revisar al final de Fase 2 |
-| **Alcance del modo offline** | Qué funciones deben operar sin conexión en la app móvil | Abierto — se define en Fase 3 |
-| **Residencia de datos** | Región de alojamiento y requisitos de los clientes | Abierto — revisar antes de captar tenants regulados |
+| **Tema**                             | **Opciones a evaluar**                                             | **Estado (v0.2)**                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| **Proveedor de nube**                | AWS (recomendado por madurez) vs GCP vs Azure                      | **Diferido** — arrancar en PaaS free; decidir nube al escalar                          |
+| **Identidad: construir vs comprar**  | Keycloak self-host vs Auth0 / Cognito / Supabase Auth (gestionado) | **Cerrado (Fase 1)** — comprar/gestionado (Supabase Auth), abstraído para migrar luego |
+| **Momento de la app nativa**         | Ahora en paralelo vs después de consolidar la PWA                  | **Cerrado** — después de la PWA                                                        |
+| **Facturación en Argentina**         | Integración AFIP directa vs proveedor local (Mercado Pago, etc.)   | Abierto — se resuelve en Fase 4                                                        |
+| **Umbral monolito → microservicios** | Cuándo y qué módulos extraer primero                               | Abierto — revisar al final de Fase 2                                                   |
+| **Alcance del modo offline**         | Qué funciones deben operar sin conexión en la app móvil            | Abierto — se define en Fase 3                                                          |
+| **Residencia de datos**              | Región de alojamiento y requisitos de los clientes                 | Abierto — revisar antes de captar tenants regulados                                    |
 
 > **Actualización (v0.3).** Se cerraron dos temas más y se movió uno:
 >
@@ -367,13 +367,13 @@ Aunque Vacker sea el único tenant al inicio, se implementan desde el primer com
 
 19.2 Stack de arranque (free) y su equivalencia con la arquitectura objetivo
 
-| **Pieza** | **Fase 1 (free)** | **Rol / equivalencia objetivo** | **Notas y límites** |
-| --- | --- | --- | --- |
-| Base de datos + Auth + Storage | **Supabase (free)** | PostgreSQL + RLS (secc. 6, 11), Auth OIDC/JWT (secc. 9), object storage S3-compatible para PDFs (secc. 7) | Free: ~500 MB de BD, 50k usuarios activos/mes en Auth, 1 GB de storage. El proyecto se **pausa tras ~1 semana sin actividad**; se evita con un ping diario por cron. Escala: Supabase Pro (~US$25/mes) elimina la pausa, o migración a PostgreSQL gestionado/AWS |
-| Backend / API | **NestJS** (idéntico al objetivo) sobre **Render (free)** | Monolito modular, contratos OpenAPI (secc. 8) | Free: 512 MB RAM, TLS y dominio incluidos; el servicio **se duerme por inactividad** y el primer request tarda ~1 min en despertar. Aceptable para demo, no para SLA |
-| Frontend web | **Next.js** en **Vercel (free)** | Web responsive/PWA (secc. 7, 10); reutiliza el React del MVP | Hobby tier para Home + Tablero |
-| CI/CD | **GitHub Actions** | Igual al objetivo (secc. 14) | Pipelines por entorno; pruebas como puerta de calidad |
-| Caché/colas, IaC, observabilidad avanzada | **Diferidos** | Redis/BullMQ, Terraform/AWS, OpenTelemetry | Se incorporan en la fase de escala |
+| **Pieza**                                 | **Fase 1 (free)**                                         | **Rol / equivalencia objetivo**                                                                           | **Notas y límites**                                                                                                                                                                                                                                              |
+| ----------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base de datos + Auth + Storage            | **Supabase (free)**                                       | PostgreSQL + RLS (secc. 6, 11), Auth OIDC/JWT (secc. 9), object storage S3-compatible para PDFs (secc. 7) | Free: ~500 MB de BD, 50k usuarios activos/mes en Auth, 1 GB de storage. El proyecto se **pausa tras ~1 semana sin actividad**; se evita con un ping diario por cron. Escala: Supabase Pro (~US$25/mes) elimina la pausa, o migración a PostgreSQL gestionado/AWS |
+| Backend / API                             | **NestJS** (idéntico al objetivo) sobre **Render (free)** | Monolito modular, contratos OpenAPI (secc. 8)                                                             | Free: 512 MB RAM, TLS y dominio incluidos; el servicio **se duerme por inactividad** y el primer request tarda ~1 min en despertar. Aceptable para demo, no para SLA                                                                                             |
+| Frontend web                              | **Next.js** en **Vercel (free)**                          | Web responsive/PWA (secc. 7, 10); reutiliza el React del MVP                                              | Hobby tier para Home + Tablero                                                                                                                                                                                                                                   |
+| CI/CD                                     | **GitHub Actions**                                        | Igual al objetivo (secc. 14)                                                                              | Pipelines por entorno; pruebas como puerta de calidad                                                                                                                                                                                                            |
+| Caché/colas, IaC, observabilidad avanzada | **Diferidos**                                             | Redis/BullMQ, Terraform/AWS, OpenTelemetry                                                                | Se incorporan en la fase de escala                                                                                                                                                                                                                               |
 
 Nota sobre alternativas de hosting: se descartan para el arranque **Railway** (hoy es un trial de US$5, no un free tier permanente) y **Fly.io** (ya no ofrece free tier para cuentas nuevas). Para la base de datos, **Neon** es una alternativa válida (Postgres serverless con scale-to-zero), pero se prefiere Supabase porque además aporta Auth y storage en el mismo paquete, cubriendo tres piezas de la arquitectura con un solo servicio.
 
@@ -441,25 +441,25 @@ El sistema salió a producción con Vacker y 15 vendedores. Esta sección es la 
 
 Son **cuatro** módulos de negocio, uno más que los tres previstos en v0.2, más el panel de plataforma.
 
-| **Módulo** | **Estado** | **Qué incluye** |
-| --- | --- | --- |
-| **Tablero Comercial** | Productivo | Operaciones (ventas y alquileres), objetivos, ranking, KPIs; dashboards por rol con drill-down; filtros anual/trimestral/mensual; informe y reporte descargables. Cada vendedor ve solo lo suyo, tanto en listas como en dashboards. |
-| **Tasador de Propiedades** | Productivo | Captación, comparables, fotos, informe PDF con la marca de la inmobiliaria, historial de tasaciones. |
-| **Protocolo 5 Semanas** | Construido — **falta habilitarlo por inmobiliaria** | **Módulo nuevo, no estaba en el catálogo de v0.2.** Seguimiento semana a semana de la propiedad captada, encadenado a la tasación que le dio origen. Detalle funcional en `docs/MODULO_PROTOCOLO_5_SEMANAS.md`. |
-| **To Do List** | Productivo | Espejo de **solo lectura** de Google Calendar; cada usuario ve únicamente su calendario principal. No escribe eventos: fue una decisión de alcance, no una limitación técnica. |
-| **Panel `/admin`** | Productivo | Alta de inmobiliarias y usuarios, módulos contratados, y tres documentos vivos: guía del implementador, onboarding e inversión. |
+| **Módulo**                 | **Estado**                                          | **Qué incluye**                                                                                                                                                                                                                      |
+| -------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Tablero Comercial**      | Productivo                                          | Operaciones (ventas y alquileres), objetivos, ranking, KPIs; dashboards por rol con drill-down; filtros anual/trimestral/mensual; informe y reporte descargables. Cada vendedor ve solo lo suyo, tanto en listas como en dashboards. |
+| **Tasador de Propiedades** | Productivo                                          | Captación, comparables, fotos, informe PDF con la marca de la inmobiliaria, historial de tasaciones.                                                                                                                                 |
+| **Protocolo 5 Semanas**    | Construido — **falta habilitarlo por inmobiliaria** | **Módulo nuevo, no estaba en el catálogo de v0.2.** Seguimiento semana a semana de la propiedad captada, encadenado a la tasación que le dio origen. Detalle funcional en `docs/MODULO_PROTOCOLO_5_SEMANAS.md`.                      |
+| **To Do List**             | Productivo                                          | Espejo de **solo lectura** de Google Calendar; cada usuario ve únicamente su calendario principal. No escribe eventos: fue una decisión de alcance, no una limitación técnica.                                                       |
+| **Panel `/admin`**         | Productivo                                          | Alta de inmobiliarias y usuarios, módulos contratados, y tres documentos vivos: guía del implementador, onboarding e inversión.                                                                                                      |
 
 20.2 Decisiones cerradas desde v0.2
 
-| **Tema** | **Decisión** | **Por qué** |
-| --- | --- | --- |
-| **Licenciamiento** | **Por módulo contratado**, no por plan cerrado. Cada inmobiliaria tiene sus módulos habilitados uno por uno (`MODULO_KEYS` en `packages/types`); la API lo hace cumplir con `ModuloGuard` y la Home solo muestra lo contratado. | Los planes obligaban a vender paquetes; el mercado real pide "quiero el Tasador y todavía no el resto". El esquema por plan quedó como `MODULOS_POR_PLAN_LEGACY` solo para no romper lo viejo. |
-| **Movilidad** | **PWA instalable por URL, sin tiendas**, como primera etapa. La app nativa queda diferida. | Pone el sistema en el teléfono de los 15 vendedores el mismo día, sin revisión de tiendas ni ciclo de publicación. Confirma lo que la sección 17 ya había cerrado ("nativa después de la PWA"), pero adelantando la PWA a producción. |
-| **Contraseñas** | El implementador **escribe** una clave temporal al dar de alta al usuario, y el sistema obliga a cambiarla en el primer ingreso. El recupero por email está construido pero **apagado** (`NEXT_PUBLIC_RECUPERO_POR_EMAIL`). | Con 15 altas hechas por una persona en una tarde, entregar la clave en mano es más simple y más rápido que depender del correo. El recupero se enciende cuando haya inmobiliarias que se den de alta solas. |
-| **Privacidad de archivos** | Informes de tasación y fotos en buckets **privados**, servidos con URLs firmadas. Logos y avatares quedan públicos a propósito. | Un informe de tasación tiene la dirección y el valor de la propiedad de un cliente. Un logo no. |
-| **Acceso al panel** | `/admin` tiene su **propia** pantalla de login y no rebota por la Home. | El administrador de plataforma no es usuario de ninguna inmobiliaria; hacerlo pasar por la Home de tenant era confuso y frágil. |
-| **Material comercial** | Flyer de 4 páginas **estático y público** (excluido del middleware de sesión). Los documentos del panel se descargan imprimiendo la propia página. | El flyer se le manda a dueños de inmobiliarias que no tienen cuenta: si pide login, se pierde el prospecto. Y los documentos impresos desde la página salen siempre actualizados, sin esperar a que la API despierte. |
-| **Alcance de las pruebas e2e** | Nunca contra la base productiva. CI corre con variables de entorno **falsas a propósito**, así no puede alcanzar datos reales aunque alguien se equivoque. | La base productiva está en el plan gratis y **no tiene backups automáticos** (ver 20.3). Un test que escriba ahí no se deshace. |
+| **Tema**                       | **Decisión**                                                                                                                                                                                                                    | **Por qué**                                                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Licenciamiento**             | **Por módulo contratado**, no por plan cerrado. Cada inmobiliaria tiene sus módulos habilitados uno por uno (`MODULO_KEYS` en `packages/types`); la API lo hace cumplir con `ModuloGuard` y la Home solo muestra lo contratado. | Los planes obligaban a vender paquetes; el mercado real pide "quiero el Tasador y todavía no el resto". El esquema por plan quedó como `MODULOS_POR_PLAN_LEGACY` solo para no romper lo viejo.                                        |
+| **Movilidad**                  | **PWA instalable por URL, sin tiendas**, como primera etapa. La app nativa queda diferida.                                                                                                                                      | Pone el sistema en el teléfono de los 15 vendedores el mismo día, sin revisión de tiendas ni ciclo de publicación. Confirma lo que la sección 17 ya había cerrado ("nativa después de la PWA"), pero adelantando la PWA a producción. |
+| **Contraseñas**                | El implementador **escribe** una clave temporal al dar de alta al usuario, y el sistema obliga a cambiarla en el primer ingreso. El recupero por email está construido pero **apagado** (`NEXT_PUBLIC_RECUPERO_POR_EMAIL`).     | Con 15 altas hechas por una persona en una tarde, entregar la clave en mano es más simple y más rápido que depender del correo. El recupero se enciende cuando haya inmobiliarias que se den de alta solas.                           |
+| **Privacidad de archivos**     | Informes de tasación y fotos en buckets **privados**, servidos con URLs firmadas. Logos y avatares quedan públicos a propósito.                                                                                                 | Un informe de tasación tiene la dirección y el valor de la propiedad de un cliente. Un logo no.                                                                                                                                       |
+| **Acceso al panel**            | `/admin` tiene su **propia** pantalla de login y no rebota por la Home.                                                                                                                                                         | El administrador de plataforma no es usuario de ninguna inmobiliaria; hacerlo pasar por la Home de tenant era confuso y frágil.                                                                                                       |
+| **Material comercial**         | Flyer de 4 páginas **estático y público** (excluido del middleware de sesión). Los documentos del panel se descargan imprimiendo la propia página.                                                                              | El flyer se le manda a dueños de inmobiliarias que no tienen cuenta: si pide login, se pierde el prospecto. Y los documentos impresos desde la página salen siempre actualizados, sin esperar a que la API despierte.                 |
+| **Alcance de las pruebas e2e** | Nunca contra la base productiva. CI corre con variables de entorno **falsas a propósito**, así no puede alcanzar datos reales aunque alguien se equivoque.                                                                      | La base productiva está en el plan gratis y **no tiene backups automáticos** (ver 20.3). Un test que escriba ahí no se deshace.                                                                                                       |
 
 20.3 Restricciones que aparecieron con usuarios reales
 
@@ -487,34 +487,34 @@ Las listas traen como máximo **500 filas** y los KPIs se suman **en memoria** e
 
 2. **`FORCE ROW LEVEL SECURITY` en las 16 tablas, y un rol dedicado para los dos casos legítimos que hoy corren como dueños.**
 
-   *Qué falta.* RLS **no se aplica al dueño de la tabla**, y las dieciséis pertenecen al mismo rol con el que se conecta la API. Hoy no hay agujero, porque `TenantPrismaService.withTenant` baja el rol a `authenticated` antes de cada consulta y ahí deja de ser el dueño — verificado por el job `Aislamiento multi-tenant` (ver `docs/CONVENCIONES_TECNICAS.md` §17). Pero es una red de contención que no está puesta: cualquier consulta futura que no pase por ese camino queda sin filtro y sin síntoma.
+   _Qué falta._ RLS **no se aplica al dueño de la tabla**, y las dieciséis pertenecen al mismo rol con el que se conecta la API. Hoy no hay agujero, porque `TenantPrismaService.withTenant` baja el rol a `authenticated` antes de cada consulta y ahí deja de ser el dueño — verificado por el job `Aislamiento multi-tenant` (ver `docs/CONVENCIONES_TECNICAS.md` §17). Pero es una red de contención que no está puesta: cualquier consulta futura que no pase por ese camino queda sin filtro y sin síntoma.
 
-   *La segunda mitad importa tanto como la primera.* Hay dos lugares que consultan sin bajar privilegios, los dos deliberados: **`auth.guard.ts:78`** (busca al usuario para averiguar su inmobiliaria — todavía no hay inmobiliaria que declarar) y **`tareas.service.ts:45,57`** (el reporte semanal recorre todas las inmobiliarias, sin sesión de nadie). Con `FORCE` activado, esos dos **dejarían de funcionar**, porque hoy pasan por ser dueños de la tabla. La solución no es exceptuarlos: es darles un rol con `BYPASSRLS` **explícito y acotado**, para que el permiso esté concedido y a la vista en lugar de heredado por accidente de la propiedad de la tabla.
+   _La segunda mitad importa tanto como la primera._ Hay dos lugares que consultan sin bajar privilegios, los dos deliberados: **`auth.guard.ts:78`** (busca al usuario para averiguar su inmobiliaria — todavía no hay inmobiliaria que declarar) y **`tareas.service.ts:45,57`** (el reporte semanal recorre todas las inmobiliarias, sin sesión de nadie). Con `FORCE` activado, esos dos **dejarían de funcionar**, porque hoy pasan por ser dueños de la tabla. La solución no es exceptuarlos: es darles un rol con `BYPASSRLS` **explícito y acotado**, para que el permiso esté concedido y a la vista en lugar de heredado por accidente de la propiedad de la tabla.
 
-   *No se aplica en caliente.* Es un cambio de privilegios sobre una base con un cliente real operando; un error deja a los quince vendedores sin poder entrar. Antes hay que:
+   _No se aplica en caliente._ Es un cambio de privilegios sobre una base con un cliente real operando; un error deja a los quince vendedores sin poder entrar. Antes hay que:
 
    1. Crear un **proyecto Supabase de prueba** —descartable, aparte del productivo—.
    2. Aplicar ahí **las 19 migraciones desde cero**, más la nueva, y confirmar que el esquema queda igual.
    3. Verificar a mano **las tres rutas críticas**: que un usuario pueda **iniciar sesión**; que una **operación normal** se cargue y se lea; y que el **cron semanal**, disparado a mano, recorra las inmobiliarias y mande el correo.
    4. Recién entonces aplicarlo en producción, siguiendo la skill `sql-produccion`.
 
-   *Orden.* **Va después de tener backups** (punto 1). Es exactamente el tipo de cambio que se hace con red y no sin ella.
+   _Orden._ **Va después de tener backups** (punto 1). Es exactamente el tipo de cambio que se hace con red y no sin ella.
 
-   *Lo que `FORCE` NO cubre, y conviene no volver a confundirlo.* Son **dos problemas distintos** y ninguno de los dos tapa al otro:
+   _Lo que `FORCE` NO cubre, y conviene no volver a confundirlo._ Son **dos problemas distintos** y ninguno de los dos tapa al otro:
 
-   | | consulta sin declarar tenant | contexto forjado |
-   |---|---|---|
-   | **Qué pasa** | Un servicio consulta con `PrismaService` directo. No declara ninguna inmobiliaria. | Un servicio pasa por `withTenant`, pero con el `tenantId` de otro. |
-   | **Qué ve** | Todas las inmobiliarias. | Exactamente una: la equivocada. |
-   | **¿`FORCE` lo frena?** | **Sí.** Sin `app.tenant_id` la policy no deja pasar nada. | **No.** El contexto *es* el valor por el que RLS filtra; la base hace lo que se le pide. |
-   | **Qué lo frena hoy** | La regla A/B/C de `acceso-directo.e2e-spec.ts` | La regla D del mismo test. |
+   |                        | consulta sin declarar tenant                                                       | contexto forjado                                                                         |
+   | ---------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+   | **Qué pasa**           | Un servicio consulta con `PrismaService` directo. No declara ninguna inmobiliaria. | Un servicio pasa por `withTenant`, pero con el `tenantId` de otro.                       |
+   | **Qué ve**             | Todas las inmobiliarias.                                                           | Exactamente una: la equivocada.                                                          |
+   | **¿`FORCE` lo frena?** | **Sí.** Sin `app.tenant_id` la policy no deja pasar nada.                          | **No.** El contexto _es_ el valor por el que RLS filtra; la base hace lo que se le pide. |
+   | **Qué lo frena hoy**   | La regla A/B/C de `acceso-directo.e2e-spec.ts`                                     | La regla D del mismo test.                                                               |
 
    Contra el contexto forjado no hay defensa en la base, porque para la base no es un ataque: es una consulta legítima con otro parámetro. La defensa real es **arquitectónica** — que el contexto se derive siempre del token verificado y nunca se construya a mano. Hoy solo cuatro lugares de toda la API pueden fabricarlo (el guard, la fábrica `ctxDe`, el callback de OAuth y el cron), y la regla D falla si aparece un quinto. Eso no lo hace imposible: lo hace visible en el diff, que es lo máximo que da un análisis estático. Ver `docs/CONVENCIONES_TECNICAS.md` §18.
 
 3. **Paginación real y KPIs como agregados SQL.** **Disparador: tener Supabase Pro** — no una fecha. Reemplazar el tope de 500 filas y la suma en memoria toca las consultas de las que dependen todas las pantallas, y hay que verificar la implementación nueva contra datos reales antes de retirar la vieja: es un cambio que se hace con backups, no sin ellos. Quedó fuera del sábado 1 de agosto por ese motivo y espera al punto 1.
-4. ~~**Migración de infraestructura** — Lightsail en São Paulo + Supabase Pro, según 19.6.~~ **Revisado el 1/08/2026: la parte de Lightsail queda DESCARTADA.** Lo que se decidió es un criterio, no un proveedor: *mientras el equipo sean dos personas, la infraestructura se contrata administrada.* Un servidor propio ahorra unos trece dólares al mes y a cambio suma despliegues, certificados, actualizaciones del sistema y monitoreo — se paga con el tiempo de la persona más cara. **Supabase Pro sigue en pie y es lo urgente**, por las copias de seguridad. Consecuencia a tener presente: Render no tiene región en Sudamérica (Oregon, Ohio, Virginia, Frankfurt, Singapur), así que la latencia de 19.6 **queda sin resolver por ahora**. Si algún día molesta, primero medir; y la salida coherente sería otra plataforma administrada con región en São Paulo — Google Cloud Run tiene `southamerica-east1` —, no un servidor propio. Ver `docs/Costos_e_Infraestructura.md` §8.
+4. ~~**Migración de infraestructura** — Lightsail en São Paulo + Supabase Pro, según 19.6.~~ **Revisado el 1/08/2026: la parte de Lightsail queda DESCARTADA.** Lo que se decidió es un criterio, no un proveedor: _mientras el equipo sean dos personas, la infraestructura se contrata administrada._ Un servidor propio ahorra unos trece dólares al mes y a cambio suma despliegues, certificados, actualizaciones del sistema y monitoreo — se paga con el tiempo de la persona más cara. **Supabase Pro sigue en pie y es lo urgente**, por las copias de seguridad. Consecuencia a tener presente: Render no tiene región en Sudamérica (Oregon, Ohio, Virginia, Frankfurt, Singapur), así que la latencia de 19.6 **queda sin resolver por ahora**. Si algún día molesta, primero medir; y la salida coherente sería otra plataforma administrada con región en São Paulo — Google Cloud Run tiene `southamerica-east1` —, no un servidor propio. Ver `docs/Costos_e_Infraestructura.md` §8.
 5. **Consola de plataforma — disparador: la segunda inmobiliaria en producción.** Con un solo cliente, administrar es recordar; con dos deja de serlo. Alcance mínimo acordado: ver todas las inmobiliarias productivas con sus módulos contratados, su monto mensual y si están al día, más un registro de pagos cargado a mano. **No** es un sistema de facturación: la emisión, AFIP y el cobro automático siguen siendo la decisión abierta de la sección 17, y se resuelven cuando cargar los pagos a mano moleste, no antes.
-   - **Bloqueante y sin definir: cuál es la unidad de cobro.** Un monto por inmobiliaria negociado caso por caso, un precio por módulo que se suma, o un precio por usuario activo. De esto depende qué se guarda, y las tres opciones cuestan casi lo mismo *si se deciden antes*: lo caro es cambiar de criterio con pagos ya cargados, porque obliga a recalcular historia. **No se implementa nada hasta que esté decidido.** La negociación con el primer cliente que pague va a fijar el precedente en los hechos.
+   - **Bloqueante y sin definir: cuál es la unidad de cobro.** Un monto por inmobiliaria negociado caso por caso, un precio por módulo que se suma, o un precio por usuario activo. De esto depende qué se guarda, y las tres opciones cuestan casi lo mismo _si se deciden antes_: lo caro es cambiar de criterio con pagos ya cargados, porque obliga a recalcular historia. **No se implementa nada hasta que esté decidido.** La negociación con el primer cliente que pague va a fijar el precedente en los hechos.
    - Junto con esto hay que **retirar el campo `plan`**, que desde que se vende por módulo quedó como rótulo sin efecto sobre nada (ver 20.2). Hoy el panel lo muestra como si gobernara los accesos, que los gobierna `modulos`. Con un cliente no molesta; con varios induce a error a quien mire la tabla para saber qué contrató alguien. Si conviene conservar la palabra para la conversación comercial, que sea una etiqueta **derivada** de los módulos, no un campo aparte que se desincroniza.
 6. **Flyer de onboarding por inmobiliaria**, generado por la API con el logo del cliente y solo sus módulos contratados (a diferencia del comercial, que es estático).
 7. **E2E con sesión**, una vez que exista base de pruebas.
@@ -529,4 +529,4 @@ Pasos que dependen de una persona, no del código: **contratar Supabase Pro** po
 
 > **Corrección a la secuencia de 19.6.** Aquel punto (2) —"construir las apps móviles (React Native) antes de la migración"— quedó cumplido de otra forma: la movilidad se resolvió con la PWA, ya en producción, y la app nativa pasó a después de la migración de infraestructura. El razonamiento de 19.6 sobre latencia sigue siendo válido y es, justamente, la razón del cambio de orden.
 
-*Documento de trabajo · **Vacker** — Inmobiliaria Inteligente 2.0 · v0.3*
+_Documento de trabajo · **Vacker** — Inmobiliaria Inteligente 2.0 · v0.3_

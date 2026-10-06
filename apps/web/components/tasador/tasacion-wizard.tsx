@@ -35,7 +35,14 @@ import {
   TipoPropiedadSchema,
 } from '@vacker/types';
 import { z } from 'zod';
-import { analizarComparables, valoresSugeridos, valuationSurface, type Coeficientes, type ComparableCalc, type PropiedadCalc } from '@vacker/domain';
+import {
+  analizarComparables,
+  valoresSugeridos,
+  valuationSurface,
+  type Coeficientes,
+  type ComparableCalc,
+  type PropiedadCalc,
+} from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTasacion, generarInforme, updateTasacion } from '../../lib/tasador-api';
@@ -60,7 +67,10 @@ function opcionValida<T extends string>(schema: z.ZodType<T>, value: unknown): T
   return parsed.success ? parsed.data : '';
 }
 /** Igual, para multiselects: descarta los valores que ya no son válidos. */
-function opcionesValidas<T extends string>(schema: z.ZodType<T>, values: readonly string[] | null | undefined): T[] {
+function opcionesValidas<T extends string>(
+  schema: z.ZodType<T>,
+  values: readonly string[] | null | undefined,
+): T[] {
   return (values ?? []).filter((v): v is T => schema.safeParse(v).success);
 }
 
@@ -106,7 +116,9 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   const [direccion, setDireccion] = useState(tasacion?.direccion ?? '');
   const [barrio, setBarrio] = useState(tasacion?.barrio ?? '');
   const [ciudad, setCiudad] = useState(tasacion?.ciudad ?? '');
-  const [tipoOperacion, setTipoOperacion] = useState<TipoOperacion>(tasacion?.tipoOperacion ?? 'venta');
+  const [tipoOperacion, setTipoOperacion] = useState<TipoOperacion>(
+    tasacion?.tipoOperacion ?? 'venta',
+  );
 
   // Sección 2
   const [tipoPropiedad, setTipoPropiedad] = useState<TipoPropiedad>(
@@ -124,8 +136,12 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   const [estadoInmueble, setEstadoInmueble] = useState<EstadoInmueble | ''>(
     opcionValida(EstadoInmuebleSchema, tasacion?.estadoInmueble),
   );
-  const [disposicion, setDisposicion] = useState<Disposicion | ''>(opcionValida(DisposicionSchema, tasacion?.disposicion));
-  const [orientacion, setOrientacion] = useState<Orientacion | ''>(opcionValida(OrientacionSchema, tasacion?.orientacion));
+  const [disposicion, setDisposicion] = useState<Disposicion | ''>(
+    opcionValida(DisposicionSchema, tasacion?.disposicion),
+  );
+  const [orientacion, setOrientacion] = useState<Orientacion | ''>(
+    opcionValida(OrientacionSchema, tasacion?.orientacion),
+  );
   const [cochera, setCochera] = useState(tasacion?.cochera ?? false);
   const [balcon, setBalcon] = useState(tasacion?.balcon ?? false);
   const [terraza, setTerraza] = useState(tasacion?.terraza ?? false);
@@ -143,7 +159,9 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   const [amenities, setAmenities] = useState<string[]>(tasacion?.amenities ?? []);
   const [detalleAmenities, setDetalleAmenities] = useState(tasacion?.detalleAmenities ?? '');
   const [expensas, setExpensas] = useState(String(tasacion?.expensas ?? ''));
-  const [aptoCredito, setAptoCredito] = useState<AptoCredito | ''>(opcionValida(AptoCreditoSchema, tasacion?.aptoCredito));
+  const [aptoCredito, setAptoCredito] = useState<AptoCredito | ''>(
+    opcionValida(AptoCreditoSchema, tasacion?.aptoCredito),
+  );
   const [documentacion, setDocumentacion] = useState<Documentacion | ''>(
     opcionValida(DocumentacionSchema, tasacion?.documentacion),
   );
@@ -154,9 +172,13 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   // Acá el tasador puede escribir la suya, y filtrar contra una lista cerrada
   // borraría en silencio lo que escribió la primera vez que reabra la tasación.
   // También conserva las de una tipología que después se cambió.
-  const [fortalezas, setFortalezas] = useState<string[]>(tasacion?.analisisComercial?.fortalezas ?? []);
+  const [fortalezas, setFortalezas] = useState<string[]>(
+    tasacion?.analisisComercial?.fortalezas ?? [],
+  );
   const [aspectos, setAspectos] = useState<string[]>(tasacion?.analisisComercial?.aspectos ?? []);
-  const [demanda, setDemanda] = useState<Nivel | ''>(opcionValida(NivelSchema, tasacion?.analisisComercial?.demanda));
+  const [demanda, setDemanda] = useState<Nivel | ''>(
+    opcionValida(NivelSchema, tasacion?.analisisComercial?.demanda),
+  );
   const [competencia, setCompetencia] = useState<Nivel | ''>(
     opcionValida(NivelSchema, tasacion?.analisisComercial?.competencia),
   );
@@ -174,9 +196,15 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
 
   // Sección 5
   const [valorMinimo, setValorMinimo] = useState(String(tasacion?.valorMinimo ?? ''));
-  const [valorRecomendado, setValorRecomendado] = useState(String(tasacion?.valorRecomendado ?? ''));
-  const [valorAspiracional, setValorAspiracional] = useState(String(tasacion?.valorAspiracional ?? ''));
-  const [margenNegociacion, setMargenNegociacion] = useState(String(tasacion?.margenNegociacion ?? ''));
+  const [valorRecomendado, setValorRecomendado] = useState(
+    String(tasacion?.valorRecomendado ?? ''),
+  );
+  const [valorAspiracional, setValorAspiracional] = useState(
+    String(tasacion?.valorAspiracional ?? ''),
+  );
+  const [margenNegociacion, setMargenNegociacion] = useState(
+    String(tasacion?.margenNegociacion ?? ''),
+  );
   const [escenarioRecomendado, setEscenarioRecomendado] = useState<Escenario | ''>(
     opcionValida(EscenarioSchema, tasacion?.escenarioRecomendado),
   );
@@ -222,9 +250,24 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
       estado: estadoInmueble || null,
       cochera,
     };
-    const comps: ComparableCalc[] = comparables.map((c) => ({ ...c, cocheraComp: c.cochera ? 'Sí' : 'No' }));
+    const comps: ComparableCalc[] = comparables.map((c) => ({
+      ...c,
+      cocheraComp: c.cochera ? 'Sí' : 'No',
+    }));
     return analizarComparables(comps, propiedad, coeficientes);
-  }, [coeficientes, comparables, tipoPropiedad, supCubierta, supSemicubierta, supDescubierta, supTerreno, dormitorios, banos, estadoInmueble, cochera]);
+  }, [
+    coeficientes,
+    comparables,
+    tipoPropiedad,
+    supCubierta,
+    supSemicubierta,
+    supDescubierta,
+    supTerreno,
+    dormitorios,
+    banos,
+    estadoInmueble,
+    cochera,
+  ]);
 
   // La sugerencia usa la referencia PONDERADA (no el promedio simple), como el prototipo.
   const sugerencia = useMemo(() => {
@@ -249,7 +292,14 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   }, [sugerencia]);
 
   function datosSeccion1() {
-    return { cliente, fecha, direccion, barrio: barrio || null, ciudad: ciudad || null, tipoOperacion };
+    return {
+      cliente,
+      fecha,
+      direccion,
+      barrio: barrio || null,
+      ciudad: ciudad || null,
+      tipoOperacion,
+    };
   }
 
   function datosSeccion2() {
@@ -378,7 +428,10 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
     try {
       const accessToken = await getAccessToken();
       if (!tasacionId) {
-        const creada = await createTasacion(accessToken, { ...datosSeccion1(), ...datosSeccion2() });
+        const creada = await createTasacion(accessToken, {
+          ...datosSeccion1(),
+          ...datosSeccion2(),
+        });
         setTasacionId(creada.id);
         router.replace(`/tasador/tasaciones/${creada.id}/editar?seccion=${destino}`);
       } else {
@@ -627,22 +680,41 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
-            <Button type="button" variant="secondary" onClick={() => router.push('/tasador/tasaciones')}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.push('/tasador/tasaciones')}
+            >
               Cancelar
             </Button>
             <div className="flex flex-wrap items-center gap-2">
               {seccionActiva > 1 && (
-                <Button type="button" variant="secondary" onClick={handleAnterior} disabled={guardando}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleAnterior}
+                  disabled={guardando}
+                >
                   ← Anterior
                 </Button>
               )}
               {seccionActiva < SECCIONES.length ? (
-                <Button type="button" variant="primary" onClick={handleSiguiente} disabled={guardando}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSiguiente}
+                  disabled={guardando}
+                >
                   {guardando ? 'Guardando…' : 'Siguiente →'}
                 </Button>
               ) : (
                 <>
-                  <Button type="button" variant="secondary" onClick={handleFinalizar} disabled={guardando}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleFinalizar}
+                    disabled={guardando}
+                  >
                     {guardando ? 'Guardando…' : 'Guardar y salir'}
                   </Button>
                   <Button

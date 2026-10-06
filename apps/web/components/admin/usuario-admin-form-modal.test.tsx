@@ -19,7 +19,14 @@ const USUARIO: UsuarioAdminDto = {
 
 describe('UsuarioAdminFormModal', () => {
   it('muestra los 4 roles con su explicación y marca los del usuario', () => {
-    render(<UsuarioAdminFormModal tenantId="t" usuario={USUARIO} onClose={() => {}} onSaved={() => {}} />);
+    render(
+      <UsuarioAdminFormModal
+        tenantId="t"
+        usuario={USUARIO}
+        onClose={() => {}}
+        onSaved={() => {}}
+      />,
+    );
 
     expect(screen.getByRole('checkbox', { name: /Vendedor/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /Team Leader/ })).not.toBeChecked();
@@ -30,7 +37,9 @@ describe('UsuarioAdminFormModal', () => {
   it('no deja guardar sin ningún rol', async () => {
     const user = userEvent.setup();
     const onSaved = vi.fn();
-    render(<UsuarioAdminFormModal tenantId="t" usuario={USUARIO} onClose={() => {}} onSaved={onSaved} />);
+    render(
+      <UsuarioAdminFormModal tenantId="t" usuario={USUARIO} onClose={() => {}} onSaved={onSaved} />,
+    );
 
     await user.click(screen.getByRole('checkbox', { name: /Vendedor/ }));
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -40,7 +49,14 @@ describe('UsuarioAdminFormModal', () => {
   });
 
   it('en edición el email se puede cambiar y avisa que es el de acceso', () => {
-    render(<UsuarioAdminFormModal tenantId="t" usuario={USUARIO} onClose={() => {}} onSaved={() => {}} />);
+    render(
+      <UsuarioAdminFormModal
+        tenantId="t"
+        usuario={USUARIO}
+        onClose={() => {}}
+        onSaved={() => {}}
+      />,
+    );
     // Cambiarlo acá cambia con qué mail inicia sesión, no solo el dato visible.
     expect(screen.getByDisplayValue('ezequiel@vacker.com')).toBeEnabled();
     expect(screen.getByText(/tiene que entrar con el nuevo/)).toBeInTheDocument();
@@ -51,7 +67,9 @@ describe('UsuarioAdminFormModal', () => {
     render(<UsuarioAdminFormModal tenantId="t" onClose={() => {}} onSaved={() => {}} />);
 
     expect(screen.getByText(/Contraseña temporal/)).toBeInTheDocument();
-    const sugerida = (screen.getByRole('textbox', { name: /Contraseña temporal/ }) as HTMLInputElement).value;
+    const sugerida = (
+      screen.getByRole('textbox', { name: /Contraseña temporal/ }) as HTMLInputElement
+    ).value;
     expect(sugerida).toMatch(/^[A-Za-z2-9]{12}$/);
     expect(screen.getByRole('textbox', { name: /Email/ })).toBeEnabled();
   });

@@ -27,7 +27,9 @@ const DATOS = [Q(1), Q(2), Q(3), Q(4)];
 
 /** Los valores de una fila, por su etiqueta: Q1..Q4 y el Total. */
 function fila(label: string) {
-  const celdas = within(screen.getByRole('row', { name: new RegExp(`^${label}`) })).getAllByRole('cell');
+  const celdas = within(screen.getByRole('row', { name: new RegExp(`^${label}`) })).getAllByRole(
+    'cell',
+  );
   return celdas.slice(1).map((c) => c.textContent ?? '');
 }
 
@@ -35,8 +37,15 @@ describe('VentasTabla — por trimestre', () => {
   it('trae las nueve filas de la planilla', () => {
     render(<VentasTabla datos={DATOS} etiquetas={TRIMESTRES} seleccionado={1} />);
     for (const label of [
-      'Volumen USD', 'Operaciones', 'Ticket prom.', 'Puntas', 'P. compradoras',
-      'P. vendedoras', 'Com. comprador', 'Com. vendedor', 'Total comisión',
+      'Volumen USD',
+      'Operaciones',
+      'Ticket prom.',
+      'Puntas',
+      'P. compradoras',
+      'P. vendedoras',
+      'Com. comprador',
+      'Com. vendedor',
+      'Total comisión',
     ]) {
       expect(screen.getByText(label), `falta la fila ${label}`).toBeInTheDocument();
     }
@@ -72,14 +81,20 @@ describe('VentasTabla — por trimestre', () => {
 
   it('al hacer click en un trimestre del encabezado, avisa cuál', async () => {
     const onSelect = vi.fn();
-    render(<VentasTabla datos={DATOS} etiquetas={TRIMESTRES} seleccionado={1} onSelect={onSelect} />);
+    render(
+      <VentasTabla datos={DATOS} etiquetas={TRIMESTRES} seleccionado={1} onSelect={onSelect} />,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Q3' }));
     expect(onSelect).toHaveBeenCalledWith(3);
   });
 
   it('marca cuál es el trimestre que se está mirando', () => {
-    render(<VentasTabla datos={DATOS} etiquetas={TRIMESTRES} seleccionado={3} onSelect={vi.fn()} />);
-    const marcadas = screen.getAllByRole('columnheader').filter((c) => c.getAttribute('aria-current') === 'true');
+    render(
+      <VentasTabla datos={DATOS} etiquetas={TRIMESTRES} seleccionado={3} onSelect={vi.fn()} />,
+    );
+    const marcadas = screen
+      .getAllByRole('columnheader')
+      .filter((c) => c.getAttribute('aria-current') === 'true');
     expect(marcadas).toHaveLength(1);
     expect(marcadas[0]!.textContent).toContain('Q3');
   });

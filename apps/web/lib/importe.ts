@@ -21,7 +21,10 @@ export function leerImporte(texto: string | null | undefined): number | null {
   } else {
     const partes = s.split('.');
     const ultima = partes.at(-1)!;
-    normal = partes.length > 1 && ultima.length !== 3 ? `${partes.slice(0, -1).join('')}.${ultima}` : partes.join('');
+    normal =
+      partes.length > 1 && ultima.length !== 3
+        ? `${partes.slice(0, -1).join('')}.${ultima}`
+        : partes.join('');
   }
   if (!/^-?\d+(\.\d+)?$/.test(normal)) return Number.NaN;
   return Math.round(Number(normal) * 100) / 100;
@@ -61,4 +64,5 @@ export function fmtVariacion(pct: number | null | undefined): string {
 }
 
 /** La variación de un valor a otro: de 100 a 105, «+5,0%». */
-export const variacionEntre = (anterior: number, nuevo: number) => fmtVariacion((nuevo / anterior - 1) * 100);
+export const variacionEntre = (anterior: number, nuevo: number) =>
+  fmtVariacion((nuevo / anterior - 1) * 100);

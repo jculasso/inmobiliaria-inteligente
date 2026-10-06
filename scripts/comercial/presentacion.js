@@ -44,16 +44,27 @@ let pres;
 function isotipo(s, x, y, lado, sobreOscuro) {
   s.addImage({
     path: path.resolve(D, sobreOscuro ? 'isotipo-blanco.png' : 'isotipo-azul.png'),
-    x, y, w: lado, h: lado,
+    x,
+    y,
+    w: lado,
+    h: lado,
   });
 }
 
 function marca(s, sobreOscuro = false) {
   isotipo(s, 0.5, 0.31, 0.19, sobreOscuro);
   s.addText('INMOBILIARIA INTELIGENTE', {
-    x: 0.77, y: 0.29, w: 4, h: 0.23, margin: 0,
-    fontFace: F, fontSize: 8, bold: true, charSpacing: 1.7,
-    color: sobreOscuro ? BLANCO : AZUL, valign: 'middle',
+    x: 0.77,
+    y: 0.29,
+    w: 4,
+    h: 0.23,
+    margin: 0,
+    fontFace: F,
+    fontSize: 8,
+    bold: true,
+    charSpacing: 1.7,
+    color: sobreOscuro ? BLANCO : AZUL,
+    valign: 'middle',
   });
 }
 
@@ -65,24 +76,56 @@ function marca(s, sobreOscuro = false) {
  */
 function pregunta(s, n, texto, respuesta, sobreOscuro = false) {
   s.addText(`0${n}`, {
-    x: 0.5, y: 0.93, w: 0.5, h: 0.3, margin: 0,
-    fontFace: F, fontSize: 12, bold: true, color: sobreOscuro ? AZUL_CLARO : CLARO,
+    x: 0.5,
+    y: 0.93,
+    w: 0.5,
+    h: 0.3,
+    margin: 0,
+    fontFace: F,
+    fontSize: 12,
+    bold: true,
+    color: sobreOscuro ? AZUL_CLARO : CLARO,
   });
   s.addText(texto, {
-    x: 0.98, y: 0.82, w: 8.5, h: 0.56, margin: 0,
-    fontFace: F, fontSize: 32, bold: true, color: sobreOscuro ? BLANCO : AZUL,
+    x: 0.98,
+    y: 0.82,
+    w: 8.5,
+    h: 0.56,
+    margin: 0,
+    fontFace: F,
+    fontSize: 32,
+    bold: true,
+    color: sobreOscuro ? BLANCO : AZUL,
   });
   s.addText(respuesta, {
-    x: 0.98, y: 1.46, w: 8.4, h: 0.56, margin: 0,
-    fontFace: F, fontSize: 14, bold: true,
-    color: sobreOscuro ? CLARO : TINTA, lineSpacing: 19,
+    x: 0.98,
+    y: 1.46,
+    w: 8.4,
+    h: 0.56,
+    margin: 0,
+    fontFace: F,
+    fontSize: 14,
+    bold: true,
+    color: sobreOscuro ? CLARO : TINTA,
+    lineSpacing: 19,
   });
   s.addShape(pres.ShapeType.line, {
-    x: 0.5, y: 2.16, w: 9, h: 0, line: { color: sobreOscuro ? '2C4E75' : LINEA, width: 1 },
+    x: 0.5,
+    y: 2.16,
+    w: 9,
+    h: 0,
+    line: { color: sobreOscuro ? '2C4E75' : LINEA, width: 1 },
   });
   s.addText(`${n} / 5`, {
-    x: 9.1, y: 5.15, w: 0.6, h: 0.25, margin: 0, align: 'right',
-    fontFace: F, fontSize: 9, color: sobreOscuro ? '3E5A7C' : LINEA,
+    x: 9.1,
+    y: 5.15,
+    w: 0.6,
+    h: 0.25,
+    margin: 0,
+    align: 'right',
+    fontFace: F,
+    fontSize: 9,
+    color: sobreOscuro ? '3E5A7C' : LINEA,
   });
 }
 
@@ -116,13 +159,25 @@ function marcaDeFila(s, x, y, numero, sobreOscuro) {
   const color = sobreOscuro ? AZUL_CLARO : AZUL;
   if (numero) {
     s.addText(numero, {
-      x, y, w: MARCA - 0.08, h: 0.26, margin: 0, align: 'left',
-      fontFace: F, fontSize: 12, bold: true, color,
+      x,
+      y,
+      w: MARCA - 0.08,
+      h: 0.26,
+      margin: 0,
+      align: 'left',
+      fontFace: F,
+      fontSize: 12,
+      bold: true,
+      color,
     });
   } else {
     s.addShape(pres.ShapeType.ellipse, {
-      x: x + MARCA - 0.23, y: y + 0.095, w: 0.095, h: 0.095,
-      fill: { color }, line: { type: 'none' },
+      x: x + MARCA - 0.23,
+      y: y + 0.095,
+      w: 0.095,
+      h: 0.095,
+      fill: { color },
+      line: { type: 'none' },
     });
   }
 }
@@ -137,13 +192,26 @@ function marcaDeFila(s, x, y, numero, sobreOscuro) {
 function fila(s, { x, y, ancho, numero, titulo, texto, sobreOscuro }) {
   marcaDeFila(s, x, y, numero, sobreOscuro);
   s.addText(titulo, {
-    x: x + MARCA, y, w: ancho - MARCA, h: 0.26, margin: 0,
-    fontFace: F, fontSize: 12, bold: true, color: sobreOscuro ? BLANCO : TINTA,
+    x: x + MARCA,
+    y,
+    w: ancho - MARCA,
+    h: 0.26,
+    margin: 0,
+    fontFace: F,
+    fontSize: 12,
+    bold: true,
+    color: sobreOscuro ? BLANCO : TINTA,
   });
   if (texto) {
     s.addText(texto, {
-      x: x + MARCA, y: y + 0.25, w: ancho - MARCA, h: 0.26, margin: 0,
-      fontFace: F, fontSize: 9.5, color: sobreOscuro ? CLARO : GRIS,
+      x: x + MARCA,
+      y: y + 0.25,
+      w: ancho - MARCA,
+      h: 0.26,
+      margin: 0,
+      fontFace: F,
+      fontSize: 9.5,
+      color: sobreOscuro ? CLARO : GRIS,
     });
   }
 }
@@ -155,8 +223,14 @@ function fila(s, { x, y, ancho, numero, titulo, texto, sobreOscuro }) {
 function filaSimple(s, x, y, ancho, texto, sobreOscuro) {
   marcaDeFila(s, x, y, null, sobreOscuro);
   s.addText(texto, {
-    x: x + MARCA, y, w: ancho - MARCA, h: 0.26, margin: 0,
-    fontFace: F, fontSize: 10, color: sobreOscuro ? CLARO : TINTA,
+    x: x + MARCA,
+    y,
+    w: ancho - MARCA,
+    h: 0.26,
+    margin: 0,
+    fontFace: F,
+    fontSize: 10,
+    color: sobreOscuro ? CLARO : TINTA,
   });
 }
 
@@ -168,16 +242,34 @@ function filaSimple(s, x, y, ancho, texto, sobreOscuro) {
  */
 function bloque(s, x, y, ancho, titulo, subtitulo) {
   s.addShape(pres.ShapeType.line, {
-    x, y, w: ancho, h: 0, line: { color: AZUL, width: 2 },
+    x,
+    y,
+    w: ancho,
+    h: 0,
+    line: { color: AZUL, width: 2 },
   });
   s.addText(titulo, {
-    x, y: y + 0.11, w: ancho, h: 0.3, margin: 0,
-    fontFace: F, fontSize: 14, bold: true, color: TINTA,
+    x,
+    y: y + 0.11,
+    w: ancho,
+    h: 0.3,
+    margin: 0,
+    fontFace: F,
+    fontSize: 14,
+    bold: true,
+    color: TINTA,
   });
   if (subtitulo) {
     s.addText(subtitulo, {
-      x, y: y + 0.42, w: ancho, h: 0.24, margin: 0,
-      fontFace: F, fontSize: 10.5, bold: true, color: AZUL,
+      x,
+      y: y + 0.42,
+      w: ancho,
+      h: 0.24,
+      margin: 0,
+      fontFace: F,
+      fontSize: 10.5,
+      bold: true,
+      color: AZUL,
     });
   }
 }
@@ -196,7 +288,9 @@ LAMINAS.push(function laminaQueEs() {
   s.background = { color: BLANCO };
   marca(s);
   pregunta(
-    s, 1, '¿Qué es?',
+    s,
+    1,
+    '¿Qué es?',
     'Un tablero comercial y un CRM de tasaciones, sobre el sistema que ya usa.',
   );
 
@@ -238,8 +332,14 @@ LAMINAS.push(function laminaQueEs() {
   // más de tarjetas y «Pendiente de cobro» quedó fuera del recorte: el pie
   // describe lo que la captura muestra, no lo que hay más abajo.
   s.addText('El mes y el año, con la comisión de cada punta.', {
-    x: 6.15, y: 4.84, w: 3.35, h: 0.3, margin: 0,
-    fontFace: F, fontSize: 9, color: GRIS,
+    x: 6.15,
+    y: 4.84,
+    w: 3.35,
+    h: 0.3,
+    margin: 0,
+    fontFace: F,
+    fontSize: 9,
+    color: GRIS,
   });
 
   s.addNotes(
@@ -257,16 +357,27 @@ LAMINAS.push(function laminaParaQue() {
   s.background = { color: BLANCO };
   marca(s);
   pregunta(
-    s, 2, '¿Para qué sirve?',
+    s,
+    2,
+    '¿Para qué sirve?',
     'Para tomar cinco decisiones con el número delante, y no con la impresión de la semana.',
   );
 
   const puntos = [
     ['Cómo viene el año', 'Proyección anual y trimestral, contra el mismo período del año pasado.'],
-    ['Dónde está el margen', 'La comisión real por operación y por punta, no solamente el volumen.'],
+    [
+      'Dónde está el margen',
+      'La comisión real por operación y por punta, no solamente el volumen.',
+    ],
     ['Quién produce', 'Puntas y comisión de cada vendedor: en el año, el trimestre o el mes.'],
-    ['Toda la captación junta', 'Cada tasación con su estado y su responsable, sin planillas paralelas.'],
-    ['La tasa de captación', 'Cuántas tasaciones terminan en captación, y por qué se pierden las otras.'],
+    [
+      'Toda la captación junta',
+      'Cada tasación con su estado y su responsable, sin planillas paralelas.',
+    ],
+    [
+      'La tasa de captación',
+      'Cuántas tasaciones terminan en captación, y por qué se pierden las otras.',
+    ],
   ];
   puntos.forEach(([titulo, texto], i) =>
     fila(s, { x: 0.5, y: 2.44 + i * 0.6, ancho: 5.2, titulo, texto }),
@@ -276,7 +387,17 @@ LAMINAS.push(function laminaParaQue() {
   s.addText(
     'Cada tasación con su estado. Cuando se pierde, queda escrito por qué — y esa es la ' +
       'conversación que hoy no se tiene.',
-    { x: 6.0, y: 4.8, w: 3.5, h: 0.6, margin: 0, fontFace: F, fontSize: 9.5, color: GRIS, lineSpacing: 13 },
+    {
+      x: 6.0,
+      y: 4.8,
+      w: 3.5,
+      h: 0.6,
+      margin: 0,
+      fontFace: F,
+      fontSize: 9.5,
+      color: GRIS,
+      lineSpacing: 13,
+    },
   );
 
   s.addNotes(
@@ -293,7 +414,9 @@ LAMINAS.push(function laminaPorQue() {
   s.background = { color: FONDO };
   marca(s);
   pregunta(
-    s, 3, '¿Por qué contratarlo?',
+    s,
+    3,
+    '¿Por qué contratarlo?',
     'Porque hoy esas respuestas cuestan una semana de planilla, y llegan tarde.',
   );
 
@@ -314,21 +437,48 @@ LAMINAS.push(function laminaPorQue() {
   razones.forEach(([titulo, texto], i) => {
     const x = 0.5 + i * 2.78;
     s.addShape(pres.ShapeType.roundRect, {
-      x, y: 2.46, w: 2.56, h: 2.58, rectRadius: 0.1,
-      fill: { color: BLANCO }, line: { color: LINEA, width: 1 },
+      x,
+      y: 2.46,
+      w: 2.56,
+      h: 2.58,
+      rectRadius: 0.1,
+      fill: { color: BLANCO },
+      line: { color: LINEA, width: 1 },
     });
     // «01» y no «1»: es la misma numeración que los pasos de la lámina 4.
     s.addText(String(i + 1).padStart(2, '0'), {
-      x: x + 0.2, y: 2.6, w: 0.4, h: 0.28, margin: 0,
-      fontFace: F, fontSize: 12, bold: true, color: AZUL,
+      x: x + 0.2,
+      y: 2.6,
+      w: 0.4,
+      h: 0.28,
+      margin: 0,
+      fontFace: F,
+      fontSize: 12,
+      bold: true,
+      color: AZUL,
     });
     s.addText(titulo, {
-      x: x + 0.2, y: 2.92, w: 2.18, h: 0.62, margin: 0,
-      fontFace: F, fontSize: 12.5, bold: true, color: TINTA, lineSpacing: 16,
+      x: x + 0.2,
+      y: 2.92,
+      w: 2.18,
+      h: 0.62,
+      margin: 0,
+      fontFace: F,
+      fontSize: 12.5,
+      bold: true,
+      color: TINTA,
+      lineSpacing: 16,
     });
     s.addText(texto, {
-      x: x + 0.2, y: 3.58, w: 2.18, h: 1.34, margin: 0,
-      fontFace: F, fontSize: 9.5, color: GRIS, lineSpacing: 13,
+      x: x + 0.2,
+      y: 3.58,
+      w: 2.18,
+      h: 1.34,
+      margin: 0,
+      fontFace: F,
+      fontSize: 9.5,
+      color: GRIS,
+      lineSpacing: 13,
     });
   });
 
@@ -358,19 +508,36 @@ LAMINAS.push(function laminaComoSeContrata() {
   ];
   pasos.forEach(([titulo, texto], i) =>
     fila(s, {
-      x: 0.5, y: 2.56 + i * 0.72, ancho: 4.5,
+      x: 0.5,
+      y: 2.56 + i * 0.72,
+      ancho: 4.5,
       numero: String(i + 1).padStart(2, '0'),
-      titulo, texto, sobreOscuro: true,
+      titulo,
+      texto,
+      sobreOscuro: true,
     }),
   );
 
   s.addShape(pres.ShapeType.roundRect, {
-    x: 5.35, y: 2.46, w: 4.15, h: 2.66, rectRadius: 0.12,
-    fill: { color: BLANCO }, line: { type: 'none' },
+    x: 5.35,
+    y: 2.46,
+    w: 4.15,
+    h: 2.66,
+    rectRadius: 0.12,
+    fill: { color: BLANCO },
+    line: { type: 'none' },
   });
   s.addText('PRECIOS', {
-    x: 5.62, y: 2.64, w: 3.6, h: 0.22, margin: 0,
-    fontFace: F, fontSize: 8.5, bold: true, charSpacing: 1.6, color: GRIS,
+    x: 5.62,
+    y: 2.64,
+    w: 3.6,
+    h: 0.22,
+    margin: 0,
+    fontFace: F,
+    fontSize: 8.5,
+    bold: true,
+    charSpacing: 1.6,
+    color: GRIS,
   });
 
   const precios = [
@@ -382,26 +549,58 @@ LAMINAS.push(function laminaComoSeContrata() {
     const y = 2.98 + i * 0.6;
     if (i > 0) {
       s.addShape(pres.ShapeType.line, {
-        x: 5.62, y: y - 0.1, w: 3.6, h: 0, line: { color: LINEA, width: 1 },
+        x: 5.62,
+        y: y - 0.1,
+        w: 3.6,
+        h: 0,
+        line: { color: LINEA, width: 1 },
       });
     }
     s.addText(que, {
-      x: 5.62, y, w: 2.1, h: 0.24, margin: 0,
-      fontFace: F, fontSize: 11.5, bold: true, color: TINTA,
+      x: 5.62,
+      y,
+      w: 2.1,
+      h: 0.24,
+      margin: 0,
+      fontFace: F,
+      fontSize: 11.5,
+      bold: true,
+      color: TINTA,
     });
     s.addText(detalle, {
-      x: 5.62, y: y + 0.22, w: 2.2, h: 0.22, margin: 0,
-      fontFace: F, fontSize: 8.5, color: GRIS,
+      x: 5.62,
+      y: y + 0.22,
+      w: 2.2,
+      h: 0.22,
+      margin: 0,
+      fontFace: F,
+      fontSize: 8.5,
+      color: GRIS,
     });
     s.addText(monto, {
-      x: 7.0, y: y + 0.01, w: 2.22, h: 0.32, margin: 0, align: 'right',
-      fontFace: F, fontSize: 14.5, bold: true, color: AZUL,
+      x: 7.0,
+      y: y + 0.01,
+      w: 2.22,
+      h: 0.32,
+      margin: 0,
+      align: 'right',
+      fontFace: F,
+      fontSize: 14.5,
+      bold: true,
+      color: AZUL,
     });
   });
 
   s.addText('Una inmobiliaria de diez vendedores: AR$ 300.000 una vez, y AR$ 250.000 por mes.', {
-    x: 5.62, y: 4.78, w: 3.6, h: 0.3, margin: 0,
-    fontFace: F, fontSize: 9, color: GRIS, italic: true,
+    x: 5.62,
+    y: 4.78,
+    w: 3.6,
+    h: 0.3,
+    margin: 0,
+    fontFace: F,
+    fontSize: 9,
+    color: GRIS,
+    italic: true,
   });
 
   s.addNotes(
@@ -417,7 +616,9 @@ LAMINAS.push(function laminaQuienesSomos() {
   s.background = { color: BLANCO };
   marca(s);
   pregunta(
-    s, 5, '¿Quiénes somos?',
+    s,
+    5,
+    '¿Quiénes somos?',
     'Dos directores de sistemas que trabajan juntos desde hace treinta años.',
   );
 
@@ -442,8 +643,15 @@ LAMINAS.push(function laminaQuienesSomos() {
     const x = 0.5 + i * 4.62;
     bloque(s, x, 2.52, 4.38, nombre, cargo);
     s.addText(texto, {
-      x, y: 3.24, w: 4.38, h: 1.2, margin: 0,
-      fontFace: F, fontSize: 9.5, color: GRIS, lineSpacing: 13,
+      x,
+      y: 3.24,
+      w: 4.38,
+      h: 1.2,
+      margin: 0,
+      fontFace: F,
+      fontSize: 9.5,
+      color: GRIS,
+      lineSpacing: 13,
     });
   });
 
@@ -451,7 +659,17 @@ LAMINAS.push(function laminaQuienesSomos() {
     'Uno viene del lado comercial: vender, medir, convertir. El otro, del lado de la operación ' +
       'que no se puede caer: continuidad, control, datos que no se pierden. Un sistema para ' +
       'una inmobiliaria necesita las dos cosas.',
-    { x: 0.5, y: 4.6, w: 8.4, h: 0.55, margin: 0, fontFace: F, fontSize: 10, color: TINTA, lineSpacing: 13.5 },
+    {
+      x: 0.5,
+      y: 4.6,
+      w: 8.4,
+      h: 0.55,
+      margin: 0,
+      fontFace: F,
+      fontSize: 10,
+      color: TINTA,
+      lineSpacing: 13.5,
+    },
   );
 
   s.addNotes(

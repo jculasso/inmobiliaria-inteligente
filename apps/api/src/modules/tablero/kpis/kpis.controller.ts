@@ -67,7 +67,9 @@ export class KpisController {
    */
   @Get('alquileres')
   @Roles(...ROLES_ALQUILERES)
-  @ApiOperation({ summary: 'Alquileres firmados del año, mes por mes (solo dirección y administración)' })
+  @ApiOperation({
+    summary: 'Alquileres firmados del año, mes por mes (solo dirección y administración)',
+  })
   alquileres(@Query(new ZodValidationPipe(AnioFiltroSchema)) filtro: AnioFiltro) {
     return this.kpis.alquileresMensual(filtro.anio);
   }
@@ -79,7 +81,13 @@ export class KpisController {
     @Query(new ZodValidationPipe(RangoFiltroSchema)) filtro: RangoFiltro,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.kpis.resumenRango(filtro.anio, filtro.mesInicio, filtro.mesFin, ctxDe(user), filtro.verTodo);
+    return this.kpis.resumenRango(
+      filtro.anio,
+      filtro.mesInicio,
+      filtro.mesFin,
+      ctxDe(user),
+      filtro.verTodo,
+    );
   }
 
   @Get('objetivos')

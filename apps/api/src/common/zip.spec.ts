@@ -22,7 +22,10 @@ describe('crc32', () => {
  */
 describe('crearZip', () => {
   const archivos = [
-    { nombre: 'operaciones.csv', contenido: Buffer.from('﻿código;monto\r\nALT-1;1234,56\r\n', 'utf8') },
+    {
+      nombre: 'operaciones.csv',
+      contenido: Buffer.from('﻿código;monto\r\nALT-1;1234,56\r\n', 'utf8'),
+    },
     { nombre: 'vendedores.csv', contenido: Buffer.from('﻿nombre\r\nNicolás Vera\r\n', 'utf8') },
     { nombre: 'chico.txt', contenido: Buffer.from('x') },
   ];
@@ -50,7 +53,11 @@ describe('crearZip', () => {
     writeFileSync(ruta, zip);
 
     const lista = execFileSync('unzip', ['-Z', '-1', ruta], { encoding: 'utf8' });
-    expect(lista.trim().split('\n').sort()).toEqual(['chico.txt', 'operaciones.csv', 'vendedores.csv']);
+    expect(lista.trim().split('\n').sort()).toEqual([
+      'chico.txt',
+      'operaciones.csv',
+      'vendedores.csv',
+    ]);
   });
 
   // Mismo contenido y mismo momento tienen que dar el mismo archivo: si no, no
@@ -61,9 +68,14 @@ describe('crearZip', () => {
   });
 
   it('un archivo vacío no lo rompe', () => {
-    const zip = crearZip([{ nombre: 'vacio.csv', contenido: Buffer.alloc(0) }], new Date('2026-08-01T10:30:00'));
+    const zip = crearZip(
+      [{ nombre: 'vacio.csv', contenido: Buffer.alloc(0) }],
+      new Date('2026-08-01T10:30:00'),
+    );
     const dir = mkdtempSync(join(tmpdir(), 'zip-'));
     writeFileSync(join(dir, 'v.zip'), zip);
-    expect(execFileSync('unzip', ['-t', join(dir, 'v.zip')], { encoding: 'utf8' })).toContain('No errors');
+    expect(execFileSync('unzip', ['-t', join(dir, 'v.zip')], { encoding: 'utf8' })).toContain(
+      'No errors',
+    );
   });
 });

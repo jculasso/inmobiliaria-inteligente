@@ -16,8 +16,7 @@ import { OperacionesController } from './operaciones.controller';
  */
 function rolesDe(metodo: keyof OperacionesController): Rol[] {
   const roles = Reflect.getMetadata(ROLES_KEY, OperacionesController.prototype[metodo]) as
-    | Rol[]
-    | undefined;
+    Rol[] | undefined;
   if (!roles) throw new Error(`El handler ${String(metodo)} no declara @Roles.`);
   return roles;
 }

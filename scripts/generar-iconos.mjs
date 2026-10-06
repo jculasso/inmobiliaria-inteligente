@@ -20,7 +20,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
-const ICONOS = join(dirname(fileURLToPath(import.meta.url)), '..', 'apps', 'web', 'public', 'icons');
+const ICONOS = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'apps',
+  'web',
+  'public',
+  'icons',
+);
 const svg = readFileSync(join(ICONOS, 'icono.svg'));
 const svgMaskable = readFileSync(join(ICONOS, 'icono-maskable.svg'));
 

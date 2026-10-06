@@ -22,7 +22,9 @@ const URL_BASE = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const cab = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 
-const buckets = await fetch(`${URL_BASE}/storage/v1/bucket`, { headers: cab }).then((r) => r.json());
+const buckets = await fetch(`${URL_BASE}/storage/v1/bucket`, { headers: cab }).then((r) =>
+  r.json(),
+);
 if (!Array.isArray(buckets)) {
   console.log('  no se pudo listar:', JSON.stringify(buckets).slice(0, 200));
   process.exit(0);
@@ -59,7 +61,11 @@ for (const b of buckets) {
   let bajados = 0;
   for (const a of archivos) {
     const r = await fetch(`${URL_BASE}/storage/v1/object/${b.name}/${a.ruta}`, { headers: cab });
-    if (!r.ok) { fallados++; console.log(`    ✗ ${b.name}/${a.ruta} → ${r.status}`); continue; }
+    if (!r.ok) {
+      fallados++;
+      console.log(`    ✗ ${b.name}/${a.ruta} → ${r.status}`);
+      continue;
+    }
     const destino = `${DESTINO}/${b.name}/${a.ruta}`;
     mkdirSync(dirname(destino), { recursive: true });
     writeFileSync(destino, Buffer.from(await r.arrayBuffer()));
@@ -72,5 +78,7 @@ for (const b of buckets) {
     `  ${b.name.padEnd(22)} ${String(bajados).padStart(5)}/${archivos.length} archivos · ${(bytes / 1024 / 1024).toFixed(1)} MB · ${b.public ? 'público' : 'privado'}`,
   );
 }
-console.log(`\n  ${totalArchivos} archivos bajados · ${(totalBytes / 1024 / 1024).toFixed(1)} MB · ${fallados} fallaron`);
+console.log(
+  `\n  ${totalArchivos} archivos bajados · ${(totalBytes / 1024 / 1024).toFixed(1)} MB · ${fallados} fallaron`,
+);
 console.log(`  ${DESTINO}`);

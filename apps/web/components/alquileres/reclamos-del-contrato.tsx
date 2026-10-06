@@ -10,7 +10,13 @@ import { Bloque, CLASE_FOCO, VacioBloque } from './piezas';
 import { EstadoReclamoBadge, NuevoReclamoModal, PrioridadBadge } from './reclamos-piezas';
 
 /** Los reclamos de un contrato, en su ficha, con el botón para abrir uno. */
-export function ReclamosDelContrato({ contrato, reclamos }: { contrato: ContratoDto; reclamos: ReclamoResumenDto[] }) {
+export function ReclamosDelContrato({
+  contrato,
+  reclamos,
+}: {
+  contrato: ContratoDto;
+  reclamos: ReclamoResumenDto[];
+}) {
   const router = useRouter();
   const [nuevo, setNuevo] = useState(false);
   return (
@@ -32,7 +38,10 @@ export function ReclamosDelContrato({ contrato, reclamos }: { contrato: Contrato
         <ul className="divide-y divide-line text-sm">
           {reclamos.map((r) => (
             <li key={r.id}>
-              <Link href={`/alquileres/reclamos/${r.id}`} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60 ${CLASE_FOCO}`}>
+              <Link
+                href={`/alquileres/reclamos/${r.id}`}
+                className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60 ${CLASE_FOCO}`}
+              >
                 <span className="min-w-0">
                   <span className="block font-semibold text-ink">
                     {r.numero} · {r.asunto}
@@ -52,7 +61,18 @@ export function ReclamosDelContrato({ contrato, reclamos }: { contrato: Contrato
       )}
       {nuevo && (
         <NuevoReclamoModal
-          contratos={[{ id: contrato.id, codigo: contrato.codigo, propiedad: { id: contrato.propiedad.id, direccion: contrato.propiedad.direccion, unidad: contrato.propiedad.unidad }, estado: contrato.estado }]}
+          contratos={[
+            {
+              id: contrato.id,
+              codigo: contrato.codigo,
+              propiedad: {
+                id: contrato.propiedad.id,
+                direccion: contrato.propiedad.direccion,
+                unidad: contrato.propiedad.unidad,
+              },
+              estado: contrato.estado,
+            },
+          ]}
           contratoFijo={contrato.id}
           onClose={() => setNuevo(false)}
           onCreado={(id) => router.push(`/alquileres/reclamos/${id}`)}

@@ -58,15 +58,7 @@ function normalizar(texto: string): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-function Pill({
-  valor,
-  activo,
-  onClick,
-}: {
-  valor: string;
-  activo: boolean;
-  onClick: () => void;
-}) {
+function Pill({ valor, activo, onClick }: { valor: string; activo: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -114,7 +106,10 @@ function SeccionPills({
 
   const delCatalogo = useMemo(() => new Set(opciones), [opciones]);
   const propias = valores.filter((v) => !delCatalogo.has(v));
-  const sinElegir = useMemo(() => opciones.filter((o) => !valores.includes(o)), [opciones, valores]);
+  const sinElegir = useMemo(
+    () => opciones.filter((o) => !valores.includes(o)),
+    [opciones, valores],
+  );
 
   const filtradas = useMemo(() => {
     const q = normalizar(busqueda.trim());
@@ -132,7 +127,8 @@ function SeccionPills({
   function agregar() {
     const limpio = texto.trim();
     if (!limpio) return;
-    if (!valores.some((v) => normalizar(v) === normalizar(limpio))) setValores([...valores, limpio]);
+    if (!valores.some((v) => normalizar(v) === normalizar(limpio)))
+      setValores([...valores, limpio]);
     setTexto('');
     setAgregando(false);
   }
@@ -140,7 +136,9 @@ function SeccionPills({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">{label}</span>
+        <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">
+          {label}
+        </span>
         <span className="text-[10px] text-muted">{ayuda}</span>
       </div>
 
@@ -181,7 +179,9 @@ function SeccionPills({
         ))}
         {filtradas.length === 0 && (
           <span className="py-1 text-xs text-muted">
-            {buscando ? 'Nada con ese texto. Podés agregarla abajo.' : 'Ya elegiste todas las de la lista.'}
+            {buscando
+              ? 'Nada con ese texto. Podés agregarla abajo.'
+              : 'Ya elegiste todas las de la lista.'}
           </span>
         )}
         {ocultas > 0 && (
@@ -270,7 +270,11 @@ export function Seccion3Analisis({
 
   return (
     <div className="flex flex-col gap-4">
-      <PasoHeader numero={3} titulo="Análisis comercial" bajada="Contexto de mercado y posicionamiento de la propiedad." />
+      <PasoHeader
+        numero={3}
+        titulo="Análisis comercial"
+        bajada="Contexto de mercado y posicionamiento de la propiedad."
+      />
       <SeccionPills
         label="Fortalezas"
         ayuda={segunTipo}
@@ -289,7 +293,11 @@ export function Seccion3Analisis({
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Campo label="Demanda">
-          <select value={demanda} onChange={(e) => setDemanda(e.target.value as Nivel | '')} className={inputClass}>
+          <select
+            value={demanda}
+            onChange={(e) => setDemanda(e.target.value as Nivel | '')}
+            className={inputClass}
+          >
             <option value="">—</option>
             {NIVELES.map((n) => (
               <option key={n} value={n}>

@@ -59,13 +59,19 @@ export function AdminLogin() {
               className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-brand-red"
             />
             <p className="text-sm font-semibold text-ink">Cargando el panel…</p>
-            <p className="text-xs text-muted">Puede tardar unos segundos si el servidor estaba inactivo.</p>
+            <p className="text-xs text-muted">
+              Puede tardar unos segundos si el servidor estaba inactivo.
+            </p>
           </div>
         ) : (
           <>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red">Administración</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red">
+              Administración
+            </p>
             <h1 className="mt-1 text-xl font-extrabold text-ink">Panel de plataforma</h1>
-            <p className="mt-1 text-sm text-muted">Acceso reservado al administrador de la plataforma.</p>
+            <p className="mt-1 text-sm text-muted">
+              Acceso reservado al administrador de la plataforma.
+            </p>
 
             <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit}>
               <div className="flex flex-col gap-1.5">

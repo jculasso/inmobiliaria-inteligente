@@ -15,18 +15,18 @@ Negocios Inmobiliarios y quince vendedores usándolo todos los días.
 
 El sistema son **tres aplicaciones** que comparten código y una base de datos:
 
-| Aplicación | Qué es | Dónde corre |
-| --- | --- | --- |
-| **API** | El cerebro. Toda la lógica de negocio y el único que habla con la base | Render |
-| **Web** | El producto que usan las inmobiliarias | Vercel |
-| **Sitio** | La página comercial, para vender | Vercel |
+| Aplicación | Qué es                                                                 | Dónde corre |
+| ---------- | ---------------------------------------------------------------------- | ----------- |
+| **API**    | El cerebro. Toda la lógica de negocio y el único que habla con la base | Render      |
+| **Web**    | El producto que usan las inmobiliarias                                 | Vercel      |
+| **Sitio**  | La página comercial, para vender                                       | Vercel      |
 
 La regla que ordena todo lo demás: **la lógica de negocio vive en la API y en
 ningún otro lado.** La web no calcula comisiones ni decide quién ve qué; se lo
 pregunta a la API. Eso es lo que permite que mañana una aplicación de teléfono
 nativa se conecte a lo mismo sin reescribir nada.
 
-Las tres viven en un solo repositorio —un *monorepo*— junto a cuatro paquetes
+Las tres viven en un solo repositorio —un _monorepo_— junto a cuatro paquetes
 de código compartido:
 
 - **`types`** — las formas de los datos y sus reglas de validación. Lo usan la
@@ -64,14 +64,14 @@ saber qué mostrar. No hay dos versiones que se desincronizan.
 
 ## 3. La infraestructura: dónde corre cada cosa
 
-| Pieza | Servicio | Plan hoy | Qué pasa si se cae |
-| --- | --- | --- | --- |
-| API | Render | Gratis | El producto no responde. El sitio comercial sigue en pie |
-| Web y Sitio | Vercel | Hobby | Cada uno cae por separado |
-| Base de datos | Supabase (PostgreSQL) | Gratis | Se cae todo |
-| Identidad | Supabase Auth | Gratis | Nadie puede entrar |
-| Archivos | Supabase Storage | Gratis | No se ven fotos ni informes |
-| Correo | Resend | Gratis | No salen los avisos |
+| Pieza         | Servicio              | Plan hoy | Qué pasa si se cae                                       |
+| ------------- | --------------------- | -------- | -------------------------------------------------------- |
+| API           | Render                | Gratis   | El producto no responde. El sitio comercial sigue en pie |
+| Web y Sitio   | Vercel                | Hobby    | Cada uno cae por separado                                |
+| Base de datos | Supabase (PostgreSQL) | Gratis   | Se cae todo                                              |
+| Identidad     | Supabase Auth         | Gratis   | Nadie puede entrar                                       |
+| Archivos      | Supabase Storage      | Gratis   | No se ven fotos ni informes                              |
+| Correo        | Resend                | Gratis   | No salen los avisos                                      |
 
 Dos cosas para tener presentes de los planes gratuitos:
 
@@ -325,12 +325,12 @@ decisión de alcance, no una limitación.
 **559 pruebas automáticas** de unidad e integración, más las de navegador y las
 de aislamiento.
 
-| Tipo | Herramienta | Qué cubre |
-| --- | --- | --- |
-| Unidad e integración | Vitest | Cálculos, permisos, plantillas de PDF, correos |
-| API | Supertest | Los endpoints de punta a punta |
-| Navegador | Playwright | Lo que se ve, en Chromium y **WebKit** |
-| Aislamiento | Vitest + Postgres + PgBouncer | Las 16 tablas por la ruta real (ver sección 4) |
+| Tipo                 | Herramienta                   | Qué cubre                                      |
+| -------------------- | ----------------------------- | ---------------------------------------------- |
+| Unidad e integración | Vitest                        | Cálculos, permisos, plantillas de PDF, correos |
+| API                  | Supertest                     | Los endpoints de punta a punta                 |
+| Navegador            | Playwright                    | Lo que se ve, en Chromium y **WebKit**         |
+| Aislamiento          | Vitest + Postgres + PgBouncer | Las 16 tablas por la ruta real (ver sección 4) |
 
 WebKit —el motor de Safari— está incluido a propósito: el problema del zoom en
 iOS solo aparece ahí. Probar en un solo navegador no lo habría detectado.
@@ -396,4 +396,4 @@ operación de hoy.
 
 ---
 
-*Inmobiliaria Inteligente · Resumen técnico · 3 de agosto de 2026*
+_Inmobiliaria Inteligente · Resumen técnico · 3 de agosto de 2026_

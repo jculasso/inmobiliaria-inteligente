@@ -34,9 +34,18 @@ export function Seccion1Datos({
 }: Props) {
   return (
     <div className="flex flex-col gap-3">
-      <PasoHeader numero={1} titulo="Datos del informe" bajada="Quién pide la tasación y dónde está la propiedad." />
+      <PasoHeader
+        numero={1}
+        titulo="Datos del informe"
+        bajada="Quién pide la tasación y dónde está la propiedad."
+      />
       <Campo label="Cliente" requerido>
-        <input value={cliente} onChange={(e) => setCliente(e.target.value)} required className={inputClass} />
+        <input
+          value={cliente}
+          onChange={(e) => setCliente(e.target.value)}
+          required
+          className={inputClass}
+        />
       </Campo>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label="Fecha" requerido>
@@ -60,14 +69,27 @@ export function Seccion1Datos({
         </Campo>
       </div>
       <Campo label="Dirección" requerido>
-        <input value={direccion} onChange={(e) => setDireccion(e.target.value)} required className={inputClass} />
+        <input
+          value={direccion}
+          onChange={(e) => setDireccion(e.target.value)}
+          required
+          className={inputClass}
+        />
       </Campo>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label="Barrio">
-          <input value={barrio} onChange={(e) => setBarrio(e.target.value)} className={inputClass} />
+          <input
+            value={barrio}
+            onChange={(e) => setBarrio(e.target.value)}
+            className={inputClass}
+          />
         </Campo>
         <Campo label="Ciudad">
-          <input value={ciudad} onChange={(e) => setCiudad(e.target.value)} className={inputClass} />
+          <input
+            value={ciudad}
+            onChange={(e) => setCiudad(e.target.value)}
+            className={inputClass}
+          />
         </Campo>
       </div>
     </div>

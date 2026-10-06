@@ -39,10 +39,7 @@ describe('getOrFetch', () => {
   });
 
   it('un error no queda cacheado: el próximo intento reintenta', async () => {
-    const fetcher = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('falló'))
-      .mockResolvedValueOnce('ok');
+    const fetcher = vi.fn().mockRejectedValueOnce(new Error('falló')).mockResolvedValueOnce('ok');
 
     await expect(getOrFetch('k:error', fetcher)).rejects.toThrow('falló');
     expect(await getOrFetch('k:error', fetcher)).toBe('ok');

@@ -36,7 +36,9 @@ function Etapa({
         {nuevo ? `Nuevo · ${etiqueta}` : etiqueta}
       </span>
       <p className="mt-2 text-sm font-bold text-ink">{titulo}</p>
-      <div className="mt-1.5 flex flex-col gap-1.5 text-[13px] leading-relaxed text-muted">{children}</div>
+      <div className="mt-1.5 flex flex-col gap-1.5 text-[13px] leading-relaxed text-muted">
+        {children}
+      </div>
     </div>
   );
 }
@@ -59,8 +61,8 @@ export function FlujoPublicacionTokko() {
       <div className="flex flex-col md:flex-row md:items-stretch">
         <Etapa etiqueta="Ya funciona" titulo="1 · La propiedad se capta">
           <p>
-            La tasación queda en <strong>Captada</strong> y arranca el protocolo. La propiedad ya está
-            descrita en el sistema: medidas, ambientes, estado, fotos.
+            La tasación queda en <strong>Captada</strong> y arranca el protocolo. La propiedad ya
+            está descrita en el sistema: medidas, ambientes, estado, fotos.
           </p>
         </Etapa>
 
@@ -68,9 +70,9 @@ export function FlujoPublicacionTokko() {
 
         <Etapa etiqueta="Ficha de propiedad" titulo="2 · Se completa lo que falta" nuevo>
           <p>
-            Nace <strong>precargada</strong> con todo lo que ya se cargó en la tasación. Solo hay que
-            sumar lo que se escribe para publicar: descripción, expensas, disponibilidad y qué fotos
-            salen.
+            Nace <strong>precargada</strong> con todo lo que ya se cargó en la tasación. Solo hay
+            que sumar lo que se escribe para publicar: descripción, expensas, disponibilidad y qué
+            fotos salen.
           </p>
           <p className="font-semibold text-ink">Se hace una sola vez, acá.</p>
         </Etapa>
@@ -79,7 +81,8 @@ export function FlujoPublicacionTokko() {
 
         <Etapa etiqueta="Publicación" titulo="3 · Tokko la toma sola" nuevo>
           <p>
-            El sistema publica un listado que Tokko va a buscar por su cuenta. Nadie copia nada a mano.
+            El sistema publica un listado que Tokko va a buscar por su cuenta. Nadie copia nada a
+            mano.
           </p>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
             Estado: Publicada en Tokko
@@ -90,8 +93,8 @@ export function FlujoPublicacionTokko() {
       <div className="flex flex-col md:flex-row md:items-stretch">
         <Etapa etiqueta="Ya funciona · Tokko" titulo="4 · Tokko publica en los portales">
           <p>
-            Zonaprop, Argenprop, MercadoLibre. <strong>Esto no cambia</strong>: lo sigue haciendo Tokko,
-            igual que hoy.
+            Zonaprop, Argenprop, MercadoLibre. <strong>Esto no cambia</strong>: lo sigue haciendo
+            Tokko, igual que hoy.
           </p>
         </Etapa>
 
@@ -115,15 +118,15 @@ export function FlujoPublicacionTokko() {
         <div className="rounded-brand border-2 border-success/40 bg-success/5 p-4">
           <p className="text-sm font-bold text-ink">Lo que se gana</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-            La propiedad se carga <strong>una sola vez</strong>. Hoy se carga en el sistema al tasarla y
-            se vuelve a cargar en Tokko para publicarla.
+            La propiedad se carga <strong>una sola vez</strong>. Hoy se carga en el sistema al
+            tasarla y se vuelve a cargar en Tokko para publicarla.
           </p>
         </div>
         <div className="rounded-brand border border-line bg-surface p-4">
           <p className="text-sm font-bold text-ink">Lo que NO cambia</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-            Tokko sigue siendo quien publica en los portales y quien maneja esa relación. Este módulo{' '}
-            <strong>no lo reemplaza</strong>: le saca el trabajo de tipeo.
+            Tokko sigue siendo quien publica en los portales y quien maneja esa relación. Este
+            módulo <strong>no lo reemplaza</strong>: le saca el trabajo de tipeo.
           </p>
         </div>
       </div>

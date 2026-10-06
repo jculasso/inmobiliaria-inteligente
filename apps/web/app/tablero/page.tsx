@@ -46,11 +46,24 @@ export default async function TableroDashboardPage({
         </div>
       </div>
 
-      <DashboardKpis resumen={resumen} anio={anio} mes={mes} verTodo={verTodo} verAlquileres={verAlquileres} />
+      <DashboardKpis
+        resumen={resumen}
+        anio={anio}
+        mes={mes}
+        verTodo={verTodo}
+        verAlquileres={verAlquileres}
+      />
 
       <section className="flex flex-col gap-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">📊 Resumen acumulado</p>
-        <ResumenAcumulado anio={anio} mesSeleccionado={mes} verTodo={verTodo} inicial={resumenAnual} />
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">
+          📊 Resumen acumulado
+        </p>
+        <ResumenAcumulado
+          anio={anio}
+          mesSeleccionado={mes}
+          verTodo={verTodo}
+          inicial={resumenAnual}
+        />
       </section>
 
       {/*
@@ -59,7 +72,12 @@ export default async function TableroDashboardPage({
         la vez al «Ranking de vendedores» y a la tabla que vivía dentro del
         Resumen: eran el mismo dato dos veces. Ver `TotalesVendedores`.
       */}
-      <TotalesVendedores anio={anio} mesSeleccionado={mes} verTodo={verTodo} inicial={resumenAnual} />
+      <TotalesVendedores
+        anio={anio}
+        mesSeleccionado={mes}
+        verTodo={verTodo}
+        inicial={resumenAnual}
+      />
 
       {/*
         Solo para quien ve los alquileres de toda la inmobiliaria: ver
@@ -70,7 +88,9 @@ export default async function TableroDashboardPage({
         <section className="flex flex-col gap-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">
             🔑 Alquileres{' '}
-            <span className="font-normal normal-case tracking-normal">· de toda la inmobiliaria, por fecha de firma</span>
+            <span className="font-normal normal-case tracking-normal">
+              · de toda la inmobiliaria, por fecha de firma
+            </span>
           </p>
           <AlquileresSeccion anio={anio} mesSeleccionado={mes} />
         </section>

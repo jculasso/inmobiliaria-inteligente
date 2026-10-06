@@ -83,7 +83,10 @@ export function FotosUploader({ tasacionId, fotos, onChange }: Props) {
       {fotos.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {fotos.map((f) => (
-            <div key={f.id} className="group relative aspect-[4/3] overflow-hidden rounded-brand border border-line">
+            <div
+              key={f.id}
+              className="group relative aspect-[4/3] overflow-hidden rounded-brand border border-line"
+            >
               <img src={f.url} alt="" className="h-full w-full object-cover" />
               <button
                 type="button"

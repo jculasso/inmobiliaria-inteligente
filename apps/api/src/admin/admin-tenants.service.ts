@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { MODULOS_DEFAULT, type CreateTenant, type TenantConfig, type UpdateTenant } from '@vacker/types';
+import {
+  MODULOS_DEFAULT,
+  type CreateTenant,
+  type TenantConfig,
+  type UpdateTenant,
+} from '@vacker/types';
 import { SupabaseStorageService } from '../common/supabase-storage.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -152,7 +157,11 @@ export class AdminTenantsService {
       update: { secretoEnc, ultimos4: secreto.slice(-4), actualizadoPor: usuarioId },
       select: { ultimos4: true, updatedAt: true },
     });
-    return { configurada: true, ultimos4: row.ultimos4, actualizadoEl: row.updatedAt.toISOString() };
+    return {
+      configurada: true,
+      ultimos4: row.ultimos4,
+      actualizadoEl: row.updatedAt.toISOString(),
+    };
   }
 
   async borrarCredencial(tenantId: string) {
@@ -199,7 +208,9 @@ export class AdminTenantsService {
 }
 
 function extensionDe(mimetype: string, originalname: string): string {
-  const fromName = originalname.includes('.') ? originalname.slice(originalname.lastIndexOf('.')) : '';
+  const fromName = originalname.includes('.')
+    ? originalname.slice(originalname.lastIndexOf('.'))
+    : '';
   if (fromName) return fromName;
   const sub = mimetype.split('/')[1];
   return sub ? `.${sub}` : '';

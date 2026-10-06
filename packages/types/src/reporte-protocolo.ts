@@ -162,8 +162,7 @@ export function asuntoDelReporte(r: {
   // direcciones no se lee en una notificación.
   const nombres = r.urgencias.slice(0, 2).map((u) => u.direccion);
   const resto = r.urgencias.length - nombres.length;
-  const lista =
-    resto > 0 ? `${nombres.join(', ')} y ${resto} más` : nombres.join(' y ');
+  const lista = resto > 0 ? `${nombres.join(', ')} y ${resto} más` : nombres.join(' y ');
   const verbo = conRojas === 1 ? 'necesita' : 'necesitan';
   return `${conRojas} de ${activas} ${verbo} atención: ${lista}`;
 }

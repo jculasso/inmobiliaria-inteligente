@@ -47,7 +47,6 @@ describe('tablero-api', () => {
     const result = await getKpisResumen('token', { anio: 2026 });
     expect(result.anual.volumen).toBe(100);
   });
-
 });
 
 describe('mesesDelTrimestre', () => {
@@ -61,8 +60,28 @@ describe('mesesDelTrimestre', () => {
 describe('sumarAgregados', () => {
   it('suma los campos y recalcula el ticket promedio', () => {
     const resultado = sumarAgregados([
-      { volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 5, comisionCompradora: 0, comisionVendedora: 5, ticketPromedio: 100 },
-      { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 10, comisionCompradora: 10, comisionVendedora: 0, ticketPromedio: 200 },
+      {
+        volumen: 100,
+        operaciones: 1,
+        puntas: 1,
+        puntasCompradoras: 0,
+        puntasVendedoras: 1,
+        comision: 5,
+        comisionCompradora: 0,
+        comisionVendedora: 5,
+        ticketPromedio: 100,
+      },
+      {
+        volumen: 200,
+        operaciones: 1,
+        puntas: 1,
+        puntasCompradoras: 1,
+        puntasVendedoras: 0,
+        comision: 10,
+        comisionCompradora: 10,
+        comisionVendedora: 0,
+        ticketPromedio: 200,
+      },
     ]);
     expect(resultado).toEqual({
       volumen: 300,
@@ -96,7 +115,9 @@ describe('getResumenPeriodo', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(resultado.agregado.volumen).toBe(100);
     const [url] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=1&mesFin=12');
+    expect(String(url)).toBe(
+      'http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=1&mesFin=12',
+    );
   });
 
   it('mensual: pide /tablero/kpis/rango con mesInicio=mesFin=mes', async () => {
@@ -110,7 +131,9 @@ describe('getResumenPeriodo', () => {
 
     expect(resultado.agregado.volumen).toBe(7);
     const [url] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=3&mesFin=3');
+    expect(String(url)).toBe(
+      'http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=3&mesFin=3',
+    );
   });
 
   it('trimestral: pide /tablero/kpis/rango con el rango de los 3 meses del trimestre', async () => {
@@ -120,12 +143,18 @@ describe('getResumenPeriodo', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const resultado = await getResumenPeriodo('token', { anio: 2026, periodo: 'trimestral', trimestre: 1 });
+    const resultado = await getResumenPeriodo('token', {
+      anio: 2026,
+      periodo: 'trimestral',
+      trimestre: 1,
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(resultado.agregado.volumen).toBe(60);
     const [url] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe('http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=1&mesFin=3');
+    expect(String(url)).toBe(
+      'http://localhost:3001/tablero/kpis/rango?anio=2026&mesInicio=1&mesFin=3',
+    );
   });
 });
 
@@ -175,15 +204,22 @@ describe('tablero-api — la respuesta de una API todavía sin actualizar', () =
       anio: 2026,
       mes: 8,
       anual: {
-        volumen: 1000, operaciones: 2, puntas: 2, puntasCompradoras: 1,
-        puntasVendedoras: 1, comision: 50, ticketPromedio: 500,
+        volumen: 1000,
+        operaciones: 2,
+        puntas: 2,
+        puntasCompradoras: 1,
+        puntasVendedoras: 1,
+        comision: 50,
+        ticketPromedio: 500,
       },
       pendienteCobro: 0,
       operacionesSenadas: 0,
       alquileres: { firmados: 0, comision: 0, valorMensualPromedio: 0 },
     };
     global.fetch = vi.fn().mockResolvedValue({
-      ok: true, status: 200, json: async () => viejo,
+      ok: true,
+      status: 200,
+      json: async () => viejo,
     }) as unknown as typeof fetch;
 
     const res = await getKpisResumen('token', { anio: 2026, mes: 8 });
@@ -213,6 +249,8 @@ describe('sumarAlquileres', () => {
 
   it('sin alquileres el promedio es cero, no NaN', async () => {
     const { sumarAlquileres } = await import('./tablero-api');
-    expect(sumarAlquileres([{ mes: 1, firmados: 0, comision: 0, valorMensualSuma: 0 }]).valorPromedio).toBe(0);
+    expect(
+      sumarAlquileres([{ mes: 1, firmados: 0, comision: 0, valorMensualSuma: 0 }]).valorPromedio,
+    ).toBe(0);
   });
 });

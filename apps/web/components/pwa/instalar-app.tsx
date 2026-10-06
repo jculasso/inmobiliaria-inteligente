@@ -22,7 +22,9 @@ function estaInstalada(): boolean {
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(display-mode: standalone)').matches;
   // iOS no soporta display-mode y usa esta propiedad propia.
-  return standalone || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return (
+    standalone || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
 }
 
 function esIOS(): boolean {

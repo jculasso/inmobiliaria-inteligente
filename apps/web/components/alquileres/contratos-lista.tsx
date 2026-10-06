@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LIMITE_LISTA, NOMBRE_TIPO_CONTRATO, recortarAlLimite, type ContratoResumenDto } from '@vacker/types';
+import {
+  LIMITE_LISTA,
+  NOMBRE_TIPO_CONTRATO,
+  recortarAlLimite,
+  type ContratoResumenDto,
+} from '@vacker/types';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularContrato, borrarContrato } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
@@ -31,10 +36,17 @@ import {
   Vacio,
 } from './piezas';
 
-const unidad = (c: ContratoResumenDto) => `${c.propiedad.direccion}${c.propiedad.unidad ? ` ${c.propiedad.unidad}` : ''}`;
+const unidad = (c: ContratoResumenDto) =>
+  `${c.propiedad.direccion}${c.propiedad.unidad ? ` ${c.propiedad.unidad}` : ''}`;
 const nombres = (xs: { nombre: string }[]) => xs.map((x) => x.nombre).join(', ') || '—';
 
-export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenDto[]; hoy: string }) {
+export function ContratosLista({
+  contratos,
+  hoy,
+}: {
+  contratos: ContratoResumenDto[];
+  hoy: string;
+}) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [aBorrar, setABorrar] = useState<ContratoResumenDto | null>(null);
@@ -46,9 +58,13 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
     const q = paraBuscar(busqueda.trim());
     if (!q) return visibles;
     return visibles.filter((c) =>
-      [c.codigo, unidad(c), NOMBRE_TIPO_CONTRATO[c.tipo], ...c.inquilinos.map((x) => x.nombre), ...c.propietarios.map((x) => x.nombre)].some((t) =>
-        paraBuscar(t).includes(q),
-      ),
+      [
+        c.codigo,
+        unidad(c),
+        NOMBRE_TIPO_CONTRATO[c.tipo],
+        ...c.inquilinos.map((x) => x.nombre),
+        ...c.propietarios.map((x) => x.nombre),
+      ].some((t) => paraBuscar(t).includes(q)),
     );
   }, [visibles, busqueda]);
 
@@ -57,7 +73,9 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
     c.importeVigente == null ? (
       <span className="text-xs font-bold text-warning">A indexar</span>
     ) : (
-      <span className={c.estado === 'anulado' ? 'text-muted line-through' : ''}>{fmtMoneda(c.importeVigente, c.moneda)}</span>
+      <span className={c.estado === 'anulado' ? 'text-muted line-through' : ''}>
+        {fmtMoneda(c.importeVigente, c.moneda)}
+      </span>
     );
   const indexacion = (c: ContratoResumenDto) =>
     c.proximaIndexacion == null ? (
@@ -72,8 +90,17 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
   // Decidido con Javier el 6/10/2026: el borrador se edita completo y se borra;
   // el vigente edita lo que no toca plata; con historia, se anula.
   const editar = (c: ContratoResumenDto) =>
-    c.estado === 'borrador' ? () => router.push(`/alquileres/contratos/${c.id}/editar`) : c.estado === 'vigente' ? () => setAEditar(c) : undefined;
-  const borrar = (c: ContratoResumenDto) => (c.estado === 'borrador' ? () => setABorrar(c) : c.estado === 'anulado' ? undefined : () => setAAnular(c));
+    c.estado === 'borrador'
+      ? () => router.push(`/alquileres/contratos/${c.id}/editar`)
+      : c.estado === 'vigente'
+        ? () => setAEditar(c)
+        : undefined;
+  const borrar = (c: ContratoResumenDto) =>
+    c.estado === 'borrador'
+      ? () => setABorrar(c)
+      : c.estado === 'anulado'
+        ? undefined
+        : () => setAAnular(c);
   const listo = () => {
     setABorrar(null);
     setAAnular(null);
@@ -112,7 +139,12 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
             <ListaTarjetas etiqueta="Contratos">
               {filtrados.map((c) => (
                 <Tarjeta key={c.id}>
-                  <button type="button" onClick={() => abrir(c)} title={`Abrir el contrato ${c.codigo}`} className={`block w-full rounded text-left ${CLASE_FOCO}`}>
+                  <button
+                    type="button"
+                    onClick={() => abrir(c)}
+                    title={`Abrir el contrato ${c.codigo}`}
+                    className={`block w-full rounded text-left ${CLASE_FOCO}`}
+                  >
                     <CabezaTarjeta
                       titulo={unidad(c)}
                       detalle={`${c.codigo} · ${NOMBRE_TIPO_CONTRATO[c.tipo]} · hasta ${fmtFecha(c.fin)}`}
@@ -125,7 +157,13 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
                       <CampoTarjeta etiqueta="Indexación">{indexacion(c)}</CampoTarjeta>
                     </CamposTarjeta>
                   </button>
-                  <AccionesFila tarjeta nombre={`el contrato ${c.codigo}`} onEditar={editar(c)} onBorrar={borrar(c)} anula={c.estado !== 'borrador'} />
+                  <AccionesFila
+                    tarjeta
+                    nombre={`el contrato ${c.codigo}`}
+                    onEditar={editar(c)}
+                    onBorrar={borrar(c)}
+                    anula={c.estado !== 'borrador'}
+                  />
                 </Tarjeta>
               ))}
             </ListaTarjetas>
@@ -162,16 +200,26 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
                         {nombres(c.inquilinos)}
                       </span>
                     </td>
-                    <td className={`${CLASE_TD} tabular-nums text-muted`} title={`Del ${fmtFecha(c.inicio)} al ${fmtFecha(c.fin)}`}>
+                    <td
+                      className={`${CLASE_TD} tabular-nums text-muted`}
+                      title={`Del ${fmtFecha(c.inicio)} al ${fmtFecha(c.fin)}`}
+                    >
                       {fmtFecha(c.fin)}
                     </td>
-                    <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{importe(c)}</td>
+                    <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>
+                      {importe(c)}
+                    </td>
                     <td className={`${CLASE_TD} tabular-nums text-muted`}>{indexacion(c)}</td>
                     <td className={CLASE_TD}>
                       <EstadoContratoBadge estado={c.estado} />
                     </td>
                     <td className={CLASE_TD_ACCIONES}>
-                      <AccionesFila nombre={`el contrato ${c.codigo}`} onEditar={editar(c)} onBorrar={borrar(c)} anula={c.estado !== 'borrador'} />
+                      <AccionesFila
+                        nombre={`el contrato ${c.codigo}`}
+                        onEditar={editar(c)}
+                        onBorrar={borrar(c)}
+                        anula={c.estado !== 'borrador'}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -208,7 +256,13 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
           onDone={listo}
         />
       )}
-      {aEditar && <DatosContratoModal contratoId={aEditar.id} onClose={() => setAEditar(null)} onSaved={listo} />}
+      {aEditar && (
+        <DatosContratoModal
+          contratoId={aEditar.id}
+          onClose={() => setAEditar(null)}
+          onSaved={listo}
+        />
+      )}
     </div>
   );
 }

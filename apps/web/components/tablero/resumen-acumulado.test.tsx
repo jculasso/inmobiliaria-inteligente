@@ -65,10 +65,50 @@ const getResumenPeriodo = vi.fn().mockResolvedValue({
   ],
 });
 const getAgregadosPorTrimestre = vi.fn().mockResolvedValue([
-  { volumen: 100, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 5, comisionCompradora: 0, comisionVendedora: 5, ticketPromedio: 100 },
-  { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 10, comisionCompradora: 0, comisionVendedora: 10, ticketPromedio: 200 },
-  { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 0 },
-  { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 0 },
+  {
+    volumen: 100,
+    operaciones: 1,
+    puntas: 1,
+    puntasCompradoras: 0,
+    puntasVendedoras: 1,
+    comision: 5,
+    comisionCompradora: 0,
+    comisionVendedora: 5,
+    ticketPromedio: 100,
+  },
+  {
+    volumen: 200,
+    operaciones: 1,
+    puntas: 1,
+    puntasCompradoras: 1,
+    puntasVendedoras: 0,
+    comision: 10,
+    comisionCompradora: 0,
+    comisionVendedora: 10,
+    ticketPromedio: 200,
+  },
+  {
+    volumen: 0,
+    operaciones: 0,
+    puntas: 0,
+    puntasCompradoras: 0,
+    puntasVendedoras: 0,
+    comision: 0,
+    comisionCompradora: 0,
+    comisionVendedora: 0,
+    ticketPromedio: 0,
+  },
+  {
+    volumen: 0,
+    operaciones: 0,
+    puntas: 0,
+    puntasCompradoras: 0,
+    puntasVendedoras: 0,
+    comision: 0,
+    comisionCompradora: 0,
+    comisionVendedora: 0,
+    ticketPromedio: 0,
+  },
 ]);
 /** Doce meses con volúmenes distintos, para que un error de índice se vea. */
 const getKpisMensual = vi.fn().mockResolvedValue(
@@ -170,7 +210,12 @@ describe('ResumenAcumulado — las operaciones del trimestre', () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={8} verTodo />);
     await userEvent.click(await screen.findByRole('button', { name: /^Operaciones/ }));
     expect(screen.getByTestId('detalle')).toHaveTextContent('Año 2026');
-    expect(filtrosDelDetalle.at(-1)).toEqual({ anio: 2026, tipo: 'venta', estado: 'escriturada', verTodo: true });
+    expect(filtrosDelDetalle.at(-1)).toEqual({
+      anio: 2026,
+      tipo: 'venta',
+      estado: 'escriturada',
+      verTodo: true,
+    });
   });
 
   /*
@@ -201,7 +246,22 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
     const encabezados = within(tabla)
       .getAllByRole('columnheader')
       .map((h) => h.textContent);
-    expect(encabezados).toEqual(['Métrica', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic', 'Total']);
+    expect(encabezados).toEqual([
+      'Métrica',
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+      'Total',
+    ]);
   });
 
   /*
@@ -217,7 +277,20 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
       .getAllByRole('cell')
       .slice(1, 13)
       .map((c) => c.textContent);
-    expect(volumen).toEqual(['$100', '$200', '$300', '$400', '$500', '$600', '$700', '$800', '$900', '$1.000', '$1.100', '$1.200']);
+    expect(volumen).toEqual([
+      '$100',
+      '$200',
+      '$300',
+      '$400',
+      '$500',
+      '$600',
+      '$700',
+      '$800',
+      '$900',
+      '$1.000',
+      '$1.100',
+      '$1.200',
+    ]);
   });
 
   /*
@@ -228,7 +301,9 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
     await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
     const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
-    const volumen = within(within(tabla).getByRole('row', { name: /^Volumen USD/ })).getAllByRole('cell');
+    const volumen = within(within(tabla).getByRole('row', { name: /^Volumen USD/ })).getAllByRole(
+      'cell',
+    );
     // 100 + 200 + … + 1200 = 7.800
     expect(volumen.at(-1)?.textContent).toBe('$7.800');
   });
@@ -237,7 +312,10 @@ describe('ResumenAcumulado — el acumulado mensual', () => {
     render(<ResumenAcumulado anio={2026} mesSeleccionado={7} />);
     await userEvent.click(screen.getByRole('button', { name: /Acumulado del Mes/ }));
     const tabla = await screen.findByRole('table', { name: 'Ventas por período' });
-    expect(within(tabla).getByRole('columnheader', { name: 'Jul' })).toHaveAttribute('aria-current', 'true');
+    expect(within(tabla).getByRole('columnheader', { name: 'Jul' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
     expect(getResumenPeriodo).toHaveBeenLastCalledWith('token', {
       anio: 2026,
       periodo: 'mensual',

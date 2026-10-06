@@ -45,7 +45,7 @@ const GRUPOS: Record<TipoPropiedad, GrupoComun[]> = {
   Casa: ['universal', 'construido', 'habitable'],
   PH: ['universal', 'construido', 'habitable'],
   Terreno: ['universal'],
-  'Galpón': ['universal', 'construido'],
+  Galpón: ['universal', 'construido'],
   Local: ['universal', 'construido', 'habitable'],
   Oficina: ['universal', 'construido', 'habitable'],
   Cochera: ['universal'],
@@ -95,9 +95,7 @@ const FORTALEZAS: Catalogo = {
     'Balcón funcional',
   ],
   propias: {
-    Departamento: [
-      'Edificio bien mantenido',
-    ],
+    Departamento: ['Edificio bien mantenido'],
     Casa: [
       'Patio',
       'Jardín',
@@ -169,7 +167,7 @@ const FORTALEZAS: Catalogo = {
       'Posibilidad de unificación',
       'Cercanía a rutas o autopistas',
     ],
-    'Galpón': [
+    Galpón: [
       'Excelente acceso para camiones',
       'Acceso para carga y descarga',
       'Portón de grandes dimensiones',
@@ -208,12 +206,7 @@ const FORTALEZAS: Catalogo = {
       'Recepción',
       'Baño privado',
     ],
-    Cochera: [
-      'Acceso vehicular',
-      'Fácil maniobra',
-      'Apta camioneta',
-      'Cubierta',
-    ],
+    Cochera: ['Acceso vehicular', 'Fácil maniobra', 'Apta camioneta', 'Cubierta'],
     Otro: [],
   },
 };
@@ -254,11 +247,7 @@ const ASPECTOS: Catalogo = {
     'Falta de balcón',
   ],
   propias: {
-    Departamento: [
-      'Edificio antiguo',
-      'Escaleras',
-      'Sin ascensor',
-    ],
+    Departamento: ['Edificio antiguo', 'Escaleras', 'Sin ascensor'],
     Casa: [
       'Patio reducido',
       'Poco terreno libre',
@@ -309,7 +298,7 @@ const ASPECTOS: Catalogo = {
       'Necesidad de relleno o nivelación',
       'Medianeras a revisar',
     ],
-    'Galpón': [
+    Galpón: [
       'Altura insuficiente',
       'Acceso limitado para camiones',
       'Falta de playa de maniobras',
@@ -334,16 +323,8 @@ const ASPECTOS: Catalogo = {
       'Sin depósito',
       'Restricciones de rubro',
     ],
-    Oficina: [
-      'Edificio antiguo',
-      'Sin baño privado',
-      'Distribución poco flexible',
-    ],
-    Cochera: [
-      'Maniobra difícil',
-      'Descubierta',
-      'No apta camioneta',
-    ],
+    Oficina: ['Edificio antiguo', 'Sin baño privado', 'Distribución poco flexible'],
+    Cochera: ['Maniobra difícil', 'Descubierta', 'No apta camioneta'],
     Otro: [],
   },
 };

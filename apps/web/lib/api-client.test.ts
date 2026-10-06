@@ -60,8 +60,8 @@ describe('apiFetch', () => {
 
   it('lanza ApiError si el body no matchea el schema', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
-    await expect(apiFetch('/tablero/operaciones', schema, { accessToken: 't' })).rejects.toBeInstanceOf(
-      ApiError,
-    );
+    await expect(
+      apiFetch('/tablero/operaciones', schema, { accessToken: 't' }),
+    ).rejects.toBeInstanceOf(ApiError);
   });
 });

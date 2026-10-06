@@ -19,28 +19,36 @@ export class InformesService {
     private readonly storage: SupabaseStorageService,
   ) {}
 
-  async generar(id: string, ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
-    const { dto, tenantNombre, logoUrl, colorPrimario, colorPrimarioOscuro } = await this.db.withTenant(async (tx) => {
-      // La fila y el tenant no dependen uno del otro — pedirlos en paralelo
-      // ahorra un round trip completo (relevante: Render/Supabase están en
-      // regiones distintas, cada ida y vuelta de más se siente).
-      const [row, tenant, scope] = await Promise.all([
-        tx.tasacion.findUnique({ where: { id }, include: tasacionInclude }),
-        tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
-        scopeDePermiso(ctx, tx),
-      ]);
-      if (!row) throw new NotFoundException('Tasación no encontrada.');
-      assertEnScope(row, scope);
+  async generar(
+    id: string,
+    ctx: TenantContext,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    const { dto, tenantNombre, logoUrl, colorPrimario, colorPrimarioOscuro } =
+      await this.db.withTenant(async (tx) => {
+        // La fila y el tenant no dependen uno del otro — pedirlos en paralelo
+        // ahorra un round trip completo (relevante: Render/Supabase están en
+        // regiones distintas, cada ida y vuelta de más se siente).
+        const [row, tenant, scope] = await Promise.all([
+          tx.tasacion.findUnique({ where: { id }, include: tasacionInclude }),
+          tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
+          scopeDePermiso(ctx, tx),
+        ]);
+        if (!row) throw new NotFoundException('Tasación no encontrada.');
+        assertEnScope(row, scope);
 
-      const config = tenant.config as { logoUrl?: string; colorPrimario?: string; colorPrimarioOscuro?: string } | null;
-      return {
-        dto: toDto(row) as TasacionDto,
-        tenantNombre: tenant.nombre,
-        logoUrl: config?.logoUrl ?? null,
-        colorPrimario: config?.colorPrimario ?? null,
-        colorPrimarioOscuro: config?.colorPrimarioOscuro ?? null,
-      };
-    });
+        const config = tenant.config as {
+          logoUrl?: string;
+          colorPrimario?: string;
+          colorPrimarioOscuro?: string;
+        } | null;
+        return {
+          dto: toDto(row) as TasacionDto,
+          tenantNombre: tenant.nombre,
+          logoUrl: config?.logoUrl ?? null,
+          colorPrimario: config?.colorPrimario ?? null,
+          colorPrimarioOscuro: config?.colorPrimarioOscuro ?? null,
+        };
+      });
 
     // Las fotos viven en un bucket privado: se firman antes de renderizar para
     // que react-pdf pueda bajarlas al armar el PDF (server-side). `logoUrl` es
@@ -92,7 +100,8 @@ export class InformesService {
     try {
       await this.storage.uploadPrivado('informes-tasador', pdfPath, buffer, 'application/pdf');
       await this.db.withTenant(
-        (tx) => tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId, url: pdfPath } }),
+        (tx) =>
+          tx.informeGenerado.create({ data: { tenantId: ctx.tenantId, tasacionId, url: pdfPath } }),
         ctx,
       );
     } catch (err) {

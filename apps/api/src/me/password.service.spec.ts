@@ -15,13 +15,20 @@ const PRINCIPAL: AuthPrincipal = {
   tenantId: 't1',
   debeCambiarPassword: false,
   roles: ['vendedor'],
-  tenant: { nombre: 'Vacker', plan: 'basico', modulos: MODULOS_DEFAULT, config: configPorDefecto() },
+  tenant: {
+    nombre: 'Vacker',
+    plan: 'basico',
+    modulos: MODULOS_DEFAULT,
+    config: configPorDefecto(),
+  },
 };
 
 function makeDb(usuario: Record<string, unknown> | null) {
   const update = vi.fn();
   return {
-    db: { usuario: { findUnique: vi.fn().mockResolvedValue(usuario), update } } as unknown as PrismaService,
+    db: {
+      usuario: { findUnique: vi.fn().mockResolvedValue(usuario), update },
+    } as unknown as PrismaService,
     update,
   };
 }
@@ -43,7 +50,12 @@ function makeSupabase(passwordValida = true) {
   };
 }
 
-const FORZADO = { id: 'u1', email: 'demo@vacker.com', authUserId: 'auth-1', debeCambiarPassword: true };
+const FORZADO = {
+  id: 'u1',
+  email: 'demo@vacker.com',
+  authUserId: 'auth-1',
+  debeCambiarPassword: true,
+};
 const NORMAL = { ...FORZADO, debeCambiarPassword: false };
 
 describe('PasswordService', () => {
@@ -58,7 +70,10 @@ describe('PasswordService', () => {
     expect(supabase.passwordEsValida).not.toHaveBeenCalled();
     expect(supabase.setPassword).toHaveBeenCalledWith('auth-1', 'claveNueva1');
     // Se baja la marca: si no, seguiría rebotando a /cambiar-clave.
-    expect(update).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { debeCambiarPassword: false } });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { debeCambiarPassword: false },
+    });
   });
 
   it('en un cambio voluntario exige la contraseña actual', async () => {

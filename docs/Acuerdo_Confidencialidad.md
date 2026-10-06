@@ -112,9 +112,9 @@ use para eso lo que recibió acá.
 
 Los avisos valen si van a los domicilios de arriba o a estos correos:
 
-| Parte | Correo |
-|---|---|
-| La Inmobiliaria | [CORREO] |
+| Parte                    | Correo   |
+| ------------------------ | -------- |
+| La Inmobiliaria          | [CORREO] |
 | Inmobiliaria Inteligente | [CORREO] |
 
 Se aplican las **leyes de la República Argentina** y, ante cualquier conflicto,
@@ -125,14 +125,14 @@ los **Tribunales Ordinarios de [CIUDAD], Provincia de [PROVINCIA]**.
 Se firman **dos ejemplares** de igual tenor, en el lugar y la fecha del
 encabezado.
 
-| Por la Inmobiliaria | Por Inmobiliaria Inteligente |
-|---|---|
-| ———————————————————— | ———————————————————— |
-| Firma | Firma |
-| ———————————————————— | ———————————————————— |
-| Aclaración | Aclaración |
-| ———————————————————— | ———————————————————— |
-| DNI | DNI |
+| Por la Inmobiliaria  | Por Inmobiliaria Inteligente |
+| -------------------- | ---------------------------- |
+| ———————————————————— | ————————————————————         |
+| Firma                | Firma                        |
+| ———————————————————— | ————————————————————         |
+| Aclaración           | Aclaración                   |
+| ———————————————————— | ————————————————————         |
+| DNI                  | DNI                          |
 
 ---
 

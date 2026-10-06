@@ -28,7 +28,11 @@ const SOLAPAS: [Solapa, string][] = [
 export function Solapas({ actual, onCambiar }: { actual: Solapa; onCambiar: (s: Solapa) => void }) {
   return (
     <div className="relative">
-      <div role="group" aria-label="Solapas de la ficha" className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        role="group"
+        aria-label="Solapas de la ficha"
+        className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {SOLAPAS.map(([s, texto]) => (
           <button
             key={s}
@@ -41,15 +45,27 @@ export function Solapas({ actual, onCambiar }: { actual: Solapa; onCambiar: (s: 
           </button>
         ))}
       </div>
-      <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent lg:hidden" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent lg:hidden"
+      />
     </div>
   );
 }
 
-const cuitLegible = (c: string | null) => (c ? `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}` : null);
+const cuitLegible = (c: string | null) =>
+  c ? `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}` : null;
 
 /** El resumen: lo que debe o se le debe, sus contratos y lo último que pasó. */
-export function ResumenPersona({ cuenta, ficha, historial }: { cuenta: CuentaCorrienteDto; ficha: PersonaFichaDto; historial: EventoDto[] }) {
+export function ResumenPersona({
+  cuenta,
+  ficha,
+  historial,
+}: {
+  cuenta: CuentaCorrienteDto;
+  ficha: PersonaFichaDto;
+  historial: EventoDto[];
+}) {
   const vigentes = ficha.contratos.filter((c) => c.estado === 'vigente');
   return (
     <>
@@ -65,8 +81,18 @@ export function ResumenPersona({ cuenta, ficha, historial }: { cuenta: CuentaCor
             />
           </div>
         ))}
-        <KpiCard label="Contratos vigentes" value={String(vigentes.length)} sub={`${ficha.contratos.length} en total`} icon="📄" />
-        <KpiCard label="Cuentas bancarias" value={String(ficha.cuentas.length)} sub={ficha.cuentas.find((c) => c.principal)?.banco ?? 'sin cargar'} icon="🏦" />
+        <KpiCard
+          label="Contratos vigentes"
+          value={String(vigentes.length)}
+          sub={`${ficha.contratos.length} en total`}
+          icon="📄"
+        />
+        <KpiCard
+          label="Cuentas bancarias"
+          value={String(ficha.cuentas.length)}
+          sub={ficha.cuentas.find((c) => c.principal)?.banco ?? 'sin cargar'}
+          icon="🏦"
+        />
       </div>
       <Bloque icono="📄" titulo="Contratos" detalle={`${ficha.contratos.length}`}>
         {ficha.contratos.length === 0 ? (
@@ -75,10 +101,19 @@ export function ResumenPersona({ cuenta, ficha, historial }: { cuenta: CuentaCor
           <ul className="divide-y divide-line text-sm">
             {ficha.contratos.map((c) => (
               <li key={`${c.id}-${c.papel}`}>
-                <Link href={`/alquileres/contratos/${c.id}`} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60 ${CLASE_FOCO}`}>
+                <Link
+                  href={`/alquileres/contratos/${c.id}`}
+                  className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60 ${CLASE_FOCO}`}
+                >
                   <span className="min-w-0">
                     <span className="block font-semibold text-ink">
-                      <span className="mr-1.5 rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-extrabold text-muted">{c.papel === 'inquilino' ? 'INQ' : c.papel === 'propietario' ? 'PROP' : 'GAR'}</span>
+                      <span className="mr-1.5 rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-extrabold text-muted">
+                        {c.papel === 'inquilino'
+                          ? 'INQ'
+                          : c.papel === 'propietario'
+                            ? 'PROP'
+                            : 'GAR'}
+                      </span>
                       {c.codigo} · {c.propiedad}
                     </span>
                     <span className="block text-xs text-muted">
@@ -86,7 +121,11 @@ export function ResumenPersona({ cuenta, ficha, historial }: { cuenta: CuentaCor
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
-                    {c.importeVigente != null && <span className="whitespace-nowrap font-semibold tabular-nums text-ink">{fmtMoneda(c.importeVigente, c.moneda)}</span>}
+                    {c.importeVigente != null && (
+                      <span className="whitespace-nowrap font-semibold tabular-nums text-ink">
+                        {fmtMoneda(c.importeVigente, c.moneda)}
+                      </span>
+                    )}
                     <EstadoContratoBadge estado={c.estado} />
                   </span>
                 </Link>
@@ -101,7 +140,13 @@ export function ResumenPersona({ cuenta, ficha, historial }: { cuenta: CuentaCor
 }
 
 /** Información básica: identidad fiscal, IVA, domicilio y contacto. */
-export function InformacionBasica({ persona: p, onEditar }: { persona: PersonaDto; onEditar: () => void }) {
+export function InformacionBasica({
+  persona: p,
+  onEditar,
+}: {
+  persona: PersonaDto;
+  onEditar: () => void;
+}) {
   return (
     <Panel
       icono="🪪"
@@ -114,9 +159,13 @@ export function InformacionBasica({ persona: p, onEditar }: { persona: PersonaDt
     >
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
         <Dato etiqueta="Tipo">{p.tipo === 'juridica' ? 'Empresa' : 'Persona física'}</Dato>
-        <Dato etiqueta={p.tipo === 'juridica' ? 'CUIT' : 'DNI'}>{p.documento ? documentoLegible(p.documento) : null}</Dato>
+        <Dato etiqueta={p.tipo === 'juridica' ? 'CUIT' : 'DNI'}>
+          {p.documento ? documentoLegible(p.documento) : null}
+        </Dato>
         <Dato etiqueta="CUIT / CUIL">{cuitLegible(p.cuit)}</Dato>
-        <Dato etiqueta="Condición de IVA">{p.condicionIva ? NOMBRE_CONDICION_IVA[p.condicionIva] : null}</Dato>
+        <Dato etiqueta="Condición de IVA">
+          {p.condicionIva ? NOMBRE_CONDICION_IVA[p.condicionIva] : null}
+        </Dato>
         <Dato etiqueta="Domicilio">{p.domicilio}</Dato>
         <Dato etiqueta="Localidad">{[p.localidad, p.provincia].filter(Boolean).join(', ')}</Dato>
         <Dato etiqueta="Código postal">{p.codigoPostal}</Dato>
@@ -129,7 +178,13 @@ export function InformacionBasica({ persona: p, onEditar }: { persona: PersonaDt
 }
 
 /** Datos personales de una persona física (Gexion, «Datos complementarios»). */
-export function DatosPersonales({ persona: p, onEditar }: { persona: PersonaDto; onEditar: () => void }) {
+export function DatosPersonales({
+  persona: p,
+  onEditar,
+}: {
+  persona: PersonaDto;
+  onEditar: () => void;
+}) {
   if (p.tipo === 'juridica') return null;
   return (
     <Panel
@@ -142,9 +197,13 @@ export function DatosPersonales({ persona: p, onEditar }: { persona: PersonaDto;
       }
     >
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-        <Dato etiqueta="Fecha de nacimiento">{p.fechaNacimiento ? fmtFecha(p.fechaNacimiento) : null}</Dato>
+        <Dato etiqueta="Fecha de nacimiento">
+          {p.fechaNacimiento ? fmtFecha(p.fechaNacimiento) : null}
+        </Dato>
         <Dato etiqueta="Nacionalidad">{p.nacionalidad}</Dato>
-        <Dato etiqueta="Estado civil">{p.estadoCivil ? NOMBRE_ESTADO_CIVIL[p.estadoCivil] : null}</Dato>
+        <Dato etiqueta="Estado civil">
+          {p.estadoCivil ? NOMBRE_ESTADO_CIVIL[p.estadoCivil] : null}
+        </Dato>
       </dl>
     </Panel>
   );

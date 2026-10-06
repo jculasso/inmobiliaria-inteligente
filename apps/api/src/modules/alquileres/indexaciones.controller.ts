@@ -1,6 +1,10 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ConfirmarIndexacionSchema, ROLES_ADMINISTRACION_ALQUILERES, type ConfirmarIndexacion } from '@vacker/types';
+import {
+  ConfirmarIndexacionSchema,
+  ROLES_ADMINISTRACION_ALQUILERES,
+  type ConfirmarIndexacion,
+} from '@vacker/types';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';

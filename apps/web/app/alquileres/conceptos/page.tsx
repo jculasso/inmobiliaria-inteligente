@@ -8,12 +8,21 @@ export const metadata = { title: 'Conceptos · Alquileres' };
 
 /** El mes de hoy en Argentina (UTC−3). */
 
-export default async function ConceptosPage({ searchParams }: { searchParams: Promise<{ periodo?: string }> }) {
+export default async function ConceptosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string }>;
+}) {
   const ctx = await requireServerPrincipal();
   // El layout ya muestra «no tenés acceso»; esto evita pedir datos que la API negaría.
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
   const pedido = PeriodoSchema.safeParse((await searchParams).periodo);
   const periodo = pedido.success ? pedido.data : hoyIso().slice(0, 7);
-  const [conceptos, contratos] = await Promise.all([listConceptos(ctx.accessToken, periodo), listContratos(ctx.accessToken)]);
-  return <ConceptosMes key={periodo} periodo={periodo} conceptos={conceptos} contratos={contratos} />;
+  const [conceptos, contratos] = await Promise.all([
+    listConceptos(ctx.accessToken, periodo),
+    listContratos(ctx.accessToken),
+  ]);
+  return (
+    <ConceptosMes key={periodo} periodo={periodo} conceptos={conceptos} contratos={contratos} />
+  );
 }

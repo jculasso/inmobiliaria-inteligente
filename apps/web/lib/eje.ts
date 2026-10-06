@@ -15,7 +15,11 @@
  * `fmtK` muestra miles enteros y millones con un decimal. Un paso de 500 en un
  * eje que llega a 2.000 daría «$2k» para 1.500 — la misma mentira de antes.
  */
-export function marcasDelEje(max: number, enteros = false, tramos = 5): { techo: number; marcas: number[] } {
+export function marcasDelEje(
+  max: number,
+  enteros = false,
+  tramos = 5,
+): { techo: number; marcas: number[] } {
   if (!(max > 0)) return { techo: enteros ? 4 : 1, marcas: enteros ? [0, 1, 2, 3, 4] : [0, 1] };
 
   const crudo = max / tramos;

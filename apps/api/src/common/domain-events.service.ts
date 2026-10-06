@@ -12,6 +12,8 @@ export class DomainEventsService {
   private readonly logger = new Logger('DomainEvent');
 
   emit(nombre: string, payload: Record<string, unknown>): void {
-    this.logger.log(JSON.stringify({ evento: nombre, ...payload, timestamp: new Date().toISOString() }));
+    this.logger.log(
+      JSON.stringify({ evento: nombre, ...payload, timestamp: new Date().toISOString() }),
+    );
   }
 }

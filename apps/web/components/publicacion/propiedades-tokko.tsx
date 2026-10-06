@@ -55,14 +55,16 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
       <div>
         <h2 className="text-base font-bold text-ink">Propiedades de Tokko</h2>
         <p className="mt-1 text-sm leading-relaxed text-muted">
-          Trae las más recientes para verlas acá. Es <strong>solo lectura</strong>: no modifica nada en
-          Tokko.
+          Trae las más recientes para verlas acá. Es <strong>solo lectura</strong>: no modifica nada
+          en Tokko.
         </p>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-extrabold uppercase tracking-wide text-muted">Cuántas</span>
+          <span className="text-[11px] font-extrabold uppercase tracking-wide text-muted">
+            Cuántas
+          </span>
           <select
             value={cuantas}
             onChange={(e) => setCuantas(Number(e.target.value))}
@@ -90,7 +92,10 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
       </div>
 
       {resultado && (
-        <div role="status" className="rounded-brand border border-line border-l-[3px] border-l-success bg-success/5 p-3 text-sm">
+        <div
+          role="status"
+          className="rounded-brand border border-line border-l-[3px] border-l-success bg-success/5 p-3 text-sm"
+        >
           <p className="text-ink">
             <strong>{resultado.leidas} propiedades leídas</strong> · {resultado.creadas} nuevas ·{' '}
             {resultado.actualizadas} actualizadas
@@ -99,8 +104,8 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
             // No es un error: es que el mail del agente en Tokko no coincide con
             // ninguno nuestro. Se dice acá para que se pueda resolver, no se esconde.
             <p className="mt-1 text-ink/80">
-              {resultado.sinAgente} sin vendedor vinculado — el mail que figura en Tokko no coincide con
-              ningún usuario del sistema.
+              {resultado.sinAgente} sin vendedor vinculado — el mail que figura en Tokko no coincide
+              con ningún usuario del sistema.
             </p>
           )}
         </div>
@@ -123,12 +128,12 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
            por sus datos. Y grilla propia y no `ListaTarjetas`, que lleva
            `sm:hidden` porque es la vista de celular de las tablas — usarla acá
            hacía que la lista no se viera en pantalla ancha. */
-        <ul
-          aria-label="Propiedades"
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-        >
+        <ul aria-label="Propiedades" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {inicial.map((p) => (
-            <li key={p.id} className="flex flex-col overflow-hidden rounded-brand border border-line bg-white">
+            <li
+              key={p.id}
+              className="flex flex-col overflow-hidden rounded-brand border border-line bg-white"
+            >
               {p.fotoPortada ? (
                 /* <img> y no next/image: las fotos viven en el CDN de Tokko y
                    habría que declarar ese dominio como remoto. Para una
@@ -142,10 +147,15 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
 
               <div className="flex min-w-0 flex-1 flex-col gap-2 p-3">
                 <div className="min-w-0">
-                  <p className="line-clamp-2 text-sm font-bold text-ink" title={p.titulo ?? undefined}>
+                  <p
+                    className="line-clamp-2 text-sm font-bold text-ink"
+                    title={p.titulo ?? undefined}
+                  >
                     {p.titulo ?? '(sin título)'}
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-muted">{p.ubicacion ?? p.direccion ?? '—'}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted">
+                    {p.ubicacion ?? p.direccion ?? '—'}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">

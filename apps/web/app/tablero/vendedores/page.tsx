@@ -26,7 +26,10 @@ export default async function VendedoresPage() {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-lg font-bold text-ink">Vendedores</h2>
-      <VendedoresTable vendedores={vendedores} puedeGestionar={puedeGestionarVendedores(ctx.principal.roles)} />
+      <VendedoresTable
+        vendedores={vendedores}
+        puedeGestionar={puedeGestionarVendedores(ctx.principal.roles)}
+      />
     </div>
   );
 }

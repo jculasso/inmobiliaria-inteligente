@@ -36,7 +36,7 @@ datos y la invoca.
 - `team_leader` → **su equipo**: él + los usuarios con `lider_id = él`.
 - `vendedor` → **solo lo propio**.
 
-RLS ya acota al tenant en la base; el scope acota *dentro* del tenant filtrando
+RLS ya acota al tenant en la base; el scope acota _dentro_ del tenant filtrando
 las puntas por `usuario_id`.
 
 ## Ventas vs. alquileres
@@ -58,11 +58,11 @@ las puntas por `usuario_id`.
 
 ## Endpoints
 
-| Método | Ruta | Roles |
-|---|---|---|
-| GET/POST/PATCH/DELETE | `/tablero/operaciones` | vendedor+ (DELETE: team_leader+) |
-| GET/POST/PATCH/DELETE | `/tablero/vendedores` | direccion/admin_tenant (GET: +team_leader) |
-| PUT | `/tablero/vendedores/:id/objetivo` | direccion/admin_tenant |
-| GET | `/tablero/kpis/resumen \| ranking \| objetivos` | vendedor+ |
+| Método                | Ruta                                            | Roles                                      |
+| --------------------- | ----------------------------------------------- | ------------------------------------------ |
+| GET/POST/PATCH/DELETE | `/tablero/operaciones`                          | vendedor+ (DELETE: team_leader+)           |
+| GET/POST/PATCH/DELETE | `/tablero/vendedores`                           | direccion/admin_tenant (GET: +team_leader) |
+| PUT                   | `/tablero/vendedores/:id/objetivo`              | direccion/admin_tenant                     |
+| GET                   | `/tablero/kpis/resumen \| ranking \| objetivos` | vendedor+                                  |
 
 Todos validan la entrada con Zod (`ZodValidationPipe`) y verifican rol + tenant.

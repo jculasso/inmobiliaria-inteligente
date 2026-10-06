@@ -68,7 +68,10 @@ const HTML = `<!doctype html>
 `;
 
 const navegador = await chromium.launch();
-const page = await navegador.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
+const page = await navegador.newPage({
+  viewport: { width: 1200, height: 630 },
+  deviceScaleFactor: 1,
+});
 await page.setContent(HTML, { waitUntil: 'load' });
 // `await` de verdad adentro del navegador: devolver la promesa desde
 // `evaluate` la serializa como objeto vacío y la captura sale antes de que la

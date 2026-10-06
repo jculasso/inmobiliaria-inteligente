@@ -7,19 +7,20 @@
 
 ## Reglas que aplican a todo el texto
 
-| | |
-|---|---|
-| **A quién le habla** | Al dueño o director de una inmobiliaria de 5 a 50 vendedores |
-| **Para qué sirve el sitio** | **Verificar**, no captar. Los prospectos llegan recomendados; el sitio confirma que esto es serio |
-| **Idioma** | Español neutro — sin "vos" ni "tenés". El plan es México y Chile |
-| **Qué NO aparece** | Precios · logos de terceros · capturas con datos reales · toda mención a la relación con Ezequiel más allá de que Vacker es cliente |
-| **Los clientes de Entrepids** | Siempre como **"proyectos que lideró"**, en pasado. Eran clientes de Entrepids, que se vendió a AN Commerce |
+|                               |                                                                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **A quién le habla**          | Al dueño o director de una inmobiliaria de 5 a 50 vendedores                                                                        |
+| **Para qué sirve el sitio**   | **Verificar**, no captar. Los prospectos llegan recomendados; el sitio confirma que esto es serio                                   |
+| **Idioma**                    | Español neutro — sin "vos" ni "tenés". El plan es México y Chile                                                                    |
+| **Qué NO aparece**            | Precios · logos de terceros · capturas con datos reales · toda mención a la relación con Ezequiel más allá de que Vacker es cliente |
+| **Los clientes de Entrepids** | Siempre como **"proyectos que lideró"**, en pasado. Eran clientes de Entrepids, que se vendió a AN Commerce                         |
 
 ---
 
 # 1. Portada
 
 > ## Su CRM guarda las propiedades.
+>
 > ## Nosotros le decimos cómo va su negocio.
 >
 > Inmobiliaria Inteligente es la capa de conducción que se apoya sobre el
@@ -31,7 +32,7 @@
 > Desarrollado junto a una inmobiliaria en operación. En uso en Vacker Negocios
 > Inmobiliarios.
 
-**Por qué así:** la objeción más cara es *"yo ya tengo un sistema"*. Si no se
+**Por qué así:** la objeción más cara es _"yo ya tengo un sistema"_. Si no se
 responde en los primeros cinco segundos, el resto del sitio no se lee. La
 segunda línea la responde antes de que la piense.
 
@@ -247,13 +248,13 @@ los cuatro módulos resumidos adentro de la sección del ciclo. Lo pedido era
 
 Ahora son **cinco páginas**:
 
-| Ruta | Módulo | Titular |
-|---|---|---|
-| `/` | — | Su CRM guarda las propiedades. Nosotros le decimos cómo va su negocio. |
-| `/tasador` | 01 | Llegue a la reunión con un informe, no con una carpeta. |
-| `/protocolo` | 02 | Lo que distingue a una inmobiliaria que trabaja de una que espera. |
-| `/tablero` | 03 | Cuánto se vendió, quién lo vendió y cuánto se cobra. |
-| `/tareas` | 04 | Lo que hay que hacer, donde ya lo está mirando. |
+| Ruta         | Módulo | Titular                                                                |
+| ------------ | ------ | ---------------------------------------------------------------------- |
+| `/`          | —      | Su CRM guarda las propiedades. Nosotros le decimos cómo va su negocio. |
+| `/tasador`   | 01     | Llegue a la reunión con un informe, no con una carpeta.                |
+| `/protocolo` | 02     | Lo que distingue a una inmobiliaria que trabaja de una que espera.     |
+| `/tablero`   | 03     | Cuánto se vendió, quién lo vendió y cuánto se cobra.                   |
+| `/tareas`    | 04     | Lo que hay que hacer, donde ya lo está mirando.                        |
 
 En la portada los módulos quedan resumidos y cada uno enlaza a su página. Son
 páginas separadas y no anclas de la misma, por una razón comercial: se le
@@ -290,7 +291,6 @@ presenta cuatro módulos como si los cuatro fueran igual de decisivos se lee
 como folleto. Reconocer cuál pesa menos hace más creíble lo que se dice de los
 otros tres.
 
-
 ---
 
 # 10. La dirección de correo sale del sitio (1/08/2026)
@@ -305,7 +305,7 @@ prospecto que se tomó el trabajo de escribir.
 
 Qué quedó en su lugar:
 
-- **En el pie**, un enlace al formulario: *"Pedir una demostración →"*. Es el
+- **En el pie**, un enlace al formulario: _"Pedir una demostración →"_. Es el
   único canal que hoy entrega de verdad.
 - **En el mensaje de error del formulario**, pedirle que reintente y nada más.
   No nombra ninguna casilla.
@@ -338,14 +338,14 @@ página.
 
 ## Lo que cambió en las páginas
 
-| Dónde | Antes | Ahora |
-|---|---|---|
-| Portada, la captura de arriba | La ficha del Protocolo con sus alertas | El Tablero: el mes y el año |
-| Portada, el subtítulo | «saber, cada semana, qué se está haciendo y qué no» | «el número que dice cómo viene el año, y el informe con el que se gana una captación» |
-| El problema, el titular | «No sabe qué se está dejando de hacer» | «No sabe cuánto le dejó, ni quién» |
-| El ciclo | Diagrama de cinco semanas y cuatro módulos | Dos módulos, sin diagrama |
-| La franja azul | El reporte de los lunes | El informe de tasación |
-| En cualquier dispositivo | Protocolo en monitor, tablet y teléfono | Tasador en monitor, y los dos módulos en teléfono |
+| Dónde                         | Antes                                               | Ahora                                                                                 |
+| ----------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Portada, la captura de arriba | La ficha del Protocolo con sus alertas              | El Tablero: el mes y el año                                                           |
+| Portada, el subtítulo         | «saber, cada semana, qué se está haciendo y qué no» | «el número que dice cómo viene el año, y el informe con el que se gana una captación» |
+| El problema, el titular       | «No sabe qué se está dejando de hacer»              | «No sabe cuánto le dejó, ni quién»                                                    |
+| El ciclo                      | Diagrama de cinco semanas y cuatro módulos          | Dos módulos, sin diagrama                                                             |
+| La franja azul                | El reporte de los lunes                             | El informe de tasación                                                                |
+| En cualquier dispositivo      | Protocolo en monitor, tablet y teléfono             | Tasador en monitor, y los dos módulos en teléfono                                     |
 
 El diagrama `flujo.svg` **no se borró**, pero ya no se muestra: describe el ciclo
 de cinco semanas. Cuando vuelva el Protocolo, vuelve el diagrama.
@@ -368,13 +368,13 @@ el sitio. No al revés.
 mismo orden y con las mismas palabras. El sitio se reordena en las **cinco
 preguntas** que se hace el dueño de una inmobiliaria:
 
-| | Pregunta | La respuesta, en una línea |
-|---|---|---|
-| 01 | **¿Qué es?** | Un tablero de control y un CRM de tasaciones, montados sobre el sistema que ya usa. |
-| 02 | **¿Para qué sirve?** | Para tomar cinco decisiones con el número delante, y no con la impresión de la semana. |
-| 03 | **¿Por qué contratarlo?** | Porque hoy esas respuestas cuestan una semana de planilla, y llegan tarde. |
-| 04 | **¿Cómo se contrata?** | Tres pasos y una firma. |
-| 05 | **¿Quiénes somos?** | Dos directores de sistemas que trabajan juntos desde hace treinta años. |
+|     | Pregunta                  | La respuesta, en una línea                                                             |
+| --- | ------------------------- | -------------------------------------------------------------------------------------- |
+| 01  | **¿Qué es?**              | Un tablero de control y un CRM de tasaciones, montados sobre el sistema que ya usa.    |
+| 02  | **¿Para qué sirve?**      | Para tomar cinco decisiones con el número delante, y no con la impresión de la semana. |
+| 03  | **¿Por qué contratarlo?** | Porque hoy esas respuestas cuestan una semana de planilla, y llegan tarde.             |
+| 04  | **¿Cómo se contrata?**    | Tres pasos y una firma.                                                                |
+| 05  | **¿Quiénes somos?**       | Dos directores de sistemas que trabajan juntos desde hace treinta años.                |
 
 Quien vio la reunión y después entra al sitio tiene que reconocer el recorrido.
 Y quien llega al sitio primero llega a la reunión con las preguntas ya
@@ -401,11 +401,11 @@ tres páginas buscando cualquier cifra en pesos o en dólares.
 **Lo que sí aparece es la estructura**, con la palabra **«Consultar»** en lugar
 del monto:
 
-| Concepto | En el sitio | En la presentación |
-|---|---|---|
-| Implementación · por única vez, dos sesiones | Consultar | AR$ 300.000 |
-| Mensual · incluye dos perfiles de dirección | Consultar | AR$ 150.000 |
-| Por vendedor · mensual | Consultar | AR$ 10.000 |
+| Concepto                                     | En el sitio | En la presentación |
+| -------------------------------------------- | ----------- | ------------------ |
+| Implementación · por única vez, dos sesiones | Consultar   | AR$ 300.000        |
+| Mensual · incluye dos perfiles de dirección  | Consultar   | AR$ 150.000        |
+| Por vendedor · mensual                       | Consultar   | AR$ 10.000         |
 
 El porqué: en una reunión hay alguien que explica qué incluye cada línea y hace
 la cuenta para el tamaño de esa inmobiliaria; en una página, un número suelto se

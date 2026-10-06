@@ -1,6 +1,6 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
 
 allowBuilds:
   '@prisma/client': true
@@ -13,9 +13,9 @@ allowBuilds:
 
 # Build scripts nativos aprobados explícitamente (pnpm 10+ los bloquea por defecto).
 onlyBuiltDependencies:
-  - "@swc/core"
+  - '@swc/core'
   - esbuild
   - sharp
-  - "@prisma/client"
-  - "@prisma/engines"
+  - '@prisma/client'
+  - '@prisma/engines'
   - prisma

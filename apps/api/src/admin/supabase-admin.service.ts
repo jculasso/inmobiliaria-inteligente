@@ -57,7 +57,9 @@ export class SupabaseAdminService {
       body: JSON.stringify({ password }),
     });
     if (!res.ok) {
-      throw new InternalServerErrorException(await this.mensajeError(res, 'actualizar la contraseña'));
+      throw new InternalServerErrorException(
+        await this.mensajeError(res, 'actualizar la contraseña'),
+      );
     }
   }
 

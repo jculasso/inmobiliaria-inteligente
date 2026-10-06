@@ -17,8 +17,8 @@ export default async function PublicacionPage() {
       <div className="rounded-brand border border-line bg-white p-6">
         <h2 className="text-base font-bold text-ink">No tenés acceso a Publicación</h2>
         <p className="mt-1.5 text-sm leading-relaxed text-muted">
-          Este módulo lo usa quien tiene el rol <strong>Publicador</strong>. Si te corresponde, pedile a
-          la administración de tu inmobiliaria que te lo asigne.
+          Este módulo lo usa quien tiene el rol <strong>Publicador</strong>. Si te corresponde,
+          pedile a la administración de tu inmobiliaria que te lo asigne.
         </p>
       </div>
     );

@@ -60,10 +60,14 @@ export function cuitValido(cuit: string): boolean {
  */
 export function cbuValido(cbu: string): boolean {
   if (!/^\d{22}$/.test(cbu)) return false;
-  const dv = (digitos: string, pesos: number[]) => (10 - (pesos.reduce((s, p, i) => s + p * Number(digitos[i]), 0) % 10)) % 10;
+  const dv = (digitos: string, pesos: number[]) =>
+    (10 - (pesos.reduce((s, p, i) => s + p * Number(digitos[i]), 0) % 10)) % 10;
   const bloque1 = cbu.slice(0, 8);
   const bloque2 = cbu.slice(8);
-  return dv(bloque1, [7, 1, 3, 9, 7, 1, 3]) === Number(bloque1[7]) && dv(bloque2, [3, 9, 7, 1, 3, 9, 7, 1, 3, 9, 7, 1, 3]) === Number(bloque2[13]);
+  return (
+    dv(bloque1, [7, 1, 3, 9, 7, 1, 3]) === Number(bloque1[7]) &&
+    dv(bloque2, [3, 9, 7, 1, 3, 9, 7, 1, 3, 9, 7, 1, 3]) === Number(bloque2[13])
+  );
 }
 
 /** El alias de una cuenta: de 6 a 20 caracteres, letras, números, puntos y guiones. */
@@ -71,7 +75,13 @@ export function aliasValido(alias: string): boolean {
   return /^[a-z0-9.-]{6,20}$/i.test(alias);
 }
 
-export const CondicionIvaSchema = z.enum(['consumidor_final', 'responsable_inscripto', 'monotributista', 'exento', 'no_responsable']);
+export const CondicionIvaSchema = z.enum([
+  'consumidor_final',
+  'responsable_inscripto',
+  'monotributista',
+  'exento',
+  'no_responsable',
+]);
 export type CondicionIva = z.infer<typeof CondicionIvaSchema>;
 export const NOMBRE_CONDICION_IVA: Record<CondicionIva, string> = {
   consumidor_final: 'Consumidor final',
@@ -81,7 +91,13 @@ export const NOMBRE_CONDICION_IVA: Record<CondicionIva, string> = {
   no_responsable: 'No responsable',
 };
 
-export const EstadoCivilSchema = z.enum(['soltero', 'casado', 'divorciado', 'viudo', 'union_convivencial']);
+export const EstadoCivilSchema = z.enum([
+  'soltero',
+  'casado',
+  'divorciado',
+  'viudo',
+  'union_convivencial',
+]);
 export type EstadoCivil = z.infer<typeof EstadoCivilSchema>;
 export const NOMBRE_ESTADO_CIVIL: Record<EstadoCivil, string> = {
   soltero: 'Soltero/a',
@@ -106,7 +122,10 @@ export const PersonaInputSchema = z.object({
     .nullish()
     .transform(normalizarDocumento)
     // DNI (7–8 dígitos) o CUIT/CUIL (11). Otra cantidad es un error de tipeo.
-    .refine((d) => d === null || /^\d{7,8}$|^\d{11}$/.test(d), 'El documento tiene que ser un DNI (7 u 8 dígitos) o un CUIT (11).'),
+    .refine(
+      (d) => d === null || /^\d{7,8}$|^\d{11}$/.test(d),
+      'El documento tiene que ser un DNI (7 u 8 dígitos) o un CUIT (11).',
+    ),
   email: z
     .string()
     .trim()
@@ -165,13 +184,19 @@ export const CuentaBancariaInputSchema = z
       .string()
       .nullish()
       .transform(normalizarDocumento)
-      .refine((v) => v === null || cbuValido(v), 'El CBU no es válido: son 22 números y los dígitos verificadores no cierran.'),
+      .refine(
+        (v) => v === null || cbuValido(v),
+        'El CBU no es válido: son 22 números y los dígitos verificadores no cierran.',
+      ),
     alias: z
       .string()
       .trim()
       .nullish()
       .transform((v) => (v ? v.toLowerCase() : null))
-      .refine((v) => v === null || aliasValido(v), 'El alias tiene de 6 a 20 caracteres: letras, números, puntos o guiones.'),
+      .refine(
+        (v) => v === null || aliasValido(v),
+        'El alias tiene de 6 a 20 caracteres: letras, números, puntos o guiones.',
+      ),
     titular: textoOpcional,
     cuitTitular: CuitOpcional,
     principal: z.boolean().default(false),
@@ -218,7 +243,9 @@ export const ContactoDtoSchema = z.object({
 });
 export type ContactoDto = z.infer<typeof ContactoDtoSchema>;
 
-export const CuentasBancariasInputSchema = z.object({ cuentas: z.array(CuentaBancariaInputSchema).max(10) });
+export const CuentasBancariasInputSchema = z.object({
+  cuentas: z.array(CuentaBancariaInputSchema).max(10),
+});
 export const ContactosInputSchema = z.object({ contactos: z.array(ContactoInputSchema).max(20) });
 
 /** Mandar un recibo o una liquidación por mail (punto 14, con Resend). */
@@ -234,7 +261,13 @@ export type EnvioMailDto = z.infer<typeof EnvioMailDtoSchema>;
 
 // --- Propiedades --------------------------------------------------------------
 
-export const TipoPropiedadAlquilerSchema = z.enum(['vivienda', 'local', 'oficina', 'cochera', 'otro']);
+export const TipoPropiedadAlquilerSchema = z.enum([
+  'vivienda',
+  'local',
+  'oficina',
+  'cochera',
+  'otro',
+]);
 export type TipoPropiedadAlquiler = z.infer<typeof TipoPropiedadAlquilerSchema>;
 
 export const PropiedadAlquilerInputSchema = z.object({
@@ -267,7 +300,13 @@ export type PropiedadAlquilerDto = z.infer<typeof PropiedadAlquilerDtoSchema>;
  * `anulado`: se cargó por error y se deshizo, con motivo (decidido con Javier
  * el 6/10/2026: lo que tiene historia no se borra, se anula).
  */
-export const EstadoContratoSchema = z.enum(['borrador', 'vigente', 'finalizado', 'rescindido', 'anulado']);
+export const EstadoContratoSchema = z.enum([
+  'borrador',
+  'vigente',
+  'finalizado',
+  'rescindido',
+  'anulado',
+]);
 export type EstadoContrato = z.infer<typeof EstadoContratoSchema>;
 export const NOMBRE_ESTADO_CONTRATO: Record<EstadoContrato, string> = {
   borrador: 'Borrador',
@@ -284,7 +323,10 @@ export type TipoContrato = z.infer<typeof TipoContratoSchema>;
  * Cómo se llama cada tipo en pantalla: «Particular» y «Comercial», como en
  * Gexion (decidido con Javier el 6/10/2026). En la base sigue `vivienda`.
  */
-export const NOMBRE_TIPO_CONTRATO: Record<TipoContrato, string> = { vivienda: 'Particular', comercial: 'Comercial' };
+export const NOMBRE_TIPO_CONTRATO: Record<TipoContrato, string> = {
+  vivienda: 'Particular',
+  comercial: 'Comercial',
+};
 
 /**
  * El prefijo de los códigos de contrato de una inmobiliaria: las tres primeras
@@ -310,7 +352,11 @@ export const RegistroSchema = z.object({ en: z.string(), por: z.string().nullabl
 export type Registro = z.infer<typeof RegistroSchema>;
 
 /** Una anulación: cuándo, quién y por qué. */
-export const AnulacionSchema = z.object({ en: z.string(), motivo: z.string(), por: z.string().nullable().default(null) });
+export const AnulacionSchema = z.object({
+  en: z.string(),
+  motivo: z.string(),
+  por: z.string().nullable().default(null),
+});
 
 /** El filtro del tablero: todos, o un tipo. */
 export const FiltroTipoContratoSchema = z.enum(['todos', 'vivienda', 'comercial']);
@@ -372,7 +418,13 @@ export const ContratoInputSchema = z
     diaPagoPropietario: z.number().int().min(1).max(28).default(10),
     ajuste: AjusteContratoSchema.default('indexado'),
     indice: IndiceAlquilerSchema.nullish().transform((v) => v ?? null),
-    periodicidadMeses: z.number().int().min(1).max(24).nullish().transform((v) => v ?? null),
+    periodicidadMeses: z
+      .number()
+      .int()
+      .min(1)
+      .max(24)
+      .nullish()
+      .transform((v) => v ?? null),
     honorariosPct: Porcentaje.default(0),
     gastosAdmPct: Porcentaje.default(0),
     ivaPct: Porcentaje.default(0),
@@ -390,17 +442,36 @@ export const ContratoInputSchema = z
     tramos: z.array(TramoInputSchema).min(1),
   })
   .superRefine((c, ctx) => {
-    if (c.fin <= c.inicio) ctx.addIssue({ code: 'custom', path: ['fin'], message: 'El fin tiene que ser posterior al inicio.' });
+    if (c.fin <= c.inicio)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fin'],
+        message: 'El fin tiene que ser posterior al inicio.',
+      });
     if (c.ajuste === 'indexado') {
-      if (!c.indice) ctx.addIssue({ code: 'custom', path: ['indice'], message: 'Elegí el índice de ajuste.' });
-      if (!c.periodicidadMeses) ctx.addIssue({ code: 'custom', path: ['periodicidadMeses'], message: 'Indicá cada cuántos meses se ajusta.' });
+      if (!c.indice)
+        ctx.addIssue({ code: 'custom', path: ['indice'], message: 'Elegí el índice de ajuste.' });
+      if (!c.periodicidadMeses)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['periodicidadMeses'],
+          message: 'Indicá cada cuántos meses se ajusta.',
+        });
     }
     const primero = [...c.tramos].sort((a, b) => a.numero - b.numero)[0];
     if (primero && primero.importe == null) {
-      ctx.addIssue({ code: 'custom', path: ['tramos'], message: 'El primer tramo necesita su importe.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['tramos'],
+        message: 'El primer tramo necesita su importe.',
+      });
     }
     if (c.ajuste === 'escalonado' && c.tramos.some((t) => t.importe == null)) {
-      ctx.addIssue({ code: 'custom', path: ['tramos'], message: 'En un contrato escalonado, cada tramo lleva su importe.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['tramos'],
+        message: 'En un contrato escalonado, cada tramo lleva su importe.',
+      });
     }
   });
 export type ContratoInput = z.input<typeof ContratoInputSchema>;
@@ -416,7 +487,11 @@ export const ContratoResumenDtoSchema = z.object({
   moneda: MonedaAlquilerSchema,
   inicio: FechaIso,
   fin: FechaIso,
-  propiedad: z.object({ id: z.string().uuid(), direccion: z.string(), unidad: z.string().nullable() }),
+  propiedad: z.object({
+    id: z.string().uuid(),
+    direccion: z.string(),
+    unidad: z.string().nullable(),
+  }),
   propietarios: z.array(PersonaMiniSchema),
   inquilinos: z.array(PersonaMiniSchema),
   /** El importe del tramo de hoy; `null` si ese tramo todavía no se indexó. */
@@ -453,9 +528,19 @@ export const ContratoDtoSchema = z.object({
   /** Quién lo cargó y cuándo; `por` es null en los cargados antes de que se guardara. */
   registrado: RegistroSchema.default({ en: '', por: null }),
   anulado: AnulacionSchema.nullable().default(null),
-  propiedad: z.object({ id: z.string().uuid(), direccion: z.string(), unidad: z.string().nullable(), ciudad: z.string().nullable() }),
+  propiedad: z.object({
+    id: z.string().uuid(),
+    direccion: z.string(),
+    unidad: z.string().nullable(),
+    ciudad: z.string().nullable(),
+  }),
   partes: z.array(
-    z.object({ personaId: z.string().uuid(), nombre: z.string(), papel: PapelContratoSchema, porcentaje: z.number().nullable() }),
+    z.object({
+      personaId: z.string().uuid(),
+      nombre: z.string(),
+      papel: PapelContratoSchema,
+      porcentaje: z.number().nullable(),
+    }),
   ),
   tramos: z.array(
     z.object({
@@ -485,7 +570,9 @@ export const CambiarEstadoContratoSchema = z.discriminatedUnion('estado', [
 export type CambiarEstadoContrato = z.infer<typeof CambiarEstadoContratoSchema>;
 
 /** Anular cualquier cosa con historia: el motivo es obligatorio. */
-export const AnularConMotivoSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.').max(300) });
+export const AnularConMotivoSchema = z.object({
+  motivo: z.string().trim().min(3, 'Escribí el motivo.').max(300),
+});
 export type AnularConMotivo = z.infer<typeof AnularConMotivoSchema>;
 
 /**
@@ -507,10 +594,35 @@ export type ContratoDatos = z.infer<typeof ContratoDatosSchema>;
 
 // --- Historial (pedido de Javier del 6/10/2026: quién registró cada cosa) --------
 
-export const EntidadEventoSchema = z.enum(['contrato', 'persona', 'propiedad', 'concepto', 'cobro', 'liquidacion', 'tramo', 'documento', 'reclamo', 'proveedor', 'comprobante', 'servicio', 'boleta', 'poliza']);
+export const EntidadEventoSchema = z.enum([
+  'contrato',
+  'persona',
+  'propiedad',
+  'concepto',
+  'cobro',
+  'liquidacion',
+  'tramo',
+  'documento',
+  'reclamo',
+  'proveedor',
+  'comprobante',
+  'servicio',
+  'boleta',
+  'poliza',
+]);
 export type EntidadEvento = z.infer<typeof EntidadEventoSchema>;
 
-export const AccionEventoSchema = z.enum(['alta', 'edicion', 'estado', 'anulacion', 'borrado', 'indexacion', 'generacion', 'documento', 'envio']);
+export const AccionEventoSchema = z.enum([
+  'alta',
+  'edicion',
+  'estado',
+  'anulacion',
+  'borrado',
+  'indexacion',
+  'generacion',
+  'documento',
+  'envio',
+]);
 export type AccionEvento = z.infer<typeof AccionEventoSchema>;
 
 export const EventoDtoSchema = z.object({
@@ -538,7 +650,12 @@ export type EstadoIndexacion = z.infer<typeof EstadoIndexacionSchema>;
 /** Un tramo a indexar, con la propuesta del sistema (regla 6). */
 export const IndexacionDtoSchema = z.object({
   tramoId: z.string().uuid(),
-  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), direccion: z.string(), unidad: z.string().nullable() }),
+  contrato: z.object({
+    id: z.string().uuid(),
+    codigo: z.string(),
+    direccion: z.string(),
+    unidad: z.string().nullable(),
+  }),
   inquilinos: z.array(z.string()),
   indice: IndiceAlquilerSchema,
   numero: z.number().int(),
@@ -596,7 +713,9 @@ export type IndexacionConfirmadaDto = z.infer<typeof IndexacionConfirmadaDtoSche
 // --- Conceptos y generación del período (reglas 9 a 14) --------------------------
 
 /** Un mes calendario, `AAAA-MM`. */
-export const PeriodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Período inválido, se espera AAAA-MM.');
+export const PeriodoSchema = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Período inválido, se espera AAAA-MM.');
 
 export const TipoConceptoSchema = z.enum([
   'alquiler',
@@ -646,7 +765,9 @@ export type ResultadoGeneracionDto = z.infer<typeof ResultadoGeneracionDtoSchema
 
 export const ConceptoDtoSchema = z.object({
   id: z.string().uuid(),
-  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), direccion: z.string() }).nullable(),
+  contrato: z
+    .object({ id: z.string().uuid(), codigo: z.string(), direccion: z.string() })
+    .nullable(),
   persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
   tipo: TipoConceptoSchema,
   sentido: SentidoConceptoSchema,
@@ -666,14 +787,22 @@ export const ConceptoDtoSchema = z.object({
   /** Qué es la persona en ese contrato: «Cobrar a» el inquilino, «Descontar a» o «Pagar a» el propietario. */
   papel: z.enum(['inquilino', 'propietario']).nullable().default(null),
   /** Cómo está, en palabras (punto 4 de Javier): se calcula en la API. */
-  estado: z.enum(['pendiente', 'parcial', 'cobrado', 'pagado', 'liquidado', 'anulado']).default('pendiente'),
+  estado: z
+    .enum(['pendiente', 'parcial', 'cobrado', 'pagado', 'liquidado', 'anulado'])
+    .default('pendiente'),
   registrado: RegistroSchema.nullable().default(null),
 });
 export type ConceptoDto = z.infer<typeof ConceptoDtoSchema>;
 export type EstadoConcepto = ConceptoDto['estado'];
 
 /** Los conceptos que se cargan a mano (regla 14). */
-export const TipoConceptoSueltoSchema = z.enum(['expensa', 'impuesto', 'servicio', 'reparacion', 'otro']);
+export const TipoConceptoSueltoSchema = z.enum([
+  'expensa',
+  'impuesto',
+  'servicio',
+  'reparacion',
+  'otro',
+]);
 export type TipoConceptoSuelto = z.infer<typeof TipoConceptoSueltoSchema>;
 
 /**
@@ -703,7 +832,11 @@ export const ConceptoSueltoInputSchema = z
   })
   .superRefine((v, ctx) => {
     if (v.pagadoPor === v.aCargoDe) {
-      ctx.addIssue({ code: 'custom', path: ['pagadoPor'], message: 'Si ya lo pagó quien lo debe, no hay nada que cargar.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['pagadoPor'],
+        message: 'Si ya lo pagó quien lo debe, no hay nada que cargar.',
+      });
     }
     if (v.tipo === 'otro' && !v.descripcion) {
       ctx.addIssue({ code: 'custom', path: ['descripcion'], message: 'Contá de qué se trata.' });
@@ -753,9 +886,13 @@ export const PreparacionCobroDtoSchema = z.object({
   fecha: FechaIso,
   deudas: z.array(DeudaDtoSchema),
   /** Reintegros que se le deben y se compensan contra la deuda (un gasto del dueño que pagó el inquilino). */
-  compensables: z.array(z.object({ conceptoId: z.string().uuid(), descripcion: z.string(), saldo: z.number() })),
+  compensables: z.array(
+    z.object({ conceptoId: z.string().uuid(), descripcion: z.string(), saldo: z.number() }),
+  ),
   /** Lo que sobró de cobros anteriores (regla 17), del más viejo al más nuevo. */
-  creditos: z.array(z.object({ cobroId: z.string().uuid(), numero: z.number().int(), disponible: z.number() })),
+  creditos: z.array(
+    z.object({ cobroId: z.string().uuid(), numero: z.number().int(), disponible: z.number() }),
+  ),
 });
 export type PreparacionCobroDto = z.infer<typeof PreparacionCobroDtoSchema>;
 
@@ -771,7 +908,10 @@ export const CobroInputSchema = z.object({
     .nullish()
     .transform((v) => (v ? v : null)),
   /** Qué conceptos se cobran. Sin elegir, todos, del más viejo al más nuevo (regla 15). */
-  conceptoIds: z.array(z.string().uuid()).nullish().transform((v) => v ?? null),
+  conceptoIds: z
+    .array(z.string().uuid())
+    .nullish()
+    .transform((v) => v ?? null),
   /**
    * El punitorio que se cobra por cada alquiler atrasado (regla 16). Menos que
    * lo propuesto es una condonación y pide motivo; más, no se acepta.
@@ -835,7 +975,9 @@ export const CobroResumenDtoSchema = z.object({
 });
 export type CobroResumenDto = z.infer<typeof CobroResumenDtoSchema>;
 
-export const AnularCobroSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.') });
+export const AnularCobroSchema = z.object({
+  motivo: z.string().trim().min(3, 'Escribí el motivo.'),
+});
 
 /**
  * A quién se le puede cobrar o liquidar (punto 6 de Javier): cada persona con
@@ -845,13 +987,17 @@ export const AnularCobroSchema = z.object({ motivo: z.string().trim().min(3, 'Es
 export const CandidatoDtoSchema = z.object({
   persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
   papel: z.enum(['inquilino', 'propietario']),
-  contratos: z.array(z.object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() })),
+  contratos: z.array(
+    z.object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() }),
+  ),
   /** Para cobrar: lo que debe. Para liquidar: lo que hay para liquidarle. Por moneda. */
   pendiente: z.array(z.object({ moneda: MonedaAlquilerSchema, importe: z.number() })),
 });
 export type CandidatoDto = z.infer<typeof CandidatoDtoSchema>;
 
-export const CandidatosQuerySchema = z.object({ papel: z.enum(['inquilino', 'propietario']).default('inquilino') });
+export const CandidatosQuerySchema = z.object({
+  papel: z.enum(['inquilino', 'propietario']).default('inquilino'),
+});
 export type AnularCobro = z.infer<typeof AnularCobroSchema>;
 
 /**
@@ -891,7 +1037,9 @@ export const CuentaCorrienteDtoSchema = z.object({
           saldo: z.number(),
         }),
       ),
-      aFavor: z.array(z.object({ cobroId: z.string().uuid(), numero: z.number().int(), disponible: z.number() })),
+      aFavor: z.array(
+        z.object({ cobroId: z.string().uuid(), numero: z.number().int(), disponible: z.number() }),
+      ),
     }),
   ),
 });
@@ -950,18 +1098,32 @@ export interface GrupoLiquidacion {
  * pantalla y el PDF: una propiedad, su inquilino y lo suyo, y después la otra.
  * Una sola función para los dos, para que no digan cosas distintas.
  */
-export function agruparPorContrato(lineas: { aPagar: LineaLiquidacion[]; aDescontar: LineaLiquidacion[]; enEspera?: LineaLiquidacion[] }): GrupoLiquidacion[] {
+export function agruparPorContrato(lineas: {
+  aPagar: LineaLiquidacion[];
+  aDescontar: LineaLiquidacion[];
+  enEspera?: LineaLiquidacion[];
+}): GrupoLiquidacion[] {
   const grupos = new Map<string, GrupoLiquidacion>();
   const grupo = (l: LineaLiquidacion) => {
     const clave = l.contrato?.id ?? '';
-    if (!grupos.has(clave)) grupos.set(clave, { contrato: l.contrato, aPagar: [], aDescontar: [], enEspera: [], subtotal: 0 });
+    if (!grupos.has(clave))
+      grupos.set(clave, {
+        contrato: l.contrato,
+        aPagar: [],
+        aDescontar: [],
+        enEspera: [],
+        subtotal: 0,
+      });
     return grupos.get(clave)!;
   };
   for (const l of lineas.aPagar) grupo(l).aPagar.push(l);
   for (const l of lineas.aDescontar) grupo(l).aDescontar.push(l);
   for (const l of lineas.enEspera ?? []) grupo(l).enEspera.push(l);
   const suma = (xs: LineaLiquidacion[]) => xs.reduce((s, x) => s + Math.round(x.importe * 100), 0);
-  return [...grupos.values()].map((g) => ({ ...g, subtotal: (suma(g.aPagar) - suma(g.aDescontar)) / 100 }));
+  return [...grupos.values()].map((g) => ({
+    ...g,
+    subtotal: (suma(g.aPagar) - suma(g.aDescontar)) / 100,
+  }));
 }
 
 export const PreparacionLiquidacionDtoSchema = z.object({
@@ -1001,7 +1163,12 @@ export const LiquidacionDtoSchema = z.object({
   registradoPor: z.string().nullable().default(null),
   /** A dónde se le transfiere: su cuenta principal en esa moneda (punto 14). */
   cuentaDestino: z
-    .object({ banco: z.string(), cbu: z.string().nullable(), alias: z.string().nullable(), titular: z.string().nullable() })
+    .object({
+      banco: z.string(),
+      cbu: z.string().nullable(),
+      alias: z.string().nullable(),
+      titular: z.string().nullable(),
+    })
     .nullable()
     .default(null),
 });
@@ -1032,7 +1199,9 @@ export const PendienteLiquidarDtoSchema = z.object({
 });
 export type PendienteLiquidarDto = z.infer<typeof PendienteLiquidarDtoSchema>;
 
-export const AnularLiquidacionSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.') });
+export const AnularLiquidacionSchema = z.object({
+  motivo: z.string().trim().min(3, 'Escribí el motivo.'),
+});
 export type AnularLiquidacion = z.infer<typeof AnularLiquidacionSchema>;
 
 // --- Tablero del módulo (reglas 26 a 32) -------------------------------------------
@@ -1094,7 +1263,9 @@ export const TableroAlquileresDtoSchema = z.object({
     vigentes: IndicadorSchema,
     vivienda: z.number().int(),
     comercial: z.number().int(),
-    alquilerMensual: z.array(z.object({ moneda: MonedaAlquilerSchema, indicador: IndicadorSchema })),
+    alquilerMensual: z.array(
+      z.object({ moneda: MonedaAlquilerSchema, indicador: IndicadorSchema }),
+    ),
     /** Ya no se muestran (Javier: «no agrega nada»); opcionales por el orden de despliegue. */
     propietarios: IndicadorSchema.optional(),
     inquilinos: IndicadorSchema.optional(),
@@ -1104,7 +1275,14 @@ export const TableroAlquileresDtoSchema = z.object({
      * contratos, aunque el tablero esté filtrado.
      */
     porTipo: z
-      .array(z.object({ tipo: TipoContratoSchema, cantidad: z.number().int(), importe: z.number(), pct: z.number() }))
+      .array(
+        z.object({
+          tipo: TipoContratoSchema,
+          cantidad: z.number().int(),
+          importe: z.number(),
+          pct: z.number(),
+        }),
+      )
       .default([]),
   }),
   /**
@@ -1138,7 +1316,14 @@ export const TableroAlquileresDtoSchema = z.object({
     }),
   ),
   /** Regla 29: lo emitido y lo cobrado al cierre de cada mes del año elegido. */
-  evolucion: z.array(z.object({ mes: PeriodoSchema, moneda: MonedaAlquilerSchema, emitido: z.number(), cobrado: z.number() })),
+  evolucion: z.array(
+    z.object({
+      mes: PeriodoSchema,
+      moneda: MonedaAlquilerSchema,
+      emitido: z.number(),
+      cobrado: z.number(),
+    }),
+  ),
   /** Regla 30: honorarios, gastos y punitorios cobrados por mes, del año elegido y del anterior. */
   ingresos: z.array(
     z.object({
@@ -1155,7 +1340,12 @@ export const TableroAlquileresDtoSchema = z.object({
   tareas: z.object({
     indexacionesVencidas: IndicadorSchema,
     indexacionesProximas: IndicadorSchema,
-    vencen: z.array(z.object({ dias: z.union([z.literal(30), z.literal(60), z.literal(90)]), indicador: IndicadorSchema })),
+    vencen: z.array(
+      z.object({
+        dias: z.union([z.literal(30), z.literal(60), z.literal(90)]),
+        indicador: IndicadorSchema,
+      }),
+    ),
     depositos: IndicadorSchema,
     liquidaciones: IndicadorSchema,
     deudores: IndicadorSchema,
@@ -1183,7 +1373,14 @@ export type TablerosAlquileresDto = z.infer<typeof TablerosAlquileresDtoSchema>;
 
 // --- Firma del contrato (reglas 33 a 36) -------------------------------------------
 
-export const EstadoFirmaSchema = z.enum(['sin_enviar', 'enviado', 'firmado_parcial', 'firmado', 'rechazado', 'vencido']);
+export const EstadoFirmaSchema = z.enum([
+  'sin_enviar',
+  'enviado',
+  'firmado_parcial',
+  'firmado',
+  'rechazado',
+  'vencido',
+]);
 export type EstadoFirma = z.infer<typeof EstadoFirmaSchema>;
 
 export const EstadoFirmanteSchema = z.enum(['pendiente', 'firmado', 'rechazado']);
@@ -1220,7 +1417,9 @@ export const DocumentoContratoDtoSchema = z.object({
 });
 export type DocumentoContratoDto = z.infer<typeof DocumentoContratoDtoSchema>;
 
-export const DocumentoDeContratoDtoSchema = z.object({ documento: DocumentoContratoDtoSchema.nullable() });
+export const DocumentoDeContratoDtoSchema = z.object({
+  documento: DocumentoContratoDtoSchema.nullable(),
+});
 
 /**
  * Un cambio cargado a mano (regla 34): el estado de cada firmante y, si hace
@@ -1229,8 +1428,13 @@ export const DocumentoDeContratoDtoSchema = z.object({ documento: DocumentoContr
  */
 export const CambioFirmaManualSchema = z
   .object({
-    marcar: z.enum(['enviado', 'vencido']).nullish().transform((v) => v ?? null),
-    firmantes: z.array(z.object({ personaId: z.string().uuid(), estado: EstadoFirmanteSchema })).default([]),
+    marcar: z
+      .enum(['enviado', 'vencido'])
+      .nullish()
+      .transform((v) => v ?? null),
+    firmantes: z
+      .array(z.object({ personaId: z.string().uuid(), estado: EstadoFirmanteSchema }))
+      .default([]),
     nota: z
       .string()
       .trim()
@@ -1339,10 +1543,18 @@ export const CargosIngresoDtoSchema = z.object({
 });
 export type CargosIngresoDto = z.infer<typeof CargosIngresoDtoSchema>;
 
-export const CargarCargosIngresoSchema = z.object({ cargos: z.array(CargoIngresoSchema).min(1).max(30) });
+export const CargarCargosIngresoSchema = z.object({
+  cargos: z.array(CargoIngresoSchema).min(1).max(30),
+});
 
 /** El depósito en garantía y dónde está (punto 12). */
-export const EstadoDepositoSchema = z.enum(['sin_deposito', 'a_cobrar', 'cobrado', 'entregado', 'devuelto']);
+export const EstadoDepositoSchema = z.enum([
+  'sin_deposito',
+  'a_cobrar',
+  'cobrado',
+  'entregado',
+  'devuelto',
+]);
 export type EstadoDeposito = z.infer<typeof EstadoDepositoSchema>;
 export const DepositoDtoSchema = z.object({
   importe: z.number().nullable(),
@@ -1359,19 +1571,43 @@ export const DevolverDepositoSchema = z.object({ fecha: FechaIso });
 /** Una garantía del contrato, con su informe (punto 11). */
 export const TipoGarantiaSchema = z.enum(['propietaria', 'laboral', 'caucion', 'otra']);
 export type TipoGarantia = z.infer<typeof TipoGarantiaSchema>;
-export const NOMBRE_TIPO_GARANTIA: Record<TipoGarantia, string> = { propietaria: 'Propietaria', laboral: 'Laboral (recibo de sueldo)', caucion: 'Seguro de caución', otra: 'Otra' };
+export const NOMBRE_TIPO_GARANTIA: Record<TipoGarantia, string> = {
+  propietaria: 'Propietaria',
+  laboral: 'Laboral (recibo de sueldo)',
+  caucion: 'Seguro de caución',
+  otra: 'Otra',
+};
 export const EstadoGarantiaSchema = z.enum(['pendiente', 'aprobada', 'rechazada']);
 export type EstadoGarantia = z.infer<typeof EstadoGarantiaSchema>;
 export const GarantiaInputSchema = z.object({
   tipo: TipoGarantiaSchema,
   /** El garante, si está cargado como persona; si no, su nombre. */
-  personaId: z.string().uuid().nullish().transform((v) => v ?? null),
-  garante: z.string().trim().max(120).nullish().transform((v) => (v ? v : null)),
+  personaId: z
+    .string()
+    .uuid()
+    .nullish()
+    .transform((v) => v ?? null),
+  garante: z
+    .string()
+    .trim()
+    .max(120)
+    .nullish()
+    .transform((v) => (v ? v : null)),
   /** Propietaria: la propiedad que garantiza. Caución: aseguradora y póliza. Laboral: empleador. */
-  detalle: z.string().trim().max(300).nullish().transform((v) => (v ? v : null)),
+  detalle: z
+    .string()
+    .trim()
+    .max(300)
+    .nullish()
+    .transform((v) => (v ? v : null)),
   estado: EstadoGarantiaSchema.default('pendiente'),
   aprobadaEl: FechaIso.nullish().transform((v) => v ?? null),
-  obs: z.string().trim().max(1000).nullish().transform((v) => (v ? v : null)),
+  obs: z
+    .string()
+    .trim()
+    .max(1000)
+    .nullish()
+    .transform((v) => (v ? v : null)),
 });
 export type GarantiaInput = z.input<typeof GarantiaInputSchema>;
 export type Garantia = z.output<typeof GarantiaInputSchema>;
@@ -1392,7 +1628,11 @@ export const GarantiasInputSchema = z.object({ garantias: z.array(GarantiaInputS
 export const ExtenderContratoSchema = z.object({
   nuevoFin: FechaIso,
   /** Escalonado: el importe del tramo nuevo. Indexado: se indexa como cualquier tramo. */
-  importeBase: z.number().positive().nullish().transform((v) => v ?? null),
+  importeBase: z
+    .number()
+    .positive()
+    .nullish()
+    .transform((v) => v ?? null),
 });
 export type ExtenderContrato = z.infer<typeof ExtenderContratoSchema>;
 
@@ -1449,7 +1689,10 @@ export const PlantillaDtoSchema = z.object({
 });
 export type PlantillaDto = z.infer<typeof PlantillaDtoSchema>;
 export const GenerarDesdePlantillaSchema = z.object({ plantillaId: z.string().uuid() });
-export const VistaPreviaPlantillaSchema = z.object({ cuerpo: z.string().max(100_000), contratoId: z.string().uuid() });
+export const VistaPreviaPlantillaSchema = z.object({
+  cuerpo: z.string().max(100_000),
+  contratoId: z.string().uuid(),
+});
 
 // --- Reclamos (entrega 15) -----------------------------------------------------------------
 
@@ -1459,21 +1702,56 @@ export const EstadoReclamoSchema = z.enum(['abierto', 'en_curso', 'resuelto', 'c
 export type TipoReclamo = z.infer<typeof TipoReclamoSchema>;
 export type PrioridadReclamo = z.infer<typeof PrioridadReclamoSchema>;
 export type EstadoReclamo = z.infer<typeof EstadoReclamoSchema>;
-export const NOMBRE_TIPO_RECLAMO: Record<TipoReclamo, string> = { mantenimiento: 'Mantenimiento', administrativo: 'Administrativo', cobranza: 'Cobranza', otro: 'Otro' };
-export const NOMBRE_PRIORIDAD: Record<PrioridadReclamo, string> = { baja: 'Baja', media: 'Media', alta: 'Alta', urgente: 'Urgente' };
-export const NOMBRE_ESTADO_RECLAMO: Record<EstadoReclamo, string> = { abierto: 'Abierto', en_curso: 'En curso', resuelto: 'Resuelto', cerrado: 'Cerrado' };
+export const NOMBRE_TIPO_RECLAMO: Record<TipoReclamo, string> = {
+  mantenimiento: 'Mantenimiento',
+  administrativo: 'Administrativo',
+  cobranza: 'Cobranza',
+  otro: 'Otro',
+};
+export const NOMBRE_PRIORIDAD: Record<PrioridadReclamo, string> = {
+  baja: 'Baja',
+  media: 'Media',
+  alta: 'Alta',
+  urgente: 'Urgente',
+};
+export const NOMBRE_ESTADO_RECLAMO: Record<EstadoReclamo, string> = {
+  abierto: 'Abierto',
+  en_curso: 'En curso',
+  resuelto: 'Resuelto',
+  cerrado: 'Cerrado',
+};
 
 export const ReclamoInputSchema = z
   .object({
     asunto: z.string().trim().min(3, 'Escribí el asunto.').max(160),
-    descripcion: z.string().trim().max(4000).nullish().transform((v) => (v ? v : null)),
+    descripcion: z
+      .string()
+      .trim()
+      .max(4000)
+      .nullish()
+      .transform((v) => (v ? v : null)),
     tipo: TipoReclamoSchema.default('mantenimiento'),
     prioridad: PrioridadReclamoSchema.default('media'),
-    contratoId: z.string().uuid().nullish().transform((v) => v ?? null),
-    personaId: z.string().uuid().nullish().transform((v) => v ?? null),
-    asignadoAId: z.string().uuid().nullish().transform((v) => v ?? null),
+    contratoId: z
+      .string()
+      .uuid()
+      .nullish()
+      .transform((v) => v ?? null),
+    personaId: z
+      .string()
+      .uuid()
+      .nullish()
+      .transform((v) => v ?? null),
+    asignadoAId: z
+      .string()
+      .uuid()
+      .nullish()
+      .transform((v) => v ?? null),
   })
-  .refine((r) => r.contratoId || r.personaId, { message: 'Elegí el contrato o la persona del reclamo.', path: ['contratoId'] });
+  .refine((r) => r.contratoId || r.personaId, {
+    message: 'Elegí el contrato o la persona del reclamo.',
+    path: ['contratoId'],
+  });
 export type ReclamoInput = z.input<typeof ReclamoInputSchema>;
 export type Reclamo = z.output<typeof ReclamoInputSchema>;
 
@@ -1482,7 +1760,12 @@ export const CambioReclamoSchema = z.object({
   prioridad: PrioridadReclamoSchema.optional(),
   asignadoAId: z.string().uuid().nullable().optional(),
   /** Lo que se hizo o se habló: queda en el historial del reclamo. */
-  nota: z.string().trim().max(4000).nullish().transform((v) => (v ? v : null)),
+  nota: z
+    .string()
+    .trim()
+    .max(4000)
+    .nullish()
+    .transform((v) => (v ? v : null)),
 });
 export type CambioReclamo = z.output<typeof CambioReclamoSchema>;
 
@@ -1493,7 +1776,9 @@ export const ReclamoResumenDtoSchema = z.object({
   tipo: TipoReclamoSchema,
   prioridad: PrioridadReclamoSchema,
   estado: EstadoReclamoSchema,
-  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() }).nullable(),
+  contrato: z
+    .object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() })
+    .nullable(),
   persona: z.object({ id: z.string().uuid(), nombre: z.string() }).nullable(),
   asignadoA: z.string().nullable(),
   abierto: z.string(),
@@ -1504,7 +1789,14 @@ export const ReclamoDtoSchema = ReclamoResumenDtoSchema.extend({
   descripcion: z.string().nullable(),
   asignadoAId: z.string().uuid().nullable(),
   abiertoPor: z.string().nullable(),
-  notas: z.array(z.object({ id: z.string().uuid(), en: z.string(), usuario: z.string().nullable(), texto: z.string() })),
+  notas: z.array(
+    z.object({
+      id: z.string().uuid(),
+      en: z.string(),
+      usuario: z.string().nullable(),
+      texto: z.string(),
+    }),
+  ),
 });
 export type ReclamoDto = z.infer<typeof ReclamoDtoSchema>;
 export const UsuarioMiniSchema = z.object({ id: z.string().uuid(), nombre: z.string() });
@@ -1520,7 +1812,17 @@ export const ReclamosQuerySchema = z.object({
  * Javier, 6/10/2026: «los proveedores son plomero, electricista, pintor; les
  * paga la inmobiliaria y se lo retiene al propietario».
  */
-export const RubroProveedorSchema = z.enum(['plomero', 'electricista', 'pintor', 'gasista', 'cerrajero', 'albanil', 'aseguradora', 'ente', 'otro']);
+export const RubroProveedorSchema = z.enum([
+  'plomero',
+  'electricista',
+  'pintor',
+  'gasista',
+  'cerrajero',
+  'albanil',
+  'aseguradora',
+  'ente',
+  'otro',
+]);
 export type RubroProveedor = z.infer<typeof RubroProveedorSchema>;
 export const NOMBRE_RUBRO: Record<RubroProveedor, string> = {
   plomero: 'Plomero',
@@ -1591,7 +1893,14 @@ export const ProveedorDtoSchema = z.object({
 });
 export type ProveedorDto = z.infer<typeof ProveedorDtoSchema>;
 
-export const TipoComprobanteSchema = z.enum(['factura_a', 'factura_b', 'factura_c', 'recibo', 'ticket', 'otro']);
+export const TipoComprobanteSchema = z.enum([
+  'factura_a',
+  'factura_b',
+  'factura_c',
+  'recibo',
+  'ticket',
+  'otro',
+]);
 export const NOMBRE_TIPO_COMPROBANTE: Record<z.infer<typeof TipoComprobanteSchema>, string> = {
   factura_a: 'Factura A',
   factura_b: 'Factura B',
@@ -1607,7 +1916,11 @@ export type ACargoDe = z.infer<typeof ACargoDeSchema>;
 export const ComprobanteInputSchema = z
   .object({
     proveedorId: z.string().uuid({ message: 'Elegí el proveedor.' }),
-    contratoId: z.string().uuid().nullish().transform((v) => v ?? null),
+    contratoId: z
+      .string()
+      .uuid()
+      .nullish()
+      .transform((v) => v ?? null),
     fecha: FechaIso,
     tipoComprobante: TipoComprobanteSchema.default('factura_c'),
     numero: textoOpcional,
@@ -1619,13 +1932,18 @@ export const ComprobanteInputSchema = z
     pagado: z.boolean().default(false),
     medio: MedioCobroSchema.default('transferencia'),
   })
-  .refine((c) => c.aCargoDe === 'inmobiliaria' || c.contratoId, { message: 'Para cargárselo al propietario o al inquilino, elegí el contrato.', path: ['contratoId'] });
+  .refine((c) => c.aCargoDe === 'inmobiliaria' || c.contratoId, {
+    message: 'Para cargárselo al propietario o al inquilino, elegí el contrato.',
+    path: ['contratoId'],
+  });
 export type ComprobanteInput = z.input<typeof ComprobanteInputSchema>;
 export type Comprobante = z.output<typeof ComprobanteInputSchema>;
 export const ComprobanteDtoSchema = z.object({
   id: z.string().uuid(),
   proveedor: z.object({ id: z.string().uuid(), nombre: z.string(), rubro: RubroProveedorSchema }),
-  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() }).nullable(),
+  contrato: z
+    .object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() })
+    .nullable(),
   fecha: FechaIso,
   tipoComprobante: TipoComprobanteSchema,
   numero: z.string().nullable(),
@@ -1641,7 +1959,10 @@ export const ComprobanteDtoSchema = z.object({
   aplicado: z.boolean(),
 });
 export type ComprobanteDto = z.infer<typeof ComprobanteDtoSchema>;
-export const PagarComprobanteSchema = z.object({ fecha: FechaIso, medio: MedioCobroSchema.default('transferencia') });
+export const PagarComprobanteSchema = z.object({
+  fecha: FechaIso,
+  medio: MedioCobroSchema.default('transferencia'),
+});
 export const ComprobantesQuerySchema = z.object({
   estado: z.enum(['pendientes', 'todos']).default('todos'),
   proveedorId: z.string().uuid().optional(),
@@ -1649,7 +1970,9 @@ export const ComprobantesQuerySchema = z.object({
 });
 export const GastosReporteDtoSchema = z.object({
   anio: z.number().int(),
-  porRubro: z.array(z.object({ rubro: RubroProveedorSchema, importe: z.number(), cantidad: z.number().int() })),
+  porRubro: z.array(
+    z.object({ rubro: RubroProveedorSchema, importe: z.number(), cantidad: z.number().int() }),
+  ),
   porACargo: z.array(z.object({ aCargoDe: ACargoDeSchema, importe: z.number() })),
   porMes: z.array(z.number()),
   pendiente: z.number(),
@@ -1661,7 +1984,11 @@ export type GastosReporteDto = z.infer<typeof GastosReporteDtoSchema>;
 /** Qué concepto genera: impuesto (API, TGI), servicio (luz, gas, agua) o expensa. */
 export const ClaseServicioSchema = z.enum(['impuesto', 'servicio', 'expensa']);
 export type ClaseServicio = z.infer<typeof ClaseServicioSchema>;
-export const NOMBRE_CLASE_SERVICIO: Record<ClaseServicio, string> = { impuesto: 'Impuesto', servicio: 'Servicio', expensa: 'Expensas' };
+export const NOMBRE_CLASE_SERVICIO: Record<ClaseServicio, string> = {
+  impuesto: 'Impuesto',
+  servicio: 'Servicio',
+  expensa: 'Expensas',
+};
 
 /** Los habituales de Rosario, para no cargarlos a mano la primera vez. */
 export const CATALOGO_SUGERIDO: { nombre: string; clase: ClaseServicio }[] = [
@@ -1678,14 +2005,21 @@ export const ServicioInputSchema = z.object({
   clase: ClaseServicioSchema,
 });
 export type ServicioInput = z.infer<typeof ServicioInputSchema>;
-export const ServicioDtoSchema = ServicioInputSchema.extend({ id: z.string().uuid(), cuentas: z.number().int() });
+export const ServicioDtoSchema = ServicioInputSchema.extend({
+  id: z.string().uuid(),
+  cuentas: z.number().int(),
+});
 export type ServicioDto = z.infer<typeof ServicioDtoSchema>;
 
 /** Quién lo debe y quién paga la boleta. Si son distintos, uno se carga y al otro se le reconoce (la contraparte). */
 export const ParteDeudoraSchema = z.enum(['inquilino', 'propietario']);
 export const QuienPagaSchema = z.enum(['inmobiliaria', 'inquilino', 'propietario']);
 export type QuienPaga = z.infer<typeof QuienPagaSchema>;
-export const NOMBRE_QUIEN_PAGA: Record<QuienPaga, string> = { inmobiliaria: 'La inmobiliaria', inquilino: 'El inquilino', propietario: 'El propietario' };
+export const NOMBRE_QUIEN_PAGA: Record<QuienPaga, string> = {
+  inmobiliaria: 'La inmobiliaria',
+  inquilino: 'El inquilino',
+  propietario: 'El propietario',
+};
 
 export const CuentaServicioInputSchema = z.object({
   propiedadId: z.string().uuid({ message: 'Elegí la propiedad.' }),
@@ -1769,11 +2103,24 @@ export type BoletaDto = z.infer<typeof BoletaDtoSchema>;
 /** Una fila de la planilla: la cuenta, lo cargado este mes y lo del mes anterior para copiar. */
 export const FilaPlanillaSchema = z.object({
   cuenta: CuentaServicioDtoSchema,
-  cargadas: z.array(z.object({ id: z.string().uuid(), cuota: z.string().nullable(), importe: z.number(), vencimiento: FechaIso, estado: EstadoBoletaSchema })),
-  anterior: z.object({ cuota: z.string().nullable(), importe: z.number(), vencimiento: FechaIso }).nullable(),
+  cargadas: z.array(
+    z.object({
+      id: z.string().uuid(),
+      cuota: z.string().nullable(),
+      importe: z.number(),
+      vencimiento: FechaIso,
+      estado: EstadoBoletaSchema,
+    }),
+  ),
+  anterior: z
+    .object({ cuota: z.string().nullable(), importe: z.number(), vencimiento: FechaIso })
+    .nullable(),
 });
 export type FilaPlanilla = z.infer<typeof FilaPlanillaSchema>;
-export const PlanillaBoletasDtoSchema = z.object({ periodo: PeriodoSchema, filas: z.array(FilaPlanillaSchema) });
+export const PlanillaBoletasDtoSchema = z.object({
+  periodo: PeriodoSchema,
+  filas: z.array(FilaPlanillaSchema),
+});
 export type PlanillaBoletasDto = z.infer<typeof PlanillaBoletasDtoSchema>;
 
 export const BoletasQuerySchema = z.object({
@@ -1782,7 +2129,10 @@ export const BoletasQuerySchema = z.object({
   ver: z.enum(['mes', 'control']).default('mes'),
   contratoId: z.string().uuid().optional(),
 });
-export const PagarBoletaSchema = z.object({ fecha: FechaIso, medio: MedioCobroSchema.default('transferencia') });
+export const PagarBoletaSchema = z.object({
+  fecha: FechaIso,
+  medio: MedioCobroSchema.default('transferencia'),
+});
 
 /** «4/6» del mes siguiente: lo que propone «Copiar el mes anterior». */
 export function cuotaSiguiente(cuota: string | null): string | null {
@@ -1792,7 +2142,13 @@ export function cuotaSiguiente(cuota: string | null): string | null {
   return n >= de ? null : `${n + 1}/${de}`;
 }
 
-export const CoberturaPolizaSchema = z.enum(['incendio', 'integral', 'responsabilidad_civil', 'caucion', 'otro']);
+export const CoberturaPolizaSchema = z.enum([
+  'incendio',
+  'integral',
+  'responsabilidad_civil',
+  'caucion',
+  'otro',
+]);
 export type CoberturaPoliza = z.infer<typeof CoberturaPolizaSchema>;
 export const NOMBRE_COBERTURA: Record<CoberturaPoliza, string> = {
   incendio: 'Incendio',
@@ -1810,7 +2166,11 @@ export const PolizaInputSchema = z
     cobertura: CoberturaPolizaSchema.default('incendio'),
     desde: FechaIso,
     hasta: FechaIso,
-    sumaAsegurada: z.number().nonnegative().nullish().transform((v) => v ?? null),
+    sumaAsegurada: z
+      .number()
+      .nonnegative()
+      .nullish()
+      .transform((v) => v ?? null),
     /** El premio total; se reparte en las cuotas sin perder centavos. */
     premio: z.number().positive('El premio tiene que ser mayor que cero.'),
     cuotas: z.number().int().min(1).max(24).default(1),
@@ -1819,7 +2179,10 @@ export const PolizaInputSchema = z
     aCargoDe: ParteDeudoraSchema.default('inquilino'),
     paga: QuienPagaSchema.default('inmobiliaria'),
   })
-  .refine((p) => p.hasta > p.desde, { message: 'La vigencia tiene que terminar después de empezar.', path: ['hasta'] });
+  .refine((p) => p.hasta > p.desde, {
+    message: 'La vigencia tiene que terminar después de empezar.',
+    path: ['hasta'],
+  });
 export type PolizaInput = z.input<typeof PolizaInputSchema>;
 export type Poliza = z.output<typeof PolizaInputSchema>;
 export const PolizaDtoSchema = z.object({

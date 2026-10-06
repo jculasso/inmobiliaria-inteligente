@@ -8,6 +8,11 @@ import { SupabaseAdminService } from './supabase-admin.service';
 
 @Module({
   controllers: [AdminTenantsController, AdminUsuariosController],
-  providers: [AdminTenantsService, AdminUsuariosService, SupabaseAdminService, SupabaseStorageService],
+  providers: [
+    AdminTenantsService,
+    AdminUsuariosService,
+    SupabaseAdminService,
+    SupabaseStorageService,
+  ],
 })
 export class AdminModule {}

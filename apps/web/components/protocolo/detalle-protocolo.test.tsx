@@ -104,7 +104,9 @@ describe('DetalleProtocolo — guardado optimista', () => {
     const selects = screen.getAllByRole('combobox');
     await user.selectOptions(selects[0]!, 'realizada');
 
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('La API no respondió.'));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('La API no respondió.'),
+    );
     expect(selects[0]).toHaveValue('pendiente');
   });
 

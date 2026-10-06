@@ -4,8 +4,12 @@ import userEvent from '@testing-library/user-event';
 import type { PersonaDto, PropiedadAlquilerDto } from '@vacker/types';
 
 const push = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: vi.fn(), back: vi.fn() }) }));
-vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn().mockResolvedValue('token') }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, refresh: vi.fn(), back: vi.fn() }),
+}));
+vi.mock('../../lib/supabase/client', () => ({
+  getAccessToken: vi.fn().mockResolvedValue('token'),
+}));
 const crearContrato = vi.fn();
 vi.mock('../../lib/alquileres-api', () => ({
   crearContrato: (...a: unknown[]) => crearContrato(...a),
@@ -34,7 +38,14 @@ const persona = (id: string, nombre: string): PersonaDto => ({
 });
 const DUENO = persona('22222222-2222-4222-8222-222222222222', 'Dueño Uno');
 const INQ = persona('33333333-3333-4333-8333-333333333333', 'Inquilina Dos');
-const PROP: PropiedadAlquilerDto = { id: '11111111-1111-4111-8111-111111111111', direccion: 'Calle 123', unidad: '2° A', ciudad: 'Rosario', tipo: 'vivienda', obs: null };
+const PROP: PropiedadAlquilerDto = {
+  id: '11111111-1111-4111-8111-111111111111',
+  direccion: 'Calle 123',
+  unidad: '2° A',
+  ciudad: 'Rosario',
+  tipo: 'vivienda',
+  obs: null,
+};
 
 beforeEach(() => {
   crearContrato.mockReset();
@@ -76,8 +87,19 @@ describe('ContratoForm — alta en tres pasos', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Guardar en borrador' }));
 
     const dto = crearContrato.mock.calls[0]![1];
-    expect(dto).toMatchObject({ propiedadId: PROP.id, inicio: '2024-11-01', fin: '2026-10-31', ajuste: 'indexado', indice: 'ICL' });
-    expect(dto.tramos[0]).toEqual({ numero: 1, desde: '2024-11-01', hasta: '2025-02-28', importe: 250_000 });
+    expect(dto).toMatchObject({
+      propiedadId: PROP.id,
+      inicio: '2024-11-01',
+      fin: '2026-10-31',
+      ajuste: 'indexado',
+      indice: 'ICL',
+    });
+    expect(dto.tramos[0]).toEqual({
+      numero: 1,
+      desde: '2024-11-01',
+      hasta: '2025-02-28',
+      importe: 250_000,
+    });
     expect(dto.tramos[1].importe).toBeNull();
     expect(push).toHaveBeenCalledWith('/alquileres/contratos/nuevo-id');
   });

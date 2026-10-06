@@ -240,8 +240,7 @@ function analizar(): { hallazgos: Hallazgo[]; archivosVistos: number; usadas: Se
     const anotar = (nodo: ts.Node, regla: Hallazgo['regla'], detalle: string) => {
       const funcion = funcionContenedora(nodo);
       const permiso = PERMITIDOS.find(
-        (p) =>
-          p.archivo === rel && (p.funciones === '*' || p.funciones.includes(funcion)),
+        (p) => p.archivo === rel && (p.funciones === '*' || p.funciones.includes(funcion)),
       );
       if (permiso) {
         usadas.add(permiso.funciones === '*' ? `${rel}::*` : `${rel}::${funcion}`);
@@ -301,11 +300,7 @@ function analizar(): { hallazgos: Hallazgo[]; archivosVistos: number; usadas: Se
         // que preguntarle el nombre directo devuelve undefined y el literal
         // pasado inline —la forma más obvia de forjar— se escapaba.
         const contextual = checker.getContextualType(nodo);
-        const partes = contextual
-          ? contextual.isUnion()
-            ? contextual.types
-            : [contextual]
-          : [];
+        const partes = contextual ? (contextual.isUnion() ? contextual.types : [contextual]) : [];
         const tipo = partes
           .map((t) => t.getSymbol()?.getName())
           .find((n) => n === 'TenantContext' || n === 'AuthPrincipal');
@@ -360,8 +355,7 @@ describe('Acceso a Prisma fuera del contexto de tenant (análisis estático)', (
     const informe = analisis.hallazgos
       .map(
         (h) =>
-          `  [regla ${h.regla}] ${h.archivo}:${h.linea}  (${h.funcion})\n` +
-          `      ${h.detalle}`,
+          `  [regla ${h.regla}] ${h.archivo}:${h.linea}  (${h.funcion})\n` + `      ${h.detalle}`,
       )
       .join('\n');
 

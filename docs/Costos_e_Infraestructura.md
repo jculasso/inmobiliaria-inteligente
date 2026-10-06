@@ -16,12 +16,12 @@ salen de medir el consumo real de hoy, no de suponerlo.
 Medido sobre la base productiva, con tres inmobiliarias cargadas (una real —
 Vacker, con veinte usuarios y un año de operación — y dos de demostración):
 
-| Qué | Medido hoy |
-| --- | --- |
-| Base de datos completa | **15 MB** |
-| La tabla más grande (`operacion`, 226 filas) | 296 kB |
-| Archivos en Storage | 93 |
-| Usuarios totales | 32 |
+| Qué                                          | Medido hoy |
+| -------------------------------------------- | ---------- |
+| Base de datos completa                       | **15 MB**  |
+| La tabla más grande (`operacion`, 226 filas) | 296 kB     |
+| Archivos en Storage                          | 93         |
+| Usuarios totales                             | 32         |
 
 La base es **diminuta**. Ese es el dato que ordena todo lo demás: el costo de
 este sistema no lo maneja la cantidad de datos sino tres cosas mucho más
@@ -29,24 +29,24 @@ chicas, y conviene tenerlas separadas.
 
 Las estimaciones por inmobiliaria y por año, redondeadas hacia arriba:
 
-| Recurso | Por inmobiliaria/año | De dónde sale |
-| --- | --- | --- |
-| Base de datos | **5 MB** | Medido: 226 operaciones ocupan 296 kB |
-| Archivos | **0,5 GB** | Fotos de tasación e informes en PDF |
-| Usuarios | **20** | Los que tiene Vacker |
-| Tráfico de salida | **3 GB/mes** | Sobre todo fotos servidas |
+| Recurso           | Por inmobiliaria/año | De dónde sale                         |
+| ----------------- | -------------------- | ------------------------------------- |
+| Base de datos     | **5 MB**             | Medido: 226 operaciones ocupan 296 kB |
+| Archivos          | **0,5 GB**           | Fotos de tasación e informes en PDF   |
+| Usuarios          | **20**               | Los que tiene Vacker                  |
+| Tráfico de salida | **3 GB/mes**         | Sobre todo fotos servidas             |
 
 ---
 
 ## 2. El escenario de hoy: una inmobiliaria
 
-| Servicio | Plan | Costo |
-| --- | --- | --- |
-| Supabase | Free | $0 |
-| Render (API) | Free | $0 |
-| Vercel (web y sitio) | Hobby | $0 |
-| Resend (correo) | Free | $0 |
-| **Total** | | **$0/mes** |
+| Servicio             | Plan  | Costo      |
+| -------------------- | ----- | ---------- |
+| Supabase             | Free  | $0         |
+| Render (API)         | Free  | $0         |
+| Vercel (web y sitio) | Hobby | $0         |
+| Resend (correo)      | Free  | $0         |
+| **Total**            |       | **$0/mes** |
 
 Funciona, pero con **tres exposiciones reales**, y conviene mirarlas de frente:
 
@@ -63,13 +63,13 @@ plataforma se cobra, corresponde pasar a Pro.
 
 ### Lo que yo pagaría hoy mismo
 
-| Servicio | Plan | Costo |
-| --- | --- | --- |
-| Supabase | **Pro** | $25 |
-| Render | **Starter** | $7 |
-| Vercel | **Pro** (1 asiento) | $20 |
-| Resend | Free | $0 |
-| **Total** | | **$52/mes** |
+| Servicio  | Plan                | Costo       |
+| --------- | ------------------- | ----------- |
+| Supabase  | **Pro**             | $25         |
+| Render    | **Starter**         | $7          |
+| Vercel    | **Pro** (1 asiento) | $20         |
+| Resend    | Free                | $0          |
+| **Total** |                     | **$52/mes** |
 
 Cincuenta y dos dólares por mes eliminan las tres exposiciones: aparecen las
 copias diarias con siete días de retención, la API deja de dormirse, y el
@@ -86,13 +86,13 @@ licenciamiento queda en regla para cobrar.
 Cien usuarios. Base estimada en 25 MB, archivos en 2,5 GB al año, tráfico en 15
 GB por mes.
 
-| Servicio | Plan | Costo |
-| --- | --- | --- |
-| Supabase | Pro | $25 |
-| Render | Starter | $7 |
-| Vercel | Pro | $20 |
-| Resend | Free | $0 |
-| **Total** | | **$52/mes** |
+| Servicio  | Plan    | Costo       |
+| --------- | ------- | ----------- |
+| Supabase  | Pro     | $25         |
+| Render    | Starter | $7          |
+| Vercel    | Pro     | $20         |
+| Resend    | Free    | $0          |
+| **Total** |         | **$52/mes** |
 
 **No cambia nada.** Cinco inmobiliarias entran holgadas en los mismos planes:
 la base usa el 0,3% de los 8 GB incluidos, los archivos el 2,5% de los 100 GB,
@@ -107,13 +107,13 @@ A **$10,40 por inmobiliaria por mes**, la infraestructura deja de ser un tema.
 Cuatrocientos usuarios. Base 100 MB, archivos 10 GB al año, tráfico 60 GB por
 mes.
 
-| Servicio | Plan | Costo |
-| --- | --- | --- |
-| Supabase | Pro + servidor Small | $25 + $15 |
-| Render | Standard | $25 |
-| Vercel | Pro | $20 |
-| Resend | Pro | $20 |
-| **Total** | | **$105/mes** |
+| Servicio  | Plan                 | Costo        |
+| --------- | -------------------- | ------------ |
+| Supabase  | Pro + servidor Small | $25 + $15    |
+| Render    | Standard             | $25          |
+| Vercel    | Pro                  | $20          |
+| Resend    | Pro                  | $20          |
+| **Total** |                      | **$105/mes** |
 
 Los volúmenes siguen entrando en lo incluido. Lo que sube es **capacidad de
 proceso**, no almacenamiento: cuatrocientas personas usando el sistema a la vez
@@ -130,14 +130,14 @@ avisos son más de las 3.000 piezas mensuales del plan gratuito.
 
 Dos mil usuarios. Base 500 MB, archivos 50 GB al año, tráfico 300 GB por mes.
 
-| Servicio | Plan | Costo |
-| --- | --- | --- |
-| Supabase | Pro + servidor Medium | $25 + $60 |
-| Supabase — tráfico excedido | 50 GB × $0,09 | $5 |
-| Render | Standard ×2 | $50 |
-| Vercel | Pro | $20 |
-| Resend | Pro | $35 |
-| **Total** | | **$195/mes** |
+| Servicio                    | Plan                  | Costo        |
+| --------------------------- | --------------------- | ------------ |
+| Supabase                    | Pro + servidor Medium | $25 + $60    |
+| Supabase — tráfico excedido | 50 GB × $0,09         | $5           |
+| Render                      | Standard ×2           | $50          |
+| Vercel                      | Pro                   | $20          |
+| Resend                      | Pro                   | $35          |
+| **Total**                   |                       | **$195/mes** |
 
 Sigue siendo poco, y vale la pena entender por qué: **este sistema mueve texto,
 no video.** Una inmobiliaria genera unos pocos megabytes de datos por año. Lo
@@ -153,14 +153,14 @@ Lo que empieza a doler es el proceso, y ahí sí conviene revisar la arquitectur
 
 ## 6. El resumen en una tabla
 
-| | 1 (hoy) | 1 (protegido) | 5 | 20 | 100 |
-| --- | --- | --- | --- | --- | --- |
-| Supabase | $0 | $25 | $25 | $40 | $90 |
-| Render | $0 | $7 | $7 | $25 | $50 |
-| Vercel | $0 | $20 | $20 | $20 | $20 |
-| Resend | $0 | $0 | $0 | $20 | $35 |
-| **Total mensual** | **$0** | **$52** | **$52** | **$105** | **$195** |
-| **Por inmobiliaria** | — | $52 | $10,40 | $5,25 | $1,95 |
+|                      | 1 (hoy) | 1 (protegido) | 5       | 20       | 100      |
+| -------------------- | ------- | ------------- | ------- | -------- | -------- |
+| Supabase             | $0      | $25           | $25     | $40      | $90      |
+| Render               | $0      | $7            | $7      | $25      | $50      |
+| Vercel               | $0      | $20           | $20     | $20      | $20      |
+| Resend               | $0      | $0            | $0      | $20      | $35      |
+| **Total mensual**    | **$0**  | **$52**       | **$52** | **$105** | **$195** |
+| **Por inmobiliaria** | —       | $52           | $10,40  | $5,25    | $1,95    |
 
 La infraestructura **no es el problema del negocio.** Si una inmobiliaria paga
 cincuenta dólares por mes, el margen bruto sobre infraestructura es del 96% a
@@ -181,12 +181,12 @@ Lo que se cobra en cualquier servicio de identidad son los **usuarios activos
 mensuales** — personas distintas que iniciaron sesión al menos una vez en el
 mes.
 
-| Escala | Usuarios activos | Incluido en Supabase Pro | Uso |
-| --- | --- | --- | --- |
-| 1 inmobiliaria | 20 | 100.000 | 0,02% |
-| 5 | 100 | 100.000 | 0,1% |
-| 20 | 400 | 100.000 | 0,4% |
-| 100 | 2.000 | 100.000 | **2%** |
+| Escala         | Usuarios activos | Incluido en Supabase Pro | Uso    |
+| -------------- | ---------------- | ------------------------ | ------ |
+| 1 inmobiliaria | 20               | 100.000                  | 0,02%  |
+| 5              | 100              | 100.000                  | 0,1%   |
+| 20             | 400              | 100.000                  | 0,4%   |
+| 100            | 2.000            | 100.000                  | **2%** |
 
 **Con cien inmobiliarias se estaría usando el 2% de lo incluido.** La
 autenticación es gratis a cualquier escala que este negocio vaya a alcanzar. El
@@ -198,11 +198,11 @@ Vale la pena tener el número para saber qué se está ahorrando. Auth0 cobra po
 tramos de usuarios activos, y un producto vendido a empresas cae en la tabla
 B2B:
 
-| Escala | Usuarios activos | Auth0 B2B Essentials |
-| --- | --- | --- |
-| 5 inmobiliarias | 100 | $150/mes |
-| 20 | 400 | ~$150/mes |
-| 100 | 2.000 | ~$700/mes |
+| Escala          | Usuarios activos | Auth0 B2B Essentials |
+| --------------- | ---------------- | -------------------- |
+| 5 inmobiliarias | 100              | $150/mes             |
+| 20              | 400              | ~$150/mes            |
+| 100             | 2.000            | ~$700/mes            |
 
 Con cien inmobiliarias, Auth0 costaría **más de tres veces toda la
 infraestructura actual junta**, para hacer lo mismo que ya se hace gratis.
@@ -254,10 +254,10 @@ en Estados Unidos.
 
 Medido desde Rosario el 1/08/2026:
 
-| Destino | Ida y vuelta |
-| --- | --- |
-| Base de datos — Supabase, São Paulo | ~40 ms |
-| API — Render, Estados Unidos | ~235 ms, a un pedido que no hace nada |
+| Destino                             | Ida y vuelta                          |
+| ----------------------------------- | ------------------------------------- |
+| Base de datos — Supabase, São Paulo | ~40 ms                                |
+| API — Render, Estados Unidos        | ~235 ms, a un pedido que no hace nada |
 
 Una sola pantalla dispara varias consultas, y hoy **cada una cruza el
 continente y vuelve**. Ese viaje repetido pesa más que el del usuario al
@@ -312,4 +312,4 @@ después, cada cliente nuevo lo hace más caro de cambiar.
 
 ---
 
-*Inmobiliaria Inteligente · Costos de infraestructura · 1 de agosto de 2026*
+_Inmobiliaria Inteligente · Costos de infraestructura · 1 de agosto de 2026_

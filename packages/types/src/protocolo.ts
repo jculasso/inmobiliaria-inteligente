@@ -6,7 +6,12 @@ import { IsoDateSchema, MontoSchema } from './tablero';
 export const EstadoProtocoloSchema = z.enum(['activa', 'archivada']);
 export type EstadoProtocolo = z.infer<typeof EstadoProtocoloSchema>;
 
-export const EstadoAccionSchema = z.enum(['pendiente', 'en_proceso', 'realizada', 'no_corresponde']);
+export const EstadoAccionSchema = z.enum([
+  'pendiente',
+  'en_proceso',
+  'realizada',
+  'no_corresponde',
+]);
 export type EstadoAccion = z.infer<typeof EstadoAccionSchema>;
 
 export const ESTADO_ACCION_LABEL: Record<EstadoAccion, string> = {
@@ -54,15 +59,39 @@ export const PLANTILLA_ACCIONES: { clave: string; semana: number; titulo: string
   { clave: 'publicacion-portales', semana: 1, titulo: 'Publicación en portales' },
   { clave: 'publicacion-redes', semana: 1, titulo: 'Publicación en redes' },
   { clave: 'carteleria', semana: 1, titulo: 'Cartelería / señalización' },
-  { clave: 'control-calidad-publicacion', semana: 1, titulo: 'Control de calidad de la publicación' },
+  {
+    clave: 'control-calidad-publicacion',
+    semana: 1,
+    titulo: 'Control de calidad de la publicación',
+  },
 
   { clave: 'difusion-base-propia', semana: 2, titulo: 'Difusión en base de datos propia' },
-  { clave: 'difusion-base-inmobiliaria', semana: 2, titulo: 'Difusión en base de datos de la inmobiliaria' },
-  { clave: 'contacto-interesados-similares', semana: 2, titulo: 'Contacto con interesados en propiedades similares' },
-  { clave: 'seguimiento-consultas-iniciales', semana: 2, titulo: 'Seguimiento de consultas iniciales' },
+  {
+    clave: 'difusion-base-inmobiliaria',
+    semana: 2,
+    titulo: 'Difusión en base de datos de la inmobiliaria',
+  },
+  {
+    clave: 'contacto-interesados-similares',
+    semana: 2,
+    titulo: 'Contacto con interesados en propiedades similares',
+  },
+  {
+    clave: 'seguimiento-consultas-iniciales',
+    semana: 2,
+    titulo: 'Seguimiento de consultas iniciales',
+  },
 
-  { clave: 'difusion-whatsapp-colegas', semana: 3, titulo: 'Difusión en grupos de WhatsApp de colegas' },
-  { clave: 'envio-dirigido-colegas', semana: 3, titulo: 'Envío dirigido a colegas con potenciales compradores' },
+  {
+    clave: 'difusion-whatsapp-colegas',
+    semana: 3,
+    titulo: 'Difusión en grupos de WhatsApp de colegas',
+  },
+  {
+    clave: 'envio-dirigido-colegas',
+    semana: 3,
+    titulo: 'Envío dirigido a colegas con potenciales compradores',
+  },
   { clave: 'ronda-negocios-colegas', semana: 3, titulo: 'Ronda de negocios con colegas' },
   { clave: 'seguimiento-colegas', semana: 3, titulo: 'Seguimiento a colegas interesados' },
 
@@ -70,16 +99,40 @@ export const PLANTILLA_ACCIONES: { clave: string; semana: number; titulo: string
   { clave: 'nuevas-publicaciones', semana: 4, titulo: 'Nuevas publicaciones' },
   { clave: 'reposicionamiento-portales', semana: 4, titulo: 'Reposicionamiento en portales' },
   { clave: 'repaso-base-propia', semana: 4, titulo: 'Repaso de base de datos propia' },
-  { clave: 'repaso-base-inmobiliaria', semana: 4, titulo: 'Repaso de base de datos de la inmobiliaria' },
-  { clave: 'seguimiento-consultas-visitas', semana: 4, titulo: 'Seguimiento de consultas y visitas' },
-  { clave: 'revision-precio-posicionamiento', semana: 4, titulo: 'Revisión de precio y posicionamiento' },
+  {
+    clave: 'repaso-base-inmobiliaria',
+    semana: 4,
+    titulo: 'Repaso de base de datos de la inmobiliaria',
+  },
+  {
+    clave: 'seguimiento-consultas-visitas',
+    semana: 4,
+    titulo: 'Seguimiento de consultas y visitas',
+  },
+  {
+    clave: 'revision-precio-posicionamiento',
+    semana: 4,
+    titulo: 'Revisión de precio y posicionamiento',
+  },
 
-  { clave: 'consolidacion-consultas-visitas', semana: 5, titulo: 'Consolidación de consultas y visitas' },
-  { clave: 'devoluciones-compradores', semana: 5, titulo: 'Registro de devoluciones de compradores' },
+  {
+    clave: 'consolidacion-consultas-visitas',
+    semana: 5,
+    titulo: 'Consolidación de consultas y visitas',
+  },
+  {
+    clave: 'devoluciones-compradores',
+    semana: 5,
+    titulo: 'Registro de devoluciones de compradores',
+  },
   { clave: 'devoluciones-colegas', semana: 5, titulo: 'Registro de devoluciones de colegas' },
   { clave: 'analisis-objeciones', semana: 5, titulo: 'Análisis de objeciones del mercado' },
   { clave: 'recomendacion-estrategia', semana: 5, titulo: 'Recomendación de estrategia' },
-  { clave: 'reunion-decision-propietario', semana: 5, titulo: 'Reunión y decisión con el propietario' },
+  {
+    clave: 'reunion-decision-propietario',
+    semana: 5,
+    titulo: 'Reunión y decisión con el propietario',
+  },
 ];
 
 // --- DTOs ------------------------------------------------------------------

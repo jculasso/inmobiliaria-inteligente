@@ -45,7 +45,9 @@ export const TenantConfigSchema = z.object({
   selladoPct: z.number().min(0).max(5).default(0),
   selladoInquilinoPct: z.number().min(0).max(100).default(50),
   /** El depósito en garantía: Javier, 6/10/2026, «se le entrega al propietario». */
-  depositoGestion: z.enum(['entrega_propietario', 'retiene_inmobiliaria']).default('entrega_propietario'),
+  depositoGestion: z
+    .enum(['entrega_propietario', 'retiene_inmobiliaria'])
+    .default('entrega_propietario'),
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 
@@ -65,7 +67,14 @@ export function configPorDefecto(): TenantConfig {
   return TenantConfigSchema.parse({});
 }
 
-export const MODULO_KEYS = ['tablero', 'tasador', 'todo', 'protocolo', 'publicacion', 'alquileres'] as const;
+export const MODULO_KEYS = [
+  'tablero',
+  'tasador',
+  'todo',
+  'protocolo',
+  'publicacion',
+  'alquileres',
+] as const;
 export type ModuloKey = (typeof MODULO_KEYS)[number];
 
 /**

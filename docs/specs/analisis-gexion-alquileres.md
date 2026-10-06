@@ -18,25 +18,25 @@ tesorería. Vacker lo usa sobre todo para alquileres.
 
 La foto de Vacker al 5/10/2026, del propio tablero de Gexion:
 
-| | |
-|---|---|
-| Contratos de alquiler en curso | 78 (68 de vivienda, 10 comerciales) |
-| Clientes activos | 150 (86 inquilinos, 64 propietarios) |
-| Contratos con indexación vencida | 6 |
-| Contratos a indexar en los próximos 60 días | 35 |
-| Contratos con póliza de seguro | 1 de 78 |
-| Contratos que terminan en los próximos 60 días | 5 |
+|                                                |                                      |
+| ---------------------------------------------- | ------------------------------------ |
+| Contratos de alquiler en curso                 | 78 (68 de vivienda, 10 comerciales)  |
+| Clientes activos                               | 150 (86 inquilinos, 64 propietarios) |
+| Contratos con indexación vencida               | 6                                    |
+| Contratos a indexar en los próximos 60 días    | 35                                   |
+| Contratos con póliza de seguro                 | 1 de 78                              |
+| Contratos que terminan en los próximos 60 días | 5                                    |
 
 ## 2. El mapa del sistema
 
-| Menú | Qué hay adentro |
-|---|---|
-| **Clientes** | Clientes · comprobantes · cobros y pagos · control de impuestos y servicios · conceptos (carga múltiple, por código de barras, desde el período anterior) · generación y liquidación de cupones · cuenta corriente · reportes de conceptos cobrados, pagados, facturados y pendientes |
-| **Administración** | Propiedades · loteos · administradores de PH · **contratos de alquiler** · contratos de venta financiada · garantías · sellados · depósitos en garantía · pólizas de seguro · índices · plantillas de documentos · firma electrónica · correos, newsletters y WhatsApp enviados |
-| **Proveedores** | Pagos · tipos de gasto · pendientes · pagos por tipo de gasto |
-| **Comercialización** | Publicación a portales · reservas · propiedades en venta y en alquiler |
-| **Fondos** | Movimientos · cierre de caja · conciliación bancaria · cheques |
-| **Contabilidad** | Ejercicios · asientos · plan de cuentas · libro diario · submayor · balance de sumas y saldos · ingresos y egresos · libros IVA ventas y compras · retenciones |
+| Menú                 | Qué hay adentro                                                                                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Clientes**         | Clientes · comprobantes · cobros y pagos · control de impuestos y servicios · conceptos (carga múltiple, por código de barras, desde el período anterior) · generación y liquidación de cupones · cuenta corriente · reportes de conceptos cobrados, pagados, facturados y pendientes |
+| **Administración**   | Propiedades · loteos · administradores de PH · **contratos de alquiler** · contratos de venta financiada · garantías · sellados · depósitos en garantía · pólizas de seguro · índices · plantillas de documentos · firma electrónica · correos, newsletters y WhatsApp enviados       |
+| **Proveedores**      | Pagos · tipos de gasto · pendientes · pagos por tipo de gasto                                                                                                                                                                                                                         |
+| **Comercialización** | Publicación a portales · reservas · propiedades en venta y en alquiler                                                                                                                                                                                                                |
+| **Fondos**           | Movimientos · cierre de caja · conciliación bancaria · cheques                                                                                                                                                                                                                        |
+| **Contabilidad**     | Ejercicios · asientos · plan de cuentas · libro diario · submayor · balance de sumas y saldos · ingresos y egresos · libros IVA ventas y compras · retenciones                                                                                                                        |
 
 Además: agenda, un «resumen cliente» y la publicación a un **portal de
 autogestión** donde inquilinos y propietarios ven su cuenta.
@@ -70,16 +70,16 @@ autogestión** donde inquilinos y propietarios ven su cuenta.
 Todo lo que se cobra o se paga es un **concepto**, una línea con tipo,
 período, cliente, propiedad y contrato. Cada mes, un contrato genera:
 
-| Concepto | A quién | Sentido |
-|---|---|---|
-| Alquiler | inquilino | a cobrar |
-| Alquiler | propietario | a pagar |
-| Gastos administrativos | inquilino | a cobrar |
+| Concepto                 | A quién     | Sentido                                      |
+| ------------------------ | ----------- | -------------------------------------------- |
+| Alquiler                 | inquilino   | a cobrar                                     |
+| Alquiler                 | propietario | a pagar                                      |
+| Gastos administrativos   | inquilino   | a cobrar                                     |
 | Honorarios profesionales | propietario | a cobrar (se descuenta de lo que se le paga) |
 
 Y además, cargados aparte: expensas (ordinarias y extraordinarias),
-impuestos y servicios, reparaciones. Estados: *a cobrar*, *a pagar*, *pago
-parcial*, *en espera* (el pago garantizado: se le debe al propietario aunque
+impuestos y servicios, reparaciones. Estados: _a cobrar_, _a pagar_, _pago
+parcial_, _en espera_ (el pago garantizado: se le debe al propietario aunque
 el inquilino no pagó). Los impuestos y servicios se cargan a mano, en lote,
 por código de barras o copiando el período anterior.
 
@@ -138,12 +138,12 @@ Esto sale de mirar las pantallas, no de usarlas. Son hipótesis, no hallazgos.
 
 **¿Reemplazar Gexion o complementarlo?**
 
-| | Reemplazar | Complementar |
-|---|---|---|
-| Qué es | Un sistema de administración propio: contratos, conceptos, cobros, liquidaciones, **facturación electrónica**, cuenta corriente, portal | Gexion sigue siendo el sistema donde se opera; nosotros sumamos lo que no tiene: análisis, alertas y el día a día simplificado |
-| Lo difícil | Facturación electrónica con ARCA, recaudación SIRO, contabilidad y libros IVA. Es regulado: un error es fiscal, no visual | Traer los datos: hay que ver si Gexion tiene API o exportaciones (el contrato muestra un «ID externo», lo que sugiere integraciones) |
-| Tiempo | Meses, y una migración de 78 contratos con su historia | Semanas para una primera versión |
-| Riesgo | Alto: Vacker cobra y paga con esto todos los meses | Bajo: si algo falla, Gexion sigue andando |
+|            | Reemplazar                                                                                                                              | Complementar                                                                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Qué es     | Un sistema de administración propio: contratos, conceptos, cobros, liquidaciones, **facturación electrónica**, cuenta corriente, portal | Gexion sigue siendo el sistema donde se opera; nosotros sumamos lo que no tiene: análisis, alertas y el día a día simplificado       |
+| Lo difícil | Facturación electrónica con ARCA, recaudación SIRO, contabilidad y libros IVA. Es regulado: un error es fiscal, no visual               | Traer los datos: hay que ver si Gexion tiene API o exportaciones (el contrato muestra un «ID externo», lo que sugiere integraciones) |
+| Tiempo     | Meses, y una migración de 78 contratos con su historia                                                                                  | Semanas para una primera versión                                                                                                     |
+| Riesgo     | Alto: Vacker cobra y paga con esto todos los meses                                                                                      | Bajo: si algo falla, Gexion sigue andando                                                                                            |
 
 **Recomendación: complementar primero.** El valor que podemos agregar rápido
 —análisis de la cartera, alertas, indexación asistida, morosidad— no

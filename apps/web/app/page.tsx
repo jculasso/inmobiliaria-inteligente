@@ -43,8 +43,8 @@ export default async function Home() {
           <CardHeader>
             <CardTitle>Tu cuenta no está habilitada todavía</CardTitle>
             <CardDescription>
-              Iniciaste sesión con Supabase, pero tu usuario aún no está vinculado a un tenant de
-              la plataforma. Pedile a un administrador que te dé de alta. ({err.message})
+              Iniciaste sesión con Supabase, pero tu usuario aún no está vinculado a un tenant de la
+              plataforma. Pedile a un administrador que te dé de alta. ({err.message})
             </CardDescription>
           </CardHeader>
           <div>

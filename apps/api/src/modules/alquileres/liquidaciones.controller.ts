@@ -66,7 +66,10 @@ export class LiquidacionesController {
   @Post()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Liquida a un propietario; lo que entra lo decide la API' })
-  liquidar(@Body(new ZodValidationPipe(LiquidacionInputSchema)) dto: Liquidacion, @CurrentUser() user: AuthPrincipal) {
+  liquidar(
+    @Body(new ZodValidationPipe(LiquidacionInputSchema)) dto: Liquidacion,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.liquidaciones.liquidar(ctxDe(user), dto);
   }
 
@@ -74,7 +77,11 @@ export class LiquidacionesController {
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Anula una liquidación: sus conceptos vuelven a quedar por liquidar' })
-  anular(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(AnularLiquidacionSchema)) dto: AnularLiquidacion, @CurrentUser() user: AuthPrincipal) {
+  anular(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(AnularLiquidacionSchema)) dto: AnularLiquidacion,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.liquidaciones.anular(ctxDe(user), id, dto.motivo);
   }
 
@@ -89,8 +96,14 @@ export class LiquidacionesController {
   @Post(':id/enviar')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Manda el PDF de la liquidación por mail (Resend); queda en el historial' })
-  enviar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(EnviarPorMailSchema)) body: EnviarPorMail, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary: 'Manda el PDF de la liquidación por mail (Resend); queda en el historial',
+  })
+  enviar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(EnviarPorMailSchema)) body: EnviarPorMail,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.envios.liquidacion(ctxDe(user), id, body.para);
   }
 }

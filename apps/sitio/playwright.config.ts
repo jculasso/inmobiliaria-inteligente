@@ -30,7 +30,10 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'escritorio', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
+    {
+      name: 'escritorio',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
+    },
     {
       name: 'telefono',
       use: { ...devices['iPhone SE'], viewport: { width: 375, height: 812 } },

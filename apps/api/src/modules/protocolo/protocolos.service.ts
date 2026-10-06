@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   PLANTILLA_ACCIONES,
@@ -99,7 +105,9 @@ export class ProtocolosService {
           fecha: true,
           valorRecomendado: true,
           exclusividad: true,
-          agente: { select: { id: true, nombre: true, email: true, telefono: true, fotoUrl: true } },
+          agente: {
+            select: { id: true, nombre: true, email: true, telefono: true, fotoUrl: true },
+          },
           fotos: { orderBy: { orden: 'asc' }, take: 1, select: { url: true } },
         },
       });
@@ -134,7 +142,13 @@ export class ProtocolosService {
       const scope = await scopeDePermiso(ctx, tx);
       const tasacion = await tx.tasacion.findUnique({
         where: { id: dto.tasacionId },
-        select: { id: true, estado: true, agenteId: true, cliente: true, protocolo: { select: { id: true } } },
+        select: {
+          id: true,
+          estado: true,
+          agenteId: true,
+          cliente: true,
+          protocolo: { select: { id: true } },
+        },
       });
 
       // RLS ya acotó al tenant; acá se valida el alcance del rol y el estado.
@@ -143,7 +157,9 @@ export class ProtocolosService {
         throw new NotFoundException('Tasación no encontrada.');
       }
       if (tasacion.estado !== ESTADO_CAPTADA) {
-        throw new BadRequestException('Solo se puede iniciar el protocolo de una tasación captada.');
+        throw new BadRequestException(
+          'Solo se puede iniciar el protocolo de una tasación captada.',
+        );
       }
       if (tasacion.protocolo) {
         throw new ConflictException('Esta propiedad ya tiene un protocolo iniciado.');
@@ -236,7 +252,8 @@ export class ProtocolosService {
         data.vencimientoAutorizacion = toDate(dto.vencimientoAutorizacion);
       }
       if (dto.consultas !== undefined) data.consultas = dto.consultas;
-      if (dto.consultasCalificadas !== undefined) data.consultasCalificadas = dto.consultasCalificadas;
+      if (dto.consultasCalificadas !== undefined)
+        data.consultasCalificadas = dto.consultasCalificadas;
       if (dto.visitas !== undefined) data.visitas = dto.visitas;
       if (dto.interesadosActivos !== undefined) data.interesadosActivos = dto.interesadosActivos;
       if (dto.ofertas !== undefined) data.ofertas = dto.ofertas;
@@ -294,7 +311,11 @@ export class ProtocolosService {
 
       // Marcar "realizada" sin fecha completa con hoy (como el prototipo): la
       // fecha alimenta el informe, y pedirla aparte se olvida siempre.
-      if (dto.estado === 'realizada' && dto.fechaRealizada === undefined && !accion.fechaRealizada) {
+      if (
+        dto.estado === 'realizada' &&
+        dto.fechaRealizada === undefined &&
+        !accion.fechaRealizada
+      ) {
         data.fechaRealizada = toDate(hoyArgentina());
       }
 
@@ -338,7 +359,12 @@ export class ProtocolosService {
       await this.exigirAcceso(id, tx, ctx);
       return tx.protocolo.update({
         where: { id },
-        data: { estado: 'activa', archivadoEn: null, motivoArchivo: null, observacionArchivo: null },
+        data: {
+          estado: 'activa',
+          archivadoEn: null,
+          motivoArchivo: null,
+          observacionArchivo: null,
+        },
         include: protocoloInclude,
       });
     }, ctx);
@@ -485,11 +511,17 @@ export class ProtocolosService {
    * falla no se tumba la pantalla, se devuelve con la miniatura rota.
    */
   private async firmarPortadas<T extends { fotoUrl: string | null }>(items: T[]): Promise<T[]>;
-  private async firmarPortadas<T extends { propiedad: { fotoUrl: string | null } }>(items: T[]): Promise<T[]>;
-  private async firmarPortadas(items: { fotoUrl?: string | null; propiedad?: { fotoUrl: string | null } }[]) {
+  private async firmarPortadas<T extends { propiedad: { fotoUrl: string | null } }>(
+    items: T[],
+  ): Promise<T[]>;
+  private async firmarPortadas(
+    items: { fotoUrl?: string | null; propiedad?: { fotoUrl: string | null } }[],
+  ) {
     const refs = items
       .map((i) => (i.propiedad ? i.propiedad : i))
-      .filter((r): r is { fotoUrl: string } => typeof r.fotoUrl === 'string' && r.fotoUrl.length > 0);
+      .filter(
+        (r): r is { fotoUrl: string } => typeof r.fotoUrl === 'string' && r.fotoUrl.length > 0,
+      );
     if (refs.length === 0) return items;
     try {
       const keys = refs.map((r) => this.storage.keyDe(FOTOS_BUCKET, r.fotoUrl));
@@ -511,7 +543,9 @@ export class ProtocolosService {
    * cambio del checklist, y el cliente ya tiene la URL firmada de la lectura
    * inicial (la conserva al mergear la respuesta).
    */
-  private async firmarPortada<T extends { propiedad: { fotoUrl: string | null } }>(dto: T): Promise<T> {
+  private async firmarPortada<T extends { propiedad: { fotoUrl: string | null } }>(
+    dto: T,
+  ): Promise<T> {
     const [firmado] = await this.firmarPortadas([dto]);
     return firmado ?? dto;
   }
@@ -519,7 +553,11 @@ export class ProtocolosService {
 
 // --- mapeo a DTO -----------------------------------------------------------
 
-function aAccionCalc(a: { semana: number; estado: string; fechaPrevista: Date | null }): AccionCalc {
+function aAccionCalc(a: {
+  semana: number;
+  estado: string;
+  fechaPrevista: Date | null;
+}): AccionCalc {
   return {
     semana: a.semana,
     estado: a.estado as AccionCalc['estado'],
@@ -529,7 +567,8 @@ function aAccionCalc(a: { semana: number; estado: string; fechaPrevista: Date | 
 
 /** Días de exclusividad pactados, si la captación fue exclusiva. */
 function diasDeExclusividad(exclusividad: Prisma.JsonValue): number | null {
-  if (exclusividad == null || typeof exclusividad !== 'object' || Array.isArray(exclusividad)) return null;
+  if (exclusividad == null || typeof exclusividad !== 'object' || Array.isArray(exclusividad))
+    return null;
   const dias = (exclusividad as Record<string, unknown>).dias;
   return typeof dias === 'number' ? dias : null;
 }
@@ -541,7 +580,9 @@ function toResumen(row: ProtocoloRow): ProtocoloResumenDto {
 
   const proxima = row.acciones
     .filter((a) => a.estado !== 'realizada' && a.estado !== 'no_corresponde')
-    .sort((a, b) => (fromDate(a.fechaPrevista) ?? '9999').localeCompare(fromDate(b.fechaPrevista) ?? '9999'))[0];
+    .sort((a, b) =>
+      (fromDate(a.fechaPrevista) ?? '9999').localeCompare(fromDate(b.fechaPrevista) ?? '9999'),
+    )[0];
 
   return {
     id: row.id,
@@ -564,10 +605,12 @@ function toResumen(row: ProtocoloRow): ProtocoloResumenDto {
       ciudad: row.tasacion.ciudad,
       tipoPropiedad: row.tasacion.tipoPropiedad,
       tipoOperacion: row.tasacion.tipoOperacion,
-      superficieTotal: row.tasacion.superficieTotal == null ? null : decToNum(row.tasacion.superficieTotal),
+      superficieTotal:
+        row.tasacion.superficieTotal == null ? null : decToNum(row.tasacion.superficieTotal),
       dormitorios: row.tasacion.dormitorios,
       banos: row.tasacion.banos,
-      valorRecomendado: row.tasacion.valorRecomendado == null ? null : decToNum(row.tasacion.valorRecomendado),
+      valorRecomendado:
+        row.tasacion.valorRecomendado == null ? null : decToNum(row.tasacion.valorRecomendado),
       fotoUrl: row.tasacion.fotos[0]?.url ?? null,
     },
     alertas: calcularAlertas(

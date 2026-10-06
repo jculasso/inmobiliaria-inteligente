@@ -36,7 +36,9 @@ describe('CORS · orígenes', () => {
   it('rechaza un origen ajeno', async () => {
     await expect(permitido('https://sitio-malicioso.com')).resolves.toBe(false);
     // Ojo con dominios que solo *terminan* parecido.
-    await expect(permitido('https://app.inmobiliariainteligente.net.evil.com')).resolves.toBe(false);
+    await expect(permitido('https://app.inmobiliariainteligente.net.evil.com')).resolves.toBe(
+      false,
+    );
   });
 
   it('esOrigenPermitido no acepta http en el dominio de producción', () => {

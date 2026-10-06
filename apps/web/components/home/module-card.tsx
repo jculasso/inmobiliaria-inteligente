@@ -58,10 +58,15 @@ export function ModuleCard({
         puedeEntrar ? 'hover:-translate-y-1 hover:shadow-lg' : ''
       } ${bloqueada ? 'opacity-70 grayscale-[35%]' : ''}`}
     >
-      <div aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${bloqueada ? 'bg-line' : ACCENTO[variante]}`} />
+      <div
+        aria-hidden
+        className={`absolute inset-x-0 top-0 h-1.5 ${bloqueada ? 'bg-line' : ACCENTO[variante]}`}
+      />
 
       <div className="flex items-start justify-between gap-3">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xl ${ICONO_FONDO[variante]}`}>
+        <div
+          className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xl ${ICONO_FONDO[variante]}`}
+        >
           {icono}
         </div>
         {!bloqueada && <Badge variant={variante}>{noIncluido ? 'No incluido' : undefined}</Badge>}

@@ -19,7 +19,15 @@ export { Campo, inputClass, textareaClass } from '../../form-ui';
  * Encabezado de paso: número en un círculo rojo + título, con la bajada debajo.
  * Da el mismo punto de entrada visual en los seis pasos.
  */
-export function PasoHeader({ numero, titulo, bajada }: { numero: number; titulo: string; bajada?: string }) {
+export function PasoHeader({
+  numero,
+  titulo,
+  bajada,
+}: {
+  numero: number;
+  titulo: string;
+  bajada?: string;
+}) {
   return (
     <header className="border-b border-line pb-3">
       <div className="flex items-center gap-2.5">
@@ -41,7 +49,9 @@ export function Bloque({ titulo, children }: { titulo?: string; children: ReactN
   return (
     <section className="rounded-brand border border-line bg-white p-4">
       {titulo && (
-        <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-wider text-brand-red">{titulo}</h3>
+        <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-wider text-brand-red">
+          {titulo}
+        </h3>
       )}
       <div className="flex flex-col gap-3.5">{children}</div>
     </section>

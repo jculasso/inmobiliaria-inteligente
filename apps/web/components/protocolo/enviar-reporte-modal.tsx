@@ -118,9 +118,7 @@ export function EnviarReporteModal({ onClose }: { onClose: () => void }) {
                         // `break-words`: un mail es un token sin espacios, y
                         // uno largo se sale de la tarjeta en 375px.
                         className={`break-words rounded-brand border px-3 py-2 text-sm ${
-                          inalcanzable
-                            ? 'border-warning/40 bg-warning/5'
-                            : 'border-line bg-surface'
+                          inalcanzable ? 'border-warning/40 bg-warning/5' : 'border-line bg-surface'
                         }`}
                       >
                         <span

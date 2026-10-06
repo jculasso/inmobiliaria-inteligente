@@ -104,7 +104,9 @@ export function OperacionesTable({
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder={tipo === 'venta' ? 'Buscar por dirección, vendedor o estado…' : 'Buscar por dirección…'}
+          placeholder={
+            tipo === 'venta' ? 'Buscar por dirección, vendedor o estado…' : 'Buscar por dirección…'
+          }
           className="h-9 w-full max-w-sm rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red"
         />
         <div className="flex items-center gap-3">
@@ -273,7 +275,9 @@ export function OperacionesTable({
                 const comp = op.puntas.find((p) => p.lado === 'compradora');
                 return (
                   <tr key={op.id} className="border-b border-line last:border-0">
-                    <td className="sticky left-0 z-10 border-r border-line bg-white px-2 py-2 text-muted">{op.codigo}</td>
+                    <td className="sticky left-0 z-10 border-r border-line bg-white px-2 py-2 text-muted">
+                      {op.codigo}
+                    </td>
                     <td className="px-2 py-2">{op.fechaFirma ?? '—'}</td>
                     <td className="px-2 py-2">
                       <span className="block max-w-[140px] truncate" title={op.direccion}>
@@ -284,10 +288,16 @@ export function OperacionesTable({
                       <>
                         <td className="px-2 py-2">{fmtUSD(op.precio)}</td>
                         <td className="px-2 py-2">{op.cantPuntas}</td>
-                        <td className="max-w-[110px] truncate px-2 py-2" title={vend?.nombre ?? undefined}>
+                        <td
+                          className="max-w-[110px] truncate px-2 py-2"
+                          title={vend?.nombre ?? undefined}
+                        >
                           {vend?.nombre ?? '—'}
                         </td>
-                        <td className="max-w-[110px] truncate px-2 py-2" title={comp?.nombre ?? undefined}>
+                        <td
+                          className="max-w-[110px] truncate px-2 py-2"
+                          title={comp?.nombre ?? undefined}
+                        >
                           {comp?.nombre ?? '—'}
                         </td>
                       </>
@@ -296,7 +306,9 @@ export function OperacionesTable({
                     )}
                     <td className="px-2 py-2">{fmtUSD(op.comTotal)}</td>
                     <td className="px-2 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(op.estado)}`}>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(op.estado)}`}
+                      >
                         {estadoLabel(op.estado)}
                       </span>
                     </td>

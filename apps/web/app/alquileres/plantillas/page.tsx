@@ -8,6 +8,10 @@ export const metadata = { title: 'Plantillas de contrato · Alquileres' };
 export default async function PlantillasPage() {
   const ctx = await requireServerPrincipal();
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
-  const [plantillas, modelo, contratos] = await Promise.all([listPlantillas(ctx.accessToken), getModeloPlantilla(ctx.accessToken), listContratos(ctx.accessToken)]);
+  const [plantillas, modelo, contratos] = await Promise.all([
+    listPlantillas(ctx.accessToken),
+    getModeloPlantilla(ctx.accessToken),
+    listContratos(ctx.accessToken),
+  ]);
   return <PlantillasVista plantillas={plantillas} modelo={modelo.cuerpo} contratos={contratos} />;
 }

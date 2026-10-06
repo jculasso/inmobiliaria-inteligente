@@ -21,7 +21,18 @@ import { FirmaController } from './firma/firma.controller';
  * controller. Un endpoint nuevo que se olvide el `@Roles` hace fallar esto,
  * en vez de quedar abierto para cualquier usuario de la inmobiliaria.
  */
-const CONTROLLERS = [AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController, LiquidacionesController, TableroAlquileresController, FirmaController];
+const CONTROLLERS = [
+  AlquileresController,
+  PersonasController,
+  PropiedadesAlquilerController,
+  ContratosController,
+  IndexacionesController,
+  ConceptosController,
+  CobrosController,
+  LiquidacionesController,
+  TableroAlquileresController,
+  FirmaController,
+];
 
 const handlers = CONTROLLERS.flatMap((C) =>
   Object.getOwnPropertyNames(C.prototype)
@@ -34,12 +45,18 @@ describe('RBAC del módulo Alquileres', () => {
     expect(handlers.length).toBeGreaterThanOrEqual(39);
   });
 
-  it.each(CONTROLLERS.map((C) => [C.name, C] as const))('%s exige tener contratado el módulo', (_n, C) => {
-    expect(Reflect.getMetadata(MODULO_KEY, C) as ModuloKey).toBe('alquileres');
-  });
+  it.each(CONTROLLERS.map((C) => [C.name, C] as const))(
+    '%s exige tener contratado el módulo',
+    (_n, C) => {
+      expect(Reflect.getMetadata(MODULO_KEY, C) as ModuloKey).toBe('alquileres');
+    },
+  );
 
   it.each(handlers)('%s usa exactamente ROLES_ADMINISTRACION_ALQUILERES', (_n, C, metodo) => {
-    const roles = Reflect.getMetadata(ROLES_KEY, (C.prototype as unknown as Record<string, object>)[metodo]!) as Rol[] | undefined;
+    const roles = Reflect.getMetadata(
+      ROLES_KEY,
+      (C.prototype as unknown as Record<string, object>)[metodo]!,
+    ) as Rol[] | undefined;
     expect([...(roles ?? [])].sort()).toEqual([...ROLES_ADMINISTRACION_ALQUILERES].sort());
   });
 });

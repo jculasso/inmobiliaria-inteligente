@@ -17,11 +17,54 @@ const cuenta = (saldo: number): CuentaCorrienteDto => ({
       moneda: 'ARS',
       saldo,
       movimientos: [
-        { id: id(), tipo: 'concepto', fecha: '2026-11-05', descripcion: 'Alquiler noviembre 2026', contrato: { id: id(), codigo: '5' }, debe: 1_137_518, haber: 0, saldo: 1_137_518, anulado: false, numero: null },
-        { id: id(), tipo: 'cobro', fecha: '2026-11-06', descripcion: 'Cobro · recibo 9', contrato: null, debe: 0, haber: 999_999, saldo: 1_137_518, anulado: true, numero: 9 },
-        { id: id(), tipo: 'cobro', fecha: '2026-11-07', descripcion: 'Cobro · recibo 10', contrato: null, debe: 0, haber: 1_000_000, saldo: 137_518, anulado: false, numero: 10 },
+        {
+          id: id(),
+          tipo: 'concepto',
+          fecha: '2026-11-05',
+          descripcion: 'Alquiler noviembre 2026',
+          contrato: { id: id(), codigo: '5' },
+          debe: 1_137_518,
+          haber: 0,
+          saldo: 1_137_518,
+          anulado: false,
+          numero: null,
+        },
+        {
+          id: id(),
+          tipo: 'cobro',
+          fecha: '2026-11-06',
+          descripcion: 'Cobro · recibo 9',
+          contrato: null,
+          debe: 0,
+          haber: 999_999,
+          saldo: 1_137_518,
+          anulado: true,
+          numero: 9,
+        },
+        {
+          id: id(),
+          tipo: 'cobro',
+          fecha: '2026-11-07',
+          descripcion: 'Cobro · recibo 10',
+          contrato: null,
+          debe: 0,
+          haber: 1_000_000,
+          saldo: 137_518,
+          anulado: false,
+          numero: 10,
+        },
       ],
-      pendientes: [{ conceptoId: id(), contrato: { id: id(), codigo: '5' }, descripcion: 'Alquiler noviembre 2026', sentido: 'a_cobrar', vencimiento: '2026-11-05', importe: 1_137_518, saldo: 137_518 }],
+      pendientes: [
+        {
+          conceptoId: id(),
+          contrato: { id: id(), codigo: '5' },
+          descripcion: 'Alquiler noviembre 2026',
+          sentido: 'a_cobrar',
+          vencimiento: '2026-11-05',
+          importe: 1_137_518,
+          saldo: 137_518,
+        },
+      ],
       aFavor: [],
     },
   ],
@@ -29,7 +72,9 @@ const cuenta = (saldo: number): CuentaCorrienteDto => ({
 
 describe('CuentaCorriente', () => {
   it('el saldo dicho en palabras: debe, a favor o al día', () => {
-    const { rerender } = render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
+    const { rerender } = render(
+      <CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />,
+    );
     expect(screen.getByText('Debe $ 137.518,00')).toBeInTheDocument();
     rerender(<CuentaCorriente cuenta={cuenta(-5_000)} persona={null} cobros={[]} />);
     expect(screen.getByText('A favor $ 5.000,00')).toBeInTheDocument();
@@ -53,9 +98,30 @@ describe('CuentaCorriente', () => {
 
   // Auditoría del 6/10/2026: el modal vivía dentro de la solapa «Cuenta» y «Editar datos» no hacía nada en las otras.
   it('«Editar datos» abre el formulario desde cualquier solapa', () => {
-    const persona = { id: id(), nombre: 'Romina Inquilina', tipo: 'fisica', documento: null, telefono: null, email: null } as unknown as PersonaDto;
-    const ficha = { persona, cuentas: [], contactos: [], contratos: [], saldos: [] } as unknown as PersonaFichaDto;
-    render(<CuentaCorriente cuenta={cuenta(0)} persona={persona} cobros={[]} ficha={ficha} historial={[]} />);
+    const persona = {
+      id: id(),
+      nombre: 'Romina Inquilina',
+      tipo: 'fisica',
+      documento: null,
+      telefono: null,
+      email: null,
+    } as unknown as PersonaDto;
+    const ficha = {
+      persona,
+      cuentas: [],
+      contactos: [],
+      contratos: [],
+      saldos: [],
+    } as unknown as PersonaFichaDto;
+    render(
+      <CuentaCorriente
+        cuenta={cuenta(0)}
+        persona={persona}
+        cobros={[]}
+        ficha={ficha}
+        historial={[]}
+      />,
+    );
     expect(screen.getByRole('button', { pressed: true })).not.toHaveTextContent(/cuenta/i);
     fireEvent.click(screen.getByRole('button', { name: /Editar datos/ }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();

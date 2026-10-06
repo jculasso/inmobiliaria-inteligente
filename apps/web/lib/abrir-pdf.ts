@@ -120,9 +120,9 @@ function prepararEnviar(win: Window, blob: Blob, archivo: string, titulo: string
       // Cancelar el menú no es un error: no hay que hacer nada.
       if (err instanceof Error && err.name === 'AbortError') return;
       // Cualquier otra falla no puede dejar al usuario sin salida: se descarga.
-      win.document.getElementById('descargar')?.dispatchEvent(
-        new MouseEvent('click', { bubbles: true }),
-      );
+      win.document
+        .getElementById('descargar')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
   });
 }

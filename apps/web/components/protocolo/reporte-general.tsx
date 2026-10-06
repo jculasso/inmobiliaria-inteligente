@@ -104,11 +104,19 @@ export function ReporteGeneral({
           filas={captadas.map((c) => ({
             id: c.tasacionId,
             celdas: [
-              <Celda key="p" titulo={c.direccion} sub={`${c.tipoPropiedad} · ${c.ciudad ?? '—'}`} />,
+              <Celda
+                key="p"
+                titulo={c.direccion}
+                sub={`${c.tipoPropiedad} · ${c.ciudad ?? '—'}`}
+              />,
               c.cliente,
               c.agente.nombre,
               c.valorRecomendado != null ? fmtUSD(c.valorRecomendado) : '—',
-              <Link key="a" href="/protocolo/captadas" className="font-semibold text-brand-red hover:underline">
+              <Link
+                key="a"
+                href="/protocolo/captadas"
+                className="font-semibold text-brand-red hover:underline"
+              >
                 Iniciar
               </Link>,
             ],
@@ -136,7 +144,10 @@ export function ReporteGeneral({
               p.precioPublicado != null ? fmtUSD(p.precioPublicado) : '—',
               p.agente.nombre,
               <div key="acc" className="flex items-center gap-2.5">
-                <Link href={`/protocolo/${p.id}`} className="font-semibold text-brand-red hover:underline">
+                <Link
+                  href={`/protocolo/${p.id}`}
+                  className="font-semibold text-brand-red hover:underline"
+                >
                   Abrir
                 </Link>
                 <Button variant="secondary" size="sm" onClick={() => setArchivando(p)}>
@@ -163,7 +174,10 @@ export function ReporteGeneral({
               String(p.diasPublicada),
               p.agente.nombre,
               <div key="acc" className="flex items-center gap-2.5">
-                <Link href={`/protocolo/${p.id}`} className="font-semibold text-brand-red hover:underline">
+                <Link
+                  href={`/protocolo/${p.id}`}
+                  className="font-semibold text-brand-red hover:underline"
+                >
                   Ver
                 </Link>
                 {puedeReabrir && (
@@ -198,7 +212,10 @@ export function ReporteGeneral({
           role="status"
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink/90 px-3.5 py-2 text-xs font-semibold text-white shadow-lg"
         >
-          <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          <span
+            aria-hidden
+            className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white"
+          />
           Guardando…
         </div>
       )}
@@ -254,28 +271,31 @@ function Tabla({
       </div>
 
       <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line bg-surface text-left">
-            {columnas.map((c, i) => (
-              <th key={i} className="whitespace-nowrap px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-muted">
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((f) => (
-            <tr key={f.id} className="border-b border-line last:border-0">
-              {f.celdas.map((celda, i) => (
-                <td key={i} className="px-4 py-2.5 align-middle">
-                  {celda}
-                </td>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line bg-surface text-left">
+              {columnas.map((c, i) => (
+                <th
+                  key={i}
+                  className="whitespace-nowrap px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-muted"
+                >
+                  {c}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filas.map((f) => (
+              <tr key={f.id} className="border-b border-line last:border-0">
+                {f.celdas.map((celda, i) => (
+                  <td key={i} className="px-4 py-2.5 align-middle">
+                    {celda}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );

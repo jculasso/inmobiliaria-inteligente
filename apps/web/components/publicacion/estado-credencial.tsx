@@ -25,8 +25,8 @@ export function EstadoCredencial({ estado }: { estado: CredencialEstado }) {
     <div className="rounded-brand border border-line border-l-[3px] border-l-amber-500 bg-amber-50 p-3">
       <p className="text-sm font-semibold text-ink">Falta conectar con Tokko</p>
       <p className="mt-1 text-sm leading-relaxed text-ink/80">
-        La clave de API la carga la administración de la plataforma. Hasta que esté, no se pueden traer
-        propiedades.
+        La clave de API la carga la administración de la plataforma. Hasta que esté, no se pueden
+        traer propiedades.
       </p>
     </div>
   );

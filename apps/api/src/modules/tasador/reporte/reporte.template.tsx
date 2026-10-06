@@ -1,6 +1,11 @@
 import React from 'react';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
-import type { EstadoTasacion, Exclusividad, RankingCaptacionItem, ResumenTasadorKpi } from '@vacker/types';
+import type {
+  EstadoTasacion,
+  Exclusividad,
+  RankingCaptacionItem,
+  ResumenTasadorKpi,
+} from '@vacker/types';
 import { ESTADO_TASACION_COLOR } from '@vacker/types';
 import { FUENTE_MARCA } from '../informes/fuentes';
 
@@ -13,46 +18,58 @@ const LINE = '#E6E6E6';
 
 function crearEstilos(RED: string) {
   return StyleSheet.create({
-  page: { padding: 32, fontSize: 10, color: INK, fontFamily: FUENTE_MARCA },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  logoBox: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logo: { width: 40, height: 40, objectFit: 'contain' },
-  brandName: { fontSize: 13, fontWeight: 700, color: RED },
-  docMeta: { alignItems: 'flex-end' },
-  docMetaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
-  docMetaValue: { fontSize: 8.5, color: MUTED, marginTop: 2 },
-  kicker: { fontSize: 8, fontWeight: 700, color: RED, letterSpacing: 1.5, marginTop: 16 },
-  title: { fontSize: 20, fontWeight: 800, marginTop: 4 },
-  subtitle: { fontSize: 10, color: MUTED, marginTop: 2 },
-  divider: { height: 2.5, backgroundColor: RED, marginTop: 12, marginBottom: 14 },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: INK,
-    marginTop: 16,
-    marginBottom: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
-    paddingBottom: 3,
-  },
-  kpiRow: { flexDirection: 'row', gap: 8 },
-  kpiCard: { flex: 1, borderWidth: 1, borderColor: LINE, borderRadius: 6, padding: 8 },
-  kpiLabel: { fontSize: 8, color: MUTED, textTransform: 'uppercase' },
-  kpiValue: { fontSize: 14, fontWeight: 700, marginTop: 2 },
-  distRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  distDot: { width: 8, height: 8, borderRadius: 4 },
-  distLabel: { width: 90, fontSize: 9 },
-  distTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F4F5F7' },
-  distFill: { height: 6, borderRadius: 3 },
-  distCount: { width: 60, fontSize: 9, textAlign: 'right' },
-  table: { borderWidth: 1, borderColor: LINE, borderRadius: 4 },
-  tableHeaderRow: { flexDirection: 'row', backgroundColor: '#F4F5F7', borderBottomWidth: 1, borderBottomColor: LINE },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE },
-  th: { flex: 1, padding: 4, fontSize: 8, color: MUTED, textTransform: 'uppercase' },
-  td: { flex: 1, padding: 4, fontSize: 9 },
-  rankRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: LINE },
-  rankMedal: { width: 20, fontSize: 11 },
-  rankName: { flex: 1, fontSize: 10, fontWeight: 700 },
+    page: { padding: 32, fontSize: 10, color: INK, fontFamily: FUENTE_MARCA },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    logoBox: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    logo: { width: 40, height: 40, objectFit: 'contain' },
+    brandName: { fontSize: 13, fontWeight: 700, color: RED },
+    docMeta: { alignItems: 'flex-end' },
+    docMetaLabel: { fontSize: 7.5, fontWeight: 700, color: MUTED, letterSpacing: 1 },
+    docMetaValue: { fontSize: 8.5, color: MUTED, marginTop: 2 },
+    kicker: { fontSize: 8, fontWeight: 700, color: RED, letterSpacing: 1.5, marginTop: 16 },
+    title: { fontSize: 20, fontWeight: 800, marginTop: 4 },
+    subtitle: { fontSize: 10, color: MUTED, marginTop: 2 },
+    divider: { height: 2.5, backgroundColor: RED, marginTop: 12, marginBottom: 14 },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: INK,
+      marginTop: 16,
+      marginBottom: 6,
+      borderBottomWidth: 1,
+      borderBottomColor: LINE,
+      paddingBottom: 3,
+    },
+    kpiRow: { flexDirection: 'row', gap: 8 },
+    kpiCard: { flex: 1, borderWidth: 1, borderColor: LINE, borderRadius: 6, padding: 8 },
+    kpiLabel: { fontSize: 8, color: MUTED, textTransform: 'uppercase' },
+    kpiValue: { fontSize: 14, fontWeight: 700, marginTop: 2 },
+    distRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+    distDot: { width: 8, height: 8, borderRadius: 4 },
+    distLabel: { width: 90, fontSize: 9 },
+    distTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F4F5F7' },
+    distFill: { height: 6, borderRadius: 3 },
+    distCount: { width: 60, fontSize: 9, textAlign: 'right' },
+    table: { borderWidth: 1, borderColor: LINE, borderRadius: 4 },
+    tableHeaderRow: {
+      flexDirection: 'row',
+      backgroundColor: '#F4F5F7',
+      borderBottomWidth: 1,
+      borderBottomColor: LINE,
+    },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE },
+    th: { flex: 1, padding: 4, fontSize: 8, color: MUTED, textTransform: 'uppercase' },
+    td: { flex: 1, padding: 4, fontSize: 9 },
+    rankRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: LINE,
+    },
+    rankMedal: { width: 20, fontSize: 11 },
+    rankName: { flex: 1, fontSize: 10, fontWeight: 700 },
     rankCount: { width: 30, fontSize: 10, fontWeight: 700, color: RED, textAlign: 'right' },
   });
 }
@@ -81,7 +98,9 @@ export interface ReporteFila {
 
 function detalleEstado(f: ReporteFila): string {
   if (f.estado === 'Captada' && f.exclusividad) {
-    return f.exclusividad.tipo === 'exclusiva' ? `Exclusiva ${f.exclusividad.dias} días` : 'No exclusiva';
+    return f.exclusividad.tipo === 'exclusiva'
+      ? `Exclusiva ${f.exclusividad.dias} días`
+      : 'No exclusiva';
   }
   if (f.estado === 'No captada' && f.motivoNoCaptada) return f.motivoNoCaptada;
   return '—';
@@ -109,7 +128,11 @@ export function ReporteDocument({
   const valorTotal = filas.reduce((s, f) => s + (f.valorRecomendado ?? 0), 0);
   const maxDist = Math.max(...resumen.distribucionEstado.map((d) => d.cantidad), 1);
   const maxRank = Math.max(...ranking.map((r) => r.captadas), 1);
-  const fechaHoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const fechaHoy = new Date().toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   return (
     <Document title={`Reporte de tasaciones — ${periodoLabel}`}>
@@ -159,7 +182,10 @@ export function ReporteDocument({
               <View
                 style={[
                   styles.distFill,
-                  { width: `${(d.cantidad / maxDist) * 100}%`, backgroundColor: ESTADO_TASACION_COLOR[d.estado] },
+                  {
+                    width: `${(d.cantidad / maxDist) * 100}%`,
+                    backgroundColor: ESTADO_TASACION_COLOR[d.estado],
+                  },
                 ]}
               />
             </View>
@@ -196,7 +222,9 @@ export function ReporteDocument({
                 <Text style={styles.td}>{f.agenteNombre}</Text>
                 <Text style={styles.td}>{f.estado}</Text>
                 <Text style={styles.td}>{detalleEstado(f)}</Text>
-                <Text style={[styles.td, { fontWeight: 700, color: RED }]}>{fmtUSD(f.valorRecomendado)}</Text>
+                <Text style={[styles.td, { fontWeight: 700, color: RED }]}>
+                  {fmtUSD(f.valorRecomendado)}
+                </Text>
               </View>
             ))}
           </View>
@@ -212,7 +240,12 @@ export function ReporteDocument({
                 <Text style={styles.rankMedal}>{`${i + 1}°`}</Text>
                 <Text style={styles.rankName}>{r.nombre}</Text>
                 <View style={styles.distTrack}>
-                  <View style={[styles.distFill, { width: `${(r.captadas / maxRank) * 100}%`, backgroundColor: RED }]} />
+                  <View
+                    style={[
+                      styles.distFill,
+                      { width: `${(r.captadas / maxRank) * 100}%`, backgroundColor: RED },
+                    ]}
+                  />
                 </View>
                 <Text style={styles.rankCount}>{r.captadas}</Text>
               </View>

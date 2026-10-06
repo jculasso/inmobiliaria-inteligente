@@ -89,4 +89,3 @@ export async function scopeDeVista(
   if (!verTodo) return { mode: 'propio', usuarioIds: [ctx.userId] };
   return usuariosDelModo(modoDeScope(ctx.roles), ctx, tx);
 }
-

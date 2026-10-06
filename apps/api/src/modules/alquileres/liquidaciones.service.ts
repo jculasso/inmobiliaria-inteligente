@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   LIMITE_LISTA_CON_SONDA,
@@ -14,7 +19,13 @@ import {
   type PreparacionLiquidacionDto,
   type TipoConcepto,
 } from '@vacker/types';
-import { parteDeClave, proponerLiquidacion, redondear2, type ConceptoALiquidar, type PropuestaLiquidacion } from '@vacker/domain';
+import {
+  parteDeClave,
+  proponerLiquidacion,
+  redondear2,
+  type ConceptoALiquidar,
+  type PropuestaLiquidacion,
+} from '@vacker/domain';
 import { z } from 'zod';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -25,10 +36,23 @@ import { IMPUTACION_ACTIVA } from './imputacion-activa';
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
 /** Lo que un propietario puede deber por fuera de los honorarios: los gastos sueltos (regla 14). */
-const SUELTOS = ['expensa', 'impuesto', 'servicio', 'reparacion', 'otro', 'comision', 'informe', 'deposito', 'sellado'];
+const SUELTOS = [
+  'expensa',
+  'impuesto',
+  'servicio',
+  'reparacion',
+  'otro',
+  'comision',
+  'informe',
+  'deposito',
+  'sellado',
+];
 
 /** El detalle que se guarda en la liquidación, tal como se liquidó. */
-const DetalleSchema = z.object({ aPagar: z.array(LineaLiquidacionSchema), aDescontar: z.array(LineaLiquidacionSchema) });
+const DetalleSchema = z.object({
+  aPagar: z.array(LineaLiquidacionSchema),
+  aDescontar: z.array(LineaLiquidacionSchema),
+});
 
 interface Pendiente extends ConceptoALiquidar {
   personaId: string;
@@ -38,9 +62,12 @@ interface Pendiente extends ConceptoALiquidar {
 }
 
 /** Los contratos de un grupo de líneas, una vez cada uno y en el orden en que aparecen. */
-function contratosDe(lineas: { contrato: ContratoDeLiquidacion | null }[]): ContratoDeLiquidacion[] {
+function contratosDe(
+  lineas: { contrato: ContratoDeLiquidacion | null }[],
+): ContratoDeLiquidacion[] {
   const vistos = new Map<string, ContratoDeLiquidacion>();
-  for (const l of lineas) if (l.contrato && !vistos.has(l.contrato.id)) vistos.set(l.contrato.id, l.contrato);
+  for (const l of lineas)
+    if (l.contrato && !vistos.has(l.contrato.id)) vistos.set(l.contrato.id, l.contrato);
   return [...vistos.values()];
 }
 
@@ -57,11 +84,18 @@ function contratosDe(lineas: { contrato: ContratoDeLiquidacion | null }[]): Cont
 export class LiquidacionesService {
   constructor(private readonly db: TenantPrismaService) {}
 
-  async preparar(personaId: string, moneda: MonedaAlquiler, fecha: string, excluidos: string[] = []): Promise<PreparacionLiquidacionDto> {
+  async preparar(
+    personaId: string,
+    moneda: MonedaAlquiler,
+    fecha: string,
+    excluidos: string[] = [],
+  ): Promise<PreparacionLiquidacionDto> {
     return this.db.withTenant(async (tx) => {
       const persona = await this.persona(tx, personaId);
       const fuera = new Set(excluidos);
-      const pendientes = (await this.pendientesDe(tx, { personaId, moneda })).filter((c) => !fuera.has(c.id));
+      const pendientes = (await this.pendientesDe(tx, { personaId, moneda })).filter(
+        (c) => !fuera.has(c.id),
+      );
       const p = proponerLiquidacion(pendientes, await this.partesPagadas(tx, pendientes));
       return { persona, moneda, fecha, ...lineas(p, pendientes), neto: p.neto };
     });
@@ -73,17 +107,34 @@ export class LiquidacionesService {
       const todos = await this.pendientesDe(tx, {});
       const pagadas = await this.partesPagadas(tx, todos);
       const grupos = new Map<string, Pendiente[]>();
-      for (const c of todos) grupos.set(`${c.personaId}|${c.moneda}`, [...(grupos.get(`${c.personaId}|${c.moneda}`) ?? []), c]);
+      for (const c of todos)
+        grupos.set(`${c.personaId}|${c.moneda}`, [
+          ...(grupos.get(`${c.personaId}|${c.moneda}`) ?? []),
+          c,
+        ]);
       const nombres = new Map(
-        (await tx.alqPersona.findMany({ where: { id: { in: [...new Set(todos.map((c) => c.personaId))] } }, select: { id: true, nombre: true } })).map((p) => [p.id, p]),
+        (
+          await tx.alqPersona.findMany({
+            where: { id: { in: [...new Set(todos.map((c) => c.personaId))] } },
+            select: { id: true, nombre: true },
+          })
+        ).map((p) => [p.id, p]),
       );
       const filas: PendienteLiquidarDto[] = [];
       for (const [clave, conceptos] of grupos) {
         const [personaId, moneda] = clave.split('|') as [string, MonedaAlquiler];
         const p = proponerLiquidacion(conceptos, pagadas);
-        const enEspera = redondear2(p.enEspera.filter((c) => c.sentido === 'a_pagar').reduce((s, c) => s + c.saldo, 0));
+        const enEspera = redondear2(
+          p.enEspera.filter((c) => c.sentido === 'a_pagar').reduce((s, c) => s + c.saldo, 0),
+        );
         if (p.aPagar.length === 0 && enEspera === 0) continue;
-        filas.push({ persona: nombres.get(personaId)!, moneda, neto: p.aPagar.length ? p.neto : 0, enEspera, contratos: contratosDe(conceptos) });
+        filas.push({
+          persona: nombres.get(personaId)!,
+          moneda,
+          neto: p.aPagar.length ? p.neto : 0,
+          enEspera,
+          contratos: contratosDe(conceptos),
+        });
       }
       return filas.sort((a, b) => b.neto - a.neto);
     });
@@ -93,11 +144,18 @@ export class LiquidacionesService {
     return this.db.withTenant(async (tx) => {
       await this.persona(tx, dto.personaId);
       const excluidos = new Set(dto.excluidos);
-      const pendientes = (await this.pendientesDe(tx, { personaId: dto.personaId, moneda: dto.moneda })).filter((c) => !excluidos.has(c.id));
+      const pendientes = (
+        await this.pendientesDe(tx, { personaId: dto.personaId, moneda: dto.moneda })
+      ).filter((c) => !excluidos.has(c.id));
       const p = proponerLiquidacion(pendientes, await this.partesPagadas(tx, pendientes));
-      if (p.aPagar.length === 0) throw new BadRequestException('No hay nada para liquidarle: lo suyo espera a que paguen los inquilinos.');
+      if (p.aPagar.length === 0)
+        throw new BadRequestException(
+          'No hay nada para liquidarle: lo suyo espera a que paguen los inquilinos.',
+        );
       if (p.neto < 0) {
-        throw new BadRequestException('Lo que se descuenta supera lo que se le paga. Dejá algún descuento para la próxima liquidación.');
+        throw new BadRequestException(
+          'Lo que se descuenta supera lo que se le paga. Dejá algún descuento para la próxima liquidación.',
+        );
       }
       const detalle = lineas(p, pendientes);
       const ids = [...p.aPagar, ...p.aDescontar].map((c) => c.id);
@@ -126,7 +184,10 @@ export class LiquidacionesService {
       });
       // Si no se marcaron todos, alguien liquidó o anuló algo mientras tanto:
       // la excepción deshace la transacción entera, número incluido.
-      if (count !== ids.length) throw new ConflictException('Algo de esta liquidación cambió mientras tanto. Recargá la página.');
+      if (count !== ids.length)
+        throw new ConflictException(
+          'Algo de esta liquidación cambió mientras tanto. Recargá la página.',
+        );
       const contratos = contratosDe([...detalle.aPagar, ...detalle.aDescontar]);
       await registrarEventos(tx, ctx, [
         {
@@ -162,7 +223,10 @@ export class LiquidacionesService {
         orderBy: { numero: 'desc' },
         take: LIMITE_LISTA_CON_SONDA,
       });
-      const nombres = await nombresDeUsuarios(tx, filas.map((l) => l.creadoPorId));
+      const nombres = await nombresDeUsuarios(
+        tx,
+        filas.map((l) => l.creadoPorId),
+      );
       return filas.map((l) => {
         // El detalle guardado dice qué propiedades se liquidaron; si no se
         // puede leer, la fila se muestra igual, sin ellas.
@@ -176,7 +240,9 @@ export class LiquidacionesService {
           neto: decToNum(l.neto),
           anulado: l.anuladoEn != null,
           registradoPor: l.creadoPorId ? (nombres.get(l.creadoPorId) ?? null) : null,
-          contratos: detalle.success ? contratosDe([...detalle.data.aPagar, ...detalle.data.aDescontar]) : [],
+          contratos: detalle.success
+            ? contratosDe([...detalle.data.aPagar, ...detalle.data.aDescontar])
+            : [],
         };
       });
     });
@@ -191,9 +257,14 @@ export class LiquidacionesService {
       });
       if (count === 0) {
         const existe = await tx.alqLiquidacion.findUnique({ where: { id }, select: { id: true } });
-        throw existe ? new ConflictException('La liquidación ya está anulada.') : new NotFoundException('La liquidación no existe.');
+        throw existe
+          ? new ConflictException('La liquidación ya está anulada.')
+          : new NotFoundException('La liquidación no existe.');
       }
-      await tx.alqConcepto.updateMany({ where: { liquidacionId: id }, data: { liquidacionId: null } });
+      await tx.alqConcepto.updateMany({
+        where: { liquidacionId: id },
+        data: { liquidacionId: null },
+      });
       const l = await this.obtenerEn(tx, id);
       await registrarEventos(tx, ctx, {
         entidad: 'liquidacion',
@@ -207,7 +278,10 @@ export class LiquidacionesService {
   }
 
   private async obtenerEn(tx: Tx, id: string): Promise<LiquidacionDto> {
-    const l = await tx.alqLiquidacion.findUnique({ where: { id }, include: { persona: { select: { id: true, nombre: true } } } });
+    const l = await tx.alqLiquidacion.findUnique({
+      where: { id },
+      include: { persona: { select: { id: true, nombre: true } } },
+    });
     if (!l) throw new NotFoundException('La liquidación no existe.');
     const detalle = DetalleSchema.parse(l.detalle);
     const [nombres, cuenta] = await Promise.all([
@@ -229,7 +303,13 @@ export class LiquidacionesService {
       aPagar: detalle.aPagar,
       aDescontar: detalle.aDescontar,
       neto: decToNum(l.neto),
-      anulado: l.anuladoEn ? { en: l.anuladoEn.toISOString(), motivo: l.motivoAnulacion ?? '', por: l.anuladoPorId ? (nombres.get(l.anuladoPorId) ?? null) : null } : null,
+      anulado: l.anuladoEn
+        ? {
+            en: l.anuladoEn.toISOString(),
+            motivo: l.motivoAnulacion ?? '',
+            por: l.anuladoPorId ? (nombres.get(l.anuladoPorId) ?? null) : null,
+          }
+        : null,
       registradoPor: l.creadoPorId ? (nombres.get(l.creadoPorId) ?? null) : null,
       cuentaDestino: cuenta,
     };
@@ -246,7 +326,10 @@ export class LiquidacionesService {
    * contratos donde la persona es propietaria. Así, alguien que además alquila
    * otra propiedad no ve descontado su propio alquiler.
    */
-  private async pendientesDe(tx: Tx, filtro: { personaId?: string; moneda?: MonedaAlquiler }): Promise<Pendiente[]> {
+  private async pendientesDe(
+    tx: Tx,
+    filtro: { personaId?: string; moneda?: MonedaAlquiler },
+  ): Promise<Pendiente[]> {
     // Primero, en la base, solo lo que importa: de un propietario EN su
     // contrato y con saldo. Antes se traía todo lo no liquidado —con los
     // gastos de los inquilinos, que nunca se liquidan y se acumulan para
@@ -279,7 +362,10 @@ export class LiquidacionesService {
             codigo: true,
             pagoGarantizado: true,
             propiedad: { select: { direccion: true, unidad: true } },
-            partes: { where: { papel: { in: ['propietario', 'inquilino'] } }, select: { personaId: true, papel: true, persona: { select: { nombre: true } } } },
+            partes: {
+              where: { papel: { in: ['propietario', 'inquilino'] } },
+              select: { personaId: true, papel: true, persona: { select: { nombre: true } } },
+            },
           },
         },
         imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
@@ -287,21 +373,29 @@ export class LiquidacionesService {
       orderBy: [{ vencimiento: 'asc' }, { createdAt: 'asc' }],
     });
     return filas
-      .filter((k) => k.contrato?.partes.some((p) => p.papel === 'propietario' && p.personaId === k.personaId))
+      .filter((k) =>
+        k.contrato?.partes.some((p) => p.papel === 'propietario' && p.personaId === k.personaId),
+      )
       .map((k) => ({
         id: k.id,
         personaId: k.personaId,
         moneda: k.moneda,
         tipo: k.tipo,
         sentido: k.sentido as 'a_cobrar' | 'a_pagar',
-        saldo: redondear2(decToNum(k.importe) - k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0)),
+        saldo: redondear2(
+          decToNum(k.importe) - k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0),
+        ),
         clave: k.claveGeneracion,
         pagoGarantizado: k.contrato!.pagoGarantizado,
         contrato: {
           id: k.contrato!.id,
           codigo: k.contrato!.codigo,
-          propiedad: [k.contrato!.propiedad.direccion, k.contrato!.propiedad.unidad].filter(Boolean).join(' '),
-          inquilinos: k.contrato!.partes.filter((p) => p.papel === 'inquilino').map((p) => p.persona.nombre),
+          propiedad: [k.contrato!.propiedad.direccion, k.contrato!.propiedad.unidad]
+            .filter(Boolean)
+            .join(' '),
+          inquilinos: k
+            .contrato!.partes.filter((p) => p.papel === 'inquilino')
+            .map((p) => p.persona.nombre),
         },
         descripcion: k.descripcion ?? k.tipo,
       }))
@@ -313,28 +407,65 @@ export class LiquidacionesService {
    * consulta para todos los contratos en juego.
    */
   private async partesPagadas(tx: Tx, pendientes: Pendiente[]): Promise<Set<string>> {
-    const contratos = [...new Set(pendientes.filter((c) => c.sentido === 'a_pagar' && parteDeClave(c.clave)).map((c) => c.contrato.id))];
+    const contratos = [
+      ...new Set(
+        pendientes
+          .filter((c) => c.sentido === 'a_pagar' && parteDeClave(c.clave))
+          .map((c) => c.contrato.id),
+      ),
+    ];
     if (contratos.length === 0) return new Set();
     // Solo los meses en juego: antes venían todos los alquileres de la historia de esos contratos.
-    const periodos = [...new Set(pendientes.map((c) => parteDeClave(c.clave)?.split('|')[2]).filter((x): x is string => !!x))];
+    const periodos = [
+      ...new Set(
+        pendientes.map((c) => parteDeClave(c.clave)?.split('|')[2]).filter((x): x is string => !!x),
+      ),
+    ];
     const delInquilino = await tx.alqConcepto.findMany({
-      where: { contratoId: { in: contratos }, periodo: { in: periodos }, sentido: 'a_cobrar', tipo: { in: ['alquiler', 'iva'] }, anuladoEn: null, claveGeneracion: { not: null } },
-      select: { tipo: true, importe: true, claveGeneracion: true, imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } } },
+      where: {
+        contratoId: { in: contratos },
+        periodo: { in: periodos },
+        sentido: 'a_cobrar',
+        tipo: { in: ['alquiler', 'iva'] },
+        anuladoEn: null,
+        claveGeneracion: { not: null },
+      },
+      select: {
+        tipo: true,
+        importe: true,
+        claveGeneracion: true,
+        imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
+      },
     });
     const pagadas = new Set<string>();
     for (const k of delInquilino) {
-      const saldo = redondear2(decToNum(k.importe) - k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0));
+      const saldo = redondear2(
+        decToNum(k.importe) - k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0),
+      );
       if (saldo <= 0) pagadas.add(`${parteDeClave(k.claveGeneracion)}#${k.tipo}`);
     }
     return pagadas;
   }
 }
 
-function lineas(p: PropuestaLiquidacion, pendientes: Pendiente[]): { aPagar: LineaLiquidacion[]; aDescontar: LineaLiquidacion[]; enEspera: LineaLiquidacion[] } {
+function lineas(
+  p: PropuestaLiquidacion,
+  pendientes: Pendiente[],
+): { aPagar: LineaLiquidacion[]; aDescontar: LineaLiquidacion[]; enEspera: LineaLiquidacion[] } {
   const porId = new Map(pendientes.map((c) => [c.id, c]));
   const linea = (c: ConceptoALiquidar): LineaLiquidacion => {
     const k = porId.get(c.id)!;
-    return { conceptoId: k.id, contrato: k.contrato, tipo: k.tipo as TipoConcepto, descripcion: k.descripcion, importe: k.saldo };
+    return {
+      conceptoId: k.id,
+      contrato: k.contrato,
+      tipo: k.tipo as TipoConcepto,
+      descripcion: k.descripcion,
+      importe: k.saldo,
+    };
   };
-  return { aPagar: p.aPagar.map(linea), aDescontar: p.aDescontar.map(linea), enEspera: p.enEspera.map(linea) };
+  return {
+    aPagar: p.aPagar.map(linea),
+    aDescontar: p.aDescontar.map(linea),
+    enEspera: p.enEspera.map(linea),
+  };
 }

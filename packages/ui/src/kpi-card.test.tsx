@@ -25,7 +25,9 @@ describe('KpiCard', () => {
    * y en ninguna otra: una lupa que no hace nada es peor que no tenerla.
    */
   it('la tarjeta que se abre lleva la lupa; la que no, no', () => {
-    const { container, rerender } = render(<KpiCard label="Volumen" value="$1" onClick={() => {}} />);
+    const { container, rerender } = render(
+      <KpiCard label="Volumen" value="$1" onClick={() => {}} />,
+    );
     expect(container.querySelector('svg')).not.toBeNull();
     rerender(<KpiCard label="Volumen" value="$1" />);
     expect(container.querySelector('svg')).toBeNull();
@@ -33,6 +35,8 @@ describe('KpiCard', () => {
 
   it('la que se abre dice qué hace al tocarla', () => {
     render(<KpiCard label="Comisión" value="$66.990" onClick={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Comisión: $66.990. Ver el detalle' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Comisión: $66.990. Ver el detalle' }),
+    ).toBeInTheDocument();
   });
 });

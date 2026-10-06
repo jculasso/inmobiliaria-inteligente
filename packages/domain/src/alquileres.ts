@@ -102,7 +102,10 @@ export function validarTramos(inicio: string, fin: string, tramos: TramoBase[]):
   const errores: string[] = [];
   const orden = [...tramos].sort((a, b) => (a.desde < b.desde ? -1 : 1));
   for (const t of orden) {
-    if (t.hasta < t.desde) errores.push(`El tramo ${t.numero} termina (${fechaCorta(t.hasta)}) antes de empezar (${fechaCorta(t.desde)}).`);
+    if (t.hasta < t.desde)
+      errores.push(
+        `El tramo ${t.numero} termina (${fechaCorta(t.hasta)}) antes de empezar (${fechaCorta(t.desde)}).`,
+      );
   }
   if (orden[0]!.desde !== inicio) {
     errores.push(
@@ -116,9 +119,13 @@ export function validarTramos(inicio: string, fin: string, tramos: TramoBase[]):
     const act = orden[i]!;
     const esperado = sumarDiasIso(prev.hasta, 1);
     if (act.desde > esperado) {
-      errores.push(`Del ${fechaCorta(esperado)} al ${fechaCorta(sumarDiasIso(act.desde, -1))} no hay tramo.`);
+      errores.push(
+        `Del ${fechaCorta(esperado)} al ${fechaCorta(sumarDiasIso(act.desde, -1))} no hay tramo.`,
+      );
     } else if (act.desde < esperado) {
-      errores.push(`Los tramos ${prev.numero} y ${act.numero} se superponen desde el ${fechaCorta(act.desde)}.`);
+      errores.push(
+        `Los tramos ${prev.numero} y ${act.numero} se superponen desde el ${fechaCorta(act.desde)}.`,
+      );
     }
   }
   const ultimo = orden[orden.length - 1]!;
@@ -146,8 +153,13 @@ export type IndiceConFuente = 'ICL' | 'IPC';
  * menos del 0,005% (lo que mueven los dos decimales con que se publica el
  * ICL). Calcularlo desde el importe inicial da 16/25 y 41/109.
  */
-export function importeIndexado(importeAnterior: number, valorAnterior: number, valorNuevo: number): number {
-  if (!(valorAnterior > 0)) throw new Error('El valor anterior del índice tiene que ser mayor que cero.');
+export function importeIndexado(
+  importeAnterior: number,
+  valorAnterior: number,
+  valorNuevo: number,
+): number {
+  if (!(valorAnterior > 0))
+    throw new Error('El valor anterior del índice tiene que ser mayor que cero.');
   return Math.round(redondear2((importeAnterior * valorNuevo) / valorAnterior));
 }
 
@@ -167,7 +179,20 @@ export function fechaDelIndice(indice: IndiceConFuente, desde: string): string {
 
 /** `agosto de 2026`, para nombrar un IPC que falta. */
 export function mesLargo(iso: string): string {
-  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const MESES = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
   return `${MESES[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}`;
 }
 
@@ -201,8 +226,12 @@ export function proponerIndexacion(
   const valorBase = valor(indice, fechaBase);
   const valorRequerido = valor(indice, fechaRequerida);
   if (valorBase === undefined || valorRequerido === undefined) {
-    const nombre = (f: string) => (indice === 'ICL' ? `el ICL del ${fechaCorta(f)}` : `el IPC de ${mesLargo(f)}`);
-    const falta = [valorBase === undefined ? fechaBase : null, valorRequerido === undefined ? fechaRequerida : null]
+    const nombre = (f: string) =>
+      indice === 'ICL' ? `el ICL del ${fechaCorta(f)}` : `el IPC de ${mesLargo(f)}`;
+    const falta = [
+      valorBase === undefined ? fechaBase : null,
+      valorRequerido === undefined ? fechaRequerida : null,
+    ]
       .filter((f): f is string => f !== null)
       .map(nombre);
     return { estado: 'pendiente_indice', fechaBase, fechaRequerida, falta };
@@ -238,7 +267,8 @@ export function alertaIndice(
   ultimaCarga: string | null,
   hoy: string,
 ): string | null {
-  if (ultimaFecha === null || ultimaCarga === null) return `Todavía no hay valores del ${indice} cargados.`;
+  if (ultimaFecha === null || ultimaCarga === null)
+    return `Todavía no hay valores del ${indice} cargados.`;
   if (indice === 'ICL') {
     return diasInclusive(ultimaCarga, hoy) - 1 > 3
       ? `El ICL no trae valores nuevos desde el ${fechaCorta(ultimaCarga)}. Las indexaciones que lo necesiten van a quedar pendientes.`
@@ -280,7 +310,9 @@ export function validarPartes(partes: ParteCalc[]): string[] {
     // En centésimos, para que 33,33 + 33,33 + 33,34 dé 100 y no 99,99999.
     const suma = propietarios.reduce((s, p) => s + Math.round((p.porcentaje ?? 0) * 100), 0);
     if (suma !== 10_000) {
-      errores.push(`Los porcentajes de los propietarios suman ${(suma / 100).toLocaleString('es-AR')}%, y tienen que sumar 100%.`);
+      errores.push(
+        `Los porcentajes de los propietarios suman ${(suma / 100).toLocaleString('es-AR')}%, y tienen que sumar 100%.`,
+      );
     }
   }
   return errores;
@@ -326,7 +358,12 @@ export function partesDelMes(anio: number, mes: number, tramos: TramoConImporte[
         hasta,
         dias,
         diasDelMes: total,
-        importe: t.importe == null ? null : proporcional ? redondear2((t.importe * dias) / total) : t.importe,
+        importe:
+          t.importe == null
+            ? null
+            : proporcional
+              ? redondear2((t.importe * dias) / total)
+              : t.importe,
         proporcional,
       };
     });
@@ -357,7 +394,11 @@ export function vencimientoDelMes(periodo: string, dia: number): string {
   const [anio, mes] = periodo.split('-').map(Number) as [number, number];
   const fecha = `${periodo}-${String(Math.min(dia, diasDelMes(anio, mes))).padStart(2, '0')}`;
   const diaSemana = new Date(aUtc(fecha)).getUTCDay(); // 0 domingo, 6 sábado
-  return diaSemana === 6 ? sumarDiasIso(fecha, 2) : diaSemana === 0 ? sumarDiasIso(fecha, 1) : fecha;
+  return diaSemana === 6
+    ? sumarDiasIso(fecha, 2)
+    : diaSemana === 0
+      ? sumarDiasIso(fecha, 1)
+      : fecha;
 }
 
 // --- Generación del período (reglas 9 a 13) ---------------------------------------
@@ -423,7 +464,20 @@ export function repartir(importe: number, porcentajes: number[]): number[] {
   return base.map((c) => c / 100);
 }
 
-const NOMBRE_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const NOMBRE_MES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
 
 /**
  * Reglas 9 a 13: lo que genera un contrato en un mes calendario.
@@ -442,16 +496,23 @@ const NOMBRE_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'juli
  * está indexado no genera nada y vuelve en `sinIndexar` (regla 11): no se
  * cobra un importe viejo por defecto.
  */
-export function generarPeriodo(c: ContratoParaGenerar, periodo: string, ivaInmobiliariaPct: number): ResultadoPeriodo {
+export function generarPeriodo(
+  c: ContratoParaGenerar,
+  periodo: string,
+  ivaInmobiliariaPct: number,
+): ResultadoPeriodo {
   const [anio, mes] = periodo.split('-').map(Number) as [number, number];
   const ultimoDelMes = `${periodo}-${String(diasDelMes(anio, mes)).padStart(2, '0')}`;
   // Regla 3: rescindido, se genera hasta el mes de la rescisión inclusive.
-  if (c.rescindidoEl && c.rescindidoEl.slice(0, 7) < periodo) return { conceptos: [], sinIndexar: [] };
+  if (c.rescindidoEl && c.rescindidoEl.slice(0, 7) < periodo)
+    return { conceptos: [], sinIndexar: [] };
   const inquilino = c.inquilinos[0];
   if (!inquilino || c.propietarios.length === 0) return { conceptos: [], sinIndexar: [] };
 
   const fin = c.fin < ultimoDelMes ? c.fin : ultimoDelMes;
-  const tramos = c.tramos.filter((t) => t.desde <= fin).map((t) => ({ ...t, hasta: t.hasta < fin ? t.hasta : fin }));
+  const tramos = c.tramos
+    .filter((t) => t.desde <= fin)
+    .map((t) => ({ ...t, hasta: t.hasta < fin ? t.hasta : fin }));
   const partes = partesDelMes(anio, mes, tramos);
 
   const vencInquilino = vencimientoDelMes(periodo, c.diaVencimiento);
@@ -465,8 +526,17 @@ export function generarPeriodo(c: ContratoParaGenerar, periodo: string, ivaInmob
       sinIndexar.push(p);
       continue;
     }
-    const cuando = p.proporcional ? `${fechaCorta(p.desde).slice(0, 5)} al ${fechaCorta(p.hasta)} (${p.dias}/${p.diasDelMes} días)` : mesTexto;
-    const nuevo = (papel: 'inquilino' | 'propietario', tipo: TipoConceptoGenerado, sentido: SentidoConcepto, personaId: string, importe: number, nombre: string) => {
+    const cuando = p.proporcional
+      ? `${fechaCorta(p.desde).slice(0, 5)} al ${fechaCorta(p.hasta)} (${p.dias}/${p.diasDelMes} días)`
+      : mesTexto;
+    const nuevo = (
+      papel: 'inquilino' | 'propietario',
+      tipo: TipoConceptoGenerado,
+      sentido: SentidoConcepto,
+      personaId: string,
+      importe: number,
+      nombre: string,
+    ) => {
       if (!(importe > 0)) return;
       conceptos.push({
         clave: `alq|${c.id}|${periodo}|${p.desde}|${tipo}|${sentido}|${personaId}`,
@@ -482,7 +552,14 @@ export function generarPeriodo(c: ContratoParaGenerar, periodo: string, ivaInmob
     };
 
     nuevo('inquilino', 'alquiler', 'a_cobrar', inquilino.personaId, p.importe, 'Alquiler');
-    nuevo('inquilino', 'gastos_adm', 'a_cobrar', inquilino.personaId, cargoConIva(p.importe, c.gastosAdmPct, ivaInmobiliariaPct), 'Gastos administrativos');
+    nuevo(
+      'inquilino',
+      'gastos_adm',
+      'a_cobrar',
+      inquilino.personaId,
+      cargoConIva(p.importe, c.gastosAdmPct, ivaInmobiliariaPct),
+      'Gastos administrativos',
+    );
     const ivaAlquiler = redondear2((p.importe * c.ivaPct) / 100);
     nuevo('inquilino', 'iva', 'a_cobrar', inquilino.personaId, ivaAlquiler, 'IVA del alquiler');
 
@@ -492,7 +569,14 @@ export function generarPeriodo(c: ContratoParaGenerar, periodo: string, ivaInmob
     c.propietarios.forEach((dueno, i) => {
       nuevo('propietario', 'alquiler', 'a_pagar', dueno.personaId, alquileres[i]!, 'Alquiler');
       nuevo('propietario', 'iva', 'a_pagar', dueno.personaId, ivas[i]!, 'IVA del alquiler');
-      nuevo('propietario', 'honorarios', 'a_cobrar', dueno.personaId, cargoConIva(alquileres[i]!, c.honorariosPct, ivaInmobiliariaPct), 'Honorarios');
+      nuevo(
+        'propietario',
+        'honorarios',
+        'a_cobrar',
+        dueno.personaId,
+        cargoConIva(alquileres[i]!, c.honorariosPct, ivaInmobiliariaPct),
+        'Honorarios',
+      );
     });
   }
   return { conceptos, sinIndexar };
@@ -548,8 +632,14 @@ export function planificarCobro(p: {
   const imputaciones: ImputacionPlaneada[] = [];
   let deudaTotal = p.deudas.reduce((s, d) => s + aCentavos(d.saldo), 0);
 
-  const fuentes: { cobroId: string | null; centavos: number }[] = p.creditos.map((c) => ({ cobroId: c.cobroId, centavos: aCentavos(c.disponible) }));
-  const usadoDeCreditos = Math.min(deudaTotal, fuentes.reduce((s, f) => s + f.centavos, 0));
+  const fuentes: { cobroId: string | null; centavos: number }[] = p.creditos.map((c) => ({
+    cobroId: c.cobroId,
+    centavos: aCentavos(c.disponible),
+  }));
+  const usadoDeCreditos = Math.min(
+    deudaTotal,
+    fuentes.reduce((s, f) => s + f.centavos, 0),
+  );
 
   let compensado = 0;
   let porCompensar = deudaTotal - usadoDeCreditos;
@@ -570,9 +660,16 @@ export function planificarCobro(p: {
       const fuente = fuentes[f]!;
       const monto = Math.min(falta, fuente.centavos);
       if (monto > 0) {
-        const previa = imputaciones.find((i) => i.cobroId === fuente.cobroId && i.conceptoId === d.conceptoId);
+        const previa = imputaciones.find(
+          (i) => i.cobroId === fuente.cobroId && i.conceptoId === d.conceptoId,
+        );
         if (previa) previa.importe = (aCentavos(previa.importe) + monto) / 100;
-        else imputaciones.push({ cobroId: fuente.cobroId, conceptoId: d.conceptoId, importe: monto / 100 });
+        else
+          imputaciones.push({
+            cobroId: fuente.cobroId,
+            conceptoId: d.conceptoId,
+            importe: monto / 100,
+          });
         fuente.centavos -= monto;
         falta -= monto;
         deudaTotal -= monto;
@@ -580,7 +677,12 @@ export function planificarCobro(p: {
       if (fuente.centavos === 0) f++;
     }
   }
-  return { imputaciones, compensado: compensado / 100, saldoAFavorUsado: usadoDeCreditos / 100, sobrante: nuevo.centavos / 100 };
+  return {
+    imputaciones,
+    compensado: compensado / 100,
+    saldoAFavorUsado: usadoDeCreditos / 100,
+    sobrante: nuevo.centavos / 100,
+  };
 }
 
 /**
@@ -589,9 +691,18 @@ export function planificarCobro(p: {
  * vencimiento o, si ya se cobró un punitorio por ese alquiler, desde ese
  * último: un pago parcial no hace cobrar dos veces los mismos días.
  */
-export function proponerPunitorio(saldo: number, desde: string, fecha: string, tasaDiariaPct: number): { dias: number; importe: number } {
+export function proponerPunitorio(
+  saldo: number,
+  desde: string,
+  fecha: string,
+  tasaDiariaPct: number,
+): { dias: number; importe: number } {
   const dias = Math.max(0, diasInclusive(desde, fecha) - 1);
-  return { dias, importe: dias === 0 || tasaDiariaPct <= 0 ? 0 : redondear2((saldo * tasaDiariaPct * dias) / 100) };
+  return {
+    dias,
+    importe:
+      dias === 0 || tasaDiariaPct <= 0 ? 0 : redondear2((saldo * tasaDiariaPct * dias) / 100),
+  };
 }
 
 // --- Liquidación al propietario (reglas 20 a 22) -----------------------------------
@@ -642,7 +753,10 @@ const QUE_ESPERAN_AL_INQUILINO = ['alquiler', 'iva'];
  * `partesPagadas` son las partes cuyo alquiler a cobrar al inquilino ya no
  * tiene saldo, con el tipo: `alq|c|2026-11|2026-11-01#alquiler`.
  */
-export function proponerLiquidacion(conceptos: ConceptoALiquidar[], partesPagadas: Set<string>): PropuestaLiquidacion {
+export function proponerLiquidacion(
+  conceptos: ConceptoALiquidar[],
+  partesPagadas: Set<string>,
+): PropuestaLiquidacion {
   const aPagar: ConceptoALiquidar[] = [];
   const aDescontar: ConceptoALiquidar[] = [];
   const enEspera: ConceptoALiquidar[] = [];
@@ -685,7 +799,8 @@ export function tramoDeMora(dias: number): '1-30' | '31-60' | '61-90' | '90+' {
 
 // --- Firma del contrato (reglas 33 y 34) ---------------------------------------------
 
-export type EstadoFirma = 'sin_enviar' | 'enviado' | 'firmado_parcial' | 'firmado' | 'rechazado' | 'vencido';
+export type EstadoFirma =
+  'sin_enviar' | 'enviado' | 'firmado_parcial' | 'firmado' | 'rechazado' | 'vencido';
 export type EstadoFirmante = 'pendiente' | 'firmado' | 'rechazado';
 
 /**
@@ -697,21 +812,79 @@ export function estadoDeFirma(actual: EstadoFirma, firmantes: EstadoFirmante[]):
   if (firmantes.some((f) => f === 'rechazado')) return 'rechazado';
   if (firmantes.length > 0 && firmantes.every((f) => f === 'firmado')) return 'firmado';
   if (firmantes.some((f) => f === 'firmado')) return 'firmado_parcial';
-  return actual === 'firmado' || actual === 'firmado_parcial' || actual === 'rechazado' ? 'enviado' : actual;
+  return actual === 'firmado' || actual === 'firmado_parcial' || actual === 'rechazado'
+    ? 'enviado'
+    : actual;
 }
 
 // --- Contrato desde plantilla (entrega 15) ----------------------------------------------
 
-const UNIDADES = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve'];
-const DECENAS = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
-const CENTENAS = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+const UNIDADES = [
+  '',
+  'uno',
+  'dos',
+  'tres',
+  'cuatro',
+  'cinco',
+  'seis',
+  'siete',
+  'ocho',
+  'nueve',
+  'diez',
+  'once',
+  'doce',
+  'trece',
+  'catorce',
+  'quince',
+  'dieciséis',
+  'diecisiete',
+  'dieciocho',
+  'diecinueve',
+  'veinte',
+  'veintiuno',
+  'veintidós',
+  'veintitrés',
+  'veinticuatro',
+  'veinticinco',
+  'veintiséis',
+  'veintisiete',
+  'veintiocho',
+  'veintinueve',
+];
+const DECENAS = [
+  '',
+  '',
+  '',
+  'treinta',
+  'cuarenta',
+  'cincuenta',
+  'sesenta',
+  'setenta',
+  'ochenta',
+  'noventa',
+];
+const CENTENAS = [
+  '',
+  'ciento',
+  'doscientos',
+  'trescientos',
+  'cuatrocientos',
+  'quinientos',
+  'seiscientos',
+  'setecientos',
+  'ochocientos',
+  'novecientos',
+];
 
 function hastaMil(n: number): string {
   if (n === 0) return '';
   if (n === 100) return 'cien';
   const c = Math.floor(n / 100);
   const r = n % 100;
-  const resto = r < 30 ? UNIDADES[r]! : `${DECENAS[Math.floor(r / 10)]}${r % 10 ? ` y ${UNIDADES[r % 10]}` : ''}`;
+  const resto =
+    r < 30
+      ? UNIDADES[r]!
+      : `${DECENAS[Math.floor(r / 10)]}${r % 10 ? ` y ${UNIDADES[r % 10]}` : ''}`;
   return [CENTENAS[c], resto].filter(Boolean).join(' ');
 }
 
@@ -728,7 +901,8 @@ export function enLetras(n: number): string {
   const resto = entero % 1000;
   const apocope = (t: string) => t.replace(/uno$/, 'ún').replace(/^ún$/, 'un');
   const partes: string[] = [];
-  if (millones) partes.push(millones === 1 ? 'un millón' : `${apocope(enLetras(millones))} millones`);
+  if (millones)
+    partes.push(millones === 1 ? 'un millón' : `${apocope(enLetras(millones))} millones`);
   if (miles) partes.push(miles === 1 ? 'mil' : `${apocope(hastaMil(miles))} mil`);
   if (resto) partes.push(hastaMil(resto));
   return partes.join(' ');
@@ -747,7 +921,9 @@ export function importeEnLetras(n: number, moneda: 'ARS' | 'USD'): string {
  */
 export function completarPlantilla(cuerpo: string, valores: Record<string, string>): string {
   // `Object.hasOwn`: «{{constructor}}» no tiene que imprimir el código de una función.
-  return cuerpo.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, clave: string) => (Object.hasOwn(valores, clave) ? valores[clave]! : `[falta: ${clave}]`));
+  return cuerpo.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, clave: string) =>
+    Object.hasOwn(valores, clave) ? valores[clave]! : `[falta: ${clave}]`,
+  );
 }
 
 /**
@@ -756,8 +932,13 @@ export function completarPlantilla(cuerpo: string, valores: Record<string, strin
  * mientras tanto—, no «—». Una sola definición para el tablero, la lista de
  * contratos y la persona (revisión del 6/10/2026: daban distinto).
  */
-export function alquilerDeHoy(tramos: { desde: string; importe: number | null }[], hoy: string): number | null {
-  const empezados = tramos.filter((t) => t.importe != null && t.desde <= hoy).sort((a, b) => (a.desde < b.desde ? -1 : 1));
+export function alquilerDeHoy(
+  tramos: { desde: string; importe: number | null }[],
+  hoy: string,
+): number | null {
+  const empezados = tramos
+    .filter((t) => t.importe != null && t.desde <= hoy)
+    .sort((a, b) => (a.desde < b.desde ? -1 : 1));
   return empezados.at(-1)?.importe ?? null;
 }
 
@@ -766,8 +947,12 @@ export function alquilerDeHoy(tramos: { desde: string; importe: number | null }[
  * la indexación está vencida) o el primero que todavía no empezó —el escalón
  * de un escalonado—. El primer tramo no cuenta: es el de inicio.
  */
-export function proximoCambio(tramos: { numero: number; desde: string; importe: number | null }[], hoy: string): string | null {
-  const t = [...tramos].sort((a, b) => a.numero - b.numero).find((x) => x.numero > 1 && (x.importe == null || x.desde > hoy));
+export function proximoCambio(
+  tramos: { numero: number; desde: string; importe: number | null }[],
+  hoy: string,
+): string | null {
+  const t = [...tramos]
+    .sort((a, b) => a.numero - b.numero)
+    .find((x) => x.numero > 1 && (x.importe == null || x.desde > hoy));
   return t?.desde ?? null;
 }
-

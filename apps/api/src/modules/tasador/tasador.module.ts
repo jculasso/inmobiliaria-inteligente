@@ -14,7 +14,13 @@ import { TasacionesService } from './tasaciones/tasaciones.service';
 
 /** Módulo Tasador de Propiedades: CRUD de tasaciones + informes en PDF + KPIs/dashboard. */
 @Module({
-  controllers: [TasacionesController, InformesController, KpisController, FotosController, ReporteController],
+  controllers: [
+    TasacionesController,
+    InformesController,
+    KpisController,
+    FotosController,
+    ReporteController,
+  ],
   providers: [
     TasacionesService,
     InformesService,

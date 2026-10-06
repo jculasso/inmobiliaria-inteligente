@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CambiarEstadoSchema,
@@ -34,7 +44,10 @@ export class TasacionesController {
 
   @Get('resumen')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
-  @ApiOperation({ summary: 'Lista tasaciones en formato liviano (sin comparables/fotos/análisis) — para el dashboard' })
+  @ApiOperation({
+    summary:
+      'Lista tasaciones en formato liviano (sin comparables/fotos/análisis) — para el dashboard',
+  })
   listResumen(
     @Query(new ZodValidationPipe(TasacionFiltroSchema)) filtro: TasacionFiltro,
     @CurrentUser() user: AuthPrincipal,
@@ -72,7 +85,10 @@ export class TasacionesController {
 
   @Patch(':id/estado')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
-  @ApiOperation({ summary: 'Cambia el estado (captación): "Captada" exige exclusividad, "No captada" exige motivo' })
+  @ApiOperation({
+    summary:
+      'Cambia el estado (captación): "Captada" exige exclusividad, "No captada" exige motivo',
+  })
   cambiarEstado(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(CambiarEstadoSchema)) dto: CambiarEstado,

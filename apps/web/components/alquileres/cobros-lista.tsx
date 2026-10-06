@@ -45,14 +45,30 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
   const filtrados = useMemo(() => {
     const q = paraBuscar(busqueda.trim());
     if (!q) return visibles;
-    return visibles.filter((c) => [recibo(c.numero), c.persona.nombre, NOMBRE_MEDIO[c.medio]].some((t) => paraBuscar(t).includes(q)));
+    return visibles.filter((c) =>
+      [recibo(c.numero), c.persona.nombre, NOMBRE_MEDIO[c.medio]].some((t) =>
+        paraBuscar(t).includes(q),
+      ),
+    );
   }, [visibles, busqueda]);
 
   const descargar = (c: CobroResumenDto) =>
-    abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), c.id), { titulo: `Recibo ${recibo(c.numero)}`, onError: setError });
+    abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), c.id), {
+      titulo: `Recibo ${recibo(c.numero)}`,
+      onError: setError,
+    });
   const abrir = (c: CobroResumenDto) => router.push(`/alquileres/personas/${c.persona.id}`);
-  const estado = (c: CobroResumenDto) => (c.anulado ? <Insignia tono="neutro">Anulado</Insignia> : <Insignia tono="exito">Cobrado</Insignia>);
-  const importe = (c: CobroResumenDto) => <span className={c.anulado ? 'text-muted line-through' : ''}>{fmtMoneda(c.importe, c.moneda)}</span>;
+  const estado = (c: CobroResumenDto) =>
+    c.anulado ? (
+      <Insignia tono="neutro">Anulado</Insignia>
+    ) : (
+      <Insignia tono="exito">Cobrado</Insignia>
+    );
+  const importe = (c: CobroResumenDto) => (
+    <span className={c.anulado ? 'text-muted line-through' : ''}>
+      {fmtMoneda(c.importe, c.moneda)}
+    </span>
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,7 +90,9 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
           {error}
         </p>
       )}
-      {hayMas && <p className="text-sm text-muted">Se muestran los últimos {LIMITE_LISTA} cobros.</p>}
+      {hayMas && (
+        <p className="text-sm text-muted">Se muestran los últimos {LIMITE_LISTA} cobros.</p>
+      )}
 
       {cobros.length === 0 ? (
         <Vacio>Todavía no se registró ningún cobro.</Vacio>
@@ -86,8 +104,17 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
             <ListaTarjetas etiqueta="Cobros">
               {filtrados.map((c) => (
                 <Tarjeta key={c.id}>
-                  <button type="button" onClick={() => abrir(c)} className={`block w-full rounded text-left ${CLASE_FOCO}`} title={`Abrir la cuenta de ${c.persona.nombre}`}>
-                    <CabezaTarjeta titulo={c.persona.nombre} detalle={`Recibo ${recibo(c.numero)} · ${fmtFecha(c.fecha)}`} insignia={estado(c)} />
+                  <button
+                    type="button"
+                    onClick={() => abrir(c)}
+                    className={`block w-full rounded text-left ${CLASE_FOCO}`}
+                    title={`Abrir la cuenta de ${c.persona.nombre}`}
+                  >
+                    <CabezaTarjeta
+                      titulo={c.persona.nombre}
+                      detalle={`Recibo ${recibo(c.numero)} · ${fmtFecha(c.fecha)}`}
+                      insignia={estado(c)}
+                    />
                     <CamposTarjeta>
                       <CampoTarjeta etiqueta="Importe">{importe(c)}</CampoTarjeta>
                       <CampoTarjeta etiqueta="Medio">{NOMBRE_MEDIO[c.medio]}</CampoTarjeta>
@@ -97,7 +124,15 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                   <AccionesFila
                     tarjeta
                     nombre={`el recibo ${recibo(c.numero)}`}
-                    extra={<AccionFila tarjeta icono="📄" texto="PDF" etiqueta={`PDF del recibo ${recibo(c.numero)}`} onClick={() => descargar(c)} />}
+                    extra={
+                      <AccionFila
+                        tarjeta
+                        icono="📄"
+                        texto="PDF"
+                        etiqueta={`PDF del recibo ${recibo(c.numero)}`}
+                        onClick={() => descargar(c)}
+                      />
+                    }
                     onBorrar={c.anulado ? undefined : () => setAAnular(c)}
                     anula
                   />
@@ -123,20 +158,33 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                 {filtrados.map((c) => (
                   <tr key={c.id} onClick={() => abrir(c)} className={CLASE_TR_ABRIBLE}>
                     <td className={CLASE_TD_FIJA}>
-                      <LinkFila href={`/alquileres/personas/${c.persona.id}`} etiqueta={`Recibo ${recibo(c.numero)}: abrir la cuenta de ${c.persona.nombre}`}>
+                      <LinkFila
+                        href={`/alquileres/personas/${c.persona.id}`}
+                        etiqueta={`Recibo ${recibo(c.numero)}: abrir la cuenta de ${c.persona.nombre}`}
+                      >
                         {recibo(c.numero)}
                       </LinkFila>
                     </td>
                     <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(c.fecha)}</td>
                     <td className={`${CLASE_TD} text-ink`}>{c.persona.nombre}</td>
                     <td className={`${CLASE_TD} text-muted`}>{NOMBRE_MEDIO[c.medio]}</td>
-                    <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{importe(c)}</td>
+                    <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>
+                      {importe(c)}
+                    </td>
                     <td className={CLASE_TD}>{estado(c)}</td>
                     <td className={`${CLASE_TD} text-muted`}>{c.registradoPor ?? '—'}</td>
                     <td className={CLASE_TD_ACCIONES}>
                       <AccionesFila
                         nombre={`el recibo ${recibo(c.numero)}`}
-                        extra={<AccionFila icono="📄" texto="PDF" etiqueta={`PDF del recibo ${recibo(c.numero)}`} title="Abrir el recibo" onClick={() => descargar(c)} />}
+                        extra={
+                          <AccionFila
+                            icono="📄"
+                            texto="PDF"
+                            etiqueta={`PDF del recibo ${recibo(c.numero)}`}
+                            title="Abrir el recibo"
+                            onClick={() => descargar(c)}
+                          />
+                        }
                         onBorrar={c.anulado ? undefined : () => setAAnular(c)}
                         anula
                       />

@@ -9,6 +9,9 @@ export default async function LiquidacionesPage() {
   const ctx = await requireServerPrincipal();
   // El layout ya muestra «no tenés acceso»; esto evita pedir datos que la API negaría.
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
-  const [pendientes, liquidaciones] = await Promise.all([listPendientesLiquidar(ctx.accessToken), listLiquidaciones(ctx.accessToken)]);
+  const [pendientes, liquidaciones] = await Promise.all([
+    listPendientesLiquidar(ctx.accessToken),
+    listLiquidaciones(ctx.accessToken),
+  ]);
   return <LiquidacionesBandeja pendientes={pendientes} liquidaciones={liquidaciones} />;
 }

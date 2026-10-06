@@ -20,7 +20,9 @@ function makeTx(over: Record<string, unknown> = {}) {
 }
 
 function makeDb(tx: unknown): TenantPrismaService {
-  return { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
+  return {
+    withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+  } as unknown as TenantPrismaService;
 }
 
 function makeEvents() {
@@ -93,7 +95,18 @@ describe('toDto — enums legacy guardados como cadena vacía', () => {
       aptoCredito: '',
       documentacion: '',
       comparables: [
-        { id: 'c1', direccion: 'X', superficie: null, precio: null, dormitorios: null, banos: null, cochera: false, estado: '', link: null, observaciones: null },
+        {
+          id: 'c1',
+          direccion: 'X',
+          superficie: null,
+          precio: null,
+          dormitorios: null,
+          banos: null,
+          cochera: false,
+          estado: '',
+          link: null,
+          observaciones: null,
+        },
       ],
       fotos: [],
       analisisComercial: null,
@@ -139,7 +152,10 @@ describe('TasacionesService — cambiarEstado', () => {
     const events = makeEvents();
     const svc = new TasacionesService(makeDb(tx), events, makeStorage());
 
-    const dto = { estado: 'Captada', exclusividad: { tipo: 'con_exclusividad' } } as unknown as CambiarEstado;
+    const dto = {
+      estado: 'Captada',
+      exclusividad: { tipo: 'con_exclusividad' },
+    } as unknown as CambiarEstado;
     const res = await svc.cambiarEstado('ta1', dto, CTX_DIRECCION);
 
     expect(res).toEqual({ id: 'ta1' });
@@ -200,7 +216,13 @@ describe('TasacionesService — la superficie que se persiste', () => {
   it('un terreno se guarda con la superficie de SU LOTE, no con cero', async () => {
     const { service, create } = stubCrear();
     await service.create(
-      payload({ tipoPropiedad: 'Terreno', supCubierta: 0, supSemicubierta: 0, supDescubierta: 0, supTerreno: 832 }),
+      payload({
+        tipoPropiedad: 'Terreno',
+        supCubierta: 0,
+        supSemicubierta: 0,
+        supDescubierta: 0,
+        supTerreno: 832,
+      }),
       CTX_DIRECCION,
     );
     expect(create.mock.calls[0]![0].data.superficieTotal).toBe(832);
@@ -225,7 +247,13 @@ describe('TasacionesService — la superficie que se persiste', () => {
   it('una cochera sin superficie construida cae en la del lote', async () => {
     const { service, create } = stubCrear();
     await service.create(
-      payload({ tipoPropiedad: 'Cochera', supCubierta: 0, supSemicubierta: 0, supDescubierta: 0, supTerreno: 14 }),
+      payload({
+        tipoPropiedad: 'Cochera',
+        supCubierta: 0,
+        supSemicubierta: 0,
+        supDescubierta: 0,
+        supTerreno: 14,
+      }),
       CTX_DIRECCION,
     );
     expect(create.mock.calls[0]![0].data.superficieTotal).toBe(14);

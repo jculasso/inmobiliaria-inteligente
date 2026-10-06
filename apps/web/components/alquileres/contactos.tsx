@@ -16,20 +16,35 @@ interface Fila {
   telefono: string;
   principal: boolean;
 }
-const deDto = (c: ContactoDto): Fila => ({ nombre: c.nombre, relacion: c.relacion ?? '', email: c.email ?? '', telefono: c.telefono ?? '', principal: c.principal });
+const deDto = (c: ContactoDto): Fila => ({
+  nombre: c.nombre,
+  relacion: c.relacion ?? '',
+  email: c.email ?? '',
+  telefono: c.telefono ?? '',
+  principal: c.principal,
+});
 
 /**
  * Los contactos adicionales de la persona (Gexion, «Datos complementarios»):
  * el hijo que paga, el contador, el administrador. Sus mails aparecen al
  * mandar un recibo o una liquidación.
  */
-export function Contactos({ personaId, contactos }: { personaId: string; contactos: ContactoDto[] }) {
+export function Contactos({
+  personaId,
+  contactos,
+}: {
+  personaId: string;
+  contactos: ContactoDto[];
+}) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
   const [filas, setFilas] = useState<Fila[]>(contactos.map(deDto));
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
-  const cambiar = (i: number, c: Partial<Fila>) => setFilas((xs) => xs.map((x, j) => (j === i ? { ...x, ...c } : c.principal ? { ...x, principal: false } : x)));
+  const cambiar = (i: number, c: Partial<Fila>) =>
+    setFilas((xs) =>
+      xs.map((x, j) => (j === i ? { ...x, ...c } : c.principal ? { ...x, principal: false } : x)),
+    );
 
   async function guardar() {
     setError(null);
@@ -73,9 +88,14 @@ export function Contactos({ personaId, contactos }: { personaId: string; contact
               <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                 <span className="font-semibold text-ink">
                   {c.nombre}
-                  {c.relacion && <span className="font-normal text-muted"> · {c.relacion}</span>} {c.principal && <Insignia tono="exito">Principal</Insignia>}
+                  {c.relacion && (
+                    <span className="font-normal text-muted"> · {c.relacion}</span>
+                  )}{' '}
+                  {c.principal && <Insignia tono="exito">Principal</Insignia>}
                 </span>
-                <span className="text-muted">{[c.email, c.telefono].filter(Boolean).join(' · ') || '—'}</span>
+                <span className="text-muted">
+                  {[c.email, c.telefono].filter(Boolean).join(' · ') || '—'}
+                </span>
               </li>
             ))}
           </ul>
@@ -83,32 +103,73 @@ export function Contactos({ personaId, contactos }: { personaId: string; contact
       ) : (
         <div className="flex flex-col gap-3">
           {filas.map((f, i) => (
-            <fieldset key={i} className="grid gap-2 rounded-brand border border-line p-3 sm:grid-cols-4">
+            <fieldset
+              key={i}
+              className="grid gap-2 rounded-brand border border-line p-3 sm:grid-cols-4"
+            >
               <Campo label="Nombre" requerido>
-                <input className={inputClass} value={f.nombre} onChange={(e) => cambiar(i, { nombre: e.target.value })} />
+                <input
+                  className={inputClass}
+                  value={f.nombre}
+                  onChange={(e) => cambiar(i, { nombre: e.target.value })}
+                />
               </Campo>
               <Campo label="Relación">
-                <input className={inputClass} value={f.relacion} onChange={(e) => cambiar(i, { relacion: e.target.value })} placeholder="Hijo, contador…" />
+                <input
+                  className={inputClass}
+                  value={f.relacion}
+                  onChange={(e) => cambiar(i, { relacion: e.target.value })}
+                  placeholder="Hijo, contador…"
+                />
               </Campo>
               <Campo label="Email">
-                <input className={inputClass} type="email" value={f.email} onChange={(e) => cambiar(i, { email: e.target.value })} />
+                <input
+                  className={inputClass}
+                  type="email"
+                  value={f.email}
+                  onChange={(e) => cambiar(i, { email: e.target.value })}
+                />
               </Campo>
               <Campo label="Teléfono">
-                <input className={inputClass} type="tel" value={f.telefono} onChange={(e) => cambiar(i, { telefono: e.target.value })} />
+                <input
+                  className={inputClass}
+                  type="tel"
+                  value={f.telefono}
+                  onChange={(e) => cambiar(i, { telefono: e.target.value })}
+                />
               </Campo>
               <div className="flex flex-wrap items-center justify-between gap-2 sm:col-span-4">
                 <label className="flex items-center gap-2 text-sm text-ink">
-                  <input type="radio" name="contacto-principal" className="h-4 w-4 accent-brand-red" checked={f.principal} onChange={() => cambiar(i, { principal: true })} />
+                  <input
+                    type="radio"
+                    name="contacto-principal"
+                    className="h-4 w-4 accent-brand-red"
+                    checked={f.principal}
+                    onChange={() => cambiar(i, { principal: true })}
+                  />
                   Principal
                 </label>
-                <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}>
+                <button
+                  type="button"
+                  onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))}
+                  className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}
+                >
                   🗑️ Quitar
                 </button>
               </div>
             </fieldset>
           ))}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setFilas((xs) => [...xs, { nombre: '', relacion: '', email: '', telefono: '', principal: xs.length === 0 }])}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                setFilas((xs) => [
+                  ...xs,
+                  { nombre: '', relacion: '', email: '', telefono: '', principal: xs.length === 0 },
+                ])
+              }
+            >
               ＋ Agregar contacto
             </Button>
             <div className="flex gap-2">

@@ -3,7 +3,15 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { DIAS_TABLERO_PROXIMOS, type FilaTablero, type FiltroTipoContrato, type Indicador, type MonedaAlquiler, type TableroAlquileresDto, type TablerosAlquileresDto } from '@vacker/types';
+import {
+  DIAS_TABLERO_PROXIMOS,
+  type FilaTablero,
+  type FiltroTipoContrato,
+  type Indicador,
+  type MonedaAlquiler,
+  type TableroAlquileresDto,
+  type TablerosAlquileresDto,
+} from '@vacker/types';
 import { mesLargo } from '@vacker/domain';
 import { Card, KpiCard, Modal } from '@vacker/ui';
 import { fmtFecha, fmtK, fmtMoneda, fmtNum } from '../../lib/format';
@@ -13,7 +21,19 @@ import { PeriodosTabla, type FilaPeriodos } from '../tablero/periodos-tabla';
 import { CLASE_FOCO, CLASE_TH, EncabezadoPagina, Segmentado, TituloSeccion } from './piezas';
 
 /** Las columnas que puede mostrar el detalle de un número. */
-type Columna = 'contrato' | 'propiedad' | 'inquilino' | 'propietario' | 'alquiler' | 'indexa' | 'vence' | 'detalle' | 'fecha' | 'dias' | 'importe' | 'estado';
+type Columna =
+  | 'contrato'
+  | 'propiedad'
+  | 'inquilino'
+  | 'propietario'
+  | 'alquiler'
+  | 'indexa'
+  | 'vence'
+  | 'detalle'
+  | 'fecha'
+  | 'dias'
+  | 'importe'
+  | 'estado';
 
 /**
  * El detalle de un número: la lista, con las columnas que sirven para ESE
@@ -36,22 +56,116 @@ const DE_CONTRATO: [Columna, string][] = [
   ['propietario', 'Propietario'],
 ];
 const VISTAS = {
-  contratos: [...DE_CONTRATO, ['alquiler', 'Alquiler hoy'], ['indexa', 'Próx. indexación'], ['vence', 'Vence']],
-  alquilerMensual: [...DE_CONTRATO, ['importe', 'Alquiler del mes'], ['indexa', 'Próx. indexación'], ['vence', 'Vence']],
+  contratos: [
+    ...DE_CONTRATO,
+    ['alquiler', 'Alquiler hoy'],
+    ['indexa', 'Próx. indexación'],
+    ['vence', 'Vence'],
+  ],
+  alquilerMensual: [
+    ...DE_CONTRATO,
+    ['importe', 'Alquiler del mes'],
+    ['indexa', 'Próx. indexación'],
+    ['vence', 'Vence'],
+  ],
   vencen: [...DE_CONTRATO, ['alquiler', 'Alquiler hoy'], ['vence', 'Vence'], ['dias', 'Faltan']],
-  nuevos: [...DE_CONTRATO, ['fecha', 'Empieza'], ['importe', 'Alquiler inicial'], ['vence', 'Vence'], ['estado', 'Estado']],
-  cobranza: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['fecha', 'Vence'], ['importe', 'Alquiler'], ['estado', 'Estado']],
-  cobrado: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['fecha', 'Vence'], ['importe', 'Cobrado'], ['estado', 'Estado']],
-  mora: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Concepto'], ['fecha', 'Venció'], ['dias', 'Atraso'], ['importe', 'Saldo']],
-  indexaciones: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Tramo'], ['fecha', 'Desde'], ['alquiler', 'Alquiler hoy'], ['importe', 'Nuevo'], ['estado', 'Estado']],
-  escalones: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Escalón'], ['fecha', 'Desde'], ['dias', 'Faltan'], ['alquiler', 'Alquiler hoy'], ['importe', 'Nuevo']],
+  nuevos: [
+    ...DE_CONTRATO,
+    ['fecha', 'Empieza'],
+    ['importe', 'Alquiler inicial'],
+    ['vence', 'Vence'],
+    ['estado', 'Estado'],
+  ],
+  cobranza: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Inquilino'],
+    ['fecha', 'Vence'],
+    ['importe', 'Alquiler'],
+    ['estado', 'Estado'],
+  ],
+  cobrado: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Inquilino'],
+    ['fecha', 'Vence'],
+    ['importe', 'Cobrado'],
+    ['estado', 'Estado'],
+  ],
+  mora: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Inquilino'],
+    ['detalle', 'Concepto'],
+    ['fecha', 'Venció'],
+    ['dias', 'Atraso'],
+    ['importe', 'Saldo'],
+  ],
+  indexaciones: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Inquilino'],
+    ['detalle', 'Tramo'],
+    ['fecha', 'Desde'],
+    ['alquiler', 'Alquiler hoy'],
+    ['importe', 'Nuevo'],
+    ['estado', 'Estado'],
+  ],
+  escalones: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Inquilino'],
+    ['detalle', 'Escalón'],
+    ['fecha', 'Desde'],
+    ['dias', 'Faltan'],
+    ['alquiler', 'Alquiler hoy'],
+    ['importe', 'Nuevo'],
+  ],
   depositos: [...DE_CONTRATO, ['vence', 'Termina'], ['estado', 'Estado'], ['importe', 'Depósito']],
-  liquidaciones: [['propietario', 'Propietario'], ['contrato', 'Contratos'], ['propiedad', 'Propiedades'], ['inquilino', 'Inquilinos'], ['estado', 'En espera'], ['importe', 'Neto a liquidar']],
-  deudores: [['inquilino', 'Inquilino'], ['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['propietario', 'Propietario'], ['detalle', 'Qué debe'], ['fecha', 'Debe desde'], ['dias', 'Atraso'], ['importe', 'Deuda']],
+  liquidaciones: [
+    ['propietario', 'Propietario'],
+    ['contrato', 'Contratos'],
+    ['propiedad', 'Propiedades'],
+    ['inquilino', 'Inquilinos'],
+    ['estado', 'En espera'],
+    ['importe', 'Neto a liquidar'],
+  ],
+  deudores: [
+    ['inquilino', 'Inquilino'],
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['propietario', 'Propietario'],
+    ['detalle', 'Qué debe'],
+    ['fecha', 'Debe desde'],
+    ['dias', 'Atraso'],
+    ['importe', 'Deuda'],
+  ],
   sinFirmar: [...DE_CONTRATO, ['fecha', 'Empezó'], ['vence', 'Vence'], ['estado', 'Qué falta']],
-  reclamos: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Asunto'], ['fecha', 'Abierto'], ['dias', 'Hace'], ['estado', 'Prioridad']],
-  polizas: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Póliza'], ['fecha', 'Vence'], ['estado', 'Estado']],
-  boletas: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['detalle', 'Qué'], ['fecha', 'Vence'], ['estado', 'Estado'], ['importe', 'Importe']],
+  reclamos: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Inquilino'],
+    ['detalle', 'Asunto'],
+    ['fecha', 'Abierto'],
+    ['dias', 'Hace'],
+    ['estado', 'Prioridad'],
+  ],
+  polizas: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Inquilino'],
+    ['detalle', 'Póliza'],
+    ['fecha', 'Vence'],
+    ['estado', 'Estado'],
+  ],
+  boletas: [
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['detalle', 'Qué'],
+    ['fecha', 'Vence'],
+    ['estado', 'Estado'],
+    ['importe', 'Importe'],
+  ],
 } satisfies Record<string, [Columna, string][]>;
 
 /**
@@ -63,8 +177,14 @@ function Ancha({ children }: { children: React.ReactNode }) {
   return <div className="col-span-2 sm:col-span-1">{children}</div>;
 }
 
-const pct = (parte: number, total: number) => (total > 0 ? `${Math.round((parte / total) * 100)}%` : '—');
-const NOMBRE_TRAMO = { '1-30': 'Hasta 30 días', '31-60': '31 a 60 días', '61-90': '61 a 90 días', '90+': 'Más de 90 días' } as const;
+const pct = (parte: number, total: number) =>
+  total > 0 ? `${Math.round((parte / total) * 100)}%` : '—';
+const NOMBRE_TRAMO = {
+  '1-30': 'Hasta 30 días',
+  '31-60': '31 a 60 días',
+  '61-90': '61 a 90 días',
+  '90+': 'Más de 90 días',
+} as const;
 const plata = (n: number) => `$${fmtK(n)}`;
 const porcentaje = (n: number) => `${Math.round(n)}%`;
 const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
@@ -81,10 +201,23 @@ function direccion(pathname: string, hoy: string, anio: number, tipo: FiltroTipo
  * El año de los gráficos. Como el filtro del Tablero Comercial, pero sin
  * «Todos los años»: el gráfico es de doce meses de un año.
  */
-function FiltroAnioAlquileres({ t, anio, cambiar }: { t: TableroAlquileresDto; anio: number; cambiar: (anio: number) => void }) {
+function FiltroAnioAlquileres({
+  t,
+  anio,
+  cambiar,
+}: {
+  t: TableroAlquileresDto;
+  anio: number;
+  cambiar: (anio: number) => void;
+}) {
   const hoy = Number(t.hoy.slice(0, 4));
   return (
-    <select aria-label="Año" value={anio} onChange={(e) => cambiar(Number(e.target.value))} className={`h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink ${CLASE_FOCO}`}>
+    <select
+      aria-label="Año"
+      value={anio}
+      onChange={(e) => cambiar(Number(e.target.value))}
+      className={`h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink ${CLASE_FOCO}`}
+    >
       {[hoy, hoy - 1, hoy - 2].map((a) => (
         <option key={a} value={a}>
           {a}
@@ -106,8 +239,16 @@ const TIPOS: [FiltroTipoContrato, string][] = [
  * tarda en traer los números, y sin eso parecía que no andaba (Javier,
  * 6/10/2026).
  */
-function FiltroTipo({ tipo, cambiar }: { tipo: FiltroTipoContrato; cambiar: (tipo: FiltroTipoContrato) => void }) {
-  return <Segmentado etiqueta="Tipo de contrato" opciones={TIPOS} valor={tipo} onCambio={cambiar} />;
+function FiltroTipo({
+  tipo,
+  cambiar,
+}: {
+  tipo: FiltroTipoContrato;
+  cambiar: (tipo: FiltroTipoContrato) => void;
+}) {
+  return (
+    <Segmentado etiqueta="Tipo de contrato" opciones={TIPOS} valor={tipo} onCambio={cambiar} />
+  );
 }
 
 /**
@@ -116,19 +257,33 @@ function FiltroTipo({ tipo, cambiar }: { tipo: FiltroTipoContrato; cambiar: (tip
  * mes y qué parte del total es. La barra única con la leyenda lejos «no se
  * entendía» (Javier, 6/10/2026). Tocar una fila filtra el tablero.
  */
-function RepartoTipo({ porTipo, onElegir }: { porTipo: TableroAlquileresDto['cartera']['porTipo']; onElegir: (tipo: FiltroTipoContrato) => void }) {
+function RepartoTipo({
+  porTipo,
+  onElegir,
+}: {
+  porTipo: TableroAlquileresDto['cartera']['porTipo'];
+  onElegir: (tipo: FiltroTipoContrato) => void;
+}) {
   if (porTipo.every((x) => x.cantidad === 0)) return null;
   const contratos = suma(porTipo.map((x) => x.cantidad));
   return (
     <Card className="p-4">
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
         <span aria-hidden>⚖️</span> Particulares y comerciales
-        <span className="font-normal normal-case tracking-normal"> · qué parte del alquiler mensual en pesos es de cada tipo</span>
+        <span className="font-normal normal-case tracking-normal">
+          {' '}
+          · qué parte del alquiler mensual en pesos es de cada tipo
+        </span>
       </p>
       <ul className="mt-3 flex flex-col gap-3">
         {porTipo.map((x) => (
           <li key={x.tipo}>
-            <button type="button" onClick={() => onElegir(x.tipo)} className={`group w-full rounded-brand text-left ${CLASE_FOCO}`} title={`Ver solo ${x.tipo === 'vivienda' ? 'particulares' : 'comerciales'}`}>
+            <button
+              type="button"
+              onClick={() => onElegir(x.tipo)}
+              className={`group w-full rounded-brand text-left ${CLASE_FOCO}`}
+              title={`Ver solo ${x.tipo === 'vivienda' ? 'particulares' : 'comerciales'}`}
+            >
               <span className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
                 <span className="font-semibold text-ink group-hover:text-brand-red">
                   {x.tipo === 'vivienda' ? 'Particulares' : 'Comerciales'}{' '}
@@ -137,11 +292,18 @@ function RepartoTipo({ porTipo, onElegir }: { porTipo: TableroAlquileresDto['car
                   </span>
                 </span>
                 <span className="whitespace-nowrap tabular-nums text-muted">
-                  {fmtMoneda(x.importe, 'ARS')} por mes · <span className="font-bold text-ink">{fmtNum(x.pct)}%</span>
+                  {fmtMoneda(x.importe, 'ARS')} por mes ·{' '}
+                  <span className="font-bold text-ink">{fmtNum(x.pct)}%</span>
                 </span>
               </span>
-              <span className="mt-1.5 block h-2.5 overflow-hidden rounded-full bg-surface" aria-hidden>
-                <span style={{ width: `${x.pct}%` }} className={`block h-full rounded-full ${x.tipo === 'vivienda' ? 'bg-brand-red' : 'bg-ink/60'}`} />
+              <span
+                className="mt-1.5 block h-2.5 overflow-hidden rounded-full bg-surface"
+                aria-hidden
+              >
+                <span
+                  style={{ width: `${x.pct}%` }}
+                  className={`block h-full rounded-full ${x.tipo === 'vivienda' ? 'bg-brand-red' : 'bg-ink/60'}`}
+                />
               </span>
             </button>
           </li>
@@ -156,7 +318,13 @@ function RepartoTipo({ porTipo, onElegir }: { porTipo: TableroAlquileresDto['car
  * mes, como las ventas del Tablero Comercial. Un contrato es «nuevo» en el mes
  * en que empieza.
  */
-function ContratosNuevos({ t, onAbrir }: { t: TableroAlquileresDto; onAbrir: (titulo: string, ind: Indicador) => void }) {
+function ContratosNuevos({
+  t,
+  onAbrir,
+}: {
+  t: TableroAlquileresDto;
+  onAbrir: (titulo: string, ind: Indicador) => void;
+}) {
   const enCurso = t.anio === Number(t.hoy.slice(0, 4));
   const [mes, setMes] = useState(enCurso ? Number(t.hoy.slice(5, 7)) : 12);
   const n = t.nuevos;
@@ -170,9 +338,26 @@ function ContratosNuevos({ t, onAbrir }: { t: TableroAlquileresDto; onAbrir: (ti
   };
   const delAnio: Indicador = { valor: suma(cantidades), filas: n.porMes.flatMap((i) => i.filas) };
   const filas: FilaPeriodos[] = [
-    { label: 'Contratos nuevos', valores: cantidades, total: suma(cantidades), formato: (x) => fmtNum(x), destaca: true },
-    { label: `Nuevos ${t.anio - 1}`, valores: n.anterior, total: suma(n.anterior), formato: (x) => fmtNum(x) },
-    { label: 'Alquiler inicial $', valores: n.importePorMes, total: suma(n.importePorMes), formato: plata, separa: true },
+    {
+      label: 'Contratos nuevos',
+      valores: cantidades,
+      total: suma(cantidades),
+      formato: (x) => fmtNum(x),
+      destaca: true,
+    },
+    {
+      label: `Nuevos ${t.anio - 1}`,
+      valores: n.anterior,
+      total: suma(n.anterior),
+      formato: (x) => fmtNum(x),
+    },
+    {
+      label: 'Alquiler inicial $',
+      valores: n.importePorMes,
+      total: suma(n.importePorMes),
+      formato: plata,
+      separa: true,
+    },
   ];
   return (
     <section className="flex flex-col gap-2">
@@ -218,14 +403,31 @@ function ContratosNuevos({ t, onAbrir }: { t: TableroAlquileresDto; onAbrir: (ti
             onSelect={setMes}
             pista="tocá una barra o un mes"
           />
-          <PeriodosTabla titulo={`Contratos nuevos por mes de ${t.anio}`} etiquetas={ABREV_MES} filas={filas} seleccionado={mes} onSelect={setMes} anchoMinimo="min-w-[52rem]" />
+          <PeriodosTabla
+            titulo={`Contratos nuevos por mes de ${t.anio}`}
+            etiquetas={ABREV_MES}
+            filas={filas}
+            seleccionado={mes}
+            onSelect={setMes}
+            anchoMinimo="min-w-[52rem]"
+          />
           <p className="text-sm text-muted">
-            <span className="font-bold text-ink">{NOMBRES_MES[mes - 1]}</span>: {fmtNum(cantidades[mes - 1]!)}{' '}
+            <span className="font-bold text-ink">{NOMBRES_MES[mes - 1]}</span>:{' '}
+            {fmtNum(cantidades[mes - 1]!)}{' '}
             {cantidades[mes - 1] === 1 ? 'contrato nuevo' : 'contratos nuevos'}
             {cantidades[mes - 1]! > 0 && (
               <>
                 {' · '}
-                <button type="button" onClick={() => onAbrir(`Contratos nuevos de ${NOMBRES_MES[mes - 1]!.toLowerCase()} ${t.anio}`, n.porMes[mes - 1]!)} className="font-semibold text-brand-red hover:underline">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onAbrir(
+                      `Contratos nuevos de ${NOMBRES_MES[mes - 1]!.toLowerCase()} ${t.anio}`,
+                      n.porMes[mes - 1]!,
+                    )
+                  }
+                  className="font-semibold text-brand-red hover:underline"
+                >
                   ver cuáles
                 </button>
               </>
@@ -249,7 +451,8 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
   // Los gráficos van en pesos, la moneda de toda la cartera de Vacker.
   const evolucion = (m: string) => t.evolucion.find((x) => x.mes === m && x.moneda === 'ARS');
   const ingreso = (m: string) => t.ingresos.find((x) => x.mes === m && x.moneda === 'ARS');
-  const deIngreso = (campo: 'honorarios' | 'gastos' | 'punitorios' | 'comisiones') => meses.map((m) => ingreso(m)?.[campo] ?? 0);
+  const deIngreso = (campo: 'honorarios' | 'gastos' | 'punitorios' | 'comisiones') =>
+    meses.map((m) => ingreso(m)?.[campo] ?? 0);
   const totalIngreso = (m: string) => {
     const i = ingreso(m);
     return i ? i.honorarios + i.gastos + i.punitorios + (i.comisiones ?? 0) : 0;
@@ -262,7 +465,9 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
   const pctCobrado = (c: number, e: number) => (e > 0 ? (c / e) * 100 : 0);
 
   if (suma(emitido) === 0 && suma(ingresos) === 0) {
-    return <p className="p-5 text-sm text-muted">Todavía no hay alquileres generados en {t.anio}.</p>;
+    return (
+      <p className="p-5 text-sm text-muted">Todavía no hay alquileres generados en {t.anio}.</p>
+    );
   }
 
   const honorarios = deIngreso('honorarios');
@@ -279,12 +484,28 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
       total: pctCobrado(suma(cobrado), suma(emitido)),
       formato: porcentaje,
     },
-    { label: 'Honorarios', valores: honorarios, total: suma(honorarios), formato: plata, separa: true },
+    {
+      label: 'Honorarios',
+      valores: honorarios,
+      total: suma(honorarios),
+      formato: plata,
+      separa: true,
+    },
     { label: 'Gastos adm.', valores: gastos, total: suma(gastos), formato: plata },
     { label: 'Punitorios', valores: punitorios, total: suma(punitorios), formato: plata },
-    { label: 'Comisiones e informes', valores: comisiones, total: suma(comisiones), formato: plata },
+    {
+      label: 'Comisiones e informes',
+      valores: comisiones,
+      total: suma(comisiones),
+      formato: plata,
+    },
     { label: 'Ingresos', valores: ingresos, total: suma(ingresos), formato: plata, destaca: true },
-    { label: `Ingresos ${t.anio - 1}`, valores: ingresosAntes, total: suma(ingresosAntes), formato: plata },
+    {
+      label: `Ingresos ${t.anio - 1}`,
+      valores: ingresosAntes,
+      total: suma(ingresosAntes),
+      formato: plata,
+    },
   ];
   const i = mes - 1;
 
@@ -314,8 +535,8 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
         anchoMinimo="min-w-[60rem]"
       />
       <p className="text-sm text-muted">
-        <span className="font-bold text-ink">{NOMBRES_MES[i]}</span>: cobrado al cierre {pct(cobrado[i]!, emitido[i]!)} de lo emitido · ingresos{' '}
-        {fmtMoneda(ingresos[i]!, 'ARS')}
+        <span className="font-bold text-ink">{NOMBRES_MES[i]}</span>: cobrado al cierre{' '}
+        {pct(cobrado[i]!, emitido[i]!)} de lo emitido · ingresos {fmtMoneda(ingresos[i]!, 'ARS')}
         {ingresosAntes[i]! > 0 ? ` (${fmtMoneda(ingresosAntes[i]!, 'ARS')} en ${t.anio - 1})` : ''}
       </p>
     </div>
@@ -329,7 +550,13 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
  * lo que cuenta, y esa lista suma el número: los dos llegan juntos de la API,
  * del mismo cálculo.
  */
-export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tableros: TablerosAlquileresDto; tipoInicial?: FiltroTipoContrato }) {
+export function TableroAlquileres({
+  tableros,
+  tipoInicial = 'todos',
+}: {
+  tableros: TablerosAlquileresDto;
+  tipoInicial?: FiltroTipoContrato;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [detalle, setDetalle] = useState<Detalle | null>(null);
@@ -348,34 +575,112 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
     setAnioElegido(anio);
     startTransition(() => router.push(direccion(pathname, t.hoy, anio, tipo), { scroll: false }));
   };
-  const abrir = (titulo: string, indicador: Indicador, columnas: [Columna, string][], extra: Partial<Detalle> = {}) => () => setDetalle({ titulo, indicador, columnas, ...extra });
+  const abrir =
+    (
+      titulo: string,
+      indicador: Indicador,
+      columnas: [Columna, string][],
+      extra: Partial<Detalle> = {},
+    ) =>
+    () =>
+      setDetalle({ titulo, indicador, columnas, ...extra });
   const mes = mesLargo(`${t.mes}-01`);
   const mesCorto = mes.split(' ')[0]!;
 
   // Las tres ventanas de vencimiento juntas, para la tarjeta de la cartera.
-  const vencen90: Indicador = { valor: suma(t.tareas.vencen.map((v) => v.indicador.valor)), filas: t.tareas.vencen.flatMap((v) => v.indicador.filas) };
+  const vencen90: Indicador = {
+    valor: suma(t.tareas.vencen.map((v) => v.indicador.valor)),
+    filas: t.tareas.vencen.flatMap((v) => v.indicador.filas),
+  };
   // Lo que ganó la inmobiliaria en el mes en curso, en pesos.
   const ingresoMes = t.ingresos.find((i) => i.mes === t.mes && i.moneda === 'ARS');
-  const ganado = ingresoMes ? ingresoMes.honorarios + ingresoMes.gastos + ingresoMes.punitorios + (ingresoMes.comisiones ?? 0) : 0;
+  const ganado = ingresoMes
+    ? ingresoMes.honorarios +
+      ingresoMes.gastos +
+      ingresoMes.punitorios +
+      (ingresoMes.comisiones ?? 0)
+    : 0;
 
-  type Tarea = { icono: string; titulo: string; ind: Indicador; columnas: [Columna, string][]; total?: MonedaAlquiler; accion?: Detalle['accion'] };
+  type Tarea = {
+    icono: string;
+    titulo: string;
+    ind: Indicador;
+    columnas: [Columna, string][];
+    total?: MonedaAlquiler;
+    accion?: Detalle['accion'];
+  };
   const aIndexar = { href: '/alquileres/indexaciones', texto: 'Ir a indexar' };
   const tareas: Tarea[] = [
-    { icono: '⏰', titulo: 'Indexaciones vencidas', ind: t.tareas.indexacionesVencidas, columnas: VISTAS.indexaciones, accion: aIndexar },
-    { icono: '📈', titulo: `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días`, ind: t.tareas.indexacionesProximas, columnas: VISTAS.indexaciones, accion: aIndexar },
-    { icono: '🪜', titulo: `Escalones que empiezan en los próximos ${DIAS_TABLERO_PROXIMOS} días`, ind: t.tareas.escalones, columnas: VISTAS.escalones },
+    {
+      icono: '⏰',
+      titulo: 'Indexaciones vencidas',
+      ind: t.tareas.indexacionesVencidas,
+      columnas: VISTAS.indexaciones,
+      accion: aIndexar,
+    },
+    {
+      icono: '📈',
+      titulo: `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días`,
+      ind: t.tareas.indexacionesProximas,
+      columnas: VISTAS.indexaciones,
+      accion: aIndexar,
+    },
+    {
+      icono: '🪜',
+      titulo: `Escalones que empiezan en los próximos ${DIAS_TABLERO_PROXIMOS} días`,
+      ind: t.tareas.escalones,
+      columnas: VISTAS.escalones,
+    },
     ...t.tareas.vencen.map((v) => ({
       icono: '📅',
-      titulo: v.dias === 30 ? 'Contratos vencidos o que vencen en 30 días' : `Contratos que vencen ${v.dias === 60 ? 'entre 31 y 60 días' : 'entre 61 y 90 días'}`,
+      titulo:
+        v.dias === 30
+          ? 'Contratos vencidos o que vencen en 30 días'
+          : `Contratos que vencen ${v.dias === 60 ? 'entre 31 y 60 días' : 'entre 61 y 90 días'}`,
       ind: v.indicador,
       columnas: VISTAS.vencen,
     })),
-    { icono: '🔐', titulo: 'Depósitos a devolver', ind: t.tareas.depositos, columnas: VISTAS.depositos },
-    { icono: '🧾', titulo: 'Propietarios para liquidar', ind: t.tareas.liquidaciones, columnas: VISTAS.liquidaciones, total: 'ARS', accion: { href: '/alquileres/liquidaciones/nueva', texto: 'Ir a liquidar' } },
-    { icono: '⚠️', titulo: 'Inquilinos con deuda de más de 30 días', ind: t.tareas.deudores, columnas: VISTAS.deudores, total: 'ARS', accion: { href: '/alquileres/cobros/nuevo', texto: 'Ir a cobrar' } },
-    { icono: '✍️', titulo: 'Contratos vigentes sin el firmado cargado', ind: t.tareas.sinFirmar, columnas: VISTAS.sinFirmar },
-    { icono: '🛠️', titulo: 'Reclamos abiertos', ind: t.tareas.reclamos, columnas: VISTAS.reclamos, accion: { href: '/alquileres/reclamos', texto: 'Ir a reclamos' } },
-    { icono: '🛡️', titulo: `Pólizas vencidas o que vencen en ${DIAS_TABLERO_PROXIMOS} días`, ind: t.tareas.polizas, columnas: VISTAS.polizas },
+    {
+      icono: '🔐',
+      titulo: 'Depósitos a devolver',
+      ind: t.tareas.depositos,
+      columnas: VISTAS.depositos,
+    },
+    {
+      icono: '🧾',
+      titulo: 'Propietarios para liquidar',
+      ind: t.tareas.liquidaciones,
+      columnas: VISTAS.liquidaciones,
+      total: 'ARS',
+      accion: { href: '/alquileres/liquidaciones/nueva', texto: 'Ir a liquidar' },
+    },
+    {
+      icono: '⚠️',
+      titulo: 'Inquilinos con deuda de más de 30 días',
+      ind: t.tareas.deudores,
+      columnas: VISTAS.deudores,
+      total: 'ARS',
+      accion: { href: '/alquileres/cobros/nuevo', texto: 'Ir a cobrar' },
+    },
+    {
+      icono: '✍️',
+      titulo: 'Contratos vigentes sin el firmado cargado',
+      ind: t.tareas.sinFirmar,
+      columnas: VISTAS.sinFirmar,
+    },
+    {
+      icono: '🛠️',
+      titulo: 'Reclamos abiertos',
+      ind: t.tareas.reclamos,
+      columnas: VISTAS.reclamos,
+      accion: { href: '/alquileres/reclamos', texto: 'Ir a reclamos' },
+    },
+    {
+      icono: '🛡️',
+      titulo: `Pólizas vencidas o que vencen en ${DIAS_TABLERO_PROXIMOS} días`,
+      ind: t.tareas.polizas,
+      columnas: VISTAS.polizas,
+    },
     {
       icono: '💸',
       titulo: 'Boletas que paga la inmobiliaria, vencidas o a 7 días',
@@ -390,8 +695,14 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
     <div className="flex flex-col gap-5">
       <EncabezadoPagina titulo="Dashboard">
         {actualizando && (
-          <span role="status" className="flex items-center gap-1.5 text-xs font-semibold text-muted">
-            <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-line border-t-brand-red" />
+          <span
+            role="status"
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted"
+          >
+            <span
+              aria-hidden
+              className="h-3 w-3 animate-spin rounded-full border-2 border-line border-t-brand-red"
+            />
             Actualizando…
           </span>
         )}
@@ -399,11 +710,16 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
         <FiltroAnioAlquileres t={t} anio={anioElegido} cambiar={elegirAnio} />
       </EncabezadoPagina>
 
-      <div aria-busy={actualizando} className={`flex flex-col gap-5 transition-opacity ${actualizando ? 'pointer-events-none opacity-50' : ''}`}>
+      <div
+        aria-busy={actualizando}
+        className={`flex flex-col gap-5 transition-opacity ${actualizando ? 'pointer-events-none opacity-50' : ''}`}
+      >
         <section className="flex flex-col gap-2">
           <TituloSeccion icono="🏘️">Cartera</TituloSeccion>
           {/* Con alquileres en dólares hay una tarjeta más: cinco columnas, para que no quede una sola abajo. */}
-          <div className={`grid grid-cols-2 gap-3 ${t.cartera.alquilerMensual.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+          <div
+            className={`grid grid-cols-2 gap-3 ${t.cartera.alquilerMensual.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+          >
             <Ancha>
               <KpiCard
                 label="Contratos vigentes"
@@ -421,7 +737,12 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                   value={fmtMoneda(a.indicador.valor, a.moneda)}
                   sub={`de ${a.indicador.filas.length} ${a.indicador.filas.length === 1 ? 'contrato' : 'contratos'}${a.moneda === 'USD' ? ' en dólares' : ''}`}
                   icon="💰"
-                  onClick={abrir(`Alquiler mensual${a.moneda === 'USD' ? ' en dólares' : ''}`, a.indicador, VISTAS.alquilerMensual, { total: a.moneda })}
+                  onClick={abrir(
+                    `Alquiler mensual${a.moneda === 'USD' ? ' en dólares' : ''}`,
+                    a.indicador,
+                    VISTAS.alquilerMensual,
+                    { total: a.moneda },
+                  )}
                 />
               </Ancha>
             ))}
@@ -429,7 +750,11 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
               <KpiCard
                 label={`Ingresos de ${mesCorto}`}
                 value={fmtMoneda(ganado, 'ARS')}
-                sub={ingresoMes ? `honorarios ${fmtMoneda(ingresoMes.honorarios, 'ARS')} · gastos ${fmtMoneda(ingresoMes.gastos, 'ARS')}` : 'de la inmobiliaria, cobrados'}
+                sub={
+                  ingresoMes
+                    ? `honorarios ${fmtMoneda(ingresoMes.honorarios, 'ARS')} · gastos ${fmtMoneda(ingresoMes.gastos, 'ARS')}`
+                    : 'de la inmobiliaria, cobrados'
+                }
                 icon="🏦"
                 tone="success"
               />
@@ -441,14 +766,22 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                 sub="contratos para renovar"
                 icon="📅"
                 tone={vencen90.valor ? 'warning' : 'default'}
-                onClick={abrir('Contratos que vencen en los próximos 90 días', vencen90, VISTAS.vencen)}
+                onClick={abrir(
+                  'Contratos que vencen en los próximos 90 días',
+                  vencen90,
+                  VISTAS.vencen,
+                )}
               />
             </Ancha>
           </div>
           {t.tipo === 'todos' && <RepartoTipo porTipo={t.cartera.porTipo} onElegir={elegirTipo} />}
         </section>
 
-        <ContratosNuevos key={`${t.anio}-${t.tipo}`} t={t} onAbrir={(titulo, ind) => setDetalle({ titulo, indicador: ind, columnas: VISTAS.nuevos })} />
+        <ContratosNuevos
+          key={`${t.anio}-${t.tipo}`}
+          t={t}
+          onAbrir={(titulo, ind) => setDetalle({ titulo, indicador: ind, columnas: VISTAS.nuevos })}
+        />
 
         {t.cobranza.map((c) => (
           <section key={c.moneda} className="flex flex-col gap-2">
@@ -456,7 +789,13 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
               Cobranza de {mes}
             </TituloSeccion>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <KpiCard label="Alquileres emitidos" value={fmtNum(c.emitidos.valor)} sub="del mes" icon="🧾" onClick={abrir(`Alquileres emitidos de ${mes}`, c.emitidos, VISTAS.cobranza)} />
+              <KpiCard
+                label="Alquileres emitidos"
+                value={fmtNum(c.emitidos.valor)}
+                sub="del mes"
+                icon="🧾"
+                onClick={abrir(`Alquileres emitidos de ${mes}`, c.emitidos, VISTAS.cobranza)}
+              />
               <KpiCard
                 label="Alquileres cobrados"
                 value={fmtNum(c.cobrados.valor)}
@@ -471,7 +810,9 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                   value={fmtMoneda(c.importeEmitido.valor, c.moneda)}
                   sub="lo que hay que cobrar"
                   icon="📄"
-                  onClick={abrir(`Importe emitido de ${mes}`, c.importeEmitido, VISTAS.cobranza, { total: c.moneda })}
+                  onClick={abrir(`Importe emitido de ${mes}`, c.importeEmitido, VISTAS.cobranza, {
+                    total: c.moneda,
+                  })}
                 />
               </Ancha>
               <Ancha>
@@ -481,7 +822,9 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                   sub={`${pct(c.importeCobrado.valor, c.importeEmitido.valor)} de lo emitido`}
                   icon="💵"
                   tone="success"
-                  onClick={abrir(`Importe cobrado de ${mes}`, c.importeCobrado, VISTAS.cobrado, { total: c.moneda })}
+                  onClick={abrir(`Importe cobrado de ${mes}`, c.importeCobrado, VISTAS.cobrado, {
+                    total: c.moneda,
+                  })}
                 />
               </Ancha>
             </div>
@@ -504,7 +847,12 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                     sub={`${m.total.filas.length} ${m.total.filas.length === 1 ? 'concepto' : 'conceptos'} · ${new Set(m.total.filas.map((f) => f.inquilino)).size} inquilinos`}
                     icon="⏳"
                     tone="warning"
-                    onClick={abrir(`Deuda vencida de inquilinos${m.moneda === 'USD' ? ' en dólares' : ''}`, m.total, VISTAS.mora, { total: m.moneda })}
+                    onClick={abrir(
+                      `Deuda vencida de inquilinos${m.moneda === 'USD' ? ' en dólares' : ''}`,
+                      m.total,
+                      VISTAS.mora,
+                      { total: m.moneda },
+                    )}
                   />
                 </Ancha>
                 {m.tramos.map((x) => (
@@ -513,7 +861,12 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                       label={NOMBRE_TRAMO[x.tramo]}
                       value={fmtMoneda(x.indicador.valor, m.moneda)}
                       sub={`${x.indicador.filas.length} ${x.indicador.filas.length === 1 ? 'concepto' : 'conceptos'}`}
-                      onClick={abrir(`Deuda vencida · ${NOMBRE_TRAMO[x.tramo].toLowerCase()}`, x.indicador, VISTAS.mora, { total: m.moneda })}
+                      onClick={abrir(
+                        `Deuda vencida · ${NOMBRE_TRAMO[x.tramo].toLowerCase()}`,
+                        x.indicador,
+                        VISTAS.mora,
+                        { total: m.moneda },
+                      )}
                     />
                   </Ancha>
                 ))}
@@ -543,7 +896,10 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                   <li key={x.titulo}>
                     <button
                       type="button"
-                      onClick={abrir(x.titulo, x.ind, x.columnas, { total: x.total, accion: x.accion })}
+                      onClick={abrir(x.titulo, x.ind, x.columnas, {
+                        total: x.total,
+                        accion: x.accion,
+                      })}
                       disabled={x.ind.valor === 0}
                       className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm enabled:hover:bg-surface/60 disabled:cursor-default ${CLASE_FOCO}`}
                     >
@@ -554,7 +910,11 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                         {x.titulo}
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
-                        {importe > 0 && <span className="hidden whitespace-nowrap text-xs tabular-nums text-muted sm:inline">{fmtMoneda(importe, 'ARS')}</span>}
+                        {importe > 0 && (
+                          <span className="hidden whitespace-nowrap text-xs tabular-nums text-muted sm:inline">
+                            {fmtMoneda(importe, 'ARS')}
+                          </span>
+                        )}
                         <span
                           className={`min-w-8 rounded-full px-2 py-0.5 text-center text-xs font-bold tabular-nums ${x.ind.valor === 0 ? 'bg-surface text-muted' : 'bg-warning/15 text-warning'}`}
                         >
@@ -584,10 +944,28 @@ function enDias(n: number, columna: string) {
 
 const DERECHA: Columna[] = ['alquiler', 'importe', 'dias'];
 /** Lo que no se corta en dos renglones: códigos, fechas e importes. */
-const SIN_CORTE: Columna[] = ['contrato', 'fecha', 'vence', 'indexa', 'alquiler', 'importe', 'dias'];
+const SIN_CORTE: Columna[] = [
+  'contrato',
+  'fecha',
+  'vence',
+  'indexa',
+  'alquiler',
+  'importe',
+  'dias',
+];
 
 /** Lo que va en una celda, formateado. */
-function Celda({ f, col, etiqueta, hoy }: { f: FilaTablero; col: Columna; etiqueta: string; hoy: string }) {
+function Celda({
+  f,
+  col,
+  etiqueta,
+  hoy,
+}: {
+  f: FilaTablero;
+  col: Columna;
+  etiqueta: string;
+  hoy: string;
+}) {
   const moneda = f.moneda ?? 'ARS';
   switch (col) {
     case 'alquiler':
@@ -608,7 +986,11 @@ function Celda({ f, col, etiqueta, hoy }: { f: FilaTablero; col: Columna; etique
     case 'fecha':
       return f[col] ? <>{fmtFecha(f[col])}</> : <span className="text-muted">—</span>;
     case 'dias':
-      return f.dias == null ? <span className="text-muted">—</span> : <>{enDias(f.dias, etiqueta)}</>;
+      return f.dias == null ? (
+        <span className="text-muted">—</span>
+      ) : (
+        <>{enDias(f.dias, etiqueta)}</>
+      );
     case 'contrato':
       return <span className="font-semibold text-ink">{f.contrato ?? '—'}</span>;
     default: {
@@ -623,7 +1005,15 @@ function Celda({ f, col, etiqueta, hoy }: { f: FilaTablero; col: Columna; etique
  * computadora, y tarjetas en el teléfono. Cada fila lleva a su ficha. Si es un
  * importe, el total es el número de la tarjeta.
  */
-function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose }: Detalle & { hoy: string; onClose: () => void }) {
+function DetalleModal({
+  titulo,
+  indicador,
+  columnas,
+  total,
+  accion,
+  hoy,
+  onClose,
+}: Detalle & { hoy: string; onClose: () => void }) {
   const router = useRouter();
   const filas = indicador.filas;
   // Una columna vacía en todas las filas no se muestra.
@@ -633,7 +1023,12 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
     if (f.href) router.push(f.href);
   };
   return (
-    <Modal title={titulo} subtitle={`${filas.length} ${filas.length === 1 ? 'fila' : 'filas'}${filas.some((f) => f.href) ? ' · tocá una para abrir su ficha' : ''}`} onClose={onClose} size="xl">
+    <Modal
+      title={titulo}
+      subtitle={`${filas.length} ${filas.length === 1 ? 'fila' : 'filas'}${filas.some((f) => f.href) ? ' · tocá una para abrir su ficha' : ''}`}
+      onClose={onClose}
+      size="xl"
+    >
       {filas.length === 0 ? (
         <p className="text-sm text-muted">Nada por ahora.</p>
       ) : (
@@ -645,7 +1040,9 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
                 <>
                   <p className="font-semibold text-ink">
                     {primera && <Celda f={f} col={primera[0]} etiqueta={primera[1]} hoy={hoy} />}
-                    {f.propiedad && primera?.[0] !== 'propiedad' && <span className="font-normal text-muted"> · {f.propiedad}</span>}
+                    {f.propiedad && primera?.[0] !== 'propiedad' && (
+                      <span className="font-normal text-muted"> · {f.propiedad}</span>
+                    )}
                   </p>
                   <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                     {resto
@@ -679,7 +1076,10 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
               <thead className="sticky top-0 bg-white">
                 <tr>
                   {cols.map(([c, etiqueta]) => (
-                    <th key={c} className={`${CLASE_TH} ${DERECHA.includes(c) ? 'text-right' : ''}`}>
+                    <th
+                      key={c}
+                      className={`${CLASE_TH} ${DERECHA.includes(c) ? 'text-right' : ''}`}
+                    >
                       {etiqueta}
                     </th>
                   ))}
@@ -687,14 +1087,22 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
               </thead>
               <tbody>
                 {filas.map((f) => (
-                  <tr key={f.id} onClick={() => ir(f)} className={`border-b border-line last:border-0 ${f.href ? 'cursor-pointer hover:bg-surface/60' : ''}`}>
+                  <tr
+                    key={f.id}
+                    onClick={() => ir(f)}
+                    className={`border-b border-line last:border-0 ${f.href ? 'cursor-pointer hover:bg-surface/60' : ''}`}
+                  >
                     {cols.map(([c, etiqueta], i) => (
                       <td
                         key={c}
                         className={`px-3 py-2 align-top ${SIN_CORTE.includes(c) ? 'whitespace-nowrap' : ''} ${DERECHA.includes(c) ? 'text-right tabular-nums' : ''} ${c === 'importe' || i === 0 ? 'font-semibold text-ink' : 'text-muted'}`}
                       >
                         {i === 0 && f.href ? (
-                          <Link href={f.href} onClick={(e) => e.stopPropagation()} className={`hover:text-brand-red ${CLASE_FOCO}`}>
+                          <Link
+                            href={f.href}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`hover:text-brand-red ${CLASE_FOCO}`}
+                          >
                             <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
                           </Link>
                         ) : (
@@ -709,8 +1117,18 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
                 <tfoot className="sticky bottom-0 bg-white">
                   <tr className="border-t-2 border-line font-bold text-ink">
                     {cols.map(([c], i) => (
-                      <td key={c} className={`px-3 py-2 ${c === 'importe' ? 'whitespace-nowrap text-right tabular-nums' : ''}`}>
-                        {i === 0 ? 'Total' : c === 'importe' ? fmtMoneda(indicador.valor || suma(filas.map((f) => f.importe ?? 0)), total) : ''}
+                      <td
+                        key={c}
+                        className={`px-3 py-2 ${c === 'importe' ? 'whitespace-nowrap text-right tabular-nums' : ''}`}
+                      >
+                        {i === 0
+                          ? 'Total'
+                          : c === 'importe'
+                            ? fmtMoneda(
+                                indicador.valor || suma(filas.map((f) => f.importe ?? 0)),
+                                total,
+                              )
+                            : ''}
                       </td>
                     ))}
                   </tr>
@@ -722,13 +1140,17 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
               {conTotal ? (
                 <p className="text-sm font-bold text-ink sm:hidden">
-                  Total {fmtMoneda(indicador.valor || suma(filas.map((f) => f.importe ?? 0)), total)}
+                  Total{' '}
+                  {fmtMoneda(indicador.valor || suma(filas.map((f) => f.importe ?? 0)), total)}
                 </p>
               ) : (
                 <span />
               )}
               {accion && (
-                <Link href={accion.href} className={`ml-auto rounded-brand bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-dark ${CLASE_FOCO}`}>
+                <Link
+                  href={accion.href}
+                  className={`ml-auto rounded-brand bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-dark ${CLASE_FOCO}`}
+                >
                   {accion.texto} →
                 </Link>
               )}

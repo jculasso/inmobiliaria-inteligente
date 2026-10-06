@@ -49,9 +49,6 @@ export class PublicacionService {
     });
   }
 
-
-
-
   /** La credencial en claro, o un error explicando por qué no se pudo. */
   private async secreto(): Promise<string> {
     const guardado = await this.db.withTenant((tx) =>
@@ -109,7 +106,8 @@ export class PublicacionService {
           direccion: p.address,
           ubicacion: p.location?.short_location ?? null,
           fotos: p.photos?.length ?? 0,
-          fotoPortada: p.photos?.find((f) => f.is_front_cover)?.image ?? p.photos?.[0]?.image ?? null,
+          fotoPortada:
+            p.photos?.find((f) => f.is_front_cover)?.image ?? p.photos?.[0]?.image ?? null,
           publicUrl: p.public_url,
           estado: p.status == null ? null : String(p.status),
           agenteId,

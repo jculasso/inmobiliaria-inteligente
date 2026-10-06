@@ -21,7 +21,9 @@ export function medirFotosPdf(buffer: Buffer): { cajaAlto: number; fotoAlto: num
       continue;
     }
 
-    for (const dibujo of txt.matchAll(/([-\d.]+) [-\d.]+ [-\d.]+ ([-\d.]+) [-\d.]+ [-\d.]+ cm\s*\/\w+ Do/g)) {
+    for (const dibujo of txt.matchAll(
+      /([-\d.]+) [-\d.]+ [-\d.]+ ([-\d.]+) [-\d.]+ [-\d.]+ cm\s*\/\w+ Do/g,
+    )) {
       const fotoAlto = Math.abs(Number(dibujo[2]));
       // Solo las fotos de propiedad: el logo y el avatar del agente son chicos.
       if (fotoAlto < 100) continue;

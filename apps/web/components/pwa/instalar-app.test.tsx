@@ -16,13 +16,19 @@ const UA = {
 
 function simularDispositivo(ua: string, maxTouchPoints = 0) {
   vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(ua);
-  Object.defineProperty(window.navigator, 'maxTouchPoints', { value: maxTouchPoints, configurable: true });
+  Object.defineProperty(window.navigator, 'maxTouchPoints', {
+    value: maxTouchPoints,
+    configurable: true,
+  });
 }
 
 /** Dispara el evento que Chrome usa para ofrecer la instalación. */
 function dispararBeforeInstallPrompt() {
   const e = new Event('beforeinstallprompt');
-  Object.assign(e, { prompt: vi.fn().mockResolvedValue(undefined), userChoice: Promise.resolve({ outcome: 'accepted' }) });
+  Object.assign(e, {
+    prompt: vi.fn().mockResolvedValue(undefined),
+    userChoice: Promise.resolve({ outcome: 'accepted' }),
+  });
   // `act` para que React procese el cambio de estado que dispara el evento.
   act(() => {
     window.dispatchEvent(e);

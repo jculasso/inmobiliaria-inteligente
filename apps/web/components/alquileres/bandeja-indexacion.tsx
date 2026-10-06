@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DIAS_ANTICIPACION_INDEXACION, type BandejaIndexacionDto, type EstadoIndiceDto, type IndexacionDto } from '@vacker/types';
+import {
+  DIAS_ANTICIPACION_INDEXACION,
+  type BandejaIndexacionDto,
+  type EstadoIndiceDto,
+  type IndexacionDto,
+} from '@vacker/types';
 import { mesLargo } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -14,15 +19,14 @@ import { NOMBRE_INDICE } from './nombres';
 import { leerImporte, variacionEntre } from '../../lib/importe';
 import { InputImporte } from '../input-importe';
 
-
 /** «IPC de julio de 2026» o «ICL del 01/07/2026»: el valor que se usó, nombrado como lo lee una persona. */
 function valorDe(indice: 'ICL' | 'IPC' | 'CCP', fecha: string | null): string {
   if (!fecha) return '';
   return indice === 'ICL' ? `ICL del ${fmtFecha(fecha)}` : `IPC de ${mesLargo(fecha)}`;
 }
 
-const fmtIndice = (v: number | null) => (v == null ? '—' : v.toLocaleString('es-AR', { maximumFractionDigits: 4 }));
-
+const fmtIndice = (v: number | null) =>
+  v == null ? '—' : v.toLocaleString('es-AR', { maximumFractionDigits: 4 });
 
 function EstadoIndices({ indices }: { indices: EstadoIndiceDto[] }) {
   return (
@@ -32,14 +36,22 @@ function EstadoIndices({ indices }: { indices: EstadoIndiceDto[] }) {
         {indices.map((i) => (
           <span key={i.indice} className="rounded-full border border-line bg-white px-2.5 py-1">
             <span className="font-bold text-ink">{i.indice}</span>{' '}
-            {i.ultimaFecha == null ? 'sin valores' : i.indice === 'ICL' ? `hasta el ${fmtFecha(i.ultimaFecha)}` : `hasta ${mesLargo(i.ultimaFecha)}`}
+            {i.ultimaFecha == null
+              ? 'sin valores'
+              : i.indice === 'ICL'
+                ? `hasta el ${fmtFecha(i.ultimaFecha)}`
+                : `hasta ${mesLargo(i.ultimaFecha)}`}
           </span>
         ))}
       </div>
       {indices
         .filter((i) => i.alerta)
         .map((i) => (
-          <p key={i.indice} role="alert" className="rounded-brand border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-ink">
+          <p
+            key={i.indice}
+            role="alert"
+            className="rounded-brand border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-ink"
+          >
             {i.alerta}
           </p>
         ))}
@@ -63,7 +75,9 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
     setEnviando(true);
     try {
       const r = await confirmarIndexacion(await getAccessToken(), t.tramoId, manual);
-      onConfirmado(`Contrato ${t.contrato.codigo}: el tramo ${r.numero} quedó en ${fmtMoneda(r.importe)}.`);
+      onConfirmado(
+        `Contrato ${t.contrato.codigo}: el tramo ${r.numero} quedó en ${fmtMoneda(r.importe)}.`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo confirmar.');
       setEnviando(false);
@@ -80,27 +94,34 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
           {t.vencida && <Insignia tono="peligro">Vencida</Insignia>}
         </p>
         <p className="text-xs text-muted">
-          {t.inquilinos.join(', ') || 'Sin inquilino'} · Tramo {t.numero}, desde el {fmtFecha(t.desde)} · {NOMBRE_INDICE[t.indice]}
+          {t.inquilinos.join(', ') || 'Sin inquilino'} · Tramo {t.numero}, desde el{' '}
+          {fmtFecha(t.desde)} · {NOMBRE_INDICE[t.indice]}
         </p>
         {t.estado === 'lista' && (
           <>
             <p className="mt-2 text-sm tabular-nums text-ink">
-              <span className="text-muted">{fmtMoneda(t.importeAnterior)}</span> → <span className="font-bold">{fmtMoneda(t.importePropuesto)}</span>{' '}
-              <span className="text-xs font-semibold text-muted">{variacionEntre(t.importeAnterior, t.importePropuesto!)}</span>
+              <span className="text-muted">{fmtMoneda(t.importeAnterior)}</span> →{' '}
+              <span className="font-bold">{fmtMoneda(t.importePropuesto)}</span>{' '}
+              <span className="text-xs font-semibold text-muted">
+                {variacionEntre(t.importeAnterior, t.importePropuesto!)}
+              </span>
             </p>
             <p className="mt-0.5 text-xs tabular-nums text-muted">
-              {valorDe(t.indice, t.fechaBase)}: {fmtIndice(t.valorBase)} → {valorDe(t.indice, t.fechaRequerida)}: {fmtIndice(t.valorRequerido)}
+              {valorDe(t.indice, t.fechaBase)}: {fmtIndice(t.valorBase)} →{' '}
+              {valorDe(t.indice, t.fechaRequerida)}: {fmtIndice(t.valorRequerido)}
             </p>
           </>
         )}
         {t.estado === 'pendiente_indice' && (
           <p className="mt-2 text-sm text-ink">
-            Falta {t.falta.join(' y ')}. {t.indice === 'IPC' ? 'El INDEC lo publica a mediados del mes siguiente.' : ''}
+            Falta {t.falta.join(' y ')}.{' '}
+            {t.indice === 'IPC' ? 'El INDEC lo publica a mediados del mes siguiente.' : ''}
           </p>
         )}
         {t.estado === 'manual' && (
           <p className="mt-2 text-sm text-ink">
-            Tramo anterior: <span className="tabular-nums">{fmtMoneda(t.importeAnterior)}</span>. Casa Propia no tiene fuente automática: el importe se carga a mano.
+            Tramo anterior: <span className="tabular-nums">{fmtMoneda(t.importeAnterior)}</span>.
+            Casa Propia no tiene fuente automática: el importe se carga a mano.
           </p>
         )}
         {error && (
@@ -126,7 +147,11 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
             disabled={enviando}
             className={t.estado === 'manual' ? 'shrink-0' : 'w-full sm:w-auto'}
           >
-            {enviando ? 'Confirmando…' : t.estado === 'lista' ? `Confirmar ${fmtMoneda(t.importePropuesto)}` : 'Confirmar'}
+            {enviando
+              ? 'Confirmando…'
+              : t.estado === 'lista'
+                ? `Confirmar ${fmtMoneda(t.importePropuesto)}`
+                : 'Confirmar'}
           </Button>
         </div>
       )}
@@ -155,13 +180,18 @@ export function BandejaIndexacion({ bandeja }: { bandeja: BandejaIndexacionDto }
       <EncabezadoPagina titulo="A indexar" />
       <EstadoIndices indices={bandeja.indices} />
       {aviso && (
-        <p role="status" className="rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink">
+        <p
+          role="status"
+          className="rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink"
+        >
           {aviso}
         </p>
       )}
 
       {bandeja.tramos.length === 0 ? (
-        <Vacio>No hay tramos para indexar en los próximos {DIAS_ANTICIPACION_INDEXACION} días.</Vacio>
+        <Vacio>
+          No hay tramos para indexar en los próximos {DIAS_ANTICIPACION_INDEXACION} días.
+        </Vacio>
       ) : (
         <>
           <section className="flex flex-col gap-2">
@@ -169,7 +199,9 @@ export function BandejaIndexacion({ bandeja }: { bandeja: BandejaIndexacionDto }
               Para confirmar
             </TituloSeccion>
             {listas.length === 0 ? (
-              <p className="text-sm text-muted">Ninguno: los tramos que vienen esperan un índice.</p>
+              <p className="text-sm text-muted">
+                Ninguno: los tramos que vienen esperan un índice.
+              </p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {listas.map((t) => (

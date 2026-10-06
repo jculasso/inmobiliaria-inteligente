@@ -1,10 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import type { FilaTablero, Indicador, TableroAlquileresDto, TablerosAlquileresDto } from '@vacker/types';
+import type {
+  FilaTablero,
+  Indicador,
+  TableroAlquileresDto,
+  TablerosAlquileresDto,
+} from '@vacker/types';
 import { TableroAlquileres } from './tablero-alquileres';
 
 const push = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => '/alquileres' }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => '/alquileres',
+}));
 
 const fila = (n: number, importe: number | null, over: Partial<FilaTablero> = {}): FilaTablero => ({
   id: `f${n}`,
@@ -25,7 +33,10 @@ const fila = (n: number, importe: number | null, over: Partial<FilaTablero> = {}
   estado: null,
   ...over,
 });
-const ind = (filas: FilaTablero[], porImporte = false): Indicador => ({ valor: porImporte ? filas.reduce((s, f) => s + (f.importe ?? 0), 0) : filas.length, filas });
+const ind = (filas: FilaTablero[], porImporte = false): Indicador => ({
+  valor: porImporte ? filas.reduce((s, f) => s + (f.importe ?? 0), 0) : filas.length,
+  filas,
+});
 const vacio = ind([]);
 
 const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto => ({
@@ -46,13 +57,39 @@ const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto
     vigentes: ind([fila(5, 1_137_518), fila(6, 400_000)]),
     vivienda: 2,
     comercial: 0,
-    alquilerMensual: [{ moneda: 'ARS', indicador: ind([fila(5, 1_137_518), fila(6, 400_000)], true) }],
+    alquilerMensual: [
+      { moneda: 'ARS', indicador: ind([fila(5, 1_137_518), fila(6, 400_000)], true) },
+    ],
   },
-  cobranza: [{ moneda: 'ARS', emitidos: ind([fila(5, 1), fila(6, 1)]), cobrados: ind([fila(5, 1)]), importeEmitido: ind([fila(5, 1_137_518), fila(6, 400_000)], true), importeCobrado: ind([fila(5, 1_137_518), fila(6, 150_000)], true) }],
+  cobranza: [
+    {
+      moneda: 'ARS',
+      emitidos: ind([fila(5, 1), fila(6, 1)]),
+      cobrados: ind([fila(5, 1)]),
+      importeEmitido: ind([fila(5, 1_137_518), fila(6, 400_000)], true),
+      importeCobrado: ind([fila(5, 1_137_518), fila(6, 150_000)], true),
+    },
+  ],
   morosidad: [],
   evolucion: [{ mes: '2026-10', moneda: 'ARS', emitido: 1_537_518, cobrado: 1_287_518 }],
   ingresos: [],
-  tareas: { indexacionesVencidas: ind([fila(5, null)]), indexacionesProximas: vacio, vencen: [{ dias: 30, indicador: vacio }, { dias: 60, indicador: vacio }, { dias: 90, indicador: vacio }], depositos: vacio, liquidaciones: vacio, deudores: vacio, sinFirmar: vacio, escalones: vacio, reclamos: vacio, polizas: vacio, boletas: vacio },
+  tareas: {
+    indexacionesVencidas: ind([fila(5, null)]),
+    indexacionesProximas: vacio,
+    vencen: [
+      { dias: 30, indicador: vacio },
+      { dias: 60, indicador: vacio },
+      { dias: 90, indicador: vacio },
+    ],
+    depositos: vacio,
+    liquidaciones: vacio,
+    deudores: vacio,
+    sinFirmar: vacio,
+    escalones: vacio,
+    reclamos: vacio,
+    polizas: vacio,
+    boletas: vacio,
+  },
   ...over,
 });
 
@@ -60,7 +97,11 @@ const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto
 const tres = (t: TableroAlquileresDto): TablerosAlquileresDto => ({
   todos: t,
   vivienda: { ...t, tipo: 'vivienda' },
-  comercial: { ...t, tipo: 'comercial', cartera: { ...t.cartera, vigentes: ind([]), vivienda: 0, comercial: 0 } },
+  comercial: {
+    ...t,
+    tipo: 'comercial',
+    cartera: { ...t.cartera, vigentes: ind([]), vivienda: 0, comercial: 0 },
+  },
 });
 
 describe('TableroAlquileres', () => {
@@ -70,7 +111,9 @@ describe('TableroAlquileres', () => {
     fireEvent.click(screen.getByRole('button', { name: /Importe cobrado/ }));
     const dialogo = within(screen.getByRole('dialog'));
     expect(dialogo.getByText('Total').parentElement).toHaveTextContent('$ 1.287.518');
-    expect(screen.getByRole('button', { name: /Importe cobrado: \$ 1\.287\.518/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Importe cobrado: \$ 1\.287\.518/ }),
+    ).toBeInTheDocument();
     expect(dialogo.getAllByRole('link')[0]).toHaveAttribute('href', '/alquileres/contratos/c5');
   });
 
@@ -95,15 +138,37 @@ describe('TableroAlquileres', () => {
 
   it('el gráfico es del año elegido: doce meses y la planilla con los ingresos del año anterior', () => {
     render(
-      <TableroAlquileres tableros={tres(tablero({
-          ingresos: [
-            { mes: '2026-10', moneda: 'ARS', honorarios: 70_000, gastos: 5_000, punitorios: 0, comisiones: 0 },
-            { mes: '2025-10', moneda: 'ARS', honorarios: 50_000, gastos: 0, punitorios: 0, comisiones: 0 },
-          ],
-        }))} />,
+      <TableroAlquileres
+        tableros={tres(
+          tablero({
+            ingresos: [
+              {
+                mes: '2026-10',
+                moneda: 'ARS',
+                honorarios: 70_000,
+                gastos: 5_000,
+                punitorios: 0,
+                comisiones: 0,
+              },
+              {
+                mes: '2025-10',
+                moneda: 'ARS',
+                honorarios: 50_000,
+                gastos: 0,
+                punitorios: 0,
+                comisiones: 0,
+              },
+            ],
+          }),
+        )}
+      />,
     );
     const planilla = screen.getByRole('table', { name: /alquileres e ingresos por mes de 2026/i });
-    expect(within(planilla).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(expect.arrayContaining(['Ene', 'Dic']));
+    expect(
+      within(planilla)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(expect.arrayContaining(['Ene', 'Dic']));
     expect(within(planilla).getByText('Ingresos 2025')).toBeTruthy();
     // El mes en curso viene elegido, con lo cobrado y lo del año anterior.
     expect(screen.getByText(/ingresos \$\s?75\.000,00 \(\$\s?50\.000,00 en 2025\)/i)).toBeTruthy();
@@ -128,7 +193,9 @@ describe('TableroAlquileres', () => {
     expect(screen.getByRole('button', { name: /^Q1: 1/ })).toHaveTextContent('1 en 2025');
     expect(screen.getByRole('button', { name: /^Q2: 0/ })).toHaveTextContent('1 en 2025');
     fireEvent.click(nuevos);
-    const fila9 = within(within(screen.getByRole('dialog')).getByRole('table')).getByText('9').closest('tr')!;
+    const fila9 = within(within(screen.getByRole('dialog')).getByRole('table'))
+      .getByText('9')
+      .closest('tr')!;
     expect(fila9).toHaveTextContent('Calle 9');
     expect(fila9).toHaveTextContent('$ 500.000,00');
   });
@@ -140,7 +207,10 @@ describe('TableroAlquileres', () => {
     render(<TableroAlquileres tableros={tres(tablero())} />);
     expect(screen.getByRole('button', { name: /^Contratos vigentes: 2/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Comerciales' }));
-    expect(screen.getByRole('button', { name: 'Comerciales' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Comerciales' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     expect(screen.getByRole('button', { name: /^Contratos vigentes: 0/ })).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
     expect(replace).toHaveBeenCalledWith(null, '', '/alquileres?tipo=comercial');
@@ -152,16 +222,38 @@ describe('TableroAlquileres', () => {
     expect(particulares).toHaveTextContent('2 de 2 contratos');
     expect(particulares).toHaveTextContent('$ 1.537.518,00 por mes · 100%');
     fireEvent.click(particulares);
-    expect(screen.getByRole('button', { name: 'Particulares' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Particulares' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   // Javier, 6/10/2026: «Propietario, Inquilino, Importe Alquiler vigente, cuando indexa, cuando vence».
   it('contratos vigentes: cada uno con sus partes, alquiler de hoy, próxima indexación y vencimiento', () => {
-    const vigentes = ind([fila(5, null, { alquiler: 1_137_518, indexa: '2026-12-15', vence: '2027-08-14' }), fila(6, null, { alquiler: 1_500, moneda: 'USD', indexa: '2026-10-01', vence: '2028-01-31' })]);
-    render(<TableroAlquileres tableros={tres(tablero({ cartera: { ...tablero().cartera, vigentes } }))} />);
+    const vigentes = ind([
+      fila(5, null, { alquiler: 1_137_518, indexa: '2026-12-15', vence: '2027-08-14' }),
+      fila(6, null, { alquiler: 1_500, moneda: 'USD', indexa: '2026-10-01', vence: '2028-01-31' }),
+    ]);
+    render(
+      <TableroAlquileres
+        tableros={tres(tablero({ cartera: { ...tablero().cartera, vigentes } }))}
+      />,
+    );
     fireEvent.click(screen.getByRole('button', { name: /^Contratos vigentes: / }));
     const tabla = within(screen.getByRole('dialog')).getByRole('table');
-    expect(within(tabla).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Contrato', 'Propiedad', 'Inquilino', 'Propietario', 'Alquiler hoy', 'Próx. indexación', 'Vence']);
+    expect(
+      within(tabla)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual([
+      'Contrato',
+      'Propiedad',
+      'Inquilino',
+      'Propietario',
+      'Alquiler hoy',
+      'Próx. indexación',
+      'Vence',
+    ]);
     const [, c5, c6] = within(tabla).getAllByRole('row');
     expect(c5).toHaveTextContent('Inquilino 5Dueño 5$ 1.137.518,0015/12/202614/08/2027');
     // En dólares, con su moneda; una indexación que ya pasó, marcada.
@@ -172,6 +264,8 @@ describe('TableroAlquileres', () => {
   it('una tarea lleva a donde se resuelve', () => {
     render(<TableroAlquileres tableros={tres(tablero())} />);
     fireEvent.click(screen.getByRole('button', { name: /Indexaciones vencidas/ }));
-    expect(within(screen.getByRole('dialog')).getByRole('link', { name: 'Ir a indexar →' })).toHaveAttribute('href', '/alquileres/indexaciones');
+    expect(
+      within(screen.getByRole('dialog')).getByRole('link', { name: 'Ir a indexar →' }),
+    ).toHaveAttribute('href', '/alquileres/indexaciones');
   });
 });

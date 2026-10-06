@@ -65,7 +65,12 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
         // La superficie de valuación sale del desglose, con los coeficientes de
         // la tasación (o del terreno, según el tipo).
         next.superficie = valuationSurface(
-          { supCubierta: next.supCubierta, supSemi: next.supSemi, supDescubierta: next.supDescubierta, supTerreno: next.supTerreno },
+          {
+            supCubierta: next.supCubierta,
+            supSemi: next.supSemi,
+            supDescubierta: next.supDescubierta,
+            supTerreno: next.supTerreno,
+          },
           next.tipoComp,
           coeficientes,
         );
@@ -90,13 +95,22 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-wide text-muted">Comparables de mercado ({comparables.length}/6)</p>
-        <Button type="button" variant="secondary" size="sm" onClick={agregar} disabled={comparables.length >= 6}>
+        <p className="text-xs font-bold uppercase tracking-wide text-muted">
+          Comparables de mercado ({comparables.length}/6)
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={agregar}
+          disabled={comparables.length >= 6}
+        >
           ＋ Agregar comparable
         </Button>
       </div>
       <p className="text-xs text-muted">
-        Cargá entre 3 y 6 comparables. Los cierres reales pesan más; los valores atípicos se detectan automáticamente.
+        Cargá entre 3 y 6 comparables. Los cierres reales pesan más; los valores atípicos se
+        detectan automáticamente.
       </p>
       {comparables.length > 0 && comparables.length < 3 && (
         <p className="text-xs text-brand-red">Cargá al menos 3 comparables (o ninguno todavía).</p>
@@ -104,7 +118,9 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
 
       {comparables.map((c, i) => {
         const entry = analisis.entries.find((e) => e.index === i);
-        const badge = entry ? `${entry.similarity}% similitud${entry.outlier ? ' · atípico' : ''}` : 'Sin datos suficientes';
+        const badge = entry
+          ? `${entry.similarity}% similitud${entry.outlier ? ' · atípico' : ''}`
+          : 'Sin datos suficientes';
         const resumenFila = entry
           ? `${fmtUSD(entry.usdM2)}/m² · ${entry.similarity}%${entry.outlier ? ' · atípico' : ''}`
           : 'USD/m² —';
@@ -112,19 +128,30 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
         // Colapsado: un renglón con dirección + USD/m² + similitud (click para editar).
         if (openIndex !== i) {
           return (
-            <div key={i} className="flex items-center gap-2 rounded-brand border border-line px-3 py-2.5">
+            <div
+              key={i}
+              className="flex items-center gap-2 rounded-brand border border-line px-3 py-2.5"
+            >
               <button
                 type="button"
                 onClick={() => setOpenIndex(i)}
                 className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 text-xs font-semibold text-muted">Comparable {i + 1}</span>
-                  <span className="truncate text-sm text-ink">{c.direccion || 'Sin dirección'}</span>
+                  <span className="shrink-0 text-xs font-semibold text-muted">
+                    Comparable {i + 1}
+                  </span>
+                  <span className="truncate text-sm text-ink">
+                    {c.direccion || 'Sin dirección'}
+                  </span>
                 </span>
                 <span className="shrink-0 text-xs font-semibold text-brand-red">{resumenFila}</span>
               </button>
-              <button type="button" onClick={() => quitar(i)} className="shrink-0 text-xs text-brand-red hover:underline">
+              <button
+                type="button"
+                onClick={() => quitar(i)}
+                className="shrink-0 text-xs text-brand-red hover:underline"
+              >
                 × Quitar
               </button>
             </div>
@@ -133,7 +160,10 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
 
         // Expandido: el formulario completo.
         return (
-          <div key={i} className="flex flex-col gap-3 rounded-brand border border-brand-red/40 bg-brand-red/[0.015] p-3">
+          <div
+            key={i}
+            className="flex flex-col gap-3 rounded-brand border border-brand-red/40 bg-brand-red/[0.015] p-3"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
@@ -145,35 +175,63 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
               <span className="text-xs font-semibold text-brand-red">
                 {entry ? `${fmtUSD(entry.usdM2)} /m² · ${badge}` : 'USD/m² —'}
               </span>
-              <button type="button" onClick={() => quitar(i)} className="text-xs text-brand-red hover:underline">
+              <button
+                type="button"
+                onClick={() => quitar(i)}
+                className="text-xs text-brand-red hover:underline"
+              >
                 × Quitar
               </button>
             </div>
 
             <Campo label="Link de la publicación">
-              <input value={c.link ?? ''} onChange={(e) => actualizar(i, { link: e.target.value })} placeholder="https://…" className={inputClass} />
+              <input
+                value={c.link ?? ''}
+                onChange={(e) => actualizar(i, { link: e.target.value })}
+                placeholder="https://…"
+                className={inputClass}
+              />
             </Campo>
             <Campo label="Dirección / Zona">
-              <input value={c.direccion} onChange={(e) => actualizar(i, { direccion: e.target.value })} placeholder="Zona o dirección" className={inputClass} />
+              <input
+                value={c.direccion}
+                onChange={(e) => actualizar(i, { direccion: e.target.value })}
+                placeholder="Zona o dirección"
+                className={inputClass}
+              />
             </Campo>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Campo label="Tipo">
-                <select value={c.tipoComp} onChange={(e) => actualizar(i, { tipoComp: e.target.value as TipoPropiedad })} className={inputClass}>
+                <select
+                  value={c.tipoComp}
+                  onChange={(e) => actualizar(i, { tipoComp: e.target.value as TipoPropiedad })}
+                  className={inputClass}
+                >
                   {TIPOS.map((t) => (
                     <option key={t}>{t}</option>
                   ))}
                 </select>
               </Campo>
               <Campo label="Fuente">
-                <select value={c.fuente} onChange={(e) => actualizar(i, { fuente: e.target.value as FuenteComparable })} className={inputClass}>
+                <select
+                  value={c.fuente}
+                  onChange={(e) => actualizar(i, { fuente: e.target.value as FuenteComparable })}
+                  className={inputClass}
+                >
                   {FUENTES.map((o) => (
                     <option key={o}>{o}</option>
                   ))}
                 </select>
               </Campo>
               <Campo label="Tipo de precio">
-                <select value={c.tipoPrecio} onChange={(e) => actualizar(i, { tipoPrecio: e.target.value as TipoPrecioComparable })} className={inputClass}>
+                <select
+                  value={c.tipoPrecio}
+                  onChange={(e) =>
+                    actualizar(i, { tipoPrecio: e.target.value as TipoPrecioComparable })
+                  }
+                  className={inputClass}
+                >
                   {TIPOS_PRECIO.map((o) => (
                     <option key={o}>{o}</option>
                   ))}
@@ -183,40 +241,71 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Campo label="Fecha de referencia">
-                <input type="date" value={c.fechaReferencia ?? ''} onChange={(e) => actualizar(i, { fechaReferencia: e.target.value || null })} className={inputClass} />
+                <input
+                  type="date"
+                  value={c.fechaReferencia ?? ''}
+                  onChange={(e) => actualizar(i, { fechaReferencia: e.target.value || null })}
+                  className={inputClass}
+                />
               </Campo>
               <Campo label="Distancia aprox. (km)">
-                <NumInput value={c.distanciaKm} onChange={(v) => actualizar(i, { distanciaKm: v })} placeholder="Ej: 0.8" />
+                <NumInput
+                  value={c.distanciaKm}
+                  onChange={(v) => actualizar(i, { distanciaKm: v })}
+                  placeholder="Ej: 0.8"
+                />
               </Campo>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Campo label="Cubiertos (m²)">
-                <NumInput value={c.supCubierta} onChange={(v) => actualizar(i, { supCubierta: v })} />
+                <NumInput
+                  value={c.supCubierta}
+                  onChange={(v) => actualizar(i, { supCubierta: v })}
+                />
               </Campo>
               <Campo label="Semicubiertos (m²)">
                 <NumInput value={c.supSemi} onChange={(v) => actualizar(i, { supSemi: v })} />
               </Campo>
               <Campo label="Descubiertos (m²)">
-                <NumInput value={c.supDescubierta} onChange={(v) => actualizar(i, { supDescubierta: v })} />
+                <NumInput
+                  value={c.supDescubierta}
+                  onChange={(v) => actualizar(i, { supDescubierta: v })}
+                />
               </Campo>
               {TIPOS_CON_TERRENO.includes(c.tipoComp) ? (
                 <Campo label="Terreno (m²)">
-                  <NumInput value={c.supTerreno} onChange={(v) => actualizar(i, { supTerreno: v })} />
+                  <NumInput
+                    value={c.supTerreno}
+                    onChange={(v) => actualizar(i, { supTerreno: v })}
+                  />
                 </Campo>
               ) : (
                 <Campo label="m² de valuación">
-                  <input readOnly tabIndex={-1} value={c.superficie > 0 ? fmtNum(c.superficie) : ''} placeholder="—" className={`${inputClass} bg-surface font-semibold text-muted`} />
+                  <input
+                    readOnly
+                    tabIndex={-1}
+                    value={c.superficie > 0 ? fmtNum(c.superficie) : ''}
+                    placeholder="—"
+                    className={`${inputClass} bg-surface font-semibold text-muted`}
+                  />
                 </Campo>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Campo label="Precio (USD)">
-                <NumInput value={c.precio || null} onChange={(v) => actualizar(i, { precio: v ?? 0 })} placeholder="Ej: 120000" />
+                <NumInput
+                  value={c.precio || null}
+                  onChange={(v) => actualizar(i, { precio: v ?? 0 })}
+                  placeholder="Ej: 120000"
+                />
               </Campo>
               <Campo label="Dormitorios">
-                <NumInput value={c.dormitorios} onChange={(v) => actualizar(i, { dormitorios: v })} />
+                <NumInput
+                  value={c.dormitorios}
+                  onChange={(v) => actualizar(i, { dormitorios: v })}
+                />
               </Campo>
               <Campo label="Baños">
                 <NumInput value={c.banos} onChange={(v) => actualizar(i, { banos: v })} />
@@ -225,7 +314,11 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
                 <NumInput value={c.antiguedad} onChange={(v) => actualizar(i, { antiguedad: v })} />
               </Campo>
               <Campo label="Cochera">
-                <select value={c.cochera ? 'Sí' : 'No'} onChange={(e) => actualizar(i, { cochera: e.target.value === 'Sí' })} className={inputClass}>
+                <select
+                  value={c.cochera ? 'Sí' : 'No'}
+                  onChange={(e) => actualizar(i, { cochera: e.target.value === 'Sí' })}
+                  className={inputClass}
+                >
                   <option>No</option>
                   <option>Sí</option>
                 </select>
@@ -233,7 +326,13 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
             </div>
 
             <Campo label="Estado">
-              <select value={c.estado ?? ''} onChange={(e) => actualizar(i, { estado: (e.target.value || null) as EstadoInmueble | null })} className={inputClass}>
+              <select
+                value={c.estado ?? ''}
+                onChange={(e) =>
+                  actualizar(i, { estado: (e.target.value || null) as EstadoInmueble | null })
+                }
+                className={inputClass}
+              >
                 <option value="">Seleccionar…</option>
                 {ESTADOS.map((o) => (
                   <option key={o}>{o}</option>
@@ -241,7 +340,12 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
               </select>
             </Campo>
             <Campo label="Observaciones">
-              <input value={c.observaciones ?? ''} onChange={(e) => actualizar(i, { observaciones: e.target.value })} placeholder="Ej: reciclado a nuevo, sin cochera…" className={inputClass} />
+              <input
+                value={c.observaciones ?? ''}
+                onChange={(e) => actualizar(i, { observaciones: e.target.value })}
+                placeholder="Ej: reciclado a nuevo, sin cochera…"
+                className={inputClass}
+              />
             </Campo>
           </div>
         );
@@ -250,7 +354,9 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
       {analisis.count > 0 && (
         <div className="rounded-brand border-l-[3px] border-brand-red bg-surface p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Resumen automático</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
+              Resumen automático
+            </p>
             <ConfianzaBadge nivel={analisis.confidence} score={analisis.confidenceScore} />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -262,8 +368,8 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
           </div>
           {analisis.outlierCount > 0 && (
             <p className="mt-2.5 text-[11.5px] text-muted">
-              {analisis.outlierCount} comparable(s) atípico(s) reducido(s) en la ponderación. Dispersión:{' '}
-              {fmtNum(analisis.spreadPct)}%.
+              {analisis.outlierCount} comparable(s) atípico(s) reducido(s) en la ponderación.
+              Dispersión: {fmtNum(analisis.spreadPct)}%.
             </p>
           )}
         </div>
@@ -273,7 +379,15 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
 }
 
 /** Input numérico que mapea '' → null (para campos opcionales). */
-function NumInput({ value, onChange, placeholder }: { value: number | null | undefined; onChange: (v: number | null) => void; placeholder?: string }) {
+function NumInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: number | null | undefined;
+  onChange: (v: number | null) => void;
+  placeholder?: string;
+}) {
   return (
     <input
       type="number"
@@ -302,4 +416,3 @@ function Stat({ label, valor }: { label: string; valor: string }) {
     </div>
   );
 }
-

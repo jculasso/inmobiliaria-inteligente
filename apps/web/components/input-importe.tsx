@@ -21,10 +21,16 @@ export function InputImporte({
   onChange: (texto: string) => void;
   moneda?: 'ARS' | 'USD';
   className?: string;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'>) {
+} & Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'value' | 'onChange' | 'type' | 'inputMode'
+>) {
   return (
     <div className={`relative ${className}`}>
-      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted"
+      >
         {moneda === 'USD' ? 'U$S' : '$'}
       </span>
       <input
@@ -54,7 +60,10 @@ export function InputImporteNumero({
   valor,
   onValor,
   ...rest
-}: { valor: number | null; onValor: (n: number | null) => void } & Omit<Parameters<typeof InputImporte>[0], 'value' | 'onChange'>) {
+}: { valor: number | null; onValor: (n: number | null) => void } & Omit<
+  Parameters<typeof InputImporte>[0],
+  'value' | 'onChange'
+>) {
   const [texto, setTexto] = useState(escribirImporte(valor));
   return (
     <InputImporte
@@ -79,11 +88,25 @@ export function InputPorcentajeTexto({
   onChange,
   className = '',
   ...rest
-}: { value: string; onChange: (texto: string) => void; className?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'>) {
+}: { value: string; onChange: (texto: string) => void; className?: string } & Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'value' | 'onChange' | 'type' | 'inputMode'
+>) {
   return (
     <div className={`relative ${className}`}>
-      <input {...rest} type="text" inputMode="decimal" autoComplete="off" className={`${inputClass} pr-8 text-right tabular-nums`} value={value} onChange={(e) => onChange(e.target.value)} />
-      <span aria-hidden className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">
+      <input
+        {...rest}
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        className={`${inputClass} pr-8 text-right tabular-nums`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted"
+      >
         %
       </span>
     </div>
@@ -95,7 +118,10 @@ export function InputPorcentaje({
   valor,
   onValor,
   ...rest
-}: { valor: number; onValor: (n: number) => void } & Omit<Parameters<typeof InputPorcentajeTexto>[0], 'value' | 'onChange'>) {
+}: { valor: number; onValor: (n: number) => void } & Omit<
+  Parameters<typeof InputPorcentajeTexto>[0],
+  'value' | 'onChange'
+>) {
   const [texto, setTexto] = useState(String(valor).replace('.', ','));
   return (
     <InputPorcentajeTexto

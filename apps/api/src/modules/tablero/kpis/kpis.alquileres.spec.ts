@@ -14,7 +14,8 @@ import { KpisController } from './kpis.controller';
 
 describe('alquileres — quién puede pedirlos', () => {
   function rolesDe(metodo: keyof KpisController): Rol[] {
-    const roles = Reflect.getMetadata(ROLES_KEY, KpisController.prototype[metodo]) as Rol[] | undefined;
+    const roles = Reflect.getMetadata(ROLES_KEY, KpisController.prototype[metodo]) as
+      Rol[] | undefined;
     if (!roles) throw new Error(`El handler ${String(metodo)} no declara @Roles.`);
     return roles;
   }
@@ -64,7 +65,10 @@ describe('alquileres — el reparto en meses', () => {
    * 550, que es el precio de nadie.
    */
   it('entrega sumas, para que el promedio de un período sea exacto', () => {
-    const meses = alquileresPorMes([fila(1, 0, 1000), ...Array.from({ length: 9 }, () => fila(2, 0, 100))]);
+    const meses = alquileresPorMes([
+      fila(1, 0, 1000),
+      ...Array.from({ length: 9 }, () => fila(2, 0, 100)),
+    ]);
     const firmados = meses[0]!.firmados + meses[1]!.firmados;
     const suma = meses[0]!.valorMensualSuma + meses[1]!.valorMensualSuma;
     expect(suma / firmados).toBe(190);
@@ -93,7 +97,8 @@ describe('alquileres — la tarjeta de arriba sigue la misma regla', () => {
     ];
     const tx = {
       operacion: {
-        findMany: async ({ where }: { where: { tipo: string } }) => (where.tipo === 'alquiler' ? alquileres : []),
+        findMany: async ({ where }: { where: { tipo: string } }) =>
+          where.tipo === 'alquiler' ? alquileres : [],
       },
       usuario: { findMany: async () => [] },
     };

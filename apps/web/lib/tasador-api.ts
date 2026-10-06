@@ -88,14 +88,25 @@ export async function generarInforme(accessToken: string, id: string) {
 }
 
 export async function subirFotoTasacion(accessToken: string, tasacionId: string, file: File) {
-  return apiFetchForm(`/tasador/tasaciones/${tasacionId}/fotos`, TasacionFotoDtoSchema, { accessToken, file });
+  return apiFetchForm(`/tasador/tasaciones/${tasacionId}/fotos`, TasacionFotoDtoSchema, {
+    accessToken,
+    file,
+  });
 }
 
-export async function eliminarFotoTasacion(accessToken: string, tasacionId: string, fotoId: string) {
-  return apiFetch(`/tasador/tasaciones/${tasacionId}/fotos/${fotoId}`, z.object({ id: z.string() }), {
-    accessToken,
-    method: 'DELETE',
-  });
+export async function eliminarFotoTasacion(
+  accessToken: string,
+  tasacionId: string,
+  fotoId: string,
+) {
+  return apiFetch(
+    `/tasador/tasaciones/${tasacionId}/fotos/${fotoId}`,
+    z.object({ id: z.string() }),
+    {
+      accessToken,
+      method: 'DELETE',
+    },
+  );
 }
 
 // --- KPIs / dashboard ---

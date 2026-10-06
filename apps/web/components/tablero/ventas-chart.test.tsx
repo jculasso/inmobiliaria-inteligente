@@ -6,10 +6,50 @@ import { VentasChart } from './ventas-chart';
 const TRIMESTRES = ['Q1', 'Q2', 'Q3', 'Q4'];
 
 const DATOS = [
-  { volumen: 4000, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 100, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 4000 },
-  { volumen: 4100, operaciones: 1, puntas: 1, puntasCompradoras: 1, puntasVendedoras: 0, comision: 110, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 4100 },
-  { volumen: 200, operaciones: 1, puntas: 1, puntasCompradoras: 0, puntasVendedoras: 1, comision: 10, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 200 },
-  { volumen: 0, operaciones: 0, puntas: 0, puntasCompradoras: 0, puntasVendedoras: 0, comision: 0, comisionCompradora: 0, comisionVendedora: 0, ticketPromedio: 0 },
+  {
+    volumen: 4000,
+    operaciones: 1,
+    puntas: 1,
+    puntasCompradoras: 0,
+    puntasVendedoras: 1,
+    comision: 100,
+    comisionCompradora: 0,
+    comisionVendedora: 0,
+    ticketPromedio: 4000,
+  },
+  {
+    volumen: 4100,
+    operaciones: 1,
+    puntas: 1,
+    puntasCompradoras: 1,
+    puntasVendedoras: 0,
+    comision: 110,
+    comisionCompradora: 0,
+    comisionVendedora: 0,
+    ticketPromedio: 4100,
+  },
+  {
+    volumen: 200,
+    operaciones: 1,
+    puntas: 1,
+    puntasCompradoras: 0,
+    puntasVendedoras: 1,
+    comision: 10,
+    comisionCompradora: 0,
+    comisionVendedora: 0,
+    ticketPromedio: 200,
+  },
+  {
+    volumen: 0,
+    operaciones: 0,
+    puntas: 0,
+    puntasCompradoras: 0,
+    puntasVendedoras: 0,
+    comision: 0,
+    comisionCompradora: 0,
+    comisionVendedora: 0,
+    ticketPromedio: 0,
+  },
 ];
 
 // El componente dibuja los mismos trimestres dos veces: el gráfico SVG en
@@ -20,7 +60,16 @@ const enLasBarras = () => within(screen.getByRole('list', { name: /trimestre/i }
 
 describe('VentasChart — por trimestre', () => {
   it('muestra las 4 etiquetas de trimestre y la leyenda', () => {
-    render(<VentasChart anio={2025} datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={vi.fn()} />);
+    render(
+      <VentasChart
+        anio={2025}
+        datos={DATOS}
+        etiquetas={TRIMESTRES}
+        unidad="trimestre"
+        seleccionado={1}
+        onSelect={vi.fn()}
+      />,
+    );
     expect(enElGrafico().getByText('Q1')).toBeInTheDocument();
     expect(enElGrafico().getByText('Q4')).toBeInTheDocument();
     // Cada panel lleva su título.
@@ -30,7 +79,16 @@ describe('VentasChart — por trimestre', () => {
 
   it('al hacer click en una barra llama a onSelect con el trimestre', async () => {
     const onSelect = vi.fn();
-    render(<VentasChart anio={2025} datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
+    render(
+      <VentasChart
+        anio={2025}
+        datos={DATOS}
+        etiquetas={TRIMESTRES}
+        unidad="trimestre"
+        seleccionado={1}
+        onSelect={onSelect}
+      />,
+    );
 
     await userEvent.click(enElGrafico().getByText('Q3'));
     expect(onSelect).toHaveBeenCalledWith(3);
@@ -40,7 +98,16 @@ describe('VentasChart — por trimestre', () => {
     // Regresión: el gráfico medía 552px y a 360px se salía 226px, así que había
     // que deslizarlo de costado — el "baile".
     const onSelect = vi.fn();
-    render(<VentasChart anio={2025} datos={DATOS} etiquetas={TRIMESTRES} unidad="trimestre" seleccionado={1} onSelect={onSelect} />);
+    render(
+      <VentasChart
+        anio={2025}
+        datos={DATOS}
+        etiquetas={TRIMESTRES}
+        unidad="trimestre"
+        seleccionado={1}
+        onSelect={onSelect}
+      />,
+    );
 
     expect(enLasBarras().getAllByRole('listitem')).toHaveLength(4);
     await userEvent.click(enLasBarras().getByText('Q3'));

@@ -22,7 +22,11 @@ const ROLES_DISPONIBLES: { value: Rol; label: string; descripcion: string }[] = 
     label: 'Administración',
     descripcion: 'Opera los alquileres: contratos, cobros y liquidaciones. No ve el Tablero.',
   },
-  { value: 'admin_tenant', label: 'Admin del tenant', descripcion: 'Administra usuarios y ajustes.' },
+  {
+    value: 'admin_tenant',
+    label: 'Admin del tenant',
+    descripcion: 'Administra usuarios y ajustes.',
+  },
 ];
 
 /**
@@ -79,7 +83,13 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
           recibeReporteSemanal: recibeReporte,
         });
       } else {
-        await createUsuarioAdmin(accessToken, tenantId, { nombre, email, password, roles, telefono: tel });
+        await createUsuarioAdmin(accessToken, tenantId, {
+          nombre,
+          email,
+          password,
+          roles,
+          telefono: tel,
+        });
       }
       onSaved();
     } catch (err) {
@@ -95,7 +105,12 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
         <Seccion titulo="Datos personales" icono="👤">
           <div className="flex flex-col gap-2.5">
             <Campo label="Nombre y apellido">
-              <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+                className={inputClass}
+              />
             </Campo>
             <Campo label="Teléfono" hint="Aparece en el informe de tasación.">
               <input

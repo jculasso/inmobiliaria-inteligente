@@ -34,7 +34,11 @@ const CAMPOS = {
   estadoCivil: true,
 } as const;
 
-type FilaPersona = { [K in keyof typeof CAMPOS]: unknown } & { id: string; nombre: string; fechaNacimiento: Date | null };
+type FilaPersona = { [K in keyof typeof CAMPOS]: unknown } & {
+  id: string;
+  nombre: string;
+  fechaNacimiento: Date | null;
+};
 
 /** La fila de la base, con la fecha como texto. */
 function aDto(p: FilaPersona): PersonaDto {
@@ -46,12 +50,33 @@ function datos(dto: Persona) {
   return { ...dto, fechaNacimiento: toDate(dto.fechaNacimiento) };
 }
 
-const CAMPOS_CUENTA = { id: true, banco: true, tipo: true, moneda: true, numero: true, cbu: true, alias: true, titular: true, cuitTitular: true, principal: true } as const;
-const CAMPOS_CONTACTO = { id: true, nombre: true, relacion: true, email: true, telefono: true, principal: true } as const;
+const CAMPOS_CUENTA = {
+  id: true,
+  banco: true,
+  tipo: true,
+  moneda: true,
+  numero: true,
+  cbu: true,
+  alias: true,
+  titular: true,
+  cuitTitular: true,
+  principal: true,
+} as const;
+const CAMPOS_CONTACTO = {
+  id: true,
+  nombre: true,
+  relacion: true,
+  email: true,
+  telefono: true,
+  principal: true,
+} as const;
 
 /** Una sola principal: la marcada, o la primera si no hay ninguna. */
 function conUnaPrincipal<T extends { principal: boolean }>(xs: T[]): T[] {
-  const i = Math.max(0, xs.findIndex((x) => x.principal));
+  const i = Math.max(
+    0,
+    xs.findIndex((x) => x.principal),
+  );
   return xs.map((x, j) => ({ ...x, principal: j === i }));
 }
 
@@ -71,7 +96,13 @@ export class PersonasService {
    */
   async listar(): Promise<PersonaDto[]> {
     return this.db.withTenant(async (tx) =>
-      (await tx.alqPersona.findMany({ select: CAMPOS, orderBy: { nombre: 'asc' }, take: LIMITE_LISTA_CON_SONDA })).map((p) => aDto(p as FilaPersona)),
+      (
+        await tx.alqPersona.findMany({
+          select: CAMPOS,
+          orderBy: { nombre: 'asc' },
+          take: LIMITE_LISTA_CON_SONDA,
+        })
+      ).map((p) => aDto(p as FilaPersona)),
     );
   }
 
@@ -84,8 +115,16 @@ export class PersonasService {
     return this.db.withTenant(async (tx) => {
       const [p, cuentas, contactos, partes] = await Promise.all([
         tx.alqPersona.findUnique({ where: { id }, select: CAMPOS }),
-        tx.alqCuentaBancaria.findMany({ where: { personaId: id }, select: CAMPOS_CUENTA, orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }] }),
-        tx.alqContacto.findMany({ where: { personaId: id }, select: CAMPOS_CONTACTO, orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }] }),
+        tx.alqCuentaBancaria.findMany({
+          where: { personaId: id },
+          select: CAMPOS_CUENTA,
+          orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }],
+        }),
+        tx.alqContacto.findMany({
+          where: { personaId: id },
+          select: CAMPOS_CONTACTO,
+          orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }],
+        }),
         tx.alqContratoParte.findMany({
           where: { personaId: id, contrato: { estado: { not: 'anulado' } } },
           select: {
@@ -114,7 +153,9 @@ export class PersonasService {
         contactos,
         contratos: partes
           .map(({ papel, contrato: c }) => {
-            const vigente = c.tramos.filter((t) => t.importe != null && fromDate(t.desde)! <= hoy).at(-1);
+            const vigente = c.tramos
+              .filter((t) => t.importe != null && fromDate(t.desde)! <= hoy)
+              .at(-1);
             return {
               id: c.id,
               codigo: c.codigo,
@@ -128,18 +169,35 @@ export class PersonasService {
               importeVigente: vigente?.importe != null ? decToNum(vigente.importe) : null,
             };
           })
-          .sort((a, b) => (a.estado === b.estado ? a.codigo.localeCompare(b.codigo, 'es', { numeric: true }) : a.estado === 'vigente' ? -1 : 1)),
+          .sort((a, b) =>
+            a.estado === b.estado
+              ? a.codigo.localeCompare(b.codigo, 'es', { numeric: true })
+              : a.estado === 'vigente'
+                ? -1
+                : 1,
+          ),
       };
     });
   }
 
   /** Las cuentas bancarias se guardan todas juntas: la lista que se ve es la que queda. */
-  async guardarCuentas(ctx: TenantContext, id: string, cuentas: CuentaBancaria[]): Promise<PersonaFichaDto['cuentas']> {
+  async guardarCuentas(
+    ctx: TenantContext,
+    id: string,
+    cuentas: CuentaBancaria[],
+  ): Promise<PersonaFichaDto['cuentas']> {
     return this.db.withTenant(async (tx) => {
       const p = await tx.alqPersona.findUnique({ where: { id }, select: { nombre: true } });
       if (!p) throw new NotFoundException('Persona no encontrada.');
       await tx.alqCuentaBancaria.deleteMany({ where: { personaId: id } });
-      if (cuentas.length) await tx.alqCuentaBancaria.createMany({ data: conUnaPrincipal(cuentas).map((c) => ({ ...c, tenantId: ctx.tenantId, personaId: id })) });
+      if (cuentas.length)
+        await tx.alqCuentaBancaria.createMany({
+          data: conUnaPrincipal(cuentas).map((c) => ({
+            ...c,
+            tenantId: ctx.tenantId,
+            personaId: id,
+          })),
+        });
       await registrarEventos(tx, ctx, {
         entidad: 'persona',
         entidadId: id,
@@ -147,16 +205,31 @@ export class PersonasService {
         accion: 'edicion',
         resumen: `Cuentas bancarias de ${p.nombre}: ${cuentas.length ? cuentas.map((c) => `${c.banco}${c.alias ? ` (${c.alias})` : ''}`).join(', ') : 'ninguna'}`,
       });
-      return tx.alqCuentaBancaria.findMany({ where: { personaId: id }, select: CAMPOS_CUENTA, orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }] }) as Promise<PersonaFichaDto['cuentas']>;
+      return tx.alqCuentaBancaria.findMany({
+        where: { personaId: id },
+        select: CAMPOS_CUENTA,
+        orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }],
+      }) as Promise<PersonaFichaDto['cuentas']>;
     });
   }
 
-  async guardarContactos(ctx: TenantContext, id: string, contactos: Contacto[]): Promise<PersonaFichaDto['contactos']> {
+  async guardarContactos(
+    ctx: TenantContext,
+    id: string,
+    contactos: Contacto[],
+  ): Promise<PersonaFichaDto['contactos']> {
     return this.db.withTenant(async (tx) => {
       const p = await tx.alqPersona.findUnique({ where: { id }, select: { nombre: true } });
       if (!p) throw new NotFoundException('Persona no encontrada.');
       await tx.alqContacto.deleteMany({ where: { personaId: id } });
-      if (contactos.length) await tx.alqContacto.createMany({ data: conUnaPrincipal(contactos).map((c) => ({ ...c, tenantId: ctx.tenantId, personaId: id })) });
+      if (contactos.length)
+        await tx.alqContacto.createMany({
+          data: conUnaPrincipal(contactos).map((c) => ({
+            ...c,
+            tenantId: ctx.tenantId,
+            personaId: id,
+          })),
+        });
       await registrarEventos(tx, ctx, {
         entidad: 'persona',
         entidadId: id,
@@ -164,15 +237,30 @@ export class PersonasService {
         accion: 'edicion',
         resumen: `Contactos de ${p.nombre}: ${contactos.length ? contactos.map((c) => c.nombre).join(', ') : 'ninguno'}`,
       });
-      return tx.alqContacto.findMany({ where: { personaId: id }, select: CAMPOS_CONTACTO, orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }] });
+      return tx.alqContacto.findMany({
+        where: { personaId: id },
+        select: CAMPOS_CONTACTO,
+        orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }],
+      });
     });
   }
 
   async crear(ctx: TenantContext, dto: Persona): Promise<PersonaDto> {
     return this.db.withTenant(async (tx) => {
       await this.assertDocumentoLibre(tx, dto.documento);
-      const p = aDto((await tx.alqPersona.create({ data: { ...datos(dto), tenantId: ctx.tenantId }, select: CAMPOS })) as FilaPersona);
-      await registrarEventos(tx, ctx, { entidad: 'persona', entidadId: p.id, personaId: p.id, accion: 'alta', resumen: `Alta de ${p.nombre}` });
+      const p = aDto(
+        (await tx.alqPersona.create({
+          data: { ...datos(dto), tenantId: ctx.tenantId },
+          select: CAMPOS,
+        })) as FilaPersona,
+      );
+      await registrarEventos(tx, ctx, {
+        entidad: 'persona',
+        entidadId: p.id,
+        personaId: p.id,
+        accion: 'alta',
+        resumen: `Alta de ${p.nombre}`,
+      });
       return p;
     });
   }
@@ -182,8 +270,20 @@ export class PersonasService {
       const actual = await tx.alqPersona.findUnique({ where: { id }, select: { id: true } });
       if (!actual) throw new NotFoundException('Persona no encontrada.');
       await this.assertDocumentoLibre(tx, dto.documento, id);
-      const p = aDto((await tx.alqPersona.update({ where: { id }, data: datos(dto), select: CAMPOS })) as FilaPersona);
-      await registrarEventos(tx, ctx, { entidad: 'persona', entidadId: id, personaId: id, accion: 'edicion', resumen: `Datos de ${p.nombre} editados` });
+      const p = aDto(
+        (await tx.alqPersona.update({
+          where: { id },
+          data: datos(dto),
+          select: CAMPOS,
+        })) as FilaPersona,
+      );
+      await registrarEventos(tx, ctx, {
+        entidad: 'persona',
+        entidadId: id,
+        personaId: id,
+        accion: 'edicion',
+        resumen: `Datos de ${p.nombre} editados`,
+      });
       return p;
     });
   }
@@ -197,20 +297,40 @@ export class PersonasService {
     return this.db.withTenant(async (tx) => {
       const p = await tx.alqPersona.findUnique({
         where: { id },
-        select: { nombre: true, _count: { select: { partes: true, conceptos: true, cobros: true, liquidaciones: true, firmas: true } } },
+        select: {
+          nombre: true,
+          _count: {
+            select: {
+              partes: true,
+              conceptos: true,
+              cobros: true,
+              liquidaciones: true,
+              firmas: true,
+            },
+          },
+        },
       });
       if (!p) throw new NotFoundException('Persona no encontrada.');
       const c = p._count;
       const motivos = [
         c.partes && `${c.partes} ${c.partes === 1 ? 'contrato' : 'contratos'}`,
         c.cobros && `${c.cobros} ${c.cobros === 1 ? 'cobro' : 'cobros'}`,
-        c.liquidaciones && `${c.liquidaciones} ${c.liquidaciones === 1 ? 'liquidación' : 'liquidaciones'}`,
+        c.liquidaciones &&
+          `${c.liquidaciones} ${c.liquidaciones === 1 ? 'liquidación' : 'liquidaciones'}`,
         c.conceptos && `${c.conceptos} ${c.conceptos === 1 ? 'concepto' : 'conceptos'}`,
         c.firmas && 'firmas de contratos',
       ].filter(Boolean);
-      if (motivos.length) throw new ConflictException(`${p.nombre} no se puede borrar: tiene ${motivos.join(', ')}. Lo que tiene historia queda.`);
+      if (motivos.length)
+        throw new ConflictException(
+          `${p.nombre} no se puede borrar: tiene ${motivos.join(', ')}. Lo que tiene historia queda.`,
+        );
       await tx.alqPersona.delete({ where: { id } });
-      await registrarEventos(tx, ctx, { entidad: 'persona', entidadId: id, accion: 'borrado', resumen: `${p.nombre} borrada` });
+      await registrarEventos(tx, ctx, {
+        entidad: 'persona',
+        entidadId: id,
+        accion: 'borrado',
+        resumen: `${p.nombre} borrada`,
+      });
       return { id };
     });
   }
@@ -226,6 +346,7 @@ export class PersonasService {
       where: { documento, ...(exceptoId ? { NOT: { id: exceptoId } } : {}) },
       select: { nombre: true },
     });
-    if (otra) throw new ConflictException(`Ya hay una persona cargada con ese documento: ${otra.nombre}.`);
+    if (otra)
+      throw new ConflictException(`Ya hay una persona cargada con ese documento: ${otra.nombre}.`);
   }
 }

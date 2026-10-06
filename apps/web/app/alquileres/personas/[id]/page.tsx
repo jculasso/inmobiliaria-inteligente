@@ -1,6 +1,12 @@
 import { puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../../../lib/server-principal';
-import { getCuentaCorriente, getFichaPersona, getHistorialPersona, listCobros, listLiquidaciones } from '../../../../lib/alquileres-api';
+import {
+  getCuentaCorriente,
+  getFichaPersona,
+  getHistorialPersona,
+  listCobros,
+  listLiquidaciones,
+} from '../../../../lib/alquileres-api';
 import { CuentaCorriente } from '../../../../components/alquileres/cuenta-corriente';
 
 export const metadata = { title: 'Persona · Alquileres' };

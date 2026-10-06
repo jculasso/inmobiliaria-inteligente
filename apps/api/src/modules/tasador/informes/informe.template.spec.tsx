@@ -11,13 +11,20 @@ import { InformeDocument } from './informe.template';
  * la que están todas las fotos de propiedad que sube Vacker. Va como data URI
  * para que el test no dependa de la red.
  */
-const FOTO_4_3 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAEsCAIAAABi1XKVAAAEz0lEQVR4nO3OQQkAMQADsPpXMRETcbLOQn9lEIiA5LsH4AmZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASj8kc/7l+5mn7AAAAABJRU5ErkJggg==';
+const FOTO_4_3 =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAEsCAIAAABi1XKVAAAEz0lEQVR4nO3OQQkAMQADsPpXMRETcbLOQn9lEIiA5LsH4AmZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASpkPAEqZDwBKmQ8ASj8kc/7l+5mn7AAAAABJRU5ErkJggg==';
 
 const TASACION: TasacionDto = {
   id: '11111111-1111-1111-1111-111111111111',
   codigo: null,
   agenteId: '22222222-2222-2222-2222-222222222222',
-  agente: { id: '22222222-2222-2222-2222-222222222222', nombre: 'Ana', email: 'ana@vacker.com', fotoUrl: null, telefono: null },
+  agente: {
+    id: '22222222-2222-2222-2222-222222222222',
+    nombre: 'Ana',
+    email: 'ana@vacker.com',
+    fotoUrl: null,
+    telefono: null,
+  },
   cliente: 'Cliente de Prueba',
   fecha: '2026-03-10',
   direccion: 'Calle Falsa 123',
@@ -316,7 +323,6 @@ describe('la superficie del terreno en el informe', () => {
 
     expect(texto, 'apareció una fila de terreno que nadie cargó').not.toContain('146 m²');
   });
-
 });
 
 /**
@@ -372,7 +378,8 @@ describe('las siglas del análisis comercial no se destruyen', () => {
  * análisis pasó de unas 29 etiquetas cortas a poder tener más de cien.
  */
 describe('un informe largo ocupa más hojas', () => {
-  const paginas = (buffer: Buffer) => (buffer.toString('latin1').match(/\/Type\s*\/Page(?![s/])/g) ?? []).length;
+  const paginas = (buffer: Buffer) =>
+    (buffer.toString('latin1').match(/\/Type\s*\/Page(?![s/])/g) ?? []).length;
 
   async function informeCon(analisis: string, estrategia: string) {
     return renderToBuffer(
@@ -380,7 +387,10 @@ describe('un informe largo ocupa más hojas', () => {
         tasacion={{
           ...TASACION,
           analisisComercial: { ...TASACION.analisisComercial!, observacionesComerciales: analisis },
-          estrategiaComercial: { ...TASACION.estrategiaComercial!, observacionesEstrategia: estrategia },
+          estrategiaComercial: {
+            ...TASACION.estrategiaComercial!,
+            observacionesEstrategia: estrategia,
+          },
         }}
         tenantNombre="Vacker"
         logoUrl={null}

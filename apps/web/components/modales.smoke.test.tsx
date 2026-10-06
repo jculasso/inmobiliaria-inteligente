@@ -112,18 +112,66 @@ const protocolo = {
 
 /** Cada caso: nombre visible del modal + cómo montarlo. */
 const MODALES: [string, () => void][] = [
-  ['Nueva venta', () => render(<OperacionFormModal tipo="venta" vendedores={[]} onClose={noop} onSaved={noop} />)],
-  ['Nuevo alquiler', () => render(<OperacionFormModal tipo="alquiler" vendedores={[]} onClose={noop} onSaved={noop} />)],
-  ['Nuevo vendedor', () => render(<VendedorFormModal vendedores={[]} onClose={noop} onSaved={noop} />)],
-  ['Detalle del Tablero', () => render(<DetalleDrillModal titulo="Detalle del Tablero" filtro={{ anio: 2026 }} onClose={noop} />)],
-  ['Cambiar estado', () => render(<CambiarEstadoModal tasacion={tasacion} onClose={noop} onSaved={noop} />)],
-  ['Detalle del Tasador', () => render(<TasacionesDrillModal titulo="Detalle del Tasador" tasaciones={[]} onClose={noop} />)],
-  ['Nuevo usuario', () => render(<UsuarioAdminFormModal tenantId="t" onClose={noop} onSaved={noop} />)],
+  [
+    'Nueva venta',
+    () => render(<OperacionFormModal tipo="venta" vendedores={[]} onClose={noop} onSaved={noop} />),
+  ],
+  [
+    'Nuevo alquiler',
+    () =>
+      render(<OperacionFormModal tipo="alquiler" vendedores={[]} onClose={noop} onSaved={noop} />),
+  ],
+  [
+    'Nuevo vendedor',
+    () => render(<VendedorFormModal vendedores={[]} onClose={noop} onSaved={noop} />),
+  ],
+  [
+    'Detalle del Tablero',
+    () =>
+      render(
+        <DetalleDrillModal titulo="Detalle del Tablero" filtro={{ anio: 2026 }} onClose={noop} />,
+      ),
+  ],
+  [
+    'Cambiar estado',
+    () => render(<CambiarEstadoModal tasacion={tasacion} onClose={noop} onSaved={noop} />),
+  ],
+  [
+    'Detalle del Tasador',
+    () =>
+      render(<TasacionesDrillModal titulo="Detalle del Tasador" tasaciones={[]} onClose={noop} />),
+  ],
+  [
+    'Nuevo usuario',
+    () => render(<UsuarioAdminFormModal tenantId="t" onClose={noop} onSaved={noop} />),
+  ],
   ['Nueva inmobiliaria', () => render(<TenantFormModal onClose={noop} onSaved={noop} />)],
-  ['Activar acceso', () => render(<ActivarAccesoModal tenantId="t" usuario={usuario} onClose={noop} onSaved={noop} />)],
-  ['Restablecer contraseña', () => render(<ResetPasswordModal tenantId="t" usuario={usuario} onClose={noop} onSaved={noop} />)],
-  ['Iniciar protocolo', () => render(<IniciarProtocoloModal candidata={candidata} onClose={noop} />)],
-  ['Archivar', () => render(<ArchivarModal protocolo={protocolo} onArchivada={noop} onGuardando={noop} onClose={noop} />)],
+  [
+    'Activar acceso',
+    () =>
+      render(<ActivarAccesoModal tenantId="t" usuario={usuario} onClose={noop} onSaved={noop} />),
+  ],
+  [
+    'Restablecer contraseña',
+    () =>
+      render(<ResetPasswordModal tenantId="t" usuario={usuario} onClose={noop} onSaved={noop} />),
+  ],
+  [
+    'Iniciar protocolo',
+    () => render(<IniciarProtocoloModal candidata={candidata} onClose={noop} />),
+  ],
+  [
+    'Archivar',
+    () =>
+      render(
+        <ArchivarModal
+          protocolo={protocolo}
+          onArchivada={noop}
+          onGuardando={noop}
+          onClose={noop}
+        />,
+      ),
+  ],
   ['Nueva persona', () => render(<PersonaFormModal onClose={noop} onSaved={noop} />)],
   ['Nueva propiedad', () => render(<PropiedadFormModal onClose={noop} onSaved={noop} />)],
 ];

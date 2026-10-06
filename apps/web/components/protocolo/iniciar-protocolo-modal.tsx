@@ -90,7 +90,10 @@ export function IniciarProtocoloModal({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Precio de publicación (USD)" hint="Sugerido: el valor recomendado de la tasación.">
+            <Campo
+              label="Precio de publicación (USD)"
+              hint="Sugerido: el valor recomendado de la tasación."
+            >
               <input
                 type="number"
                 min={0}

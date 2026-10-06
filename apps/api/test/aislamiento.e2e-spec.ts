@@ -145,13 +145,13 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     it.skipIf(Boolean(t.sinControlDeInsercion))(
       'la fila intrusa SÍ entra desde su propio tenant (o el test anterior no probaría RLS)',
       async () => {
-      /*
-       * Control de la prueba de arriba. Sin esto, un INSERT que falle por
-       * cualquier otro motivo —una columna faltante, una clave foránea rota, un
-       * índice único— se leería como "RLS lo frenó". Acá se comprueba que la
-       * misma fila, desde el contexto de su dueño, entra sin problemas: lo
-       * único que cambia entre los dos casos es el tenant del contexto.
-       */
+        /*
+         * Control de la prueba de arriba. Sin esto, un INSERT que falle por
+         * cualquier otro motivo —una columna faltante, una clave foránea rota, un
+         * índice único— se leería como "RLS lo frenó". Acá se comprueba que la
+         * misma fila, desde el contexto de su dueño, entra sin problemas: lo
+         * único que cambia entre los dos casos es el tenant del contexto.
+         */
         const fila = t.filaIntrusa
           ? t.filaIntrusa(idsB.tenant, idsB)
           : t.fila(idsB.tenant, idsIntrusos(idsB, t.claveId));
@@ -230,9 +230,7 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
       }, ctx);
     };
 
-    const resultados = await Promise.all(
-      Array.from({ length: CORRIDAS }, (_, i) => corrida(i)),
-    );
+    const resultados = await Promise.all(Array.from({ length: CORRIDAS }, (_, i) => corrida(i)));
 
     for (const r of resultados) {
       expect(r.filasAjenas, `la corrida ${r.i} vio filas de la otra inmobiliaria`).toBe(0);
@@ -267,16 +265,35 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     const hoy = new Date('2026-10-06T00:00:00Z');
     await expect(
       tenantPrisma.withTenant(
-        (tx) => tx.alqPoliza.create({ data: { tenantId: idsA.tenant, contratoId: idsB.alqContrato, aseguradora: 'Intrusa', desde: hoy, hasta: hoy, premio: 1 } }),
+        (tx) =>
+          tx.alqPoliza.create({
+            data: {
+              tenantId: idsA.tenant,
+              contratoId: idsB.alqContrato,
+              aseguradora: 'Intrusa',
+              desde: hoy,
+              hasta: hoy,
+              premio: 1,
+            },
+          }),
         ctxA,
       ),
     ).rejects.toThrow();
     // Y la misma fila hacia su propio contrato entra: el rechazo es por cruzar inmobiliarias.
     const propia = await tenantPrisma.withTenant(
-      (tx) => tx.alqPoliza.create({ data: { tenantId: idsA.tenant, contratoId: idsA.alqContrato, aseguradora: 'Propia', desde: hoy, hasta: hoy, premio: 1 } }),
+      (tx) =>
+        tx.alqPoliza.create({
+          data: {
+            tenantId: idsA.tenant,
+            contratoId: idsA.alqContrato,
+            aseguradora: 'Propia',
+            desde: hoy,
+            hasta: hoy,
+            premio: 1,
+          },
+        }),
       ctxA,
     );
     await siembra.alqPoliza.delete({ where: { id: propia.id } });
   });
 });
-

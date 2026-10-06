@@ -9,7 +9,14 @@ import { OperacionesTable } from '../../../components/tablero/operaciones-table'
 export default async function VentasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string; trimestre?: string; verTodo?: string; orden?: string; dir?: string }>;
+  searchParams: Promise<{
+    anio?: string;
+    mes?: string;
+    trimestre?: string;
+    verTodo?: string;
+    orden?: string;
+    dir?: string;
+  }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;

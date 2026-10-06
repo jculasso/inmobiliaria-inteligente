@@ -69,8 +69,16 @@ export function TotalesVendedores({ anio, mesSeleccionado, verTodo, inicial }: P
     setLoading(true);
     getAccessToken()
       .then((accessToken) =>
-        getOrFetch(`resumen:${anio}:${periodo}:${mesSeleccionado}:${trimestre}:${verTodo ? 1 : 0}`, () =>
-          getResumenPeriodo(accessToken, { anio, periodo, mes: mesSeleccionado, trimestre, verTodo }),
+        getOrFetch(
+          `resumen:${anio}:${periodo}:${mesSeleccionado}:${trimestre}:${verTodo ? 1 : 0}`,
+          () =>
+            getResumenPeriodo(accessToken, {
+              anio,
+              periodo,
+              mes: mesSeleccionado,
+              trimestre,
+              verTodo,
+            }),
         ),
       )
       .then((res) => {

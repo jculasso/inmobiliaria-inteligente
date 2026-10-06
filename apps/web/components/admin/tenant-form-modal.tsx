@@ -37,7 +37,9 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
   const [modulos, setModulos] = useState<ModulosTenant>(tenant?.modulos ?? MODULOS_DEFAULT);
   const [logoUrl, setLogoUrl] = useState(tenant?.config.logoUrl ?? '');
   const [colorPrimario, setColorPrimario] = useState(tenant?.config.colorPrimario ?? '');
-  const [colorPrimarioOscuro, setColorPrimarioOscuro] = useState(tenant?.config.colorPrimarioOscuro ?? '');
+  const [colorPrimarioOscuro, setColorPrimarioOscuro] = useState(
+    tenant?.config.colorPrimarioOscuro ?? '',
+  );
   const [nombreCorto, setNombreCorto] = useState(tenant?.config.nombreCorto ?? '');
   /*
    * En PORCENTAJE y no en 0..1: quien carga esto piensa «la descubierta al
@@ -85,12 +87,21 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
   }
 
   return (
-    <Modal title={tenant ? 'Editar inmobiliaria' : 'Nueva inmobiliaria'} onClose={onClose} size="xl">
+    <Modal
+      title={tenant ? 'Editar inmobiliaria' : 'Nueva inmobiliaria'}
+      onClose={onClose}
+      size="xl"
+    >
       <form className="grid gap-2.5 sm:grid-cols-2" onSubmit={handleSubmit}>
         <Seccion titulo="Datos de la inmobiliaria" icono="🏢">
           <div className="flex flex-col gap-2.5">
             <Campo label="Nombre">
-              <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+                className={inputClass}
+              />
             </Campo>
             <Campo label="Slug" hint="Identificador único en minúsculas, ej. vacker.">
               <input
@@ -104,7 +115,11 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
             </Campo>
             <div className="grid grid-cols-2 gap-2.5">
               <Campo label="Plan" hint="Solo etiqueta comercial.">
-                <select value={plan} onChange={(e) => setPlan(e.target.value as PlanTenant)} className={inputClass}>
+                <select
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value as PlanTenant)}
+                  className={inputClass}
+                >
                   <option value="basico">Básico</option>
                   <option value="profesional">Profesional</option>
                   <option value="enterprise">Enterprise</option>
@@ -126,7 +141,10 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
           </div>
         </Seccion>
 
-        <Seccion titulo={`Módulos habilitados · ${cantidadModulos} de ${MODULO_KEYS.length}`} icono="🔑">
+        <Seccion
+          titulo={`Módulos habilitados · ${cantidadModulos} de ${MODULO_KEYS.length}`}
+          icono="🔑"
+        >
           <p className="mb-2 text-xs leading-snug text-muted">
             Definen a qué accede la inmobiliaria. Lo que está apagado no se ve ni se puede usar.
           </p>

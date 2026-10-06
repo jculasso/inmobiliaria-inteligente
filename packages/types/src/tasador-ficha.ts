@@ -89,7 +89,14 @@ const FICHAS: Record<TipoPropiedad, Ficha> = {
    * vieja la tiene cargada, la pantalla la muestra igual.
    */
   Terreno: {
-    campos: ['superficieTerreno', 'orientacion', 'servicios', 'expensas', 'aptoCredito', 'documentacion'],
+    campos: [
+      'superficieTerreno',
+      'orientacion',
+      'servicios',
+      'expensas',
+      'aptoCredito',
+      'documentacion',
+    ],
     caracteristicas: [],
   },
 
@@ -99,7 +106,14 @@ const FICHAS: Record<TipoPropiedad, Ficha> = {
    * cualquier cosa.
    */
   Cochera: {
-    campos: ['superficieConstruida', 'antiguedad', 'estadoInmueble', 'expensas', 'aptoCredito', 'documentacion'],
+    campos: [
+      'superficieConstruida',
+      'antiguedad',
+      'estadoInmueble',
+      'expensas',
+      'aptoCredito',
+      'documentacion',
+    ],
     caracteristicas: [],
   },
 
@@ -108,7 +122,7 @@ const FICHAS: Record<TipoPropiedad, Ficha> = {
    * doce tildes son todos de vivienda, así que no se le ofrece ninguno: lo suyo
    * —portón, playa de maniobras, fuerza motriz— vive en las fortalezas.
    */
-  'Galpón': {
+  Galpón: {
     campos: [
       'superficieConstruida',
       'superficieTerreno',

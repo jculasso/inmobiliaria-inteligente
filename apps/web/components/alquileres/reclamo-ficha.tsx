@@ -3,7 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { NOMBRE_ESTADO_RECLAMO, NOMBRE_PRIORIDAD, NOMBRE_TIPO_RECLAMO, type EstadoReclamo, type PrioridadReclamo, type ReclamoDto } from '@vacker/types';
+import {
+  NOMBRE_ESTADO_RECLAMO,
+  NOMBRE_PRIORIDAD,
+  NOMBRE_TIPO_RECLAMO,
+  type EstadoReclamo,
+  type PrioridadReclamo,
+  type ReclamoDto,
+} from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cambiarReclamo } from '../../lib/alquileres-api';
@@ -22,7 +29,11 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
   const [nota, setNota] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
-  const cambio = estado !== r.estado || prioridad !== r.prioridad || asignado !== (r.asignadoAId ?? '') || nota.trim() !== '';
+  const cambio =
+    estado !== r.estado ||
+    prioridad !== r.prioridad ||
+    asignado !== (r.asignadoAId ?? '') ||
+    nota.trim() !== '';
 
   async function guardar() {
     setError(null);
@@ -45,7 +56,10 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <EncabezadoPagina titulo={`Reclamo ${r.numero} · ${r.asunto}`} volver={{ href: '/alquileres/reclamos', texto: 'Reclamos' }}>
+      <EncabezadoPagina
+        titulo={`Reclamo ${r.numero} · ${r.asunto}`}
+        volver={{ href: '/alquileres/reclamos', texto: 'Reclamos' }}
+      >
         <PrioridadBadge prioridad={r.prioridad} />
         <EstadoReclamoBadge estado={r.estado} />
       </EncabezadoPagina>
@@ -53,14 +67,20 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <Dato etiqueta="Contrato">
             {r.contrato && (
-              <Link href={`/alquileres/contratos/${r.contrato.id}`} className="font-semibold text-ink hover:underline">
+              <Link
+                href={`/alquileres/contratos/${r.contrato.id}`}
+                className="font-semibold text-ink hover:underline"
+              >
                 {r.contrato.codigo} · {r.contrato.propiedad}
               </Link>
             )}
           </Dato>
           <Dato etiqueta="De">
             {r.persona && (
-              <Link href={`/alquileres/personas/${r.persona.id}`} className="text-ink hover:underline">
+              <Link
+                href={`/alquileres/personas/${r.persona.id}`}
+                className="text-ink hover:underline"
+              >
                 {r.persona.nombre}
               </Link>
             )}
@@ -71,13 +91,19 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
           </Dato>
           <Dato etiqueta="Asignado a">{r.asignadoA ?? 'Sin asignar'}</Dato>
         </dl>
-        {r.descripcion && <p className="mt-3 whitespace-pre-line text-sm text-ink">{r.descripcion}</p>}
+        {r.descripcion && (
+          <p className="mt-3 whitespace-pre-line text-sm text-ink">{r.descripcion}</p>
+        )}
       </Panel>
       <Panel icono="✍️" titulo="Actualizar">
         <div className="flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <Campo label="Estado">
-              <select className={inputClass} value={estado} onChange={(e) => setEstado(e.target.value as EstadoReclamo)}>
+              <select
+                className={inputClass}
+                value={estado}
+                onChange={(e) => setEstado(e.target.value as EstadoReclamo)}
+              >
                 {Object.entries(NOMBRE_ESTADO_RECLAMO).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
@@ -86,7 +112,11 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
               </select>
             </Campo>
             <Campo label="Prioridad">
-              <select className={inputClass} value={prioridad} onChange={(e) => setPrioridad(e.target.value as PrioridadReclamo)}>
+              <select
+                className={inputClass}
+                value={prioridad}
+                onChange={(e) => setPrioridad(e.target.value as PrioridadReclamo)}
+              >
                 {Object.entries(NOMBRE_PRIORIDAD).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
@@ -95,7 +125,11 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
               </select>
             </Campo>
             <Campo label="Asignado a">
-              <select className={inputClass} value={asignado} onChange={(e) => setAsignado(e.target.value)}>
+              <select
+                className={inputClass}
+                value={asignado}
+                onChange={(e) => setAsignado(e.target.value)}
+              >
                 <option value="">Sin asignar</option>
                 {usuarios.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -105,8 +139,16 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
               </select>
             </Campo>
           </div>
-          <Campo label="Nota" hint="Lo que se hizo o se habló: queda en el historial con tu nombre.">
-            <textarea className={textareaClass} rows={3} value={nota} onChange={(e) => setNota(e.target.value)} />
+          <Campo
+            label="Nota"
+            hint="Lo que se hizo o se habló: queda en el historial con tu nombre."
+          >
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={nota}
+              onChange={(e) => setNota(e.target.value)}
+            />
           </Campo>
           {error && (
             <p role="alert" className="text-sm font-medium text-danger">

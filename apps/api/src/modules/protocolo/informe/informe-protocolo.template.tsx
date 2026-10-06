@@ -26,7 +26,14 @@ const LINE = '#E6E6E6';
 function crearEstilos(red: string, redDark: string) {
   return StyleSheet.create({
     // `paddingBottom` deja lugar al pie fijo: sin eso el texto se le encima.
-    page: { paddingTop: 36, paddingHorizontal: 36, paddingBottom: 58, fontSize: 9.5, color: INK, fontFamily: FUENTE_MARCA },
+    page: {
+      paddingTop: 36,
+      paddingHorizontal: 36,
+      paddingBottom: 58,
+      fontSize: 9.5,
+      color: INK,
+      fontFamily: FUENTE_MARCA,
+    },
 
     // — encabezado, idéntico al informe de tasación —
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -50,7 +57,13 @@ function crearEstilos(red: string, redDark: string) {
 
     // — secciones, mismo tratamiento —
     sectionTitle: { fontSize: 11, fontWeight: 800, color: INK, marginBottom: 8, marginTop: 4 },
-    sectionUnderline: { width: '100%', height: 2, backgroundColor: red, marginBottom: 10, marginTop: -4 },
+    sectionUnderline: {
+      width: '100%',
+      height: 2,
+      backgroundColor: red,
+      marginBottom: 10,
+      marginTop: -4,
+    },
 
     /*
      * La foto se muestra ENTERA, no recortada.
@@ -74,7 +87,14 @@ function crearEstilos(red: string, redDark: string) {
 
     // — tarjetas del resumen —
     resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    resumenCard: { width: '23.5%', borderWidth: 1, borderColor: LINE, borderRadius: 6, padding: 8, marginBottom: 8 },
+    resumenCard: {
+      width: '23.5%',
+      borderWidth: 1,
+      borderColor: LINE,
+      borderRadius: 6,
+      padding: 8,
+      marginBottom: 8,
+    },
     resumenCardDestacado: { backgroundColor: red, borderColor: redDark },
     resumenLabel: { fontSize: 7, fontWeight: 700, color: MUTED, letterSpacing: 0.5 },
     resumenLabelDestacado: { color: 'rgba(255,255,255,0.85)' },
@@ -84,7 +104,13 @@ function crearEstilos(red: string, redDark: string) {
     resumenSubDestacado: { color: 'rgba(255,255,255,0.85)' },
 
     // — embudo —
-    embudo: { flexDirection: 'row', borderWidth: 1, borderColor: LINE, borderRadius: 6, marginBottom: 12 },
+    embudo: {
+      flexDirection: 'row',
+      borderWidth: 1,
+      borderColor: LINE,
+      borderRadius: 6,
+      marginBottom: 12,
+    },
     embudoTitulo: { flex: 1.3, backgroundColor: '#242428', padding: 11, justifyContent: 'center' },
     embudoTituloLabel: { fontSize: 7, fontWeight: 700, color: '#CFCFD3', letterSpacing: 0.65 },
     embudoTituloValor: { fontSize: 11, fontWeight: 700, color: '#FFFFFF', marginTop: 2 },
@@ -115,7 +141,14 @@ function crearEstilos(red: string, redDark: string) {
       borderBottomWidth: 1,
       borderBottomColor: LINE,
     },
-    accion: { borderWidth: 1, borderColor: LINE, borderRadius: 5, backgroundColor: '#FAFAFB', padding: 7, marginBottom: 4 },
+    accion: {
+      borderWidth: 1,
+      borderColor: LINE,
+      borderRadius: 5,
+      backgroundColor: '#FAFAFB',
+      padding: 7,
+      marginBottom: 4,
+    },
     accionTitulo: { fontSize: 8.8, fontWeight: 700, color: INK },
     accionDetalle: { fontSize: 7.7, color: '#64646B', lineHeight: 1.4, marginTop: 2 },
     vacio: { fontSize: 8.8, color: MUTED, fontStyle: 'italic' },
@@ -170,7 +203,11 @@ export function InformeProtocoloDocument({
         {/* Encabezado — mismo bloque que el informe de tasación. */}
         <View style={styles.header}>
           <View style={styles.logoBox}>
-            {logoUrl ? <Image src={logoUrl} style={styles.logoImg} /> : <View style={styles.logoFallback} />}
+            {logoUrl ? (
+              <Image src={logoUrl} style={styles.logoImg} />
+            ) : (
+              <View style={styles.logoFallback} />
+            )}
             <Text style={styles.brandName}>{tenantNombre}</Text>
           </View>
           <View style={styles.docMeta}>
@@ -219,13 +256,36 @@ export function InformeProtocoloDocument({
           <Text style={styles.sectionTitle}>RESUMEN DE LA COMERCIALIZACIÓN</Text>
           <View style={styles.sectionUnderline} />
           <View style={styles.resumenGrid}>
-            <Card s={styles} label="SEMANA EN CURSO" value={`${p.semanaActual} de ${TOTAL_SEMANAS}`} />
+            <Card
+              s={styles}
+              label="SEMANA EN CURSO"
+              value={`${p.semanaActual} de ${TOTAL_SEMANAS}`}
+            />
             <Card s={styles} label="AVANCE DEL PLAN" value={pct(p.avance)} destacado />
-            <Card s={styles} label="DÍAS PUBLICADA" value={String(p.diasPublicada)} sub={`desde ${fmtFecha(p.fechaInicio)}`} />
-            <Card s={styles} label="ACCIONES REALIZADAS" value={String(realizadas.length)} sub={`de ${p.acciones.length} previstas`} />
-            <Card s={styles} label="CONSULTAS" value={String(p.embudo.consultas)} sub={`${p.embudo.consultasCalificadas} calificadas`} />
+            <Card
+              s={styles}
+              label="DÍAS PUBLICADA"
+              value={String(p.diasPublicada)}
+              sub={`desde ${fmtFecha(p.fechaInicio)}`}
+            />
+            <Card
+              s={styles}
+              label="ACCIONES REALIZADAS"
+              value={String(realizadas.length)}
+              sub={`de ${p.acciones.length} previstas`}
+            />
+            <Card
+              s={styles}
+              label="CONSULTAS"
+              value={String(p.embudo.consultas)}
+              sub={`${p.embudo.consultasCalificadas} calificadas`}
+            />
             <Card s={styles} label="VISITAS" value={String(p.embudo.visitas)} />
-            <Card s={styles} label="INTERESADOS ACTIVOS" value={String(p.embudo.interesadosActivos)} />
+            <Card
+              s={styles}
+              label="INTERESADOS ACTIVOS"
+              value={String(p.embudo.interesadosActivos)}
+            />
             <Card s={styles} label="OFERTAS RECIBIDAS" value={String(p.embudo.ofertas)} />
           </View>
         </View>
@@ -264,7 +324,9 @@ export function InformeProtocoloDocument({
               </View>
               <View style={styles.box} wrap={false}>
                 <Text style={styles.boxTitulo}>Principales objeciones</Text>
-                <Text style={styles.boxTexto}>{p.objeciones || 'No se registraron objeciones relevantes.'}</Text>
+                <Text style={styles.boxTexto}>
+                  {p.objeciones || 'No se registraron objeciones relevantes.'}
+                </Text>
               </View>
             </View>
             <View style={styles.col}>
@@ -375,9 +437,15 @@ function Card({
 }) {
   return (
     <View style={destacado ? [s.resumenCard, s.resumenCardDestacado] : s.resumenCard}>
-      <Text style={destacado ? [s.resumenLabel, s.resumenLabelDestacado] : s.resumenLabel}>{label}</Text>
-      <Text style={destacado ? [s.resumenValue, s.resumenValueDestacado] : s.resumenValue}>{value}</Text>
-      {sub && <Text style={destacado ? [s.resumenSub, s.resumenSubDestacado] : s.resumenSub}>{sub}</Text>}
+      <Text style={destacado ? [s.resumenLabel, s.resumenLabelDestacado] : s.resumenLabel}>
+        {label}
+      </Text>
+      <Text style={destacado ? [s.resumenValue, s.resumenValueDestacado] : s.resumenValue}>
+        {value}
+      </Text>
+      {sub && (
+        <Text style={destacado ? [s.resumenSub, s.resumenSubDestacado] : s.resumenSub}>{sub}</Text>
+      )}
     </View>
   );
 }

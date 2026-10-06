@@ -110,7 +110,10 @@ describe('sección 3 — nada de lo elegido se pierde', () => {
 
   it('muestra una fortaleza escrita a mano, que no está en ninguna lista', () => {
     montar({ fortalezas: ['Vista al lago artificial'] });
-    expect(screen.getByRole('button', { name: 'Vista al lago artificial' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Vista al lago artificial' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });
 
@@ -127,7 +130,9 @@ describe('sección 3 — agregar una propia', () => {
   it('no la duplica si ya está, aunque cambien tildes y mayúsculas', () => {
     const { setFortalezas } = montar({ fortalezas: ['Excelente ubicación'] });
     fireEvent.click(screen.getByRole('button', { name: '+ Agregar fortaleza' }));
-    fireEvent.change(screen.getByLabelText('Agregar fortaleza'), { target: { value: 'excelente ubicacion' } });
+    fireEvent.change(screen.getByLabelText('Agregar fortaleza'), {
+      target: { value: 'excelente ubicacion' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Agregar' }));
     expect(setFortalezas).not.toHaveBeenCalled();
   });
@@ -152,7 +157,9 @@ describe('sección 3 — el buscador', () => {
 
   it('avisa cuando no hay nada con ese texto', () => {
     montar();
-    fireEvent.change(screen.getByLabelText('Buscar fortalezas'), { target: { value: 'helipuerto' } });
+    fireEvent.change(screen.getByLabelText('Buscar fortalezas'), {
+      target: { value: 'helipuerto' },
+    });
     expect(screen.getByText(/Nada con ese texto/)).toBeInTheDocument();
   });
 });

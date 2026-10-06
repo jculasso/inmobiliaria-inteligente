@@ -1,4 +1,10 @@
-import type { AgregadoKpi, AlquileresMes, LadoPunta, RankingItem, SeguimientoObjetivo } from '@vacker/types';
+import type {
+  AgregadoKpi,
+  AlquileresMes,
+  LadoPunta,
+  RankingItem,
+  SeguimientoObjetivo,
+} from '@vacker/types';
 
 /**
  * Lógica de negocio del Tablero (MODELO Parte C), replicada del prototipo

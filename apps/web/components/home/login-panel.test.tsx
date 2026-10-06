@@ -164,6 +164,7 @@ describe('destinoTrasLogin', () => {
     expect(destino('/alquileres?tipo=comercial')).toBe('/alquileres?tipo=comercial');
   });
   it('rechaza todo lo que el navegador convierte en otro sitio', () => {
-    for (const r of ['//evil.com', '/\\evil.com', '/\t/evil.com', 'https://evil.com', 'evil.com']) expect(destino(r)).toBeNull();
+    for (const r of ['//evil.com', '/\\evil.com', '/\t/evil.com', 'https://evil.com', 'evil.com'])
+      expect(destino(r)).toBeNull();
   });
 });

@@ -41,7 +41,24 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
 
 /** Módulo Alquileres: administración de contratos de alquiler. */
 @Module({
-  controllers: [IndicesController, ProveedoresController, ImpuestosController, PlantillasController, ReclamosController, AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController, LiquidacionesController, TableroAlquileresController, FirmaController, FirmaAvisosController],
+  controllers: [
+    IndicesController,
+    ProveedoresController,
+    ImpuestosController,
+    PlantillasController,
+    ReclamosController,
+    AlquileresController,
+    PersonasController,
+    PropiedadesAlquilerController,
+    ContratosController,
+    IndexacionesController,
+    ConceptosController,
+    CobrosController,
+    LiquidacionesController,
+    TableroAlquileresController,
+    FirmaController,
+    FirmaAvisosController,
+  ],
   providers: [
     AlquileresService,
     PersonasService,
@@ -68,7 +85,8 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
     // escribir su adaptador y agregarlo acá.
     {
       provide: PROVEEDORES_FIRMA,
-      useFactory: (...adaptadores: ProveedorFirma[]) => new Map(adaptadores.map((a) => [a.nombre, a])),
+      useFactory: (...adaptadores: ProveedorFirma[]) =>
+        new Map(adaptadores.map((a) => [a.nombre, a])),
       inject: [FirmaManual],
     },
     ReciboService,

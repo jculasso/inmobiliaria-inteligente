@@ -4,9 +4,13 @@ import userEvent from '@testing-library/user-event';
 import type { ContratoDto } from '@vacker/types';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn().mockResolvedValue('token') }));
+vi.mock('../../lib/supabase/client', () => ({
+  getAccessToken: vi.fn().mockResolvedValue('token'),
+}));
 const cambiarEstadoContrato = vi.fn();
-vi.mock('../../lib/alquileres-api', () => ({ cambiarEstadoContrato: (...a: unknown[]) => cambiarEstadoContrato(...a) }));
+vi.mock('../../lib/alquileres-api', () => ({
+  cambiarEstadoContrato: (...a: unknown[]) => cambiarEstadoContrato(...a),
+}));
 
 import { ContratoFicha } from './contrato-ficha';
 
@@ -39,8 +43,26 @@ const base: ContratoDto = {
   propiedad: { id: 'p', direccion: 'Calle 123', unidad: null, ciudad: 'Rosario' },
   partes: [],
   tramos: [
-    { numero: 1, desde: '2024-11-01', hasta: '2025-02-28', importe: 250_000, confirmadoEl: null, indiceBase: null, indiceRequerido: null, importePropuesto: null },
-    { numero: 2, desde: '2025-03-01', hasta: '2025-06-30', importe: null, confirmadoEl: null, indiceBase: null, indiceRequerido: null, importePropuesto: null },
+    {
+      numero: 1,
+      desde: '2024-11-01',
+      hasta: '2025-02-28',
+      importe: 250_000,
+      confirmadoEl: null,
+      indiceBase: null,
+      indiceRequerido: null,
+      importePropuesto: null,
+    },
+    {
+      numero: 2,
+      desde: '2025-03-01',
+      hasta: '2025-06-30',
+      importe: null,
+      confirmadoEl: null,
+      indiceBase: null,
+      indiceRequerido: null,
+      importePropuesto: null,
+    },
   ],
 };
 
@@ -50,7 +72,10 @@ describe('ContratoFicha — acciones según el estado (reglas 2 y 3)', () => {
   it('en borrador: editar y activar; no se puede rescindir', () => {
     render(<ContratoFicha contrato={base} />);
     expect(screen.getByRole('button', { name: 'Activar contrato' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '✏️ Editar' })).toHaveAttribute('href', '/alquileres/contratos/c1/editar');
+    expect(screen.getByRole('link', { name: '✏️ Editar' })).toHaveAttribute(
+      'href',
+      '/alquileres/contratos/c1/editar',
+    );
     expect(screen.queryByRole('button', { name: 'Rescindir' })).not.toBeInTheDocument();
   });
 
@@ -68,7 +93,10 @@ describe('ContratoFicha — acciones según el estado (reglas 2 y 3)', () => {
     expect(dialogo.getByRole('button', { name: 'Rescindir' })).toBeDisabled();
     await userEvent.type(dialogo.getByLabelText(/Fecha de rescisión/), '2025-06-30');
     await userEvent.click(dialogo.getByRole('button', { name: 'Rescindir' }));
-    expect(cambiarEstadoContrato).toHaveBeenCalledWith('token', 'c1', { estado: 'rescindido', fecha: '2025-06-30' });
+    expect(cambiarEstadoContrato).toHaveBeenCalledWith('token', 'c1', {
+      estado: 'rescindido',
+      fecha: '2025-06-30',
+    });
   });
 
   it('un tramo sin indexar se marca, no se muestra en cero', () => {

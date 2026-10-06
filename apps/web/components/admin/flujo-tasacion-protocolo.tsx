@@ -38,7 +38,9 @@ function Etapa({
         {modulo}
       </span>
       <p className="mt-2 text-sm font-bold text-ink">{titulo}</p>
-      <div className="mt-1.5 flex flex-col gap-1.5 text-[13px] leading-relaxed text-muted">{children}</div>
+      <div className="mt-1.5 flex flex-col gap-1.5 text-[13px] leading-relaxed text-muted">
+        {children}
+      </div>
     </div>
   );
 }
@@ -46,7 +48,10 @@ function Etapa({
 /** Flecha: hacia abajo cuando está apilado, hacia la derecha desde `md:`. */
 function Flecha() {
   return (
-    <div aria-hidden className="flex shrink-0 items-center justify-center py-1 text-xl text-brand-red md:py-0 md:px-1">
+    <div
+      aria-hidden
+      className="flex shrink-0 items-center justify-center py-1 text-xl text-brand-red md:py-0 md:px-1"
+    >
       <span className="md:hidden">↓</span>
       <span className="hidden md:inline">→</span>
     </div>
@@ -59,14 +64,18 @@ export function FlujoTasacionProtocolo() {
       <div className="flex flex-col md:flex-row md:items-stretch">
         <Etapa modulo="Tasador" titulo="1 · Se carga la tasación">
           <p>Datos de la propiedad, comparables y el rango de valores.</p>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Estado: En proceso</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Estado: En proceso
+          </p>
         </Etapa>
 
         <Flecha />
 
         <Etapa modulo="Tasador" titulo="2 · Se le presenta al propietario">
           <p>Se genera el informe con la marca de la inmobiliaria y se le deja al cliente.</p>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Estado: Presentada</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Estado: Presentada
+          </p>
         </Etapa>
 
         <Flecha />
@@ -84,9 +93,9 @@ export function FlujoTasacionProtocolo() {
         <div className="rounded-brand border border-line bg-surface p-4">
           <p className="text-sm font-bold text-ink">Si NO se capta</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-            Se anota el motivo —precio, competencia, se arrepintió— y ahí termina. Queda en el reporte del
-            Tasador para saber por qué se pierden captaciones, que es la información más valiosa del
-            módulo.
+            Se anota el motivo —precio, competencia, se arrepintió— y ahí termina. Queda en el
+            reporte del Tasador para saber por qué se pierden captaciones, que es la información más
+            valiosa del módulo.
           </p>
         </div>
 
@@ -108,8 +117,8 @@ export function FlujoTasacionProtocolo() {
       <div className="flex flex-col md:flex-row md:items-stretch">
         <Etapa modulo="Protocolo" titulo="4 · Se inicia el protocolo" destacada>
           <p>
-            Desde <strong>Captadas</strong>, la tasación aparece lista para iniciar. Se confirma el precio
-            de publicación y la fecha de inicio.
+            Desde <strong>Captadas</strong>, la tasación aparece lista para iniciar. Se confirma el
+            precio de publicación y la fecha de inicio.
           </p>
           <p>
             El vencimiento se calcula solo, a partir de la exclusividad que se pactó en la tasación.
@@ -120,7 +129,8 @@ export function FlujoTasacionProtocolo() {
 
         <Etapa modulo="Protocolo" titulo="5 · Cinco semanas de trabajo">
           <p>
-            Cada semana trae sus acciones. Se marcan a medida que se hacen y el avance se calcula solo.
+            Cada semana trae sus acciones. Se marcan a medida que se hacen y el avance se calcula
+            solo.
           </p>
           <p>Si algo se atrasa, aparece como alerta en el tablero del módulo.</p>
         </Etapa>
@@ -129,8 +139,8 @@ export function FlujoTasacionProtocolo() {
 
         <Etapa modulo="Protocolo" titulo="6 · Informe y cierre">
           <p>
-            Sale el informe para el propietario con lo que se hizo. Al terminar, la propiedad se archiva
-            indicando si se vendió, se retiró, venció o se cerró por otro motivo.
+            Sale el informe para el propietario con lo que se hizo. Al terminar, la propiedad se
+            archiva indicando si se vendió, se retiró, venció o se cerró por otro motivo.
           </p>
         </Etapa>
       </div>
@@ -138,14 +148,14 @@ export function FlujoTasacionProtocolo() {
       <div className="mt-2 rounded-brand border border-line border-l-[3px] border-l-brand-red bg-white p-4">
         <p className="text-sm font-bold text-ink">Dos cosas que conviene aclarar en la reunión</p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-          <strong>La tasación no desaparece al iniciar el protocolo.</strong> Queda en Captada y sigue
-          contando en las métricas del Tasador. Son dos fichas distintas de la misma propiedad, no una que
-          reemplaza a la otra.
+          <strong>La tasación no desaparece al iniciar el protocolo.</strong> Queda en Captada y
+          sigue contando en las métricas del Tasador. Son dos fichas distintas de la misma
+          propiedad, no una que reemplaza a la otra.
         </p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-          <strong>Sin tasación captada no hay protocolo.</strong> El protocolo no se crea de la nada: sale
-          siempre de una captación. Por eso cargar bien el estado de la tasación no es burocracia — es lo
-          que habilita el paso siguiente.
+          <strong>Sin tasación captada no hay protocolo.</strong> El protocolo no se crea de la
+          nada: sale siempre de una captación. Por eso cargar bien el estado de la tasación no es
+          burocracia — es lo que habilita el paso siguiente.
         </p>
       </div>
     </div>

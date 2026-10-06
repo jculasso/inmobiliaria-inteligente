@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   DIAS_ANTICIPACION_INDEXACION,
@@ -36,7 +41,10 @@ const INCLUIR = {
       indice: true,
       propiedad: { select: { direccion: true, unidad: true } },
       partes: { where: { papel: 'inquilino' }, select: { persona: { select: { nombre: true } } } },
-      tramos: { select: { numero: true, desde: true, importe: true }, orderBy: { numero: 'asc' as const } },
+      tramos: {
+        select: { numero: true, desde: true, importe: true },
+        orderBy: { numero: 'asc' as const },
+      },
     },
   },
 } satisfies Prisma.AlqTramoInclude;
@@ -63,7 +71,10 @@ export class IndexacionesService {
   constructor(private readonly db: TenantPrismaService) {}
 
   /** `dias`: cuánto adelante mira. La bandeja usa 30; el tablero, 60 (como Gexion). */
-  async bandeja(hoy = hoyArgentina(), dias = DIAS_ANTICIPACION_INDEXACION): Promise<BandejaIndexacionDto> {
+  async bandeja(
+    hoy = hoyArgentina(),
+    dias = DIAS_ANTICIPACION_INDEXACION,
+  ): Promise<BandejaIndexacionDto> {
     return this.db.withTenant(async (tx) => {
       const filas = await tx.alqTramo.findMany({
         where: {
@@ -83,7 +94,10 @@ export class IndexacionesService {
 
       const valores = await this.cargarValores(
         tx,
-        pendientes.map(({ fila, anterior }) => ({ indice: fila.contrato.indice, desdes: [fromDate(anterior.desde)!, fromDate(fila.desde)!] })),
+        pendientes.map(({ fila, anterior }) => ({
+          indice: fila.contrato.indice,
+          desdes: [fromDate(anterior.desde)!, fromDate(fila.desde)!],
+        })),
       );
       const indices = await this.estadoIndices(tx, hoy);
 
@@ -95,20 +109,31 @@ export class IndexacionesService {
     });
   }
 
-  async confirmar(ctx: TenantContext, tramoId: string, dto: ConfirmarIndexacion): Promise<IndexacionConfirmadaDto> {
+  async confirmar(
+    ctx: TenantContext,
+    tramoId: string,
+    dto: ConfirmarIndexacion,
+  ): Promise<IndexacionConfirmadaDto> {
     return this.db.withTenant(async (tx) => {
       const fila = await tx.alqTramo.findUnique({ where: { id: tramoId }, include: INCLUIR });
       if (!fila) throw new NotFoundException('El tramo no existe.');
       const c = fila.contrato;
-      if (c.estado !== 'vigente') throw new BadRequestException('Solo se indexan contratos vigentes.');
-      if (c.ajuste !== 'indexado' || !c.indice) throw new BadRequestException('El contrato no se ajusta por índice.');
-      if (fila.importe != null) throw new ConflictException(`El tramo ${fila.numero} ya está indexado.`);
+      if (c.estado !== 'vigente')
+        throw new BadRequestException('Solo se indexan contratos vigentes.');
+      if (c.ajuste !== 'indexado' || !c.indice)
+        throw new BadRequestException('El contrato no se ajusta por índice.');
+      if (fila.importe != null)
+        throw new ConflictException(`El tramo ${fila.numero} ya está indexado.`);
       const anterior = c.tramos.find((t) => t.numero === fila.numero - 1);
       if (anterior?.importe == null) {
-        throw new BadRequestException(`Primero hay que indexar el tramo ${fila.numero - 1}: este se calcula sobre aquel.`);
+        throw new BadRequestException(
+          `Primero hay que indexar el tramo ${fila.numero - 1}: este se calcula sobre aquel.`,
+        );
       }
 
-      const valores = await this.cargarValores(tx, [{ indice: c.indice, desdes: [fromDate(anterior.desde)!, fromDate(fila.desde)!] }]);
+      const valores = await this.cargarValores(tx, [
+        { indice: c.indice, desdes: [fromDate(anterior.desde)!, fromDate(fila.desde)!] },
+      ]);
       const propuesta = proponer(fila, anterior, valores);
       const importe = importeAConfirmar(propuesta, dto);
 
@@ -125,7 +150,10 @@ export class IndexacionesService {
           confirmadoPorId: ctx.userId,
         },
       });
-      if (count === 0) throw new ConflictException('Otra persona acaba de confirmar este tramo. Recargá la bandeja.');
+      if (count === 0)
+        throw new ConflictException(
+          'Otra persona acaba de confirmar este tramo. Recargá la bandeja.',
+        );
       await registrarEventos(tx, ctx, {
         entidad: 'tramo',
         entidadId: tramoId,
@@ -138,7 +166,10 @@ export class IndexacionesService {
   }
 
   /** Una sola consulta para todos los valores que hacen falta, sean cuantos sean los tramos. */
-  private async cargarValores(tx: Tx, pedidos: { indice: string | null; desdes: string[] }[]): Promise<Valores> {
+  private async cargarValores(
+    tx: Tx,
+    pedidos: { indice: string | null; desdes: string[] }[],
+  ): Promise<Valores> {
     const porIndice = new Map<IndiceConFuente, Set<string>>();
     for (const { indice, desdes } of pedidos) {
       if (indice !== 'ICL' && indice !== 'IPC') continue;
@@ -148,14 +179,22 @@ export class IndexacionesService {
     }
     if (porIndice.size === 0) return new Map();
     const filas = await tx.indiceValor.findMany({
-      where: { OR: [...porIndice].map(([indice, fechas]) => ({ indice, fecha: { in: [...fechas].map((f) => toDate(f)!) } })) },
+      where: {
+        OR: [...porIndice].map(([indice, fechas]) => ({
+          indice,
+          fecha: { in: [...fechas].map((f) => toDate(f)!) },
+        })),
+      },
     });
     return new Map(filas.map((f) => [clave(f.indice, fromDate(f.fecha)!), Number(f.valor)]));
   }
 
   /** Hasta dónde llega cada índice y si hay que avisar (regla 8). */
   private async estadoIndices(tx: Tx, hoy: string): Promise<EstadoIndiceDto[]> {
-    const grupos = await tx.indiceValor.groupBy({ by: ['indice'], _max: { fecha: true, createdAt: true } });
+    const grupos = await tx.indiceValor.groupBy({
+      by: ['indice'],
+      _max: { fecha: true, createdAt: true },
+    });
     return (['ICL', 'IPC'] as const).map((indice) => {
       const g = grupos.find((x) => x.indice === indice);
       const ultimaFecha = fromDate(g?._max.fecha);
@@ -165,7 +204,11 @@ export class IndexacionesService {
   }
 }
 
-function proponer(fila: FilaTramo, anterior: { desde: Date; importe: Prisma.Decimal | null }, valores: Valores): PropuestaIndexacion {
+function proponer(
+  fila: FilaTramo,
+  anterior: { desde: Date; importe: Prisma.Decimal | null },
+  valores: Valores,
+): PropuestaIndexacion {
   return proponerIndexacion(
     fila.contrato.indice ?? '',
     { desde: fromDate(anterior.desde)!, importe: decToNum(anterior.importe) },
@@ -184,16 +227,24 @@ function importeAConfirmar(p: PropuestaIndexacion, dto: ConfirmarIndexacion): nu
     throw new BadRequestException(`Todavía no se puede indexar: falta ${p.falta.join(' y ')}.`);
   }
   if (p.estado === 'manual') {
-    if (dto.importe == null) throw new BadRequestException('Este índice no tiene fuente automática: cargá el importe.');
+    if (dto.importe == null)
+      throw new BadRequestException('Este índice no tiene fuente automática: cargá el importe.');
     return Math.round(dto.importe);
   }
   if (dto.importe != null && dto.importe !== p.importe) {
-    throw new BadRequestException(`El importe sale del índice: $ ${p.importe.toLocaleString('es-AR')}. No se puede confirmar otro.`);
+    throw new BadRequestException(
+      `El importe sale del índice: $ ${p.importe.toLocaleString('es-AR')}. No se puede confirmar otro.`,
+    );
   }
   return p.importe;
 }
 
-function aDto(fila: FilaTramo, importeAnterior: number, p: PropuestaIndexacion, hoy: string): IndexacionDto {
+function aDto(
+  fila: FilaTramo,
+  importeAnterior: number,
+  p: PropuestaIndexacion,
+  hoy: string,
+): IndexacionDto {
   const desde = fromDate(fila.desde)!;
   return {
     tramoId: fila.id,
