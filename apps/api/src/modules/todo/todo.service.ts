@@ -15,7 +15,7 @@ import type {
 } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
-import { GoogleService, type GoogleEvento } from './google.service';
+import { GoogleService, TokenDeGoogleRechazado, type GoogleEvento } from './google.service';
 import { desencriptarSecreto, encriptarSecreto } from '../../common/cripto-secreto';
 import { esOrigenPermitido } from '../../common/cors';
 
@@ -44,6 +44,13 @@ export interface Navegacion {
 }
 /** Cache corto de eventos por usuario+rango, para no pegarle a Google en cada cambio de vista. */
 const CACHE_TTL_MS = 30 * 1000;
+/**
+ * Cuánto se reusa un access token de Google. Vale una hora; se guarda 55
+ * minutos como mucho (o lo que diga `expires_in` menos 5) para no usar uno
+ * que vence en medio del pedido.
+ */
+const ACCESS_TOKEN_TTL_MS = 55 * 60 * 1000;
+const MARGEN_VENCIMIENTO_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class TodoService {
@@ -54,6 +61,12 @@ export class TodoService {
    * que lo peor que puede pasar es que uno sirva dos veces en esa ventana.
    */
   private readonly ticketsUsados = new Map<string, number>();
+  /**
+   * Access tokens de Google por usuario. Antes se renovaba uno en CADA cambio
+   * de vista (un viaje más a Google antes de poder pedir los eventos). En
+   * memoria y nada más: es un secreto de vida corta, no va a la base.
+   */
+  private readonly accessTokens = new Map<string, { token: string; exp: number }>();
 
   constructor(
     private readonly db: TenantPrismaService,
@@ -187,6 +200,8 @@ export class TodoService {
       ctx,
     );
     this.cache.clear();
+    // Una cuenta recién conectada (quizás otra casilla) no reusa el token de la anterior.
+    this.accessTokens.delete(userId);
     return this.volverAWeb('conectado');
   }
 
@@ -211,6 +226,7 @@ export class TodoService {
       ctx,
     );
     this.cache.clear();
+    this.accessTokens.delete(ctx.userId);
   }
 
   /** Lee los eventos del calendario principal del usuario en el rango pedido. */
@@ -229,14 +245,25 @@ export class TodoService {
     }
 
     const refreshToken = desencriptarSecreto(cuenta.refreshTokenEnc, this.encKey());
-    const accessToken = await this.google.refreshAccessToken(refreshToken);
-    const crudos = await this.google.listEvents(accessToken, rango.desde, rango.hasta);
+    let accessToken = await this.accessTokenDe(ctx.userId, refreshToken);
+    let crudos: Awaited<ReturnType<GoogleService['listEvents']>>;
+    try {
+      crudos = await this.google.listEvents(accessToken, rango.desde, rango.hasta);
+    } catch (e) {
+      if (!(e instanceof TokenDeGoogleRechazado)) throw e;
+      // El token cacheado dejó de valer antes de tiempo (lo revocaron, o
+      // Google rotó la sesión): uno nuevo y un solo reintento.
+      this.accessTokens.delete(ctx.userId);
+      accessToken = await this.accessTokenDe(ctx.userId, refreshToken);
+      crudos = await this.google.listEvents(accessToken, rango.desde, rango.hasta);
+    }
 
     const data: TodoEventosDto = {
       vista: rango.vista,
       desde: rango.desde,
       hasta: rango.hasta,
-      eventos: crudos.map(mapEvento),
+      eventos: crudos.eventos.map(mapEvento),
+      ...(crudos.truncado ? { truncado: true } : {}),
     };
     this.cache.set(cacheKey, { exp: Date.now() + CACHE_TTL_MS, data });
     // Barrido ocasional de entradas vencidas: el cache es por (usuario, vista,
@@ -244,6 +271,16 @@ export class TodoService {
     // Mismo criterio que el principalCache del auth guard.
     if (this.cache.size > 200) this.pruneExpired();
     return data;
+  }
+
+  /** El access token de Google del usuario: el cacheado si sigue vigente, o uno nuevo. */
+  private async accessTokenDe(userId: string, refreshToken: string): Promise<string> {
+    const hit = this.accessTokens.get(userId);
+    if (hit && hit.exp > Date.now()) return hit.token;
+    const { accessToken, expiraEnSeg } = await this.google.refreshAccessToken(refreshToken);
+    const ttl = Math.min(ACCESS_TOKEN_TTL_MS, expiraEnSeg * 1000 - MARGEN_VENCIMIENTO_MS);
+    if (ttl > 0) this.accessTokens.set(userId, { token: accessToken, exp: Date.now() + ttl });
+    return accessToken;
   }
 
   /** Elimina del cache las entradas ya vencidas (evita crecimiento sin techo). */
