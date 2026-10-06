@@ -1,10 +1,11 @@
 import type { EstadoContrato } from '@vacker/types';
+import { Insignia, type TonoInsignia } from './piezas';
 
-const ESTILO: Record<EstadoContrato, string> = {
-  borrador: 'bg-surface text-muted',
-  vigente: 'bg-success/10 text-success',
-  finalizado: 'bg-ink/5 text-ink/60',
-  rescindido: 'bg-brand-red/10 text-brand-red',
+const TONO: Record<EstadoContrato, TonoInsignia> = {
+  borrador: 'neutro',
+  vigente: 'exito',
+  finalizado: 'neutro',
+  rescindido: 'marca',
 };
 
 const NOMBRE: Record<EstadoContrato, string> = {
@@ -15,5 +16,5 @@ const NOMBRE: Record<EstadoContrato, string> = {
 };
 
 export function EstadoContratoBadge({ estado }: { estado: EstadoContrato }) {
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${ESTILO[estado]}`}>{NOMBRE[estado]}</span>;
+  return <Insignia tono={TONO[estado]}>{NOMBRE[estado]}</Insignia>;
 }

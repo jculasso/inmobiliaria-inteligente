@@ -40,7 +40,7 @@ describe('CuentaCorriente', () => {
   // Regla 24: el estado de cuenta cierra en el saldo.
   it('lo pendiente muestra lo que falta y cierra con el total del saldo', () => {
     render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
-    const pendiente = screen.getByText(/Pendiente · estado de cuenta/).parentElement!;
+    const pendiente = screen.getByText(/Pendiente · estado de cuenta/).closest('section')!;
     expect(within(pendiente).getByText(/de \$ 1\.137\.518/)).toBeInTheDocument();
     expect(within(pendiente).getByText('Total').parentElement).toHaveTextContent('$ 137.518');
   });

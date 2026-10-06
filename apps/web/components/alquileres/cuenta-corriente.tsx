@@ -12,6 +12,7 @@ import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { documentoLegible } from './personas-lista';
 import { PersonaFormModal } from './persona-form-modal';
+import { Bloque, CLASE_TH, Vacio } from './piezas';
 
 const recibo = (n: number) => String(n).padStart(6, '0');
 
@@ -61,7 +62,7 @@ export function CuentaCorriente({
             </Link>{' '}
             /
           </p>
-          <h2 className="mt-0.5 text-xl font-extrabold text-ink">{cuenta.persona.nombre}</h2>
+          <h2 className="mt-0.5 text-lg font-bold text-ink">{cuenta.persona.nombre}</h2>
           {persona && (
             <p className="text-sm text-muted">
               {[documentoLegible(persona.documento), persona.telefono, persona.email].filter((x) => x && x !== '—').join(' · ') || 'Sin datos de contacto'}
@@ -71,17 +72,17 @@ export function CuentaCorriente({
         <div className="flex flex-wrap gap-2">
           {persona && (
             <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
-              Editar datos
+              ✏️ Editar datos
             </Button>
           )}
           <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
             <Button variant="secondary" size="sm">
-              Liquidar
+              🧾 Liquidar
             </Button>
           </Link>
           <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
             <Button variant="primary" size="sm">
-              Registrar cobro
+              ＋ Registrar cobro
             </Button>
           </Link>
         </div>
@@ -94,19 +95,24 @@ export function CuentaCorriente({
       )}
 
       {cuenta.monedas.length === 0 ? (
-        <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">Todavía no tiene movimientos.</p>
+        <Vacio>Todavía no tiene movimientos.</Vacio>
       ) : (
         cuenta.monedas.map((m) => (
-          <section key={m.moneda} className="flex flex-col gap-3">
-            <div className="rounded-brand border border-line bg-white px-4 py-3">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Saldo en {m.moneda === 'ARS' ? 'pesos' : 'dólares'}</p>
-              <p className="mt-1 text-2xl font-extrabold tabular-nums">
+          <div key={m.moneda} className="flex flex-col gap-4">
+            {/* El saldo, con la forma de las tarjetas del Tablero (`KpiCard`). */}
+            <div className={`rounded-brand border border-line p-4 shadow-sm ${m.saldo > 0 ? 'bg-warning/5' : m.saldo < 0 ? 'bg-success/5' : 'bg-white'}`}>
+              <div className="flex items-center gap-1.5">
+                <span aria-hidden className="text-base leading-none">
+                  💰
+                </span>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Saldo en {m.moneda === 'ARS' ? 'pesos' : 'dólares'}</p>
+              </div>
+              <p className="mt-1.5 text-2xl font-extrabold tabular-nums">
                 <Saldo saldo={m.saldo} moneda={m.moneda} />
               </p>
             </div>
 
-            <div className="rounded-brand border border-line bg-white">
-              <h3 className="border-b border-line px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wider text-muted">Pendiente · estado de cuenta</h3>
+            <Bloque icono="📋" titulo="Pendiente · estado de cuenta">
               {m.pendientes.length === 0 && m.aFavor.length === 0 ? (
                 <p className="px-4 py-4 text-sm text-muted">Nada pendiente.</p>
               ) : (
@@ -141,18 +147,18 @@ export function CuentaCorriente({
                   </li>
                 </ul>
               )}
-            </div>
+            </Bloque>
 
-            <div className="rounded-brand border border-line bg-white sm:overflow-x-auto">
-              <h3 className="border-b border-line px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wider text-muted">Movimientos</h3>
+            <Bloque icono="📒" titulo="Movimientos" detalle={`${m.movimientos.length}`}>
+              <div className="max-h-[clamp(20rem,60vh,48rem)] overflow-y-auto overscroll-contain sm:overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="hidden sm:table-header-group">
-                  <tr className="border-b border-line text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
-                    <th className="px-4 py-2">Fecha</th>
-                    <th className="px-4 py-2">Detalle</th>
-                    <th className="px-4 py-2 text-right">Debe</th>
-                    <th className="px-4 py-2 text-right">Haber</th>
-                    <th className="px-4 py-2 text-right">Saldo</th>
+                  <tr>
+                    <th className={CLASE_TH}>Fecha</th>
+                    <th className={CLASE_TH}>Detalle</th>
+                    <th className={`${CLASE_TH} text-right`}>Debe</th>
+                    <th className={`${CLASE_TH} text-right`}>Haber</th>
+                    <th className={`${CLASE_TH} text-right`}>Saldo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -174,23 +180,23 @@ export function CuentaCorriente({
                   ))}
                 </tbody>
               </table>
-            </div>
-          </section>
+              </div>
+            </Bloque>
+          </div>
         ))
       )}
 
       {cobros.length > 0 && (
-        <section className="rounded-brand border border-line bg-white">
-          <h3 className="border-b border-line px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wider text-muted">Recibos</h3>
+        <Bloque icono="🧾" titulo="Recibos">
           <ul className="divide-y divide-line text-sm">
             {cobros.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
                 <span className={c.anulado ? 'text-muted line-through' : 'text-ink'}>
                   Recibo {recibo(c.numero)} · {fmtFecha(c.fecha)} · <span className="tabular-nums">{fmtMoneda(c.importe, c.moneda)}</span>
                 </span>
-                <span className="flex gap-3">
-                  <button type="button" onClick={() => descargar(c)} className="text-xs font-semibold text-brand-red hover:underline">
-                    Recibo
+                <span className="flex gap-1">
+                  <button type="button" onClick={() => descargar(c)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
+                    📄 Recibo
                   </button>
                   {!c.anulado && (
                     <button
@@ -203,30 +209,29 @@ export function CuentaCorriente({
                           anular: async (motivo) => anularCobro(await getAccessToken(), c.id, motivo),
                         })
                       }
-                      className="text-xs font-semibold text-muted hover:text-brand-red"
+                      className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5"
                     >
-                      Anular
+                      🚫 Anular
                     </button>
                   )}
                 </span>
               </li>
             ))}
           </ul>
-        </section>
+        </Bloque>
       )}
 
       {liquidaciones.length > 0 && (
-        <section className="rounded-brand border border-line bg-white">
-          <h3 className="border-b border-line px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wider text-muted">Liquidaciones</h3>
+        <Bloque icono="📚" titulo="Liquidaciones">
           <ul className="divide-y divide-line text-sm">
             {liquidaciones.map((l) => (
               <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
                 <span className={l.anulado ? 'text-muted line-through' : 'text-ink'}>
                   Liquidación {recibo(l.numero)} · {fmtFecha(l.fecha)} · <span className="tabular-nums">{fmtMoneda(l.neto, l.moneda)}</span>
                 </span>
-                <span className="flex gap-3">
-                  <button type="button" onClick={() => descargarLiquidacion(l)} className="text-xs font-semibold text-brand-red hover:underline">
-                    PDF
+                <span className="flex gap-1">
+                  <button type="button" onClick={() => descargarLiquidacion(l)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
+                    📄 PDF
                   </button>
                   {!l.anulado && (
                     <button
@@ -238,16 +243,16 @@ export function CuentaCorriente({
                           anular: async (motivo) => anularLiquidacion(await getAccessToken(), l.id, motivo),
                         })
                       }
-                      className="text-xs font-semibold text-muted hover:text-brand-red"
+                      className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5"
                     >
-                      Anular
+                      🚫 Anular
                     </button>
                   )}
                 </span>
               </li>
             ))}
           </ul>
-        </section>
+        </Bloque>
       )}
 
       {editando && persona && (

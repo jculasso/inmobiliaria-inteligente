@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LIMITE_LISTA, recortarAlLimite, type PropiedadAlquilerDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
-import { Buscador, paraBuscar } from './buscador';
+import { paraBuscar } from './buscador';
+import { BarraLista, BotonNuevo, CabezaTarjeta, CLASE_LISTA_MOVIL, CLASE_TABLA_ANCHA, CLASE_TD, CLASE_TH, CLASE_TR_ABRIBLE, EncabezadoPagina, Vacio } from './piezas';
 import { NOMBRE_TIPO_PROPIEDAD, PropiedadFormModal } from './propiedad-form-modal';
 
 export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquilerDto[] }) {
@@ -26,13 +26,19 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar por dirección o ciudad" />
-        <Button variant="primary" size="sm" onClick={() => setModal('nueva')}>
-          + Nueva propiedad
-        </Button>
-      </div>
+    <div className="flex flex-col gap-4">
+      <EncabezadoPagina titulo="Propiedades" />
+
+      <BarraLista
+        busqueda={busqueda}
+        onBusqueda={setBusqueda}
+        placeholder="Buscar por dirección o ciudad…"
+        visibles={filtradas.length}
+        total={visibles.length}
+        nombre="propiedades"
+      >
+        <BotonNuevo onClick={() => setModal('nueva')}>Nueva propiedad</BotonNuevo>
+      </BarraLista>
 
       {hayMas && (
         <p role="status" className="text-sm text-muted">
@@ -41,50 +47,40 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
       )}
 
       {propiedades.length === 0 ? (
-        <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">
-          Todavía no hay propiedades cargadas.
-        </p>
+        <Vacio>Todavía no hay propiedades cargadas.</Vacio>
       ) : filtradas.length === 0 ? (
-        <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">
-          Ninguna propiedad coincide con «{busqueda}».
-        </p>
+        <Vacio>Ninguna propiedad coincide con «{busqueda}».</Vacio>
       ) : (
         <>
-          <ListaTarjetas etiqueta="Propiedades">
-            {filtradas.map((p) => (
-              <Tarjeta key={p.id} onClick={() => setModal(p)} titulo={`Editar ${p.direccion}`}>
-                <span className="block text-sm font-bold text-ink">
-                  {p.direccion}
-                  {p.unidad ? ` ${p.unidad}` : ''}
-                </span>
-                <CamposTarjeta>
-                  <CampoTarjeta etiqueta="Ciudad">{p.ciudad ?? '—'}</CampoTarjeta>
-                  <CampoTarjeta etiqueta="Tipo">{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</CampoTarjeta>
-                </CamposTarjeta>
-              </Tarjeta>
-            ))}
-          </ListaTarjetas>
-          <div className="hidden overflow-x-auto rounded-brand border border-line bg-white sm:block">
+          <div className={CLASE_LISTA_MOVIL}>
+            <ListaTarjetas etiqueta="Propiedades">
+              {filtradas.map((p) => (
+                <Tarjeta key={p.id} onClick={() => setModal(p)} titulo={`Editar ${p.direccion}`}>
+                  <CabezaTarjeta titulo={`${p.direccion}${p.unidad ? ` ${p.unidad}` : ''}`} detalle={p.ciudad ?? undefined} />
+                  <CamposTarjeta>
+                    <CampoTarjeta etiqueta="Tipo">{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</CampoTarjeta>
+                  </CamposTarjeta>
+                </Tarjeta>
+              ))}
+            </ListaTarjetas>
+          </div>
+          <div className={CLASE_TABLA_ANCHA}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-line text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
-                  <th className="px-4 py-2.5">Dirección</th>
-                  <th className="px-4 py-2.5">Piso / depto</th>
-                  <th className="px-4 py-2.5">Ciudad</th>
-                  <th className="px-4 py-2.5">Tipo</th>
+                <tr>
+                  <th className={CLASE_TH}>Dirección</th>
+                  <th className={CLASE_TH}>Piso / depto</th>
+                  <th className={CLASE_TH}>Ciudad</th>
+                  <th className={CLASE_TH}>Tipo</th>
                 </tr>
               </thead>
               <tbody>
                 {filtradas.map((p) => (
-                  <tr
-                    key={p.id}
-                    onClick={() => setModal(p)}
-                    className="cursor-pointer border-b border-line last:border-0 hover:bg-surface/60"
-                  >
-                    <td className="px-4 py-2.5 font-semibold text-ink">{p.direccion}</td>
-                    <td className="px-4 py-2.5 text-muted">{p.unidad ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-muted">{p.ciudad ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-muted">{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</td>
+                  <tr key={p.id} onClick={() => setModal(p)} className={CLASE_TR_ABRIBLE}>
+                    <td className={`${CLASE_TD} font-semibold text-ink`}>{p.direccion}</td>
+                    <td className={`${CLASE_TD} text-muted`}>{p.unidad ?? '—'}</td>
+                    <td className={`${CLASE_TD} text-muted`}>{p.ciudad ?? '—'}</td>
+                    <td className={`${CLASE_TD} text-muted`}>{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</td>
                   </tr>
                 ))}
               </tbody>

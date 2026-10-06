@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LIMITE_LISTA, recortarAlLimite, type PersonaDto } from '@vacker/types';
-import { Button } from '@vacker/ui';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
-import { Buscador, paraBuscar } from './buscador';
+import { paraBuscar } from './buscador';
+import { BarraLista, BotonNuevo, CabezaTarjeta, CLASE_LISTA_MOVIL, CLASE_TABLA_ANCHA, CLASE_TD, CLASE_TH, CLASE_TR_ABRIBLE, EncabezadoPagina, Vacio } from './piezas';
 import { PersonaFormModal } from './persona-form-modal';
 
 /** Documento con formato legible: DNI con puntos, CUIT con guiones. */
@@ -36,13 +36,19 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre o documento" />
-        <Button variant="primary" size="sm" onClick={() => setModal('nueva')}>
-          + Nueva persona
-        </Button>
-      </div>
+    <div className="flex flex-col gap-4">
+      <EncabezadoPagina titulo="Personas" />
+
+      <BarraLista
+        busqueda={busqueda}
+        onBusqueda={setBusqueda}
+        placeholder="Buscar por nombre o documento…"
+        visibles={filtradas.length}
+        total={visibles.length}
+        nombre="personas"
+      >
+        <BotonNuevo onClick={() => setModal('nueva')}>Nueva persona</BotonNuevo>
+      </BarraLista>
 
       {hayMas && (
         <p role="status" className="text-sm text-muted">
@@ -51,47 +57,41 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
       )}
 
       {personas.length === 0 ? (
-        <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">
-          Todavía no hay personas cargadas. Empezá por los propietarios.
-        </p>
+        <Vacio>Todavía no hay personas cargadas. Empezá por los propietarios.</Vacio>
       ) : filtradas.length === 0 ? (
-        <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">
-          Nadie coincide con «{busqueda}».
-        </p>
+        <Vacio>Nadie coincide con «{busqueda}».</Vacio>
       ) : (
         <>
-          <ListaTarjetas etiqueta="Personas">
-            {filtradas.map((p) => (
-              <Tarjeta key={p.id} onClick={() => abrir(p)} titulo={`Abrir la cuenta de ${p.nombre}`}>
-                <span className="block text-sm font-bold text-ink">{p.nombre}</span>
-                <CamposTarjeta>
-                  <CampoTarjeta etiqueta="Documento">{documentoLegible(p.documento)}</CampoTarjeta>
-                  <CampoTarjeta etiqueta="Teléfono">{p.telefono ?? '—'}</CampoTarjeta>
-                </CamposTarjeta>
-              </Tarjeta>
-            ))}
-          </ListaTarjetas>
-          <div className="hidden overflow-x-auto rounded-brand border border-line bg-white sm:block">
+          <div className={CLASE_LISTA_MOVIL}>
+            <ListaTarjetas etiqueta="Personas">
+              {filtradas.map((p) => (
+                <Tarjeta key={p.id} onClick={() => abrir(p)} titulo={`Abrir la cuenta de ${p.nombre}`}>
+                  <CabezaTarjeta titulo={p.nombre} detalle={documentoLegible(p.documento)} />
+                  <CamposTarjeta>
+                    <CampoTarjeta etiqueta="Teléfono">{p.telefono ?? '—'}</CampoTarjeta>
+                    <CampoTarjeta etiqueta="Email">{p.email ?? '—'}</CampoTarjeta>
+                  </CamposTarjeta>
+                </Tarjeta>
+              ))}
+            </ListaTarjetas>
+          </div>
+          <div className={CLASE_TABLA_ANCHA}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-line text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
-                  <th className="px-4 py-2.5">Nombre</th>
-                  <th className="px-4 py-2.5">Documento</th>
-                  <th className="px-4 py-2.5">Email</th>
-                  <th className="px-4 py-2.5">Teléfono</th>
+                <tr>
+                  <th className={CLASE_TH}>Nombre</th>
+                  <th className={CLASE_TH}>Documento</th>
+                  <th className={CLASE_TH}>Email</th>
+                  <th className={CLASE_TH}>Teléfono</th>
                 </tr>
               </thead>
               <tbody>
                 {filtradas.map((p) => (
-                  <tr
-                    key={p.id}
-                    onClick={() => abrir(p)}
-                    className="cursor-pointer border-b border-line last:border-0 hover:bg-surface/60"
-                  >
-                    <td className="px-4 py-2.5 font-semibold text-ink">{p.nombre}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-muted">{documentoLegible(p.documento)}</td>
-                    <td className="px-4 py-2.5 text-muted">{p.email ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-muted">{p.telefono ?? '—'}</td>
+                  <tr key={p.id} onClick={() => abrir(p)} className={CLASE_TR_ABRIBLE}>
+                    <td className={`${CLASE_TD} font-semibold text-ink`}>{p.nombre}</td>
+                    <td className={`${CLASE_TD} tabular-nums text-muted`}>{documentoLegible(p.documento)}</td>
+                    <td className={`${CLASE_TD} text-muted`}>{p.email ?? '—'}</td>
+                    <td className={`${CLASE_TD} text-muted`}>{p.telefono ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

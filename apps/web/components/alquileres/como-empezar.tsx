@@ -29,8 +29,8 @@ export function ComoEmpezar({ resumen }: { resumen: ResumenAlquileres }) {
   ];
 
   return (
-    <section className="max-w-2xl rounded-brand border border-line bg-white p-6">
-      <h2 className="text-lg font-extrabold text-ink">Empecemos por los contratos</h2>
+    <section className="max-w-2xl rounded-brand border border-line bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-bold text-ink">🚀 Empecemos por los contratos</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-muted">
         Todavía no hay contratos cargados. Cuando estén, acá vas a ver la cartera: cobranza del mes,
         morosidad, vencimientos e indexaciones pendientes.

@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { FilaTablero, Indicador, TableroAlquileresDto } from '@vacker/types';
 import { TableroAlquileres } from './tablero-alquileres';
+
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => '/alquileres' }));
 
 const fila = (n: number, importe: number | null): FilaTablero => ({ id: `f${n}`, href: `/alquileres/contratos/c${n}`, contrato: String(n), persona: `Persona ${n}`, detalle: 'Calle', fecha: '2026-10-05', importe });
 const ind = (filas: FilaTablero[], porImporte = false): Indicador => ({ valor: porImporte ? filas.reduce((s, f) => s + (f.importe ?? 0), 0) : filas.length, filas });
@@ -10,6 +13,7 @@ const vacio = ind([]);
 const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto => ({
   hoy: '2026-10-20',
   mes: '2026-10',
+  anio: 2026,
   cartera: {
     vigentes: ind([fila(5, 1_137_518), fila(6, 400_000)]),
     vivienda: 2,
@@ -54,5 +58,34 @@ describe('TableroAlquileres', () => {
     render(<TableroAlquileres tablero={tablero()} />);
     expect(screen.getByRole('button', { name: /Indexaciones vencidas/ })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Depósitos a devolver/ })).toBeDisabled();
+  });
+
+  it('el gráfico es del año elegido: doce meses y la planilla con los ingresos del año anterior', () => {
+    render(
+      <TableroAlquileres
+        tablero={tablero({
+          ingresos: [
+            { mes: '2026-10', moneda: 'ARS', honorarios: 70_000, gastos: 5_000, punitorios: 0 },
+            { mes: '2025-10', moneda: 'ARS', honorarios: 50_000, gastos: 0, punitorios: 0 },
+          ],
+        })}
+      />,
+    );
+    const planilla = screen.getByRole('table', { name: /alquileres e ingresos por mes de 2026/i });
+    expect(within(planilla).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(expect.arrayContaining(['Ene', 'Dic']));
+    expect(within(planilla).getByText('Ingresos 2025')).toBeTruthy();
+    // El mes en curso viene elegido, con lo cobrado y lo del año anterior.
+    expect(screen.getByText(/ingresos \$\s?75\.000 \(\$\s?50\.000 en 2025\)/i)).toBeTruthy();
+  });
+
+  it('cambiar el año va a la misma página con ?anio=', () => {
+    render(<TableroAlquileres tablero={tablero()} />);
+    fireEvent.change(screen.getByLabelText('Año'), { target: { value: '2025' } });
+    expect(push).toHaveBeenCalledWith('/alquileres?anio=2025');
+  });
+
+  it('un año sin alquileres generados lo dice, en vez de un gráfico en cero', () => {
+    render(<TableroAlquileres tablero={tablero({ evolucion: [], ingresos: [] })} />);
+    expect(screen.getByText('Todavía no hay alquileres generados en 2026.')).toBeTruthy();
   });
 });

@@ -6,6 +6,7 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cambiarFirma, cargarContratoFirmado, cargarDocumentoContrato, enviarAFirmar, urlDocumento } from '../../lib/alquileres-api';
 import { inputClass } from '../form-ui';
+import { Panel } from './piezas';
 
 export const NOMBRE_ESTADO_FIRMA: Record<EstadoFirma, string> = {
   sin_enviar: 'Sin enviar',
@@ -78,24 +79,24 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
   const pendientesDeGuardar = Object.keys(cambios).length > 0;
 
   return (
-    <section className="rounded-brand border border-line bg-white p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-ink">Documento y firma</h3>
-        {doc && <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${ESTILO_ESTADO[doc.estadoFirma]}`}>{NOMBRE_ESTADO_FIRMA[doc.estadoFirma]}</span>}
-      </div>
+    <Panel
+      icono="✍️"
+      titulo="Documento y firma"
+      derecha={doc && <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${ESTILO_ESTADO[doc.estadoFirma]}`}>{NOMBRE_ESTADO_FIRMA[doc.estadoFirma]}</span>}
+    >
 
       <input ref={archivo} type="file" accept="application/pdf" className="hidden" aria-label="PDF del contrato" onChange={(e) => elegirArchivo(e.currentTarget, async (f) => cargarDocumentoContrato(await getAccessToken(), contratoId, f))} />
       <input ref={firmado} type="file" accept="application/pdf" className="hidden" aria-label="PDF firmado" onChange={(e) => elegirArchivo(e.currentTarget, async (f) => cargarContratoFirmado(await getAccessToken(), doc!.id, f))} />
 
       {!doc ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted">Todavía no se cargó el PDF del contrato. Puede estar vigente igual: se firmó en papel y se carga después.</p>
           <Button variant="secondary" size="sm" disabled={ocupado} onClick={() => archivo.current?.click()}>
             Cargar el PDF
           </Button>
         </div>
       ) : (
-        <div className="mt-3 flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <button type="button" onClick={() => abrir(false)} className="font-semibold text-brand-red hover:underline">
               {doc.nombreArchivo ?? 'Ver el PDF'}
@@ -190,6 +191,6 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
           {error}
         </p>
       )}
-    </section>
+    </Panel>
   );
 }

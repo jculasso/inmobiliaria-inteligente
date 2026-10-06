@@ -62,15 +62,25 @@ const mora = (id: string, vencimiento: string, saldo: number, persona = 'inq5') 
   nombre: 'Inquilina',
 });
 
+/** Los valores interpolados de cada `$queryRaw`, por servicio creado. */
+const rawCalls: unknown[][][] = [];
+
 function servicio(over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unknown[] } = {}) {
+  const valores: unknown[][] = [];
+  rawCalls.push(valores);
+  // En el orden en que el servicio consulta: morosidad, evolución, ingresos.
+  const respuestas: unknown[] = [
+    over.mora ?? [mora('m1', '2026-10-05', 250_000), mora('m2', '2026-08-05', 100_000)],
+    [{ periodo: '2026-10', moneda: 'ARS', emitido: dec(1_537_518), cobrado: dec(1_287_518) }],
+    [{ mes: '2026-10', moneda: 'ARS', honorarios: dec(110_111.74), gastos: dec(27_527.94), punitorios: null }],
+  ];
   const tx = {
     alqContrato: { findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]) },
     alqConcepto: { findMany: vi.fn().mockResolvedValue(over.delMes ?? [alquilerDelMes('5', 1_137_518, 1_137_518), alquilerDelMes('6', 400_000, 150_000)]) },
-    $queryRaw: vi
-      .fn()
-      .mockResolvedValueOnce(over.mora ?? [mora('m1', '2026-10-05', 250_000), mora('m2', '2026-08-05', 100_000)])
-      .mockResolvedValueOnce([{ periodo: '2026-10', moneda: 'ARS', emitido: dec(1_537_518), cobrado: dec(1_287_518) }])
-      .mockResolvedValueOnce([{ mes: '2026-10', moneda: 'ARS', honorarios: dec(110_111.74), gastos: dec(27_527.94), punitorios: null }]),
+    $queryRaw: vi.fn(async (_t: TemplateStringsArray, ...v: unknown[]) => {
+      valores.push(v);
+      return respuestas.shift();
+    }),
   };
   const db = { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
   const indexaciones = {
@@ -194,6 +204,14 @@ describe('TableroAlquileresService', () => {
     const t = await servicio().tablero(HOY);
     expect(t.cartera.vigentes.filas[0]!.href).toBe('/alquileres/contratos/c5');
     expect(t.morosidad[0]!.total.filas[0]!.href).toBe('/alquileres/personas/inq5');
+  });
+
+  // Como el Tablero Comercial: los gráficos van por año calendario.
+  it('los gráficos piden el año elegido, y los ingresos también el anterior', async () => {
+    await servicio().tablero(HOY, 2025);
+    const llamadas = rawCalls.at(-1)!;
+    expect(llamadas[1]).toEqual(expect.arrayContaining(['2025-01', '2025-12']));
+    expect(llamadas[2]!.map((v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : v))).toEqual(['2024-01-01', '2026-01-01', '2024-01-01', '2026-01-01']);
   });
 
   it('los ingresos llegan por mes, con los punitorios en cero si no hubo', async () => {

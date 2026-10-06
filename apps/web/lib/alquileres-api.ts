@@ -174,8 +174,8 @@ export async function generarLiquidacionPdf(accessToken: string, id: string) {
 }
 
 /** El tablero del módulo (reglas 26 a 32). */
-export async function getTableroAlquileres(accessToken: string) {
-  return apiFetch('/alquileres/tablero', TableroAlquileresDtoSchema, { accessToken });
+export async function getTableroAlquileres(accessToken: string, anio?: number) {
+  return apiFetch(`/alquileres/tablero${anio ? `?anio=${anio}` : ''}`, TableroAlquileresDtoSchema, { accessToken });
 }
 
 /** El documento del contrato y su firma (reglas 33 a 36). */

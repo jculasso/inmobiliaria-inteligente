@@ -40,7 +40,7 @@ describe('LiquidacionForm', () => {
     prepararLiquidacion.mockResolvedValue(prep());
     render(<LiquidacionForm personas={personas} personaInicial={DUENO} hoy="2026-11-12" />);
     expect(await screen.findByText('$ 886.707,26')).toBeInTheDocument();
-    expect(screen.getByText(/En espera: el inquilino todavía no pagó · 1/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /En espera: el inquilino todavía no pagó · 1/ })).toBeInTheDocument();
   });
 
   // Dejar algo para después se le pregunta a la API, que sabe qué arrastra.
