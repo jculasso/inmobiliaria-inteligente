@@ -10,8 +10,7 @@ import { Campo, inputClass } from '../form-ui';
 import { InputPorcentaje } from '../input-importe';
 import { fmtMoneda } from '../../lib/format';
 import { fmtPct } from '../../lib/importe';
-import { EncabezadoPagina, Panel } from './piezas';
-
+import { CLASE_FOCO, EncabezadoPagina, Panel } from './piezas';
 
 /**
  * La configuración del módulo (Javier, 6/10/2026: «la comisión la podemos
@@ -45,7 +44,7 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
   return (
     <div className="flex max-w-3xl flex-col gap-4">
       <EncabezadoPagina titulo="Configuración">
-        <Link href="/alquileres/plantillas" className="text-sm font-semibold text-brand-red hover:underline">
+        <Link href="/alquileres/plantillas" className={`rounded text-sm font-semibold text-brand-red hover:underline ${CLASE_FOCO}`}>
           📝 Plantillas de contrato →
         </Link>
       </EncabezadoPagina>
@@ -75,7 +74,8 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
             <InputPorcentaje valor={c.selladoPct} onValor={(n) => cambiar({ selladoPct: n })} />
           </Campo>
           <Campo label="Lo paga el inquilino (%)" hint="El resto, el propietario.">
-            <input type="number" min={0} max={100} className={inputClass} value={c.selladoInquilinoPct} onChange={(e) => cambiar({ selladoInquilinoPct: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} />
+            {/* Como los otros porcentajes de la pantalla; sigue siendo de 0 a 100. */}
+            <InputPorcentaje valor={c.selladoInquilinoPct} onValor={(n) => cambiar({ selladoInquilinoPct: Math.min(100, Math.max(0, n)) })} />
           </Campo>
         </div>
       </Panel>
@@ -93,7 +93,7 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
         </Campo>
       </Panel>
       {error && (
-        <p role="alert" className="text-sm font-medium text-brand-red">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}

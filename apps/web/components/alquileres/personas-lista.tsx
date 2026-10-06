@@ -10,6 +10,7 @@ import {
   BarraLista,
   BotonNuevo,
   CabezaTarjeta,
+  CLASE_FOCO,
   CLASE_LISTA_MOVIL,
   CLASE_TABLA_ANCHA,
   CLASE_TD,
@@ -18,6 +19,7 @@ import {
   CLASE_TH_ACCIONES,
   CLASE_TR_ABRIBLE,
   EncabezadoPagina,
+  LinkFila,
   Vacio,
 } from './piezas';
 import { PersonaFormModal } from './persona-form-modal';
@@ -84,7 +86,7 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
             <ListaTarjetas etiqueta="Personas">
               {filtradas.map((p) => (
                 <Tarjeta key={p.id}>
-                  <button type="button" onClick={() => abrir(p)} title={`Abrir la cuenta de ${p.nombre}`} className="block w-full text-left">
+                  <button type="button" onClick={() => abrir(p)} title={`Abrir la cuenta de ${p.nombre}`} className={`block w-full rounded text-left ${CLASE_FOCO}`}>
                     <CabezaTarjeta titulo={p.nombre} detalle={documentoLegible(p.documento)} />
                     <CamposTarjeta>
                       <CampoTarjeta etiqueta="Teléfono">{p.telefono ?? '—'}</CampoTarjeta>
@@ -110,7 +112,9 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
               <tbody>
                 {filtradas.map((p) => (
                   <tr key={p.id} onClick={() => abrir(p)} className={CLASE_TR_ABRIBLE}>
-                    <td className={`${CLASE_TD} font-semibold text-ink`}>{p.nombre}</td>
+                    <td className={`${CLASE_TD} font-semibold text-ink`}>
+                      <LinkFila href={`/alquileres/personas/${p.id}`}>{p.nombre}</LinkFila>
+                    </td>
                     <td className={`${CLASE_TD} tabular-nums text-muted`}>{documentoLegible(p.documento)}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.email ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.telefono ?? '—'}</td>

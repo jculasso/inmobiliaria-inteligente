@@ -93,4 +93,18 @@ describe('CobroForm', () => {
     });
     expect(await screen.findByRole('status')).toHaveTextContent('Recibo 000008');
   });
+
+  // Revisión del 6/10/2026: cambiar la fecha volvía a tildar todo.
+  it('cambiar la fecha recalcula el punitorio pero respeta lo que se destildó', async () => {
+    await abrir();
+    const gastos = () => screen.getByRole('checkbox', { name: /Gastos administrativos/ });
+    fireEvent.click(gastos());
+    expect(gastos()).not.toBeChecked();
+    prepararCobro.mockResolvedValue(prep({ fecha: '2026-11-20' }));
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-11-20' } });
+    await waitFor(() => expect(prepararCobro).toHaveBeenLastCalledWith('token', PERSONA, 'ARS', '2026-11-20'));
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: /Alquiler noviembre/ })).toBeChecked());
+    expect(gastos()).not.toBeChecked();
+  });
 });
+

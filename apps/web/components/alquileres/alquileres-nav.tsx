@@ -39,7 +39,17 @@ const TABS: Pestania[] = [
       { href: '/alquileres/proveedores', label: 'Proveedores' },
     ],
   },
-  { href: '/alquileres/configuracion', label: 'Configuración', icono: '⚙️' },
+  // Las plantillas de contrato se arman desde Configuración: sin esta segunda
+  // fila, en /alquileres/plantillas ninguna pestaña quedaba marcada.
+  {
+    href: '/alquileres/configuracion',
+    label: 'Configuración',
+    icono: '⚙️',
+    sub: [
+      { href: '/alquileres/configuracion', label: 'Configuración' },
+      { href: '/alquileres/plantillas', label: 'Plantillas de contrato' },
+    ],
+  },
 ];
 
 /**
@@ -75,7 +85,7 @@ export function AlquileresNav() {
               aria-label={tab.icono ? tab.label : undefined}
               title={tab.icono ? tab.label : undefined}
               className={cn(
-                'shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-center text-xs font-semibold transition-colors sm:text-sm lg:px-3.5',
+                'shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-center text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-red/40 sm:text-sm lg:px-3.5',
                 activa(tab) ? 'border-brand-red text-brand-red' : 'border-transparent text-muted hover:text-ink',
               )}
             >
@@ -92,7 +102,7 @@ export function AlquileresNav() {
               key={s.href}
               href={s.href}
               aria-current={es(s.href) ? 'page' : undefined}
-              className={cn('rounded-full px-3 py-1 text-xs font-semibold transition-colors', es(s.href) ? 'bg-brand-red text-white' : 'bg-white text-muted ring-1 ring-line hover:text-ink')}
+              className={cn('rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40', es(s.href) ? 'bg-brand-red text-white' : 'bg-white text-muted ring-1 ring-line hover:text-ink')}
             >
               {s.label}
             </Link>

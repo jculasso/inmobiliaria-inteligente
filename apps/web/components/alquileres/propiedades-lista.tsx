@@ -10,6 +10,7 @@ import {
   BarraLista,
   BotonNuevo,
   CabezaTarjeta,
+  CLASE_FOCO,
   CLASE_LISTA_MOVIL,
   CLASE_TABLA_ANCHA,
   CLASE_TD,
@@ -74,7 +75,7 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
             <ListaTarjetas etiqueta="Propiedades">
               {filtradas.map((p) => (
                 <Tarjeta key={p.id}>
-                  <button type="button" onClick={() => setModal(p)} title={`Editar ${p.direccion}`} className="block w-full text-left">
+                  <button type="button" onClick={() => setModal(p)} title={`Editar ${p.direccion}`} className={`block w-full rounded text-left ${CLASE_FOCO}`}>
                     <CabezaTarjeta titulo={`${p.direccion}${p.unidad ? ` ${p.unidad}` : ''}`} detalle={p.ciudad ?? undefined} />
                     <CamposTarjeta>
                       <CampoTarjeta etiqueta="Tipo">{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</CampoTarjeta>

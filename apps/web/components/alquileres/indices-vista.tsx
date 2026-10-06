@@ -4,23 +4,21 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { IndicesDto } from '@vacker/types';
 import { Card } from '@vacker/ui';
-import { fmtFecha } from '../../lib/format';
+import { fmtFecha, fmtFechaHora } from '../../lib/format';
+import { fmtVariacion } from '../../lib/importe';
 import { ABREV_MES, NOMBRES_MES, periodosTranscurridos } from '../../lib/meses';
 import { inputClass } from '../form-ui';
 import { PeriodosChart } from '../tablero/periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from '../tablero/periodos-tabla';
-import { CLASE_TH, EncabezadoPagina, TituloSeccion } from './piezas';
+import { CLASE_FOCO, CLASE_TH, EncabezadoPagina, TituloSeccion } from './piezas';
 
 const valor = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 4 });
-const porciento = (v: number | null) => (v == null || Number.isNaN(v) ? '—' : `${v >= 0 ? '+' : ''}${v.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
-const cuando = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' }) : '—';
 
 /** De dónde sale el índice y hasta cuándo está cargado. */
 function Origen({ d }: { d: IndicesDto }) {
   return (
     <p className="text-sm text-muted">
-      {d.fuente}. Último valor: <span className="font-semibold text-ink">{d.ultimaFecha ? (d.indice === 'IPC' ? NOMBRES_MES[Number(d.ultimaFecha.slice(5, 7)) - 1] + ' ' + d.ultimaFecha.slice(0, 4) : fmtFecha(d.ultimaFecha)) : 'sin valores'}</span> · actualizado el {cuando(d.actualizado)}.
+      {d.fuente}. Último valor: <span className="font-semibold text-ink">{d.ultimaFecha ? (d.indice === 'IPC' ? NOMBRES_MES[Number(d.ultimaFecha.slice(5, 7)) - 1] + ' ' + d.ultimaFecha.slice(0, 4) : fmtFecha(d.ultimaFecha)) : 'sin valores'}</span> · actualizado el {fmtFechaHora(d.actualizado)}.
     </p>
   );
 }
@@ -49,7 +47,7 @@ function Icl({ d }: { d: IndicesDto }) {
           Hasta
           <input type="date" className={`${inputClass} w-44`} value={hasta} onChange={(e) => setHasta(e.target.value)} />
         </label>
-        <button type="submit" className="h-10 rounded-brand bg-brand-red px-4 text-sm font-semibold text-white">
+        <button type="submit" className={`h-10 rounded-brand bg-brand-red px-4 text-sm font-semibold text-white ${CLASE_FOCO}`}>
           Buscar
         </button>
       </form>
@@ -105,8 +103,8 @@ function Ipc({ d }: { d: IndicesDto }) {
     return ultimo && base ? ((ultimo.valor / base.valor - 1) * 100) : null;
   })();
   const filas: FilaPeriodos[] = [
-    { label: 'Variación mensual', valores: enTabla((v) => v.variacionMensual), total: acumulada ?? Number.NaN, formato: (x) => porciento(x), destaca: true },
-    { label: 'Interanual', valores: enTabla((v) => v.variacionInteranual), total: cargados ? (interanual[cargados - 1] ?? Number.NaN) : Number.NaN, formato: (x) => porciento(x) },
+    { label: 'Variación mensual', valores: enTabla((v) => v.variacionMensual), total: acumulada ?? Number.NaN, formato: fmtVariacion, destaca: true },
+    { label: 'Interanual', valores: enTabla((v) => v.variacionInteranual), total: cargados ? (interanual[cargados - 1] ?? Number.NaN) : Number.NaN, formato: fmtVariacion },
   ];
   return (
     <div className="flex flex-col gap-4">
@@ -129,8 +127,8 @@ function Ipc({ d }: { d: IndicesDto }) {
         etiquetas={ABREV_MES}
         barras={mensual}
         linea={interanual}
-        formatoBarras={(x) => porciento(x)}
-        formatoLinea={(x) => porciento(x)}
+        formatoBarras={fmtVariacion}
+        formatoLinea={fmtVariacion}
         nombreBarras="Variación mensual %"
         nombreLinea="Interanual %"
         transcurridos={Math.min(cargados, periodosTranscurridos(anio, 'mes'))}
@@ -157,8 +155,8 @@ function Ipc({ d }: { d: IndicesDto }) {
                   {ABREV_MES[Number(v.fecha.slice(5, 7)) - 1]} {v.fecha.slice(0, 4)}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-ink">{valor(v.valor)}</td>
-                <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-ink">{porciento(v.variacionMensual)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{porciento(v.variacionInteranual)}</td>
+                <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-ink">{fmtVariacion(v.variacionMensual)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{fmtVariacion(v.variacionInteranual)}</td>
               </tr>
             ))}
           </tbody>
@@ -194,7 +192,7 @@ export function IndicesVista({ icl, ipc, ver: inicial }: { icl: IndicesDto; ipc:
               type="button"
               aria-selected={ver === v}
               onClick={() => setVer(v)}
-              className={`rounded-brand px-3 py-2 text-sm font-semibold ${ver === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
+              className={`rounded-brand px-3 py-2 text-sm font-semibold ${CLASE_FOCO} ${ver === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
             >
               {texto}
             </button>

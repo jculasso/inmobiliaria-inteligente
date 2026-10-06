@@ -8,7 +8,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { devolverDeposito, entregarDeposito } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
-import { Insignia, Panel, type TonoInsignia } from './piezas';
+import { Dato, Insignia, Panel, type TonoInsignia } from './piezas';
 
 const ESTADO: Record<EstadoDeposito, { texto: string; tono: TonoInsignia }> = {
   sin_deposito: { texto: 'Sin depósito', tono: 'neutro' },
@@ -51,25 +51,15 @@ export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string;
         <p className="text-sm text-muted">El contrato no tiene depósito cargado.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
-            <div>
-              <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Importe</dt>
-              <dd className="font-semibold tabular-nums text-ink">{d.importe != null ? fmtMoneda(d.importe, moneda) : '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Cobrado</dt>
-              <dd className="tabular-nums text-ink">{fmtMoneda(d.cobrado, moneda)}</dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Gestión</dt>
-              <dd className="text-ink">{d.gestion === 'entrega_propietario' ? 'Se le entrega al propietario' : 'Lo retiene la inmobiliaria'}</dd>
-            </div>
-            {d.devueltoEl && (
-              <div>
-                <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Devuelto el</dt>
-                <dd className="text-ink">{fmtFecha(d.devueltoEl)}</dd>
-              </div>
-            )}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+            <Dato etiqueta="Importe">{d.importe != null && <span className="font-semibold tabular-nums">{fmtMoneda(d.importe, moneda)}</span>}</Dato>
+            <Dato etiqueta="Cobrado">
+              <span className="tabular-nums">{fmtMoneda(d.cobrado, moneda)}</span>
+            </Dato>
+            <Dato etiqueta="Gestión" className="col-span-2">
+              {d.gestion === 'entrega_propietario' ? 'Se le entrega al propietario' : 'Lo retiene la inmobiliaria'}
+            </Dato>
+            {d.devueltoEl && <Dato etiqueta="Devuelto el">{fmtFecha(d.devueltoEl)}</Dato>}
           </dl>
           {d.estado === 'a_cobrar' && <p className="text-sm text-muted">Se cobra con los cargos de ingreso, desde Cobros.</p>}
           <div className="flex flex-wrap gap-2">
@@ -85,7 +75,7 @@ export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string;
             )}
           </div>
           {error && !devolviendo && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}
@@ -102,7 +92,7 @@ export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string;
               <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </Campo>
             {error && (
-              <p role="alert" className="text-sm font-medium text-brand-red">
+              <p role="alert" className="text-sm font-medium text-danger">
                 {error}
               </p>
             )}

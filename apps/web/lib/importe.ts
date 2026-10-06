@@ -48,3 +48,17 @@ export function leerNumero(texto: string | null | undefined): number | null {
 export function fmtPct(n: number | null | undefined): string {
   return `${(n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 3 })}%`;
 }
+
+/**
+ * Una variación, con su signo y siempre un decimal: «+1,9%», «-0,4%», «+10,0%».
+ * El decimal fijo es para que en una columna las cifras queden alineadas. La
+ * escribían a mano tres pantallas (índices, a indexar y la ficha del contrato).
+ */
+export function fmtVariacion(pct: number | null | undefined): string {
+  if (pct == null || Number.isNaN(pct)) return '—';
+  const v = Math.round(pct * 10) / 10;
+  return `${v >= 0 ? '+' : '-'}${Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
+/** La variación de un valor a otro: de 100 a 105, «+5,0%». */
+export const variacionEntre = (anterior: number, nuevo: number) => fmtVariacion((nuevo / anterior - 1) * 100);

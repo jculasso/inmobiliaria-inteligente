@@ -72,7 +72,7 @@ export function GenerarContrato({ contrato, plantillas, documento }: { contrato:
           </div>
           <p className="text-xs text-muted">Queda como el documento del contrato, abajo, para mandar a firmar.</p>
           {error && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}

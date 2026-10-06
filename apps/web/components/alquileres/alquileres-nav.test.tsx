@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 let ruta = '/alquileres';
 vi.mock('next/navigation', () => ({ usePathname: () => ruta }));
@@ -23,6 +23,17 @@ describe('AlquileresNav', () => {
     const sub = screen.getByRole('navigation', { name: 'Gastos' });
     expect(sub).toHaveTextContent('Impuestos y servicios');
     expect(screen.getByRole('link', { name: 'Proveedores' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  // Auditoría del 6/10/2026: en Plantillas no quedaba marcada ninguna pestaña.
+  it('las plantillas de contrato marcan Configuración y su segunda fila', () => {
+    ruta = '/alquileres/plantillas';
+    render(<AlquileresNav />);
+    const principal = within(screen.getByRole('navigation', { name: 'Alquileres' }));
+    expect(principal.getByRole('link', { name: 'Configuración' })).toHaveAttribute('aria-current', 'page');
+    const sub = within(screen.getByRole('navigation', { name: 'Configuración' }));
+    expect(sub.getByRole('link', { name: 'Plantillas de contrato' })).toHaveAttribute('aria-current', 'page');
+    expect(sub.getByRole('link', { name: 'Configuración' })).not.toHaveAttribute('aria-current');
   });
 
   it('la ficha de un contrato sigue marcando Contratos, sin segunda fila', () => {

@@ -77,6 +77,6 @@ describe('LiquidacionForm', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Liquidar' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Liquidación 000003 · $ 886.707,26 a Juan Propietario');
     expect(liquidar).toHaveBeenCalledWith('token', { personaId: DUENO, moneda: 'ARS', fecha: '2026-11-12', medio: 'transferencia', excluidos: [] });
-    expect(screen.getByRole('button', { name: 'Descargar la liquidación' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '📄 Abrir la liquidación' })).toBeInTheDocument();
   });
 });

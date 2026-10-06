@@ -7,13 +7,10 @@ import { NOMBRE_ESTADO_RECLAMO, NOMBRE_PRIORIDAD, NOMBRE_TIPO_RECLAMO, type Esta
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cambiarReclamo } from '../../lib/alquileres-api';
-import { fmtFecha } from '../../lib/format';
+import { fmtFechaDe, fmtFechaHora } from '../../lib/format';
 import { Campo, inputClass, textareaClass } from '../form-ui';
-import { Bloque, EncabezadoPagina, Panel } from './piezas';
+import { Bloque, Dato, EncabezadoPagina, Panel, VacioBloque } from './piezas';
 import { EstadoReclamoBadge, PrioridadBadge, useUsuarios } from './reclamos-piezas';
-
-const cuando = (iso: string) =>
-  new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' });
 
 /** Un reclamo: qué pasa, de quién, quién lo tiene, y su historial de notas. */
 export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
@@ -53,42 +50,26 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
         <EstadoReclamoBadge estado={r.estado} />
       </EncabezadoPagina>
       <Panel icono="🛠️" titulo={NOMBRE_TIPO_RECLAMO[r.tipo]}>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Contrato</dt>
-            <dd>
-              {r.contrato ? (
-                <Link href={`/alquileres/contratos/${r.contrato.id}`} className="font-semibold text-ink hover:underline">
-                  {r.contrato.codigo} · {r.contrato.propiedad}
-                </Link>
-              ) : (
-                '—'
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">De</dt>
-            <dd>
-              {r.persona ? (
-                <Link href={`/alquileres/personas/${r.persona.id}`} className="text-ink hover:underline">
-                  {r.persona.nombre}
-                </Link>
-              ) : (
-                '—'
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Abierto</dt>
-            <dd className="text-ink">
-              {fmtFecha(r.abierto.slice(0, 10))}
-              {r.abiertoPor ? ` · ${r.abiertoPor}` : ''}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Asignado a</dt>
-            <dd className="text-ink">{r.asignadoA ?? 'Sin asignar'}</dd>
-          </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <Dato etiqueta="Contrato">
+            {r.contrato && (
+              <Link href={`/alquileres/contratos/${r.contrato.id}`} className="font-semibold text-ink hover:underline">
+                {r.contrato.codigo} · {r.contrato.propiedad}
+              </Link>
+            )}
+          </Dato>
+          <Dato etiqueta="De">
+            {r.persona && (
+              <Link href={`/alquileres/personas/${r.persona.id}`} className="text-ink hover:underline">
+                {r.persona.nombre}
+              </Link>
+            )}
+          </Dato>
+          <Dato etiqueta="Abierto">
+            {fmtFechaDe(r.abierto)}
+            {r.abiertoPor ? ` · ${r.abiertoPor}` : ''}
+          </Dato>
+          <Dato etiqueta="Asignado a">{r.asignadoA ?? 'Sin asignar'}</Dato>
         </dl>
         {r.descripcion && <p className="mt-3 whitespace-pre-line text-sm text-ink">{r.descripcion}</p>}
       </Panel>
@@ -128,7 +109,7 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
             <textarea className={textareaClass} rows={3} value={nota} onChange={(e) => setNota(e.target.value)} />
           </Campo>
           {error && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}
@@ -140,16 +121,20 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
         </div>
       </Panel>
       <Bloque icono="🕓" titulo="Historial" detalle={`${r.notas.length}`}>
-        <ol className="divide-y divide-line text-sm">
-          {r.notas.map((n) => (
-            <li key={n.id} className="px-4 py-2.5">
-              <p className="whitespace-pre-line text-ink">{n.texto}</p>
-              <p className="text-xs text-muted">
-                {n.usuario ?? 'Sin operador'} · {cuando(n.en)}
-              </p>
-            </li>
-          ))}
-        </ol>
+        {r.notas.length === 0 ? (
+          <VacioBloque>Sin notas todavía.</VacioBloque>
+        ) : (
+          <ol className="divide-y divide-line text-sm">
+            {r.notas.map((n) => (
+              <li key={n.id} className="px-4 py-2.5">
+                <p className="whitespace-pre-line text-ink">{n.texto}</p>
+                <p className="text-xs text-muted">
+                  {n.usuario ?? 'Sin operador'} · {fmtFechaHora(n.en)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
       </Bloque>
     </div>
   );

@@ -11,6 +11,7 @@ vi.mock('../../lib/alquileres-api', () => ({
 }));
 
 import { ReclamoFicha } from './reclamo-ficha';
+import { ReclamosLista } from './reclamos-lista';
 
 const R: ReclamoDto = {
   id: '33333333-3333-4333-8333-333333333333',
@@ -35,6 +36,25 @@ describe('Reclamos (entrega 15)', () => {
     render(<ReclamoFicha reclamo={R} />);
     expect(screen.getByRole('link', { name: 'ALT-0005 · Mendoza 3340' })).toHaveAttribute('href', '/alquileres/contratos/55555555-5555-4555-8555-555555555555');
     expect(screen.getByText('Abrió el reclamo (alta prioridad).')).toBeInTheDocument();
+  });
+
+  // Un reclamo abierto a las 23 h de Argentina ya es «mañana» en UTC: la fecha sale del día argentino.
+  it('abierto de noche, la fecha es la del día en Argentina', () => {
+    render(<ReclamoFicha reclamo={{ ...R, abierto: '2026-10-07T02:00:00Z' }} />);
+    expect(screen.getByText(/^06\/10\/2026/)).toBeInTheDocument();
+  });
+
+  it('sin notas, lo dice', () => {
+    render(<ReclamoFicha reclamo={{ ...R, notas: [] }} />);
+    expect(screen.getByText('Sin notas todavía.')).toBeInTheDocument();
+  });
+
+  // La fila de la tabla se abre con un clic, que el teclado no alcanza: el número es un link de verdad.
+  it('en la lista, cada reclamo se abre también con el teclado', () => {
+    const resumen = { id: R.id, numero: 7, asunto: R.asunto, tipo: R.tipo, prioridad: R.prioridad, estado: R.estado, contrato: R.contrato, persona: R.persona, asignadoA: null, abierto: R.abierto, actualizado: R.actualizado };
+    render(<ReclamosLista reclamos={[resumen]} contratos={[]} estado="abiertos" />);
+    expect(screen.getByRole('link', { name: 'Reclamo 7: Pérdida de agua en el baño' })).toHaveAttribute('href', `/alquileres/reclamos/${R.id}`);
+    expect(screen.getByRole('button', { name: 'Abiertos' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('guardar manda solo lo que cambió, con la nota', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtFecha, fmtK, fmtNum, fmtUSD } from './format';
+import { fmtFecha, fmtFechaDe, fmtFechaHora, fmtK, fmtNum, fmtUSD } from './format';
 
 describe('fmtUSD', () => {
   it('redondea y agrega separador de miles es-AR con prefijo $', () => {
@@ -50,5 +50,26 @@ describe('fmtFecha', () => {
   it('tolera una fecha con hora y una vacía', () => {
     expect(fmtFecha('2026-08-07T00:00:00.000Z')).toBe('07/08/2026');
     expect(fmtFecha(null)).toBe('—');
+  });
+});
+
+/**
+ * Los momentos (cuándo se registró algo) vienen en UTC. Después de las 21 h
+ * de Argentina, la parte de la fecha en UTC ya es mañana: un reclamo abierto
+ * el 6 a la noche aparecía «abierto el 7».
+ */
+describe('fmtFechaDe y fmtFechaHora', () => {
+  it('a las 23:30 de Argentina sigue siendo el mismo día', () => {
+    expect(fmtFechaDe('2026-10-07T02:30:00.000Z')).toBe('06/10/2026');
+    expect(fmtFechaHora('2026-10-07T02:30:00.000Z')).toBe('06/10/2026 23:30');
+  });
+
+  it('un día calendario suelto no se corre', () => {
+    expect(fmtFechaDe('2026-01-01')).toBe('01/01/2026');
+  });
+
+  it('vacío es una raya', () => {
+    expect(fmtFechaDe(null)).toBe('—');
+    expect(fmtFechaHora(undefined)).toBe('—');
   });
 });

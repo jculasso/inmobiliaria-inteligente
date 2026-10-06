@@ -56,7 +56,7 @@ describe('CuentaCorriente', () => {
     const persona = { id: id(), nombre: 'Romina Inquilina', tipo: 'fisica', documento: null, telefono: null, email: null } as unknown as PersonaDto;
     const ficha = { persona, cuentas: [], contactos: [], contratos: [], saldos: [] } as unknown as PersonaFichaDto;
     render(<CuentaCorriente cuenta={cuenta(0)} persona={persona} cobros={[]} ficha={ficha} historial={[]} />);
-    expect(screen.getByRole('tab', { selected: true })).not.toHaveTextContent(/cuenta/i);
+    expect(screen.getByRole('button', { pressed: true })).not.toHaveTextContent(/cuenta/i);
     fireEvent.click(screen.getByRole('button', { name: /Editar datos/ }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });

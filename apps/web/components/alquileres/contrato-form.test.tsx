@@ -54,7 +54,7 @@ describe('ContratoForm — alta en tres pasos', () => {
     expect(falta.getByText(/Elegí la propiedad/)).toBeInTheDocument();
     expect(falta.getByText(/Falta el propietario/)).toBeInTheDocument();
     // Ningún paso se marca completo con el formulario vacío.
-    expect(screen.queryByLabelText('(completo)')).not.toBeInTheDocument();
+    expect(screen.queryByText('(completo)')).not.toBeInTheDocument();
   });
 
   it('del paso 1 al 3, genera los tramos y guarda en borrador', async () => {

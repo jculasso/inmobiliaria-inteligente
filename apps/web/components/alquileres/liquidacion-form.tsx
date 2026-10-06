@@ -19,8 +19,9 @@ import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
-import { EncabezadoPagina } from './piezas';
+import { CLASE_FOCO, Confirmacion, EncabezadoPagina } from './piezas';
 import { SelectorPersona } from './selector-persona';
+import { MEDIOS_COBRO, NOMBRE_MEDIO } from './medios';
 
 const numero = (n: number) => String(n).padStart(6, '0');
 
@@ -45,7 +46,7 @@ export function FichaPropiedad({ contrato, propietario }: { contrato: ContratoDe
           {contrato?.propiedad || 'Sin propiedad'}
         </span>
         {contrato && (
-          <Link href={`/alquileres/contratos/${contrato.id}`} className="text-xs font-semibold text-muted hover:text-brand-red hover:underline">
+          <Link href={`/alquileres/contratos/${contrato.id}`} className={`rounded text-xs font-semibold text-muted hover:text-brand-red hover:underline ${CLASE_FOCO}`}>
             Contrato {contrato.codigo}
           </Link>
         )}
@@ -67,7 +68,7 @@ export function FichaPropiedad({ contrato, propietario }: { contrato: ContratoDe
 /** Arriba de todo: a quién se le liquida y de cuántas propiedades. El neto va abajo, junto al botón. */
 function PanelResumen({ prep, grupos }: { prep: PreparacionLiquidacionDto; grupos: number }) {
   return (
-    <dl className="grid grid-cols-[2fr_1fr] gap-3">
+    <dl className="grid gap-3 sm:grid-cols-[2fr_1fr]">
       <div className="min-w-0 rounded-brand border border-line bg-white p-4 shadow-sm">
         <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">🧑‍💼 Propietario</dt>
         <dd className="mt-1 text-lg font-extrabold text-ink">{prep.persona.nombre}</dd>
@@ -142,37 +143,36 @@ export function LiquidacionForm({
 
   if (hecha) {
     return (
-      <div className="flex flex-col gap-3 rounded-brand border border-success/30 bg-white p-5">
-        <p role="status" className="text-lg font-extrabold text-ink">
-          Liquidación {numero(hecha.numero)} · {fmtMoneda(hecha.neto, hecha.moneda)} a {hecha.persona.nombre}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="primary"
-            onClick={() => abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), hecha.id), { titulo: `Liquidación ${numero(hecha.numero)}`, onError: setError })}
-          >
-            Descargar la liquidación
-          </Button>
-          <Button variant="secondary" onClick={() => setMandando(true)}>
-            ✉️ Mandar por mail
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={`/alquileres/personas/${hecha.persona.id}`}>Ver la cuenta</Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href="/alquileres/liquidaciones">Volver a la bandeja</Link>
-          </Button>
-        </div>
-        {error && <p role="alert" className="text-sm font-semibold text-brand-red">{error}</p>}
+      <Confirmacion
+        titulo={`Liquidación ${numero(hecha.numero)} · ${fmtMoneda(hecha.neto, hecha.moneda)} a ${hecha.persona.nombre}`}
+        detalle={error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
+        volver={{ href: '/alquileres/liquidaciones', texto: 'Volver a liquidaciones' }}
+      >
+        <Button asChild variant="primary">
+          <Link href={`/alquileres/personas/${hecha.persona.id}`}>Ver la cuenta</Link>
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), hecha.id), { titulo: `Liquidación ${numero(hecha.numero)}`, onError: setError })}
+        >
+          📄 Abrir la liquidación
+        </Button>
+        <Button variant="secondary" onClick={() => setMandando(true)}>
+          ✉️ Enviar por mail
+        </Button>
+        {/* Sin el propietario en la dirección: el de recién ya no tiene nada para liquidar. */}
+        <Button variant="secondary" onClick={() => window.location.assign('/alquileres/liquidaciones/nueva')}>
+          🧾 Otra liquidación
+        </Button>
         {mandando && (
           <EnviarMailModal
-            titulo={`Mandar la liquidación ${numero(hecha.numero)}`}
+            titulo={`Enviar la liquidación ${numero(hecha.numero)} por mail`}
             personaId={hecha.persona.id}
             enviar={async (para) => enviarLiquidacionPorMail(await getAccessToken(), hecha.id, para)}
             onClose={() => setMandando(false)}
           />
         )}
-      </div>
+      </Confirmacion>
     );
   }
 
@@ -228,10 +228,11 @@ export function LiquidacionForm({
         </Campo>
         <Campo label="Se le paga por">
           <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
-            <option value="transferencia">Transferencia</option>
-            <option value="cheque">Cheque</option>
-            <option value="efectivo">Efectivo</option>
-            <option value="otro">Otro</option>
+            {MEDIOS_COBRO.map((v) => (
+              <option key={v} value={v}>
+                {NOMBRE_MEDIO[v]}
+              </option>
+            ))}
           </select>
         </Campo>
       </section>
@@ -272,7 +273,7 @@ export function LiquidacionForm({
           {dejados > 0 && (
             <p className="text-sm text-muted">
               {dejados === 1 ? 'Un concepto queda' : `${dejados} conceptos quedan`} para la próxima liquidación.{' '}
-              <button type="button" className="font-semibold text-brand-red hover:underline" onClick={() => setExcluidos([])}>
+              <button type="button" className={`rounded font-semibold text-brand-red hover:underline ${CLASE_FOCO}`} onClick={() => setExcluidos([])}>
                 Volver a incluir todo
               </button>
             </p>
@@ -280,18 +281,18 @@ export function LiquidacionForm({
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-brand border border-line bg-white px-4 py-3 shadow-sm">
             <span>
               <span className="block text-[11px] font-bold uppercase tracking-wider text-muted">💰 Neto a pagar</span>
-              <span className={`text-2xl font-extrabold tabular-nums ${prep.neto < 0 ? 'text-brand-red' : 'text-ink'}`}>{fmtMoneda(prep.neto, moneda)}</span>
+              <span className={`text-2xl font-extrabold tabular-nums ${prep.neto < 0 ? 'text-danger' : 'text-ink'}`}>{fmtMoneda(prep.neto, moneda)}</span>
             </span>
             <Button variant="primary" onClick={confirmar} disabled={enviando || prep.aPagar.length === 0 || prep.neto < 0}>
               {enviando ? 'Liquidando…' : 'Liquidar'}
             </Button>
           </div>
-          {prep.neto < 0 && <p className="text-sm text-brand-red">Lo que se descuenta supera lo que se le paga: destildá algún descuento para la próxima.</p>}
+          {prep.neto < 0 && <p className="text-sm font-medium text-danger">Lo que se descuenta supera lo que se le paga: destildá algún descuento para la próxima.</p>}
         </>
       )}
 
       {error && (
-        <p role="alert" className="text-sm font-semibold text-brand-red">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}

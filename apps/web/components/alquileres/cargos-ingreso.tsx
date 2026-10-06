@@ -8,7 +8,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { cargarCargosIngreso } from '../../lib/alquileres-api';
 import { fmtMoneda, hoyIso } from '../../lib/format';
 import { inputClass } from '../form-ui';
-import { Panel } from './piezas';
+import { CLASE_FOCO, Panel } from './piezas';
 import { InputImporteNumero } from '../input-importe';
 
 const TIPO: Record<CargoIngreso['tipo'], string> = { comision: 'Comisión', informe: 'Informe', deposito: 'Depósito', sellado: 'Sellado' };
@@ -69,7 +69,8 @@ export function CargosIngreso({ contratoId, estado, moneda, cargos }: { contrato
         <p className="text-sm text-muted">La propuesta sale de la configuración (⚙️ Configuración). Revisala, sumá los informes de garantía y cargala: se cobra desde Cobros.</p>
         <ul className="flex flex-col gap-2">
           {filas.map((f, i) => (
-            <li key={i} className="grid gap-2 rounded-brand border border-line p-2 sm:grid-cols-[6rem_1fr_9rem_9rem_9rem_auto] sm:items-center">
+            // En una fila recién desde `lg`: entre 640 y 760 px las seis columnas no entraban y la fila se salía de la tarjeta.
+            <li key={i} className="grid gap-2 rounded-brand border border-line p-2 sm:grid-cols-2 sm:items-center lg:grid-cols-[6rem_1fr_9rem_9rem_9rem_auto]">
               <span className="text-xs font-bold uppercase tracking-wide text-muted">{TIPO[f.tipo]}</span>
               <input aria-label="Descripción" className={inputClass} value={f.descripcion} onChange={(e) => cambiar(i, { descripcion: e.target.value })} />
               <select aria-label="A cargo de" className={inputClass} value={f.aCargoDe} onChange={(e) => cambiar(i, { aCargoDe: e.target.value as CargoIngreso['aCargoDe'] })}>
@@ -78,7 +79,11 @@ export function CargosIngreso({ contratoId, estado, moneda, cargos }: { contrato
               </select>
               <InputImporteNumero aria-label="Importe" moneda={f.moneda ?? moneda} valor={f.importe} onValor={(n) => cambiar(i, { importe: n ?? 0 })} />
               <input aria-label="Vence" type="date" className={inputClass} value={f.vencimiento} onChange={(e) => cambiar(i, { vencimiento: e.target.value })} />
-              <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+              <button
+                type="button"
+                onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))}
+                className={`justify-self-end rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}
+              >
                 🗑️ Quitar
               </button>
             </li>
@@ -100,7 +105,7 @@ export function CargosIngreso({ contratoId, estado, moneda, cargos }: { contrato
           </Button>
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

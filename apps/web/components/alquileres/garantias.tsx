@@ -8,12 +8,12 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { guardarGarantias } from '../../lib/alquileres-api';
 import { fmtFecha } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
-import { Insignia, Panel, type TonoInsignia } from './piezas';
+import { CLASE_FOCO, Insignia, Panel, type TonoInsignia } from './piezas';
 
 const ESTADO: Record<EstadoGarantia, { texto: string; tono: TonoInsignia }> = {
   pendiente: { texto: 'Informe pendiente', tono: 'aviso' },
   aprobada: { texto: 'Aprobada', tono: 'exito' },
-  rechazada: { texto: 'Rechazada', tono: 'marca' },
+  rechazada: { texto: 'Rechazada', tono: 'peligro' },
 };
 
 const DETALLE: Record<TipoGarantia, string> = {
@@ -71,12 +71,12 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
 
   return (
     <Panel
-      icono="🛡️"
+      icono="🤝"
       titulo="Garantías"
       derecha={
         !editando && (
           <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
-            ✏️ {garantias.length ? 'Editar' : 'Cargar'}
+            {garantias.length ? '✏️ Editar' : '＋ Agregar garantías'}
           </Button>
         )
       }
@@ -162,7 +162,7 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
                 </Campo>
               </div>
               <div className="flex justify-end sm:col-span-3">
-                <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+                <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}>
                   🗑️ Quitar
                 </button>
               </div>
@@ -194,7 +194,7 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
             </div>
           </div>
           {error && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}

@@ -11,7 +11,24 @@ import { AnularModal } from './anular-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
-import { Bloque, BotonNuevo, CabezaTarjeta, CLASE_TD, CLASE_TD_FIJA, CLASE_TH, CLASE_TR_ABRIBLE, EncabezadoPagina, Insignia } from './piezas';
+import {
+  AccionesFila,
+  AccionFila,
+  Bloque,
+  BotonNuevo,
+  CabezaTarjeta,
+  CLASE_FOCO,
+  CLASE_TD,
+  CLASE_TD_ACCIONES,
+  CLASE_TD_FIJA,
+  CLASE_TH,
+  CLASE_TH_ACCIONES,
+  CLASE_TR_ABRIBLE,
+  EncabezadoPagina,
+  Insignia,
+  LinkFila,
+  VacioBloque,
+} from './piezas';
 
 const numero = (n: number) => String(n).padStart(6, '0');
 
@@ -50,23 +67,25 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
   const pdf = (l: LiquidacionResumenDto) =>
     abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), l.id), { titulo: `Liquidación ${numero(l.numero)}`, onError: setError });
   const abrir = (l: LiquidacionResumenDto) => router.push(`/alquileres/personas/${l.persona.id}`);
-  const estado = (l: LiquidacionResumenDto) => (l.anulado ? <Insignia tono="marca">Anulada</Insignia> : <Insignia tono="exito">Pagada</Insignia>);
+  const estado = (l: LiquidacionResumenDto) => (l.anulado ? <Insignia tono="neutro">Anulada</Insignia> : <Insignia tono="exito">Pagada</Insignia>);
   const neto = (l: LiquidacionResumenDto) => <span className={l.anulado ? 'text-muted line-through' : ''}>{fmtMoneda(l.neto, l.moneda)}</span>;
 
   return (
     <div className="flex flex-col gap-5">
       <EncabezadoPagina titulo="Liquidaciones">
-        <BotonNuevo href="/alquileres/liquidaciones/nueva">Liquidar</BotonNuevo>
+        <BotonNuevo href="/alquileres/liquidaciones/nueva" icono="🧾">
+          Liquidar
+        </BotonNuevo>
       </EncabezadoPagina>
       {error && (
-        <p role="alert" className="text-sm font-semibold text-brand-red">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}
 
       <Bloque icono="🧾" titulo="Para liquidar" detalle={`${listos.length} ${listos.length === 1 ? 'propietario' : 'propietarios'}`}>
         {listos.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted">Ningún propietario tiene alquileres cobrados sin liquidar.</p>
+          <VacioBloque>Ningún propietario tiene alquileres cobrados sin liquidar.</VacioBloque>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {listos.map((p) => (
@@ -82,8 +101,8 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                 <span className="flex items-center gap-3">
                   <span className="whitespace-nowrap font-bold tabular-nums text-ink">{fmtMoneda(p.neto, p.moneda)}</span>
                   <Button asChild variant="secondary" size="sm">
-                    <Link href={`/alquileres/liquidaciones/nueva?persona=${p.persona.id}`}>
-                      Liquidar
+                    <Link href={`/alquileres/liquidaciones/nueva?persona=${p.persona.id}`} aria-label={`Liquidar a ${p.persona.nombre}`}>
+                      🧾 Liquidar
                     </Link>
                   </Button>
                 </span>
@@ -100,14 +119,14 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
 
       <Bloque icono="📚" titulo="Últimas liquidaciones">
         {liquidaciones.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted">Todavía no se liquidó a nadie.</p>
+          <VacioBloque>Todavía no se liquidó a nadie.</VacioBloque>
         ) : (
           <>
             <div className="sm:hidden">
               <ListaTarjetas etiqueta="Liquidaciones">
                 {liquidaciones.map((l) => (
                   <Tarjeta key={l.id}>
-                    <button type="button" onClick={() => abrir(l)} className="block w-full text-left" title={`Abrir la cuenta de ${l.persona.nombre}`}>
+                    <button type="button" onClick={() => abrir(l)} className={`block w-full rounded text-left ${CLASE_FOCO}`} title={`Abrir la cuenta de ${l.persona.nombre}`}>
                       <CabezaTarjeta titulo={l.persona.nombre} detalle={`N.º ${numero(l.numero)} · ${fmtFecha(l.fecha)}`} insignia={estado(l)} />
                       <Propiedades contratos={l.contratos} />
                       <CamposTarjeta>
@@ -115,16 +134,13 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                         <CampoTarjeta etiqueta="Registró">{l.registradoPor ?? '—'}</CampoTarjeta>
                       </CamposTarjeta>
                     </button>
-                    <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
-                      <button type="button" onClick={() => pdf(l)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
-                        📄 PDF
-                      </button>
-                      {!l.anulado && (
-                        <button type="button" onClick={() => setAAnular(l)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
-                          🚫 Anular
-                        </button>
-                      )}
-                    </div>
+                    <AccionesFila
+                      tarjeta
+                      nombre={`la liquidación ${numero(l.numero)}`}
+                      extra={<AccionFila tarjeta icono="📄" texto="PDF" etiqueta={`PDF de la liquidación ${numero(l.numero)}`} onClick={() => pdf(l)} />}
+                      onBorrar={l.anulado ? undefined : () => setAAnular(l)}
+                      anula
+                    />
                   </Tarjeta>
                 ))}
               </ListaTarjetas>
@@ -140,13 +156,17 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                     <th className={`${CLASE_TH} text-right`}>Neto</th>
                     <th className={CLASE_TH}>Estado</th>
                     <th className={CLASE_TH}>Registró</th>
-                    <th className={`${CLASE_TH} right-0 z-30 border-l`} />
+                    <th className={CLASE_TH_ACCIONES} />
                   </tr>
                 </thead>
                 <tbody>
                   {liquidaciones.map((l) => (
                     <tr key={l.id} onClick={() => abrir(l)} className={CLASE_TR_ABRIBLE}>
-                      <td className={CLASE_TD_FIJA}>{numero(l.numero)}</td>
+                      <td className={CLASE_TD_FIJA}>
+                        <LinkFila href={`/alquileres/personas/${l.persona.id}`} etiqueta={`Liquidación ${numero(l.numero)}: abrir la cuenta de ${l.persona.nombre}`}>
+                          {numero(l.numero)}
+                        </LinkFila>
+                      </td>
                       <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(l.fecha)}</td>
                       <td className={`${CLASE_TD} text-ink`}>{l.persona.nombre}</td>
                       <td className="px-3 py-1">
@@ -155,35 +175,13 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                       <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{neto(l)}</td>
                       <td className={CLASE_TD}>{estado(l)}</td>
                       <td className={`${CLASE_TD} text-muted`}>{l.registradoPor ?? '—'}</td>
-                      <td className="sticky right-0 border-l border-line bg-white px-2 py-2">
-                        <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            pdf(l);
-                          }}
-                          aria-label={`PDF de la liquidación ${numero(l.numero)}`}
-                          title="Abrir el PDF"
-                          className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
-                        >
-                          📄
-                        </button>
-                        {!l.anulado && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setAAnular(l);
-                            }}
-                            aria-label={`Anular la liquidación ${numero(l.numero)}`}
-                            title="Anular, con un motivo"
-                            className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
-                          >
-                            🚫
-                          </button>
-                        )}
-                        </div>
+                      <td className={CLASE_TD_ACCIONES}>
+                        <AccionesFila
+                          nombre={`la liquidación ${numero(l.numero)}`}
+                          extra={<AccionFila icono="📄" texto="PDF" etiqueta={`PDF de la liquidación ${numero(l.numero)}`} title="Abrir el PDF" onClick={() => pdf(l)} />}
+                          onBorrar={l.anulado ? undefined : () => setAAnular(l)}
+                          anula
+                        />
                       </td>
                     </tr>
                   ))}

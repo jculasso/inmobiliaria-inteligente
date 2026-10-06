@@ -19,13 +19,15 @@ import {
 import { Button, KpiCard, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularComprobante, borrarProveedor, cargarComprobante, guardarProveedor, pagarComprobante } from '../../lib/alquileres-api';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { AnularModal } from './anular-modal';
+import { MEDIOS_COBRO, NOMBRE_MEDIO } from './medios';
 import {
   AccionesFila,
+  AccionFila,
   Bloque,
   BotonNuevo,
   CabezaTarjeta,
@@ -35,23 +37,18 @@ import {
   CLASE_TH_ACCIONES,
   EncabezadoPagina,
   Insignia,
+  Segmentado,
   TituloSeccion,
+  VacioBloque,
 } from './piezas';
 import { InputImporte } from '../input-importe';
 import { leerImporte } from '../../lib/importe';
 
 const A_CARGO: Record<ACargoDe, string> = { propietario: 'Propietario', inquilino: 'Inquilino', inmobiliaria: 'Inmobiliaria' };
-const MEDIOS: [MedioCobro, string][] = [
-  ['transferencia', 'Transferencia'],
-  ['efectivo', 'Efectivo'],
-  ['cheque', 'Cheque'],
-  ['otro', 'Otro'],
-];
 const num = (v: string) => leerImporte(v) ?? 0;
-const hoy = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
 
 function EstadoComprobante({ c }: { c: ComprobanteDto }) {
-  if (c.estado === 'anulado') return <Insignia tono="marca">Anulado</Insignia>;
+  if (c.estado === 'anulado') return <Insignia tono="neutro">Anulado</Insignia>;
   if (c.estado === 'pagado') return <Insignia tono="exito">Pagado {c.pagadoEl ? fmtFecha(c.pagadoEl) : ''}</Insignia>;
   return <Insignia tono="aviso">A pagar</Insignia>;
 }
@@ -128,23 +125,19 @@ export function ProveedoresVista({
         titulo="Comprobantes"
         detalle={`${comprobantes.length}`}
         acciones={
-          <div role="group" aria-label="Qué comprobantes" className="flex gap-1 rounded-brand border border-line bg-white p-1">
-            {(['pendientes', 'todos'] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={estado === v}
-                onClick={() => router.push(v === 'pendientes' ? pathname : `${pathname}?ver=todos`)}
-                className={`rounded-brand px-3 py-1 text-xs font-semibold ${estado === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
-              >
-                {v === 'pendientes' ? 'A pagar' : 'Todos'}
-              </button>
-            ))}
-          </div>
+          <Segmentado
+            etiqueta="Qué comprobantes"
+            opciones={[
+              ['pendientes', 'A pagar'],
+              ['todos', 'Todos'],
+            ]}
+            valor={estado}
+            onCambio={(v) => router.push(v === 'pendientes' ? pathname : `${pathname}?ver=todos`)}
+          />
         }
       >
         {comprobantes.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted">{estado === 'pendientes' ? 'No hay nada para pagar a proveedores.' : 'Todavía no se cargó ningún comprobante.'}</p>
+          <VacioBloque>{estado === 'pendientes' ? 'No hay nada para pagar a proveedores.' : 'Todavía no se cargó ningún comprobante.'}</VacioBloque>
         ) : (
           <>
             <div className="sm:hidden">
@@ -157,22 +150,21 @@ export function ProveedoresVista({
                       insignia={<EstadoComprobante c={c} />}
                     />
                     <CamposTarjeta>
-                      <CampoTarjeta etiqueta="Importe">{fmtMoneda(c.importe, c.moneda)}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Importe">
+                        <span className={c.estado === 'anulado' ? 'text-muted line-through' : ''}>{fmtMoneda(c.importe, c.moneda)}</span>
+                      </CampoTarjeta>
                       <CampoTarjeta etiqueta="A cargo de">{A_CARGO[c.aCargoDe]}</CampoTarjeta>
                       <CampoTarjeta etiqueta="Contrato">{c.contrato ? `${c.contrato.codigo} · ${c.contrato.propiedad}` : '—'}</CampoTarjeta>
                       <CampoTarjeta etiqueta="Registró">{c.registradoPor ?? '—'}</CampoTarjeta>
                     </CamposTarjeta>
                     {c.estado === 'pendiente' && (
-                      <div className="mt-2 flex justify-end gap-1 border-t border-line pt-2">
-                        <button type="button" onClick={() => setAPagar(c)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
-                          💸 Pagar
-                        </button>
-                        {!c.aplicado && (
-                          <button type="button" onClick={() => setAAnular(c)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
-                            🚫 Anular
-                          </button>
-                        )}
-                      </div>
+                      <AccionesFila
+                        tarjeta
+                        nombre={`el comprobante de ${c.proveedor.nombre}`}
+                        extra={<AccionFila tarjeta icono="💸" texto="Pagar" etiqueta={`Pagar a ${c.proveedor.nombre}`} onClick={() => setAPagar(c)} />}
+                        onBorrar={c.aplicado ? undefined : () => setAAnular(c)}
+                        anula
+                      />
                     )}
                   </Tarjeta>
                 ))}
@@ -194,7 +186,7 @@ export function ProveedoresVista({
                 </thead>
                 <tbody>
                   {comprobantes.map((c) => (
-                    <tr key={c.id} className={`border-b border-line last:border-0 ${c.estado === 'anulado' ? 'opacity-60' : ''}`}>
+                    <tr key={c.id} className="border-b border-line last:border-0">
                       <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(c.fecha)}</td>
                       <td className={`${CLASE_TD} text-ink`}>
                         <span aria-hidden>{ICONO_RUBRO[c.proveedor.rubro]} </span>
@@ -210,22 +202,18 @@ export function ProveedoresVista({
                       </td>
                       <td className={`${CLASE_TD} text-muted`}>{c.contrato ? c.contrato.codigo : '—'}</td>
                       <td className={`${CLASE_TD} text-muted`}>{A_CARGO[c.aCargoDe]}</td>
-                      <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{fmtMoneda(c.importe, c.moneda)}</td>
+                      <td className={`${CLASE_TD} text-right font-semibold tabular-nums ${c.estado === 'anulado' ? 'text-muted line-through' : 'text-ink'}`}>{fmtMoneda(c.importe, c.moneda)}</td>
                       <td className={CLASE_TD}>
                         <EstadoComprobante c={c} />
                       </td>
                       <td className={CLASE_TD_ACCIONES}>
                         {c.estado === 'pendiente' && (
-                          <div className="flex items-center gap-1">
-                            <button type="button" onClick={() => setAPagar(c)} aria-label={`Pagar a ${c.proveedor.nombre}`} title="Registrar el pago" className="rounded px-1.5 py-0.5 text-base hover:bg-surface">
-                              💸
-                            </button>
-                            {!c.aplicado && (
-                              <button type="button" onClick={() => setAAnular(c)} aria-label="Anular el comprobante" title="Anular, con un motivo" className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5">
-                                🚫
-                              </button>
-                            )}
-                          </div>
+                          <AccionesFila
+                            nombre={`el comprobante de ${c.proveedor.nombre} (${c.descripcion})`}
+                            extra={<AccionFila icono="💸" texto="Pagar" etiqueta={`Pagar a ${c.proveedor.nombre}`} title="Registrar el pago" onClick={() => setAPagar(c)} />}
+                            onBorrar={c.aplicado ? undefined : () => setAAnular(c)}
+                            anula
+                          />
                         )}
                       </td>
                     </tr>
@@ -239,7 +227,7 @@ export function ProveedoresVista({
 
       <Bloque icono="🧰" titulo="Proveedores" detalle={`${proveedores.length}`} acciones={<Button variant="secondary" size="sm" onClick={() => setProveedor('nuevo')}>＋ Nuevo proveedor</Button>}>
         {proveedores.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted">Sin proveedores cargados: plomero, electricista, pintor…</p>
+          <VacioBloque>Sin proveedores cargados: plomero, electricista, pintor…</VacioBloque>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {proveedores.map((p) => (
@@ -293,7 +281,7 @@ function CargarComprobanteModal({ proveedores, contratos, onClose, onDone }: { p
   const [proveedorId, setProveedorId] = useState(proveedores[0]?.id ?? '');
   const [contratoId, setContratoId] = useState('');
   const [aCargoDe, setACargoDe] = useState<ACargoDe>('propietario');
-  const [fecha, setFecha] = useState(hoy());
+  const [fecha, setFecha] = useState(hoyIso());
   const [descripcion, setDescripcion] = useState('');
   const [importe, setImporte] = useState('');
   const [tipoComprobante, setTipo] = useState<'factura_a' | 'factura_b' | 'factura_c' | 'recibo' | 'ticket' | 'otro'>('factura_c');
@@ -363,11 +351,12 @@ function CargarComprobanteModal({ proveedores, contratos, onClose, onDone }: { p
           <Campo label="Qué se hizo" requerido>
             <input className={inputClass} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Cambio de flexible del baño" />
           </Campo>
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Campo label="Fecha">
               <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </Campo>
-            <Campo label="Importe" requerido>
+            {/* Los proveedores se pagan en pesos: el rótulo lo dice para que nadie cargue dólares. */}
+            <Campo label="Importe en pesos" requerido>
               <InputImporte value={importe} onChange={setImporte} />
             </Campo>
             <Campo label="Comprobante">
@@ -390,16 +379,16 @@ function CargarComprobanteModal({ proveedores, contratos, onClose, onDone }: { p
             </label>
             {pagado && (
               <select aria-label="Medio de pago" className={`${inputClass} w-44`} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
-                {MEDIOS.map(([v, l]) => (
+                {MEDIOS_COBRO.map((v) => (
                   <option key={v} value={v}>
-                    {l}
+                    {NOMBRE_MEDIO[v]}
                   </option>
                 ))}
               </select>
             )}
           </div>
           {error && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}
@@ -483,7 +472,7 @@ function ProveedorModal({ proveedor: p, onClose, onDone }: { proveedor: Proveedo
           </Campo>
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}
@@ -501,7 +490,7 @@ function ProveedorModal({ proveedor: p, onClose, onDone }: { proveedor: Proveedo
 }
 
 function PagarModal({ comprobante: c, onClose, onDone }: { comprobante: ComprobanteDto; onClose: () => void; onDone: () => void }) {
-  const [fecha, setFecha] = useState(hoy());
+  const [fecha, setFecha] = useState(hoyIso());
   const [medio, setMedio] = useState<MedioCobro>('transferencia');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -514,16 +503,16 @@ function PagarModal({ comprobante: c, onClose, onDone }: { comprobante: Comproba
           </Campo>
           <Campo label="Medio">
             <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
-              {MEDIOS.map(([v, l]) => (
+              {MEDIOS_COBRO.map((v) => (
                 <option key={v} value={v}>
-                  {l}
+                  {NOMBRE_MEDIO[v]}
                 </option>
               ))}
             </select>
           </Campo>
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

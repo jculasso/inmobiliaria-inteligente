@@ -6,8 +6,10 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { cambiarFirma, cargarContratoFirmado, cargarDocumentoContrato, enviarAFirmar, urlDocumento } from '../../lib/alquileres-api';
+import { fmtFechaHora } from '../../lib/format';
 import { inputClass } from '../form-ui';
-import { Panel } from './piezas';
+import { NOMBRE_PAPEL } from './nombres';
+import { CLASE_FOCO, Insignia, Panel, type TonoInsignia } from './piezas';
 
 export const NOMBRE_ESTADO_FIRMA: Record<EstadoFirma, string> = {
   sin_enviar: 'Sin enviar',
@@ -18,17 +20,15 @@ export const NOMBRE_ESTADO_FIRMA: Record<EstadoFirma, string> = {
   vencido: 'Vencido',
 };
 
-const ESTILO_ESTADO: Record<EstadoFirma, string> = {
-  sin_enviar: 'bg-surface text-muted',
-  enviado: 'bg-warning/10 text-warning',
-  firmado_parcial: 'bg-warning/10 text-warning',
-  firmado: 'bg-success/10 text-success',
-  rechazado: 'bg-brand-red/10 text-brand-red',
-  vencido: 'bg-brand-red/10 text-brand-red',
+// Rechazado o vencido es algo que resolver: rojo de urgencia, no el color de la marca.
+const TONO_ESTADO: Record<EstadoFirma, TonoInsignia> = {
+  sin_enviar: 'neutro',
+  enviado: 'aviso',
+  firmado_parcial: 'aviso',
+  firmado: 'exito',
+  rechazado: 'peligro',
+  vencido: 'peligro',
 };
-
-const PAPEL = { propietario: 'Propietario', inquilino: 'Inquilino', garante: 'Garante' } as const;
-const fechaHora = (iso: string) => new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /**
  * El documento del contrato y su firma (reglas 33 a 36). Por ahora con el
@@ -86,7 +86,7 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
     <Panel
       icono="✍️"
       titulo="Documento y firma"
-      derecha={doc && <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${ESTILO_ESTADO[doc.estadoFirma]}`}>{NOMBRE_ESTADO_FIRMA[doc.estadoFirma]}</span>}
+      derecha={doc && <Insignia tono={TONO_ESTADO[doc.estadoFirma]}>{NOMBRE_ESTADO_FIRMA[doc.estadoFirma]}</Insignia>}
     >
 
       <input ref={archivo} type="file" accept="application/pdf" className="hidden" aria-label="PDF del contrato" onChange={(e) => elegirArchivo(e.currentTarget, async (f) => cargarDocumentoContrato(await getAccessToken(), contratoId, f))} />
@@ -102,11 +102,11 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button type="button" onClick={() => abrir(false)} className="font-semibold text-brand-red hover:underline">
+            <button type="button" onClick={() => abrir(false)} className={`rounded font-semibold text-brand-red hover:underline ${CLASE_FOCO}`}>
               {doc.nombreArchivo ?? 'Ver el PDF'}
             </button>
             {doc.tieneFirmado && (
-              <button type="button" onClick={() => abrir(true)} className="font-semibold text-success hover:underline">
+              <button type="button" onClick={() => abrir(true)} className={`rounded font-semibold text-success hover:underline ${CLASE_FOCO}`}>
                 · Ver el firmado
               </button>
             )}
@@ -117,7 +117,7 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
             {doc.firmantes.map((f) => (
               <li key={f.personaId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                 <span>
-                  <span className="font-semibold text-ink">{f.nombre}</span> <span className="text-xs text-muted">{PAPEL[f.papel]}</span>
+                  <span className="font-semibold text-ink">{f.nombre}</span> <span className="text-xs text-muted">{NOMBRE_PAPEL[f.papel]}</span>
                 </span>
                 <span className="w-36 shrink-0">
                   <select
@@ -179,7 +179,7 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
               <ul className="mt-2 flex flex-col gap-1">
                 {[...doc.eventos].reverse().map((e, i) => (
                   <li key={i}>
-                    {fechaHora(e.fecha)} · {e.estadoAnterior && e.estadoAnterior !== e.estadoNuevo ? `${NOMBRE_ESTADO_FIRMA[e.estadoAnterior]} → ` : ''}
+                    {fmtFechaHora(e.fecha)} · {e.estadoAnterior && e.estadoAnterior !== e.estadoNuevo ? `${NOMBRE_ESTADO_FIRMA[e.estadoAnterior]} → ` : ''}
                     {NOMBRE_ESTADO_FIRMA[e.estadoNuevo]} · {e.origen === 'manual' ? 'a mano' : e.origen}
                     {e.detalle ? ` · ${e.detalle}` : ''}
                   </li>
@@ -191,7 +191,7 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
       )}
 
       {error && (
-        <p role="alert" className="mt-3 text-sm font-semibold text-brand-red">
+        <p role="alert" className="mt-3 text-sm font-medium text-danger">
           {error}
         </p>
       )}

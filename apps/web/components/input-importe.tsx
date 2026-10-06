@@ -69,31 +69,43 @@ export function InputImporteNumero({
   );
 }
 
-/** Un porcentaje que vive como número: deja escribir «8,» y vaciar el campo. */
-export function InputPorcentaje({
-  valor,
-  onValor,
+/**
+ * Un porcentaje que vive como texto en el estado (el alta de contrato lo lee
+ * recién al guardar, con `leerNumero`). Se ve igual que `InputPorcentaje`: a la
+ * derecha, con el «%» adentro del campo.
+ */
+export function InputPorcentajeTexto({
+  value,
+  onChange,
   className = '',
   ...rest
-}: { valor: number; onValor: (n: number) => void; className?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'>) {
-  const [texto, setTexto] = useState(String(valor).replace('.', ','));
+}: { value: string; onChange: (texto: string) => void; className?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'>) {
   return (
     <div className={`relative ${className}`}>
-      <input
-        {...rest}
-        type="text"
-        inputMode="decimal"
-        className={`${inputClass} pr-8 text-right tabular-nums`}
-        value={texto}
-        onChange={(e) => {
-          setTexto(e.target.value);
-          const n = leerNumero(e.target.value);
-          onValor(n == null || Number.isNaN(n) ? 0 : n);
-        }}
-      />
+      <input {...rest} type="text" inputMode="decimal" autoComplete="off" className={`${inputClass} pr-8 text-right tabular-nums`} value={value} onChange={(e) => onChange(e.target.value)} />
       <span aria-hidden className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">
         %
       </span>
     </div>
+  );
+}
+
+/** Un porcentaje que vive como número: deja escribir «8,» y vaciar el campo. */
+export function InputPorcentaje({
+  valor,
+  onValor,
+  ...rest
+}: { valor: number; onValor: (n: number) => void } & Omit<Parameters<typeof InputPorcentajeTexto>[0], 'value' | 'onChange'>) {
+  const [texto, setTexto] = useState(String(valor).replace('.', ','));
+  return (
+    <InputPorcentajeTexto
+      {...rest}
+      value={texto}
+      onChange={(t) => {
+        setTexto(t);
+        const n = leerNumero(t);
+        onValor(n == null || Number.isNaN(n) ? 0 : n);
+      }}
+    />
   );
 }

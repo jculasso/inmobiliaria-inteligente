@@ -59,7 +59,7 @@ describe('ProveedoresVista', () => {
     render(<ProveedoresVista proveedores={proveedores} comprobantes={[comp({ aplicado: true })]} reporte={reporte} contratos={contratos} estado="pendientes" />);
     const tabla = within(screen.getByRole('table'));
     expect(tabla.getByRole('button', { name: /Pagar a/ })).toBeInTheDocument();
-    expect(tabla.queryByRole('button', { name: 'Anular el comprobante' })).not.toBeInTheDocument();
+    expect(tabla.queryByRole('button', { name: /Anular/ })).not.toBeInTheDocument();
   });
 
   it('cargarlo al propietario exige el contrato', async () => {

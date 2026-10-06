@@ -20,9 +20,10 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarContrato, crearContrato } from '../../lib/alquileres-api';
 import { Campo, inputClass, textareaClass } from '../form-ui';
-import { InputImporte } from '../input-importe';
+import { InputImporte, InputPorcentajeTexto } from '../input-importe';
 import { escribirImporte, leerImporte, leerNumero } from '../../lib/importe';
-import { EncabezadoPagina } from './piezas';
+import { CLASE_FOCO, EncabezadoPagina } from './piezas';
+import { NOMBRE_INDICE, NOMBRE_PAPEL } from './nombres';
 
 interface Parte {
   clave: string;
@@ -39,12 +40,6 @@ interface Tramo {
 }
 
 const PASOS = ['Partes', 'Condiciones', 'Tramos'] as const;
-
-const NOMBRE_PAPEL: Record<PapelContrato, string> = {
-  propietario: 'Propietario',
-  inquilino: 'Inquilino',
-  garante: 'Garante',
-};
 
 let secuencia = 0;
 const nuevaClave = () => `p${++secuencia}`;
@@ -184,20 +179,23 @@ export function ContratoForm({
       />
       <ol className="flex gap-2" aria-label="Pasos del alta">
         {PASOS.map((nombre, i) => (
-          <li key={nombre} className="flex-1">
+          // `min-w-0`: en el teléfono los tres pasos comparten el ancho en vez de empujar el último afuera.
+          <li key={nombre} className="min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setPaso(i)}
               aria-current={paso === i ? 'step' : undefined}
-              className={`w-full rounded-brand border px-3 py-2 text-left text-sm font-semibold ${
+              className={`w-full truncate rounded-brand border px-2 py-2 text-left text-xs font-semibold sm:px-3 sm:text-sm ${CLASE_FOCO} ${
                 paso === i ? 'border-brand-red bg-brand-red text-white' : 'border-line bg-white text-muted hover:text-ink'
               }`}
             >
               <span className="mr-1.5 tabular-nums">{i + 1}.</span>
               {nombre}
               {problemas[i]!.length === 0 && (
-                <span className={`ml-1.5 ${paso === i ? 'text-white' : 'text-success'}`} aria-label="(completo)">
-                  ✓
+                <span className={`ml-1.5 ${paso === i ? 'text-white' : 'text-success'}`}>
+                  <span aria-hidden>✓</span>
+                  {/* El lector de pantalla no lee un `aria-label` en un span: el texto, escondido a la vista, sí. */}
+                  <span className="sr-only"> (completo)</span>
                 </span>
               )}
             </button>
@@ -263,13 +261,11 @@ export function ContratoForm({
                     ))}
                   </select>
                   {p.papel === 'propietario' ? (
-                    <input
-                      className={`${inputClass} col-span-2 sm:col-span-1`}
+                    <InputPorcentajeTexto
+                      className="col-span-2 sm:col-span-1"
                       aria-label="Porcentaje"
-                      placeholder="%"
-                      inputMode="decimal"
                       value={p.porcentaje}
-                      onChange={(e) => setParte(p.clave, { porcentaje: e.target.value })}
+                      onChange={(porcentaje) => setParte(p.clave, { porcentaje })}
                     />
                   ) : (
                     <span className="hidden sm:block" />
@@ -277,8 +273,8 @@ export function ContratoForm({
                   <button
                     type="button"
                     onClick={() => setPartes((ps) => ps.filter((x) => x.clave !== p.clave))}
-                    className="col-start-2 row-start-1 min-h-11 px-2 text-sm text-muted hover:text-brand-red sm:col-start-auto sm:row-start-auto"
-                    aria-label="Quitar"
+                    className={`col-start-2 row-start-1 min-h-11 rounded px-2 text-sm text-muted hover:text-danger sm:col-start-auto sm:row-start-auto ${CLASE_FOCO}`}
+                    aria-label={`Quitar ${NOMBRE_PAPEL[p.papel].toLowerCase()}`}
                   >
                     ✕
                   </button>
@@ -293,7 +289,7 @@ export function ContratoForm({
                     size="sm"
                     onClick={() => setPartes((ps) => [...ps, { clave: nuevaClave(), personaId: '', papel, porcentaje: '' }])}
                   >
-                    + {NOMBRE_PAPEL[papel]}
+                    ＋ {NOMBRE_PAPEL[papel]}
                   </Button>
                 ))}
               </div>
@@ -349,9 +345,11 @@ export function ContratoForm({
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Índice">
                   <select className={inputClass} value={indice} onChange={(e) => setIndice(e.target.value as IndiceAlquiler)}>
-                    <option value="ICL">ICL</option>
-                    <option value="IPC">IPC</option>
-                    <option value="CCP">Casa Propia</option>
+                    {(['ICL', 'IPC', 'CCP'] as const).map((v) => (
+                      <option key={v} value={v}>
+                        {NOMBRE_INDICE[v]}
+                      </option>
+                    ))}
                   </select>
                 </Campo>
                 <Campo label="Cada (meses)">
@@ -362,17 +360,17 @@ export function ContratoForm({
               <span />
             )}
             <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-4">
-              <Campo label="Honorarios %" hint="Propietario. Sin IVA.">
-                <input className={inputClass} inputMode="decimal" value={honorariosPct} onChange={(e) => setHonorariosPct(e.target.value)} />
+              <Campo label="Honorarios" hint="Propietario. Sin IVA.">
+                <InputPorcentajeTexto value={honorariosPct} onChange={setHonorariosPct} />
               </Campo>
-              <Campo label="Gastos adm. %" hint="Inquilino. Sin IVA.">
-                <input className={inputClass} inputMode="decimal" value={gastosAdmPct} onChange={(e) => setGastosAdmPct(e.target.value)} />
+              <Campo label="Gastos adm." hint="Inquilino. Sin IVA.">
+                <InputPorcentajeTexto value={gastosAdmPct} onChange={setGastosAdmPct} />
               </Campo>
-              <Campo label="IVA alquiler %">
-                <input className={inputClass} inputMode="decimal" value={ivaPct} onChange={(e) => setIvaPct(e.target.value)} />
+              <Campo label="IVA alquiler">
+                <InputPorcentajeTexto value={ivaPct} onChange={setIvaPct} />
               </Campo>
-              <Campo label="Punitorio diario %">
-                <input className={inputClass} inputMode="decimal" value={punitorioDiarioPct} onChange={(e) => setPunitorioDiarioPct(e.target.value)} />
+              <Campo label="Punitorio diario">
+                <InputPorcentajeTexto value={punitorioDiarioPct} onChange={setPunitorioDiarioPct} />
               </Campo>
             </div>
             <label className="flex min-h-11 items-center gap-2 text-sm text-ink sm:col-span-2">
@@ -411,39 +409,49 @@ export function ContratoForm({
               </p>
             </div>
             {tramos.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[34rem] text-sm">
-                  <thead>
-                    <tr className="text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
-                      <th className="py-2 pr-2">N°</th>
-                      <th className="py-2 pr-2">Desde</th>
-                      <th className="py-2 pr-2">Hasta</th>
-                      <th className="py-2">Importe mensual</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tramos.map((t, i) => (
-                      <tr key={t.numero} className="border-t border-line">
-                        <td className="py-1.5 pr-2 tabular-nums text-muted">{t.numero}</td>
-                        <td className="py-1.5 pr-2">
-                          <input type="date" aria-label={`Desde, tramo ${t.numero}`} className={inputClass} value={t.desde} onChange={(e) => setTramo(i, { desde: e.target.value })} />
-                        </td>
-                        <td className="py-1.5 pr-2">
-                          <input type="date" aria-label={`Hasta, tramo ${t.numero}`} className={inputClass} value={t.hasta} onChange={(e) => setTramo(i, { hasta: e.target.value })} />
-                        </td>
-                        <td className="py-1.5">
-                          <InputImporte
-                            aria-label={`Importe, tramo ${t.numero}`}
-                            moneda={moneda}
-                            placeholder={ajuste === 'indexado' && i > 0 ? 'Se indexa' : ''}
-                            value={t.importe}
-                            onChange={(importe) => setTramo(i, { importe })}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              // Una sola lista: en la computadora, una fila por tramo bajo sus
+              // columnas; en el teléfono, cada tramo es una tarjetita con las
+              // fechas lado a lado y el importe abajo, sin desplazar de costado.
+              <div>
+                <div className="hidden grid-cols-[3rem_1fr_1fr_1fr] gap-2 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted sm:grid" aria-hidden>
+                  <span>N.º</span>
+                  <span>Desde</span>
+                  <span>Hasta</span>
+                  <span>Importe mensual</span>
+                </div>
+                <ol className="flex flex-col gap-2 sm:gap-0">
+                  {tramos.map((t, i) => (
+                    <li
+                      key={t.numero}
+                      className="grid grid-cols-2 gap-2 rounded-brand border border-line p-2 sm:grid-cols-[3rem_1fr_1fr_1fr] sm:items-center sm:rounded-none sm:border-0 sm:border-t sm:px-0 sm:py-1.5"
+                    >
+                      <span className="col-span-2 text-xs font-bold tabular-nums text-muted sm:col-span-1 sm:text-sm sm:font-normal">
+                        <span className="sm:hidden">Tramo </span>
+                        {t.numero}
+                      </span>
+                      <span className="flex flex-col gap-1">
+                        <span aria-hidden className="text-[10px] font-bold uppercase tracking-wider text-muted sm:hidden">
+                          Desde
+                        </span>
+                        <input type="date" aria-label={`Desde, tramo ${t.numero}`} className={inputClass} value={t.desde} onChange={(e) => setTramo(i, { desde: e.target.value })} />
+                      </span>
+                      <span className="flex flex-col gap-1">
+                        <span aria-hidden className="text-[10px] font-bold uppercase tracking-wider text-muted sm:hidden">
+                          Hasta
+                        </span>
+                        <input type="date" aria-label={`Hasta, tramo ${t.numero}`} className={inputClass} value={t.hasta} onChange={(e) => setTramo(i, { hasta: e.target.value })} />
+                      </span>
+                      <InputImporte
+                        className="col-span-2 sm:col-span-1"
+                        aria-label={`Importe, tramo ${t.numero}`}
+                        moneda={moneda}
+                        placeholder={ajuste === 'indexado' && i > 0 ? 'Se indexa' : ''}
+                        value={t.importe}
+                        onChange={(importe) => setTramo(i, { importe })}
+                      />
+                    </li>
+                  ))}
+                </ol>
               </div>
             )}
           </div>
@@ -459,7 +467,7 @@ export function ContratoForm({
       </section>
 
       {error && (
-        <p role="alert" className="text-sm font-medium text-brand-red">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}

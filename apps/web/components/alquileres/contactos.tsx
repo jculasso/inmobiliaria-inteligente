@@ -7,7 +7,7 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { guardarContactos } from '../../lib/alquileres-api';
 import { Campo, inputClass } from '../form-ui';
-import { Insignia, Panel } from './piezas';
+import { CLASE_FOCO, Insignia, Panel } from './piezas';
 
 interface Fila {
   nombre: string;
@@ -59,7 +59,7 @@ export function Contactos({ personaId, contactos }: { personaId: string; contact
       derecha={
         !editando && (
           <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
-            ✏️ {contactos.length ? 'Editar' : 'Cargar'}
+            {contactos.length ? '✏️ Editar' : '＋ Agregar contactos'}
           </Button>
         )
       }
@@ -101,7 +101,7 @@ export function Contactos({ personaId, contactos }: { personaId: string; contact
                   <input type="radio" name="contacto-principal" className="h-4 w-4 accent-brand-red" checked={f.principal} onChange={() => cambiar(i, { principal: true })} />
                   Principal
                 </label>
-                <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+                <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}>
                   🗑️ Quitar
                 </button>
               </div>
@@ -129,7 +129,7 @@ export function Contactos({ personaId, contactos }: { personaId: string; contact
             </div>
           </div>
           {error && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}
