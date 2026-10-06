@@ -1,7 +1,8 @@
 import { DIR_ORDEN_DEFAULT, ORDEN_OPERACION_DEFAULT, type OperacionFiltro } from '@vacker/types';
 import { listOperaciones, listVendedores } from '../../../lib/tablero-api';
-import { requireServerPrincipal } from '../../../lib/server-principal';
-import { puedeEscribirOperaciones, puedeVerTodo } from '../../../lib/rbac';
+import { sesionServidor } from '../../../lib/server-principal';
+import { puedeEscribirOperaciones, puedeVerTodo, puedeVerVendedores } from '../../../lib/rbac';
+import { EncabezadoPagina } from '../../../components/piezas';
 import { FiltroOperaciones } from '../../../components/tablero/filtro-operaciones';
 import { ToggleVerTodo } from '../../../components/tablero/toggle-ver-todo';
 import { OperacionesTable } from '../../../components/tablero/operaciones-table';
@@ -18,8 +19,8 @@ export default async function VentasPage({
     dir?: string;
   }>;
 }) {
-  const ctx = await requireServerPrincipal();
-  if (!ctx) return null;
+  const s = await sesionServidor();
+  if (!s) return null;
 
   const params = await searchParams;
   const anio = params.anio ? Number(params.anio) : undefined;
@@ -31,27 +32,39 @@ export default async function VentasPage({
   const orden = params.orden as OperacionFiltro['orden'];
   const dir = params.dir as OperacionFiltro['dir'];
 
-  const [operaciones, vendedores] = await Promise.all([
-    listOperaciones(ctx.accessToken, { anio, mes, trimestre, verTodo, orden, dir, tipo: 'venta' }),
-    // Un `vendedor` puro no puede listar vendedores (403 en la API) — el form
-    // de alta/edición queda igual sin selects de punta, solo sin esa opción.
-    listVendedores(ctx.accessToken).catch(() => []),
+  // Las operaciones se piden EN PARALELO con `/me`: no dependen del rol. Los
+  // vendedores sí: solo los usa el formulario de alta/edición, y quien no
+  // puede verlos recibía un 403 en cada visita. Se piden apenas llega el rol,
+  // mientras las operaciones siguen viajando.
+  const vendedoresP = s.principal.then((p) =>
+    p && puedeVerVendedores(p.roles) ? listVendedores(s.accessToken).catch(() => []) : [],
+  );
+  const [principal, operaciones, vendedores] = await Promise.all([
+    s.principal,
+    listOperaciones(s.accessToken, {
+      anio,
+      mes,
+      trimestre,
+      verTodo,
+      orden,
+      dir,
+      tipo: 'venta',
+    }),
+    vendedoresP,
   ]);
+  if (!principal) return null;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-ink">Ventas</h2>
-        <div className="flex flex-wrap items-center gap-3">
-          {puedeVerTodo(ctx.principal.roles) && <ToggleVerTodo />}
-          <FiltroOperaciones anio={anio} mes={mes} trimestre={trimestre} />
-        </div>
-      </div>
+      <EncabezadoPagina titulo="Ventas">
+        {puedeVerTodo(principal.roles) && <ToggleVerTodo />}
+        <FiltroOperaciones anio={anio} mes={mes} trimestre={trimestre} />
+      </EncabezadoPagina>
       <OperacionesTable
         tipo="venta"
         operaciones={operaciones}
         vendedores={vendedores}
-        puedeEscribir={puedeEscribirOperaciones(ctx.principal.roles)}
+        puedeEscribir={puedeEscribirOperaciones(principal.roles)}
         orden={orden ?? ORDEN_OPERACION_DEFAULT}
         dir={dir ?? DIR_ORDEN_DEFAULT}
       />
