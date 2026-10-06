@@ -8,6 +8,7 @@ import {
   recortarAlLimite,
   type ConceptoDto,
   type ContratoResumenDto,
+  type EstadoConcepto,
   type MonedaAlquiler,
   type ResultadoGeneracionDto,
   type TipoConcepto,
@@ -18,9 +19,8 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { anularConcepto, generarPeriodo } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
-import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConceptoSueltoModal } from './concepto-suelto-modal';
-import { CLASE_LISTA_MOVIL, CLASE_TABLA_ANCHA, CLASE_TD, CLASE_TH, EncabezadoPagina, Insignia, TituloSeccion } from './piezas';
+import { CLASE_TD, CLASE_TD_ACCIONES, CLASE_TH, CLASE_TH_ACCIONES, EncabezadoPagina, Insignia, TituloSeccion, type TonoInsignia } from './piezas';
 
 const NOMBRE_TIPO: Record<TipoConcepto, string> = {
   alquiler: 'Alquiler',
@@ -63,12 +63,184 @@ function totales(conceptos: ConceptoDto[]) {
   ];
 }
 
-function Importe({ c }: { c: ConceptoDto }) {
+
+const ESTADO: Record<EstadoConcepto, { texto: string; tono: TonoInsignia }> = {
+  pendiente: { texto: 'Pendiente', tono: 'neutro' },
+  parcial: { texto: 'Cobrado en parte', tono: 'aviso' },
+  cobrado: { texto: 'Cobrado', tono: 'exito' },
+  pagado: { texto: 'Pagado', tono: 'exito' },
+  liquidado: { texto: 'Liquidado', tono: 'exito' },
+  anulado: { texto: 'Anulado', tono: 'marca' },
+};
+
+/**
+ * A quién va cada concepto, dicho como se dice en la inmobiliaria (punto 4 de
+ * Javier): al inquilino se le cobra; al propietario se le paga lo suyo y se le
+ * descuentan honorarios y gastos.
+ */
+function aQuien(c: ConceptoDto): string {
+  if (c.sentido === 'a_pagar') return 'Pagar a';
+  return c.papel === 'propietario' ? 'Descontar a' : 'Cobrar a';
+}
+
+interface Grupo {
+  clave: string;
+  contrato: ConceptoDto['contrato'];
+  conceptos: ConceptoDto[];
+  /** Por moneda: lo que paga el inquilino, lo que recibe el propietario y lo de la inmobiliaria. */
+  inquilino: [MonedaAlquiler, number][];
+  propietario: [MonedaAlquiler, number][];
+  inmobiliaria: [MonedaAlquiler, number][];
+}
+
+/** Un grupo por contrato, en orden de número; los sueltos sin contrato, al final. */
+function agrupar(conceptos: ConceptoDto[]): Grupo[] {
+  const mapa = new Map<string, ConceptoDto[]>();
+  for (const c of conceptos) mapa.set(c.contrato?.id ?? '', [...(mapa.get(c.contrato?.id ?? '') ?? []), c]);
+  const suma = (xs: ConceptoDto[], f: (c: ConceptoDto) => number): [MonedaAlquiler, number][] => {
+    const m = new Map<MonedaAlquiler, number>();
+    for (const c of xs.filter((x) => !x.anulado)) m.set(c.moneda, Math.round(((m.get(c.moneda) ?? 0) + f(c)) * 100) / 100);
+    return [...m].filter(([, v]) => v !== 0);
+  };
+  return [...mapa]
+    .map(([clave, xs]) => ({
+      clave,
+      contrato: xs[0]!.contrato,
+      conceptos: xs,
+      inquilino: suma(xs, (c) => (c.sentido === 'a_cobrar' && c.papel !== 'propietario' ? c.importe : 0)),
+      propietario: suma(xs, (c) => (c.papel === 'propietario' ? (c.sentido === 'a_pagar' ? c.importe : -c.importe) : 0)),
+      inmobiliaria: suma(xs, (c) => (c.tipo === 'honorarios' || c.tipo === 'gastos_adm' ? c.importe : 0)),
+    }))
+    .sort((a, b) => (!a.contrato ? 1 : !b.contrato ? -1 : a.contrato.codigo.localeCompare(b.contrato.codigo, 'es', { numeric: true })));
+}
+
+const montos = (xs: [MonedaAlquiler, number][]) => (xs.length ? xs.map(([m, v]) => fmtMoneda(v, m)).join(' · ') : '—');
+
+/** Un contrato del mes: su cabecera con lo que deja, y sus conceptos con estado. */
+function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: ConceptoDto) => void }) {
+  const anulable = (c: ConceptoDto) => !c.anulado && !c.aplicado;
   return (
-    <span className={c.anulado ? 'text-muted line-through' : c.sentido === 'a_pagar' ? 'text-ink' : 'font-semibold text-ink'}>
-      {c.sentido === 'a_pagar' ? '−' : ''}
-      {fmtMoneda(c.importe, c.moneda)}
-    </span>
+    <section className="overflow-hidden rounded-brand border border-line bg-white shadow-sm" aria-label={g.contrato ? `Contrato ${g.contrato.codigo}` : 'Sin contrato'}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line bg-surface/40 px-4 py-3">
+        {g.contrato ? (
+          <Link href={`/alquileres/contratos/${g.contrato.id}`} className="text-sm font-bold text-ink hover:text-brand-red hover:underline">
+            <span aria-hidden>🏠 </span>
+            {g.contrato.codigo} · {g.contrato.direccion}
+          </Link>
+        ) : (
+          <span className="text-sm font-bold text-ink">Sin contrato</span>
+        )}
+        <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+          <div className="flex gap-1">
+            <dt className="text-muted">Paga el inquilino</dt>
+            <dd className="whitespace-nowrap font-semibold tabular-nums text-ink">{montos(g.inquilino)}</dd>
+          </div>
+          <div className="flex gap-1">
+            <dt className="text-muted">Recibe el propietario</dt>
+            <dd className="whitespace-nowrap font-semibold tabular-nums text-ink">{montos(g.propietario)}</dd>
+          </div>
+          <div className="flex gap-1">
+            <dt className="text-muted">Para la inmobiliaria</dt>
+            <dd className="whitespace-nowrap font-semibold tabular-nums text-success">{montos(g.inmobiliaria)}</dd>
+          </div>
+        </dl>
+      </div>
+
+      {/* Teléfono: un renglón por concepto. */}
+      <ul className="divide-y divide-line text-sm sm:hidden">
+        {g.conceptos.map((c) => (
+          <li key={c.id} className="px-4 py-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <span className="min-w-0">
+                <span className={`block font-semibold ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>{lo(c)}</span>
+                <span className="block text-xs text-muted">
+                  {aQuien(c)} {c.persona.nombre} · vence {fmtFecha(c.vencimiento)}
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className={`block whitespace-nowrap font-semibold tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                  {c.sentido === 'a_pagar' ? 'A pagar ' : 'A cobrar '}
+                  {fmtMoneda(c.importe, c.moneda)}
+                </span>
+                <Insignia tono={ESTADO[c.estado].tono}>{ESTADO[c.estado].texto}</Insignia>
+              </span>
+            </div>
+            {c.anulado && <p className="mt-1 text-xs text-muted">Anulado{c.anulado.por ? ` por ${c.anulado.por}` : ''}: {c.anulado.motivo}</p>}
+            {anulable(c) && (
+              <div className="mt-1 flex justify-end">
+                <button type="button" onClick={() => onAnular(c)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+                  🚫 Anular
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {/* Escritorio: la tabla, con «A cobrar» y «A pagar» en columnas separadas en vez de un signo. */}
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr>
+              <th className={CLASE_TH}>Concepto</th>
+              <th className={CLASE_TH}>A quién</th>
+              <th className={CLASE_TH}>Vence</th>
+              <th className={`${CLASE_TH} text-right`}>A cobrar</th>
+              <th className={`${CLASE_TH} text-right`}>A pagar</th>
+              <th className={CLASE_TH}>Estado</th>
+              <th className={CLASE_TH_ACCIONES} />
+            </tr>
+          </thead>
+          <tbody>
+            {g.conceptos.map((c) => (
+              <tr key={c.id} className="border-b border-line last:border-0">
+                <td className="px-3 py-2">
+                  <span className={c.anulado ? 'text-muted line-through' : 'text-ink'}>{lo(c)}</span>
+                  {c.adelantadoPorInmobiliaria && !c.anulado && (
+                    <span className="ml-2">
+                      <Insignia tono="aviso">Adelantado</Insignia>
+                    </span>
+                  )}
+                  {c.anulado && (
+                    <span className="block text-xs text-muted">
+                      Anulado{c.anulado.por ? ` por ${c.anulado.por}` : ''}: {c.anulado.motivo}
+                    </span>
+                  )}
+                  {c.registrado?.por && !c.anulado && <span className="block text-xs text-muted">Cargó {c.registrado.por}</span>}
+                </td>
+                <td className={`${CLASE_TD} text-muted`}>
+                  <span className="text-[10px] font-bold uppercase tracking-wide">{aQuien(c)}</span> {c.persona.nombre}
+                </td>
+                <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(c.vencimiento)}</td>
+                <td className={`${CLASE_TD} text-right font-semibold tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                  {c.sentido === 'a_cobrar' ? fmtMoneda(c.importe, c.moneda) : ''}
+                </td>
+                <td className={`${CLASE_TD} text-right tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                  {c.sentido === 'a_pagar' ? fmtMoneda(c.importe, c.moneda) : ''}
+                </td>
+                <td className={CLASE_TD}>
+                  <Insignia tono={ESTADO[c.estado].tono}>{ESTADO[c.estado].texto}</Insignia>
+                  {c.estado === 'parcial' && <span className="ml-1 text-xs text-muted">falta {fmtMoneda(c.saldo, c.moneda)}</span>}
+                </td>
+                <td className={CLASE_TD_ACCIONES}>
+                  {anulable(c) && (
+                    <button
+                      type="button"
+                      onClick={() => onAnular(c)}
+                      aria-label="Anular"
+                      title="Anular este concepto"
+                      className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
+                    >
+                      🚫
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -86,6 +258,7 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
   const [suelto, setSuelto] = useState(false);
   const [anulando, setAnulando] = useState<ConceptoDto | null>(null);
   const { visibles, hayMas } = recortarAlLimite(conceptos);
+  const grupos = agrupar(visibles);
 
   async function generar() {
     setError(null);
@@ -180,98 +353,12 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
             </p>
           )}
 
-          <TituloSeccion icono="🧾" detalle={`${visibles.length} ${visibles.length === 1 ? 'concepto' : 'conceptos'}`}>
-            Conceptos de {mesDe(periodo)}
+          <TituloSeccion icono="🧾" detalle={`${grupos.length} ${grupos.length === 1 ? 'contrato' : 'contratos'} · ${visibles.length} conceptos`}>
+            Conceptos de {mesDe(periodo)}, por contrato
           </TituloSeccion>
-          <div className={CLASE_LISTA_MOVIL}>
-            <ListaTarjetas etiqueta="Conceptos">
-              {visibles.map((c) => (
-                <Tarjeta key={c.id}>
-                  <span className="flex items-start justify-between gap-2">
-                    <span className="min-w-0">
-                      <span className={`block text-sm font-bold ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>{lo(c)}</span>
-                      <span className="mt-0.5 block text-[11px] text-muted">{c.contrato ? `${c.contrato.codigo} · vence ${fmtFecha(c.vencimiento)}` : `vence ${fmtFecha(c.vencimiento)}`}</span>
-                    </span>
-                    <span className="shrink-0 whitespace-nowrap text-sm tabular-nums">
-                      <Importe c={c} />
-                    </span>
-                  </span>
-                  <CamposTarjeta>
-                    <CampoTarjeta etiqueta="Contrato">{c.contrato ? `${c.contrato.codigo} · ${c.contrato.direccion}` : '—'}</CampoTarjeta>
-                    <CampoTarjeta etiqueta={c.sentido === 'a_pagar' ? 'Se le paga a' : 'Lo debe'}>{c.persona.nombre}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Vence">{fmtFecha(c.vencimiento)}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Estado">{c.anulado ? `Anulado: ${c.anulado.motivo}` : c.adelantadoPorInmobiliaria ? 'Adelantado' : 'Pendiente'}</CampoTarjeta>
-                  </CamposTarjeta>
-                  {!c.anulado && !c.aplicado && (
-                    <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
-                      <button type="button" onClick={() => setAnulando(c)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
-                        🚫 Anular
-                      </button>
-                    </div>
-                  )}
-                </Tarjeta>
-              ))}
-            </ListaTarjetas>
-          </div>
-          <div className={CLASE_TABLA_ANCHA}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th className={CLASE_TH}>Contrato</th>
-                  <th className={CLASE_TH}>Concepto</th>
-                  <th className={CLASE_TH}>Persona</th>
-                  <th className={CLASE_TH}>Vence</th>
-                  <th className={`${CLASE_TH} text-right`}>Importe</th>
-                  <th className={`${CLASE_TH} right-0 z-30 border-l`} />
-                </tr>
-              </thead>
-              <tbody>
-                {visibles.map((c) => (
-                  <tr key={c.id} className="border-b border-line last:border-0">
-                    <td className={`${CLASE_TD} text-muted`}>
-                      {c.contrato ? (
-                        <Link href={`/alquileres/contratos/${c.contrato.id}`} className="hover:underline">
-                          <span className="font-semibold tabular-nums text-ink">{c.contrato.codigo}</span> · {c.contrato.direccion}
-                        </Link>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={c.anulado ? 'text-muted line-through' : 'text-ink'}>{lo(c)}</span>
-                      {c.adelantadoPorInmobiliaria && !c.anulado && (
-                        <span className="ml-2">
-                          <Insignia tono="aviso">Adelantado</Insignia>
-                        </span>
-                      )}
-                      {c.anulado && <span className="block text-xs text-muted">Anulado: {c.anulado.motivo}</span>}
-                    </td>
-                    <td className={`${CLASE_TD} text-muted`}>
-                      <span className="text-[10px] font-bold uppercase tracking-wide">{c.sentido === 'a_pagar' ? 'Se le paga' : 'Debe'}</span>{' '}
-                      {c.persona.nombre}
-                    </td>
-                    <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(c.vencimiento)}</td>
-                    <td className={`${CLASE_TD} text-right tabular-nums`}>
-                      <Importe c={c} />
-                    </td>
-                    <td className="sticky right-0 border-l border-line bg-white px-2 py-2 text-right">
-                      {!c.anulado && !c.aplicado && (
-                        <button
-                          type="button"
-                          onClick={() => setAnulando(c)}
-                          aria-label="Anular"
-                          title="Anular este concepto"
-                          className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
-                        >
-                          🚫
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {grupos.map((g) => (
+            <GrupoContrato key={g.clave} grupo={g} onAnular={setAnulando} />
+          ))}
         </>
       )}
 

@@ -34,6 +34,8 @@ const base: ContratoDto = {
   depositoDevolucion: null,
   rescindidoEl: null,
   obs: null,
+  registrado: { en: '2026-10-06T15:00:00Z', por: 'Lucía Operadora' },
+  anulado: null,
   propiedad: { id: 'p', direccion: 'Calle 123', unidad: null, ciudad: 'Rosario' },
   partes: [],
   tramos: [

@@ -3,17 +3,25 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LIMITE_LISTA, NOMBRE_TIPO_CONTRATO, recortarAlLimite, type ContratoResumenDto } from '@vacker/types';
+import { getAccessToken } from '../../lib/supabase/client';
+import { anularContrato, borrarContrato } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
+import { AnularModal } from './anular-modal';
+import { DatosContratoModal } from './datos-contrato-modal';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { paraBuscar } from './buscador';
 import { EstadoContratoBadge } from './estado-contrato';
 import {
+  AccionesFila,
   BarraLista,
   BotonNuevo,
   CabezaTarjeta,
   CLASE_LISTA_MOVIL,
   CLASE_TABLA_ANCHA,
   CLASE_TD,
+  CLASE_TD_ACCIONES,
+  CLASE_TH_ACCIONES,
   CLASE_TD_FIJA,
   CLASE_TH,
   CLASE_TR_ABRIBLE,
@@ -27,6 +35,9 @@ const nombres = (xs: { nombre: string }[]) => xs.map((x) => x.nombre).join(', ')
 export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenDto[]; hoy: string }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
+  const [aBorrar, setABorrar] = useState<ContratoResumenDto | null>(null);
+  const [aAnular, setAAnular] = useState<ContratoResumenDto | null>(null);
+  const [aEditar, setAEditar] = useState<ContratoResumenDto | null>(null);
   const { visibles, hayMas } = recortarAlLimite(contratos);
 
   const filtrados = useMemo(() => {
@@ -51,6 +62,17 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
       </span>
     );
   const abrir = (c: ContratoResumenDto) => router.push(`/alquileres/contratos/${c.id}`);
+  // Decidido con Javier el 6/10/2026: el borrador se edita completo y se borra;
+  // el vigente edita lo que no toca plata; con historia, se anula.
+  const editar = (c: ContratoResumenDto) =>
+    c.estado === 'borrador' ? () => router.push(`/alquileres/contratos/${c.id}/editar`) : c.estado === 'vigente' ? () => setAEditar(c) : undefined;
+  const borrar = (c: ContratoResumenDto) => (c.estado === 'borrador' ? () => setABorrar(c) : c.estado === 'anulado' ? undefined : () => setAAnular(c));
+  const listo = () => {
+    setABorrar(null);
+    setAAnular(null);
+    setAEditar(null);
+    router.refresh();
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,18 +104,21 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
           <div className={CLASE_LISTA_MOVIL}>
             <ListaTarjetas etiqueta="Contratos">
               {filtrados.map((c) => (
-                <Tarjeta key={c.id} onClick={() => abrir(c)} titulo={`Abrir el contrato ${c.codigo}`}>
-                  <CabezaTarjeta
-                    titulo={unidad(c)}
-                    detalle={`${c.codigo} · ${NOMBRE_TIPO_CONTRATO[c.tipo]} · hasta ${fmtFecha(c.fin)}`}
-                    insignia={<EstadoContratoBadge estado={c.estado} />}
-                  />
-                  <CamposTarjeta>
-                    <CampoTarjeta etiqueta="Inquilino">{nombres(c.inquilinos)}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Importe">{importe(c)}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Propietario">{nombres(c.propietarios)}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Indexación">{indexacion(c)}</CampoTarjeta>
-                  </CamposTarjeta>
+                <Tarjeta key={c.id}>
+                  <button type="button" onClick={() => abrir(c)} title={`Abrir el contrato ${c.codigo}`} className="block w-full text-left">
+                    <CabezaTarjeta
+                      titulo={unidad(c)}
+                      detalle={`${c.codigo} · ${NOMBRE_TIPO_CONTRATO[c.tipo]} · hasta ${fmtFecha(c.fin)}`}
+                      insignia={<EstadoContratoBadge estado={c.estado} />}
+                    />
+                    <CamposTarjeta>
+                      <CampoTarjeta etiqueta="Inquilino">{nombres(c.inquilinos)}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Importe">{importe(c)}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Propietario">{nombres(c.propietarios)}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Indexación">{indexacion(c)}</CampoTarjeta>
+                    </CamposTarjeta>
+                  </button>
+                  <AccionesFila tarjeta nombre={`el contrato ${c.codigo}`} onEditar={editar(c)} onBorrar={borrar(c)} anula={c.estado !== 'borrador'} />
                 </Tarjeta>
               ))}
             </ListaTarjetas>
@@ -110,11 +135,12 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
                   <th className={`${CLASE_TH} text-right`}>Importe</th>
                   <th className={CLASE_TH}>Próx. indexación</th>
                   <th className={CLASE_TH}>Estado</th>
+                  <th className={CLASE_TH_ACCIONES} />
                 </tr>
               </thead>
               <tbody>
                 {filtrados.map((c) => (
-                  <tr key={c.id} onClick={() => abrir(c)} className={CLASE_TR_ABRIBLE}>
+                  <tr key={c.id} onClick={() => abrir(c)} className={`${CLASE_TR_ABRIBLE} ${c.estado === 'anulado' ? 'opacity-60' : ''}`}>
                     <td className={CLASE_TD_FIJA}>{c.codigo}</td>
                     <td className={`${CLASE_TD} text-ink`}>
                       <span className="block max-w-[200px] truncate" title={unidad(c)}>
@@ -135,6 +161,9 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
                     <td className={CLASE_TD}>
                       <EstadoContratoBadge estado={c.estado} />
                     </td>
+                    <td className={CLASE_TD_ACCIONES}>
+                      <AccionesFila nombre={`el contrato ${c.codigo}`} onEditar={editar(c)} onBorrar={borrar(c)} anula={c.estado !== 'borrador'} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -142,6 +171,35 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
           </div>
         </>
       )}
+
+      {aBorrar && (
+        <ConfirmarBorradoModal
+          titulo={`Borrar el contrato ${aBorrar.codigo}`}
+          descripcion="Está en borrador: todavía no generó nada. Se borra con sus partes y tramos; el historial guarda que existió y quién lo borró."
+          detalle={
+            <>
+              <DatoBorrado etiqueta="Propiedad">{unidad(aBorrar)}</DatoBorrado>
+              <DatoBorrado etiqueta="Inquilino">{nombres(aBorrar.inquilinos)}</DatoBorrado>
+              <DatoBorrado etiqueta="Propietario">{nombres(aBorrar.propietarios)}</DatoBorrado>
+            </>
+          }
+          onConfirm={async () => {
+            await borrarContrato(await getAccessToken(), aBorrar.id);
+            router.refresh();
+          }}
+          onClose={() => setABorrar(null)}
+        />
+      )}
+      {aAnular && (
+        <AnularModal
+          titulo={`Anular el contrato ${aAnular.codigo}`}
+          detalle={`${unidad(aAnular)} · ${nombres(aAnular.inquilinos)}. Tiene historia: no se borra, queda anulado y tachado, con el motivo. Sus conceptos pendientes se anulan. Si ya tiene cobros o liquidaciones, primero hay que anular esos.`}
+          anular={async (motivo) => anularContrato(await getAccessToken(), aAnular.id, motivo)}
+          onClose={() => setAAnular(null)}
+          onDone={listo}
+        />
+      )}
+      {aEditar && <DatosContratoModal contratoId={aEditar.id} onClose={() => setAEditar(null)} onSaved={listo} />}
     </div>
   );
 }

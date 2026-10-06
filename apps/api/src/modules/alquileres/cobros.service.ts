@@ -18,6 +18,7 @@ import { parteDeClave, planificarCobro, proponerPunitorio, redondear2 } from '@v
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
+import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
@@ -140,6 +141,7 @@ export class CobrosService {
             importe: p.importe,
             origenId: alquiler.id,
             cobroId,
+            creadoPorId: ctx.userId,
             descripcion: `Punitorio ${prop.dias} días · ${alquiler.descripcion}`,
           });
         }
@@ -161,12 +163,13 @@ export class CobrosService {
       // cobros simultáneos sacarían el mismo número.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ctx.tenantId} || ':alq_cobro'))`;
       const ultimo = await tx.alqCobro.aggregate({ _max: { numero: true } });
+      const numero = (ultimo._max.numero ?? 0) + 1;
       const obs = [dto.obs, ...condonaciones].filter(Boolean).join('\n') || null;
       await tx.alqCobro.create({
         data: {
           id: cobroId,
           tenantId: ctx.tenantId,
-          numero: (ultimo._max.numero ?? 0) + 1,
+          numero,
           personaId: dto.personaId,
           fecha: toDate(dto.fecha)!,
           moneda: dto.moneda,
@@ -188,15 +191,31 @@ export class CobrosService {
           })),
         });
       }
-      return aDto(await tx.alqCobro.findUniqueOrThrow({ where: { id: cobroId }, include: INCLUIR_COBRO }));
+      const contratos = [...new Set(deudas.map((d) => d.contrato?.id).filter((x): x is string => !!x))];
+      await registrarEventos(tx, ctx, {
+        entidad: 'cobro',
+        entidadId: cobroId,
+        personaId: dto.personaId,
+        // Un recibo de un solo contrato aparece también en el historial del contrato.
+        contratoId: contratos.length === 1 ? contratos[0] : null,
+        accion: 'alta',
+        resumen: `Recibo ${String(numero).padStart(6, '0')} por ${plata(dto.importe, dto.moneda)}`,
+        detalle: { contratos },
+      });
+      return this.dto(tx, await tx.alqCobro.findUniqueOrThrow({ where: { id: cobroId }, include: INCLUIR_COBRO }));
     });
+  }
+
+  /** El recibo con los nombres de quien lo registró y quien lo anuló. */
+  private async dto(tx: Tx, c: FilaCobro): Promise<CobroDto> {
+    return aDto(c, await nombresDeUsuarios(tx, [c.creadoPorId, c.anuladoPorId]));
   }
 
   async obtener(id: string): Promise<CobroDto> {
     return this.db.withTenant(async (tx) => {
       const c = await tx.alqCobro.findUnique({ where: { id }, include: INCLUIR_COBRO });
       if (!c) throw new NotFoundException('El cobro no existe.');
-      return aDto(c);
+      return this.dto(tx, c);
     });
   }
 
@@ -208,6 +227,7 @@ export class CobrosService {
         orderBy: { numero: 'desc' },
         take: LIMITE_LISTA_CON_SONDA,
       });
+      const nombres = await nombresDeUsuarios(tx, filas.map((c) => c.creadoPorId));
       return filas.map((c) => ({
         id: c.id,
         numero: c.numero,
@@ -217,6 +237,7 @@ export class CobrosService {
         importe: decToNum(c.importe),
         medio: c.medio as MedioCobro,
         anulado: c.anuladoEn != null,
+        registradoPor: c.creadoPorId ? (nombres.get(c.creadoPorId) ?? null) : null,
       }));
     });
   }
@@ -288,7 +309,15 @@ export class CobrosService {
         where: { cobroId: id, anuladoEn: null },
         data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: `Anulación del recibo ${c.numero}` },
       });
-      return aDto(await tx.alqCobro.findUniqueOrThrow({ where: { id }, include: INCLUIR_COBRO }));
+      const fila = await tx.alqCobro.findUniqueOrThrow({ where: { id }, include: INCLUIR_COBRO });
+      await registrarEventos(tx, ctx, {
+        entidad: 'cobro',
+        entidadId: id,
+        personaId: fila.personaId,
+        accion: 'anulacion',
+        resumen: `Recibo ${String(c.numero).padStart(6, '0')} anulado: ${motivo}`,
+      });
+      return this.dto(tx, fila);
     });
   }
 
@@ -481,7 +510,7 @@ function aDeuda(c: ConceptoConSaldo, p: { dias: number; importe: number }): Deud
   };
 }
 
-function aDto(c: FilaCobro): CobroDto {
+function aDto(c: FilaCobro, nombres: Map<string, string>): CobroDto {
   const imputaciones = c.registradas.map((i) => ({
     conceptoId: i.concepto.id,
     contrato: i.concepto.contrato,
@@ -501,7 +530,8 @@ function aDto(c: FilaCobro): CobroDto {
     obs: c.obs,
     imputaciones,
     aFavor: c.anuladoEn ? 0 : disponibleDe(decToNum(c.importe), c.imputaciones),
-    anulado: c.anuladoEn ? { en: c.anuladoEn.toISOString(), motivo: c.motivoAnulacion ?? '' } : null,
+    anulado: c.anuladoEn ? { en: c.anuladoEn.toISOString(), motivo: c.motivoAnulacion ?? '', por: c.anuladoPorId ? (nombres.get(c.anuladoPorId) ?? null) : null } : null,
+    registradoPor: c.creadoPorId ? (nombres.get(c.creadoPorId) ?? null) : null,
   };
 }
 

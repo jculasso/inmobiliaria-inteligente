@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import Link from 'next/link';
 import { Button } from '@vacker/ui';
 
@@ -187,5 +187,84 @@ export function Panel({ icono, titulo, derecha, children }: { icono: string; tit
       </div>
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+/** La celda de acciones de una tabla ancha, fija a la derecha, como en ventas. */
+export const CLASE_TD_ACCIONES = 'sticky right-0 border-l border-line bg-white px-2 py-2';
+export const CLASE_TH_ACCIONES = `${CLASE_TH} right-0 z-30 border-l`;
+
+/**
+ * El lápiz y la papelera de cada fila, como en ventas (pedido de Javier del
+ * 6/10/2026: «todo tiene que quedar homogéneo»). La papelera borra lo que no
+ * tiene historia y anula lo demás: `anula` cambia el ícono y el texto.
+ */
+export function AccionesFila({
+  nombre,
+  onEditar,
+  onBorrar,
+  anula = false,
+  tarjeta = false,
+}: {
+  /** De qué es la fila, para lectores de pantalla: «el contrato ALT-0003». */
+  nombre: string;
+  onEditar?: () => void;
+  onBorrar?: () => void;
+  anula?: boolean;
+  /** En la tarjeta del teléfono van con texto; en la tabla, solo el ícono. */
+  tarjeta?: boolean;
+}) {
+  const parar = (fn: () => void) => (e: MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
+  if (!onEditar && !onBorrar) return null;
+  if (tarjeta) {
+    return (
+      <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
+        {onEditar && (
+          <button type="button" onClick={parar(onEditar)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
+            ✏️ Editar
+          </button>
+        )}
+        {onBorrar && (
+          <button type="button" onClick={parar(onBorrar)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+            {anula ? '🚫 Anular' : '🗑️ Borrar'}
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1">
+      {onEditar && (
+        <button type="button" onClick={parar(onEditar)} aria-label={`Editar ${nombre}`} title="Editar" className="rounded px-1.5 py-0.5 text-base hover:bg-surface">
+          ✏️
+        </button>
+      )}
+      {onBorrar && (
+        <button
+          type="button"
+          onClick={parar(onBorrar)}
+          aria-label={`${anula ? 'Anular' : 'Borrar'} ${nombre}`}
+          title={anula ? 'Anular, con un motivo' : 'Borrar'}
+          className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
+        >
+          {anula ? '🚫' : '🗑️'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** «Registró Lucía · 06/10/2026 14:32». */
+export function Registrado({ por, en }: { por: string | null; en?: string | null }) {
+  if (!por && !en) return null;
+  const cuando = en ? new Date(en).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' }) : null;
+  return (
+    <span className="text-xs text-muted">
+      {por ? `Registró ${por}` : 'Registrado'}
+      {cuando ? ` · ${cuando}` : ''}
+    </span>
   );
 }

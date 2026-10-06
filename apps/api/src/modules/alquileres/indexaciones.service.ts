@@ -18,6 +18,7 @@ import {
   type PropuestaIndexacion,
 } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
+import { plata, registrarEventos } from './historial';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
@@ -29,6 +30,7 @@ const INCLUIR = {
     select: {
       id: true,
       codigo: true,
+      moneda: true,
       estado: true,
       ajuste: true,
       indice: true,
@@ -123,6 +125,13 @@ export class IndexacionesService {
         },
       });
       if (count === 0) throw new ConflictException('Otra persona acaba de confirmar este tramo. Recargá la bandeja.');
+      await registrarEventos(tx, ctx, {
+        entidad: 'tramo',
+        entidadId: tramoId,
+        contratoId: c.id,
+        accion: 'indexacion',
+        resumen: `Indexó el tramo ${fila.numero} (${c.indice}): ${plata(decToNum(anterior.importe), c.moneda)} → ${plata(importe, c.moneda)}`,
+      });
       return { tramoId, numero: fila.numero, importe };
     });
   }

@@ -5,13 +5,31 @@ import { useRouter } from 'next/navigation';
 import { LIMITE_LISTA, recortarAlLimite, type PropiedadAlquilerDto } from '@vacker/types';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { paraBuscar } from './buscador';
-import { BarraLista, BotonNuevo, CabezaTarjeta, CLASE_LISTA_MOVIL, CLASE_TABLA_ANCHA, CLASE_TD, CLASE_TH, CLASE_TR_ABRIBLE, EncabezadoPagina, Vacio } from './piezas';
+import {
+  AccionesFila,
+  BarraLista,
+  BotonNuevo,
+  CabezaTarjeta,
+  CLASE_LISTA_MOVIL,
+  CLASE_TABLA_ANCHA,
+  CLASE_TD,
+  CLASE_TD_ACCIONES,
+  CLASE_TH,
+  CLASE_TH_ACCIONES,
+  CLASE_TR_ABRIBLE,
+  EncabezadoPagina,
+  Vacio,
+} from './piezas';
 import { NOMBRE_TIPO_PROPIEDAD, PropiedadFormModal } from './propiedad-form-modal';
+import { getAccessToken } from '../../lib/supabase/client';
+import { borrarPropiedadAlquiler } from '../../lib/alquileres-api';
+import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 
 export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquilerDto[] }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState<'nueva' | PropiedadAlquilerDto | null>(null);
+  const [aBorrar, setABorrar] = useState<PropiedadAlquilerDto | null>(null);
   const { visibles, hayMas } = recortarAlLimite(propiedades);
 
   const filtradas = useMemo(() => {
@@ -55,11 +73,14 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
           <div className={CLASE_LISTA_MOVIL}>
             <ListaTarjetas etiqueta="Propiedades">
               {filtradas.map((p) => (
-                <Tarjeta key={p.id} onClick={() => setModal(p)} titulo={`Editar ${p.direccion}`}>
-                  <CabezaTarjeta titulo={`${p.direccion}${p.unidad ? ` ${p.unidad}` : ''}`} detalle={p.ciudad ?? undefined} />
-                  <CamposTarjeta>
-                    <CampoTarjeta etiqueta="Tipo">{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</CampoTarjeta>
-                  </CamposTarjeta>
+                <Tarjeta key={p.id}>
+                  <button type="button" onClick={() => setModal(p)} title={`Editar ${p.direccion}`} className="block w-full text-left">
+                    <CabezaTarjeta titulo={`${p.direccion}${p.unidad ? ` ${p.unidad}` : ''}`} detalle={p.ciudad ?? undefined} />
+                    <CamposTarjeta>
+                      <CampoTarjeta etiqueta="Tipo">{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</CampoTarjeta>
+                    </CamposTarjeta>
+                  </button>
+                  <AccionesFila tarjeta nombre={p.direccion} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
                 </Tarjeta>
               ))}
             </ListaTarjetas>
@@ -72,6 +93,7 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
                   <th className={CLASE_TH}>Piso / depto</th>
                   <th className={CLASE_TH}>Ciudad</th>
                   <th className={CLASE_TH}>Tipo</th>
+                  <th className={CLASE_TH_ACCIONES} />
                 </tr>
               </thead>
               <tbody>
@@ -81,6 +103,9 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
                     <td className={`${CLASE_TD} text-muted`}>{p.unidad ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.ciudad ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</td>
+                    <td className={CLASE_TD_ACCIONES}>
+                      <AccionesFila nombre={p.direccion} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -91,6 +116,23 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
 
       {modal && (
         <PropiedadFormModal propiedad={modal === 'nueva' ? undefined : modal} onClose={() => setModal(null)} onSaved={guardado} />
+      )}
+      {aBorrar && (
+        <ConfirmarBorradoModal
+          titulo={`Borrar ${aBorrar.direccion}${aBorrar.unidad ? ` ${aBorrar.unidad}` : ''}`}
+          descripcion="Se borra solo si nunca tuvo un contrato. Si lo tuvo, queda: es parte de la historia."
+          detalle={
+            <>
+              <DatoBorrado etiqueta="Ciudad">{aBorrar.ciudad ?? '—'}</DatoBorrado>
+              <DatoBorrado etiqueta="Tipo">{aBorrar.tipo ? NOMBRE_TIPO_PROPIEDAD[aBorrar.tipo] : '—'}</DatoBorrado>
+            </>
+          }
+          onConfirm={async () => {
+            await borrarPropiedadAlquiler(await getAccessToken(), aBorrar.id);
+            router.refresh();
+          }}
+          onClose={() => setABorrar(null)}
+        />
       )}
     </div>
   );

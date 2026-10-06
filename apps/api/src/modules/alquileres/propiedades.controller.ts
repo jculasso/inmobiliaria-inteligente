@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PropiedadAlquilerInputSchema, ROLES_ADMINISTRACION_ALQUILERES, type PropiedadAlquiler } from '@vacker/types';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
@@ -32,7 +32,14 @@ export class PropiedadesAlquilerController {
   @Patch(':id')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Edita una propiedad' })
-  actualizar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(PropiedadAlquilerInputSchema)) dto: PropiedadAlquiler) {
-    return this.propiedades.actualizar(id, dto);
+  actualizar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(PropiedadAlquilerInputSchema)) dto: PropiedadAlquiler, @CurrentUser() user: AuthPrincipal) {
+    return this.propiedades.actualizar(ctxDe(user), id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Borra una propiedad sin historia; si la tiene, responde 409 diciendo qué tiene' })
+  borrar(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
+    return this.propiedades.borrar(ctxDe(user), id);
   }
 }

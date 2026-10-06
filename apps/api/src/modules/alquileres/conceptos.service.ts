@@ -11,16 +11,17 @@ import {
   type SentidoConcepto,
   type TipoConcepto,
 } from '@vacker/types';
-import { diasDelMes, generarPeriodo, repartir, type ContratoParaGenerar } from '@vacker/domain';
+import { diasDelMes, generarPeriodo, mesLargo, repartir, type ContratoParaGenerar } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 
 const INCLUIR_CONCEPTO = {
-  contrato: { select: { id: true, codigo: true, propiedad: { select: { direccion: true } } } },
+  contrato: { select: { id: true, codigo: true, propiedad: { select: { direccion: true } }, partes: { select: { personaId: true, papel: true } } } },
   persona: { select: { id: true, nombre: true } },
-  _count: { select: { imputaciones: { where: IMPUTACION_ACTIVA } } },
+  imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
 } satisfies Prisma.AlqConceptoInclude;
 
 type FilaConcepto = Prisma.AlqConceptoGetPayload<{ include: typeof INCLUIR_CONCEPTO }>;
@@ -92,7 +93,26 @@ export class ConceptosService {
         }
       }
 
+      // Lo que ya existía, para que el historial diga en qué contratos se
+      // generó algo de verdad. Una consulta, sean cuantos sean.
+      const claves = conceptos.map((k) => k.claveGeneracion!).filter(Boolean);
+      const yaEstaban = new Set(
+        claves.length ? (await tx.alqConcepto.findMany({ where: { claveGeneracion: { in: claves } }, select: { claveGeneracion: true } })).map((k) => k.claveGeneracion) : [],
+      );
       const { count } = conceptos.length ? await tx.alqConcepto.createMany({ data: conceptos, skipDuplicates: true }) : { count: 0 };
+      const nuevosPorContrato = new Map<string, number>();
+      for (const k of conceptos) if (!yaEstaban.has(k.claveGeneracion!)) nuevosPorContrato.set(k.contratoId!, (nuevosPorContrato.get(k.contratoId!) ?? 0) + 1);
+      await registrarEventos(
+        tx,
+        ctx,
+        [...nuevosPorContrato].map(([contratoId, n]) => ({
+          entidad: 'contrato' as const,
+          entidadId: contratoId,
+          contratoId,
+          accion: 'generacion' as const,
+          resumen: `Generó ${mesLargo(`${periodo}-01`)}: ${n} ${n === 1 ? 'concepto' : 'conceptos'}`,
+        })),
+      );
       return { periodo, contratos: contratos.length, creados: count, existentes: conceptos.length - count, sinIndexar };
     });
   }
@@ -107,7 +127,8 @@ export class ConceptosService {
         orderBy: [{ contrato: { codigo: 'asc' } }, { vencimiento: 'asc' }, { createdAt: 'asc' }],
         take: LIMITE_LISTA_CON_SONDA,
       });
-      return filas.map(aDto);
+      const nombres = await nombresDeUsuarios(tx, filas.flatMap((f) => [f.creadoPorId, f.anuladoPorId]));
+      return filas.map((f) => aDto(f, nombres));
     });
   }
 
@@ -137,6 +158,7 @@ export class ConceptosService {
         periodo: dto.periodo,
         vencimiento: toDate(dto.vencimiento)!,
         descripcion: dto.descripcion,
+        creadoPorId: ctx.userId,
       };
       const filas: Prisma.AlqConceptoCreateManyInput[] = cargos.map(({ personaId, importe }) => ({
         ...base,
@@ -154,8 +176,16 @@ export class ConceptosService {
         }
       }
       await tx.alqConcepto.createMany({ data: filas });
+      await registrarEventos(tx, ctx, {
+        entidad: 'concepto',
+        entidadId: filas[0]!.id!,
+        contratoId: c.id,
+        accion: 'alta',
+        resumen: `Cargó «${dto.descripcion ?? dto.tipo}» por ${plata(dto.importe, c.moneda)}, a cargo del ${dto.aCargoDe}`,
+      });
       const creados = await tx.alqConcepto.findMany({ where: { id: { in: filas.map((f) => f.id!) } }, include: INCLUIR_CONCEPTO });
-      return creados.map(aDto);
+      const nombres = await nombresDeUsuarios(tx, [ctx.userId]);
+      return creados.map((f) => aDto(f, nombres));
     });
   }
 
@@ -169,7 +199,20 @@ export class ConceptosService {
    */
   async anular(ctx: TenantContext, id: string, motivo: string): Promise<{ anulados: number }> {
     return this.db.withTenant(async (tx) => {
-      const c = await tx.alqConcepto.findUnique({ where: { id }, select: { anuladoEn: true, liquidacionId: true, _count: { select: { imputaciones: { where: IMPUTACION_ACTIVA } } } } });
+      const c = await tx.alqConcepto.findUnique({
+        where: { id },
+        select: {
+          anuladoEn: true,
+          liquidacionId: true,
+          contratoId: true,
+          personaId: true,
+          descripcion: true,
+          tipo: true,
+          importe: true,
+          moneda: true,
+          _count: { select: { imputaciones: { where: IMPUTACION_ACTIVA } } },
+        },
+      });
       if (!c) throw new NotFoundException('El concepto no existe.');
       if (c.anuladoEn) throw new ConflictException('El concepto ya está anulado.');
       if (c._count.imputaciones > 0 || c.liquidacionId) {
@@ -180,6 +223,14 @@ export class ConceptosService {
         data: { anuladoEn: new Date(), anuladoPorId: ctx.userId, motivoAnulacion: motivo },
       });
       if (count === 0) throw new ConflictException('El concepto cambió mientras tanto. Recargá la página.');
+      await registrarEventos(tx, ctx, {
+        entidad: 'concepto',
+        entidadId: id,
+        contratoId: c.contratoId,
+        personaId: c.personaId,
+        accion: 'anulacion',
+        resumen: `Anuló «${c.descripcion ?? c.tipo}» por ${plata(decToNum(c.importe), c.moneda)}: ${motivo}`,
+      });
       return { anulados: count };
     });
   }
@@ -228,7 +279,18 @@ function repartoDe(
   return lado.map((p, i) => ({ personaId: p.personaId, importe: importes[i]! }));
 }
 
-function aDto(f: FilaConcepto): ConceptoDto {
+/** Cómo está un concepto, en palabras (punto 4 de Javier). */
+function estadoDe(f: FilaConcepto, pagado: number, saldo: number): ConceptoDto['estado'] {
+  if (f.anuladoEn) return 'anulado';
+  if (f.liquidacionId) return 'liquidado';
+  if (saldo <= 0) return f.sentido === 'a_pagar' ? 'pagado' : 'cobrado';
+  return pagado > 0 ? 'parcial' : 'pendiente';
+}
+
+function aDto(f: FilaConcepto, nombres: Map<string, string>): ConceptoDto {
+  const importe = decToNum(f.importe);
+  const pagado = f.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0);
+  const saldo = Math.round((importe - pagado) * 100) / 100;
   return {
     id: f.id,
     contrato: f.contrato ? { id: f.contrato.id, codigo: f.contrato.codigo, direccion: f.contrato.propiedad.direccion } : null,
@@ -238,11 +300,15 @@ function aDto(f: FilaConcepto): ConceptoDto {
     moneda: f.moneda as MonedaAlquiler,
     periodo: f.periodo,
     vencimiento: fromDate(f.vencimiento)!,
-    importe: decToNum(f.importe),
+    importe,
     adelantadoPorInmobiliaria: f.adelantadoPorInmobiliaria,
     descripcion: f.descripcion,
     generado: f.claveGeneracion != null,
-    aplicado: f._count.imputaciones > 0 || f.liquidacionId != null,
-    anulado: f.anuladoEn ? { en: f.anuladoEn.toISOString(), motivo: f.motivoAnulacion ?? '' } : null,
+    aplicado: f.imputaciones.length > 0 || f.liquidacionId != null,
+    anulado: f.anuladoEn ? { en: f.anuladoEn.toISOString(), motivo: f.motivoAnulacion ?? '', por: f.anuladoPorId ? (nombres.get(f.anuladoPorId) ?? null) : null } : null,
+    saldo: f.anuladoEn || f.liquidacionId ? 0 : saldo,
+    papel: (f.contrato?.partes.find((p) => p.personaId === f.personaId && p.papel !== 'garante')?.papel as ConceptoDto['papel']) ?? null,
+    estado: estadoDe(f, pagado, saldo),
+    registrado: f.claveGeneracion ? null : { en: f.createdAt.toISOString(), por: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null },
   };
 }

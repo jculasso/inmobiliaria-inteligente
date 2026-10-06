@@ -18,6 +18,7 @@ import { z } from 'zod';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
+import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
@@ -102,10 +103,11 @@ export class LiquidacionesService {
 
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ctx.tenantId} || ':alq_liquidacion'))`;
       const ultimo = await tx.alqLiquidacion.aggregate({ _max: { numero: true } });
+      const numero = (ultimo._max.numero ?? 0) + 1;
       const liq = await tx.alqLiquidacion.create({
         data: {
           tenantId: ctx.tenantId,
-          numero: (ultimo._max.numero ?? 0) + 1,
+          numero,
           personaId: dto.personaId,
           periodo: dto.fecha.slice(0, 7),
           moneda: dto.moneda,
@@ -124,6 +126,25 @@ export class LiquidacionesService {
       // Si no se marcaron todos, alguien liquidó o anuló algo mientras tanto:
       // la excepción deshace la transacción entera, número incluido.
       if (count !== ids.length) throw new ConflictException('Algo de esta liquidación cambió mientras tanto. Recargá la página.');
+      const contratos = contratosDe([...detalle.aPagar, ...detalle.aDescontar]);
+      await registrarEventos(tx, ctx, [
+        {
+          entidad: 'liquidacion',
+          entidadId: liq.id,
+          personaId: dto.personaId,
+          accion: 'alta',
+          resumen: `Liquidación ${String(numero).padStart(6, '0')} por ${plata(p.neto, dto.moneda)}`,
+          detalle: { contratos: contratos.map((c) => c.id) },
+        },
+        // Y una línea en el historial de cada contrato que entra en ella.
+        ...contratos.map((c) => ({
+          entidad: 'liquidacion' as const,
+          entidadId: liq.id,
+          contratoId: c.id,
+          accion: 'alta' as const,
+          resumen: `Liquidado al propietario en la liquidación ${String(numero).padStart(6, '0')}`,
+        })),
+      ]);
       return this.obtenerEn(tx, liq.id);
     });
   }
@@ -140,6 +161,7 @@ export class LiquidacionesService {
         orderBy: { numero: 'desc' },
         take: LIMITE_LISTA_CON_SONDA,
       });
+      const nombres = await nombresDeUsuarios(tx, filas.map((l) => l.creadoPorId));
       return filas.map((l) => {
         // El detalle guardado dice qué propiedades se liquidaron; si no se
         // puede leer, la fila se muestra igual, sin ellas.
@@ -152,6 +174,7 @@ export class LiquidacionesService {
           moneda: l.moneda as MonedaAlquiler,
           neto: decToNum(l.neto),
           anulado: l.anuladoEn != null,
+          registradoPor: l.creadoPorId ? (nombres.get(l.creadoPorId) ?? null) : null,
           contratos: detalle.success ? contratosDe([...detalle.data.aPagar, ...detalle.data.aDescontar]) : [],
         };
       });
@@ -170,7 +193,15 @@ export class LiquidacionesService {
         throw existe ? new ConflictException('La liquidación ya está anulada.') : new NotFoundException('La liquidación no existe.');
       }
       await tx.alqConcepto.updateMany({ where: { liquidacionId: id }, data: { liquidacionId: null } });
-      return this.obtenerEn(tx, id);
+      const l = await this.obtenerEn(tx, id);
+      await registrarEventos(tx, ctx, {
+        entidad: 'liquidacion',
+        entidadId: id,
+        personaId: l.persona.id,
+        accion: 'anulacion',
+        resumen: `Liquidación ${String(l.numero).padStart(6, '0')} anulada: ${motivo}`,
+      });
+      return l;
     });
   }
 
@@ -178,6 +209,7 @@ export class LiquidacionesService {
     const l = await tx.alqLiquidacion.findUnique({ where: { id }, include: { persona: { select: { id: true, nombre: true } } } });
     if (!l) throw new NotFoundException('La liquidación no existe.');
     const detalle = DetalleSchema.parse(l.detalle);
+    const nombres = await nombresDeUsuarios(tx, [l.creadoPorId, l.anuladoPorId]);
     return {
       id: l.id,
       numero: l.numero,
@@ -188,7 +220,8 @@ export class LiquidacionesService {
       aPagar: detalle.aPagar,
       aDescontar: detalle.aDescontar,
       neto: decToNum(l.neto),
-      anulado: l.anuladoEn ? { en: l.anuladoEn.toISOString(), motivo: l.motivoAnulacion ?? '' } : null,
+      anulado: l.anuladoEn ? { en: l.anuladoEn.toISOString(), motivo: l.motivoAnulacion ?? '', por: l.anuladoPorId ? (nombres.get(l.anuladoPorId) ?? null) : null } : null,
+      registradoPor: l.creadoPorId ? (nombres.get(l.creadoPorId) ?? null) : null,
     };
   }
 

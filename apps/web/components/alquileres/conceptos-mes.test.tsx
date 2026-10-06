@@ -14,9 +14,10 @@ vi.mock('../../lib/alquileres-api', () => ({
 
 import { ConceptosMes } from './conceptos-mes';
 
+const C5 = '55555555-5555-4555-8555-555555555555';
 const k = (over: Partial<ConceptoDto>): ConceptoDto => ({
   id: crypto.randomUUID(),
-  contrato: { id: crypto.randomUUID(), codigo: '5', direccion: 'Calle 1' },
+  contrato: { id: C5, codigo: 'ALT-0005', direccion: 'Calle 1' },
   persona: { id: crypto.randomUUID(), nombre: 'Inquilino' },
   tipo: 'alquiler',
   sentido: 'a_cobrar',
@@ -29,6 +30,10 @@ const k = (over: Partial<ConceptoDto>): ConceptoDto => ({
   generado: true,
   aplicado: false,
   anulado: null,
+  saldo: 1_137_518,
+  estado: 'pendiente',
+  papel: 'inquilino',
+  registrado: null,
   ...over,
 });
 
@@ -36,8 +41,8 @@ const k = (over: Partial<ConceptoDto>): ConceptoDto => ({
 const NOVIEMBRE = [
   k({}),
   k({ tipo: 'gastos_adm', importe: 27_527.94, descripcion: 'Gastos administrativos noviembre 2026' }),
-  k({ sentido: 'a_pagar', persona: { id: crypto.randomUUID(), nombre: 'Propietario' }, vencimiento: '2026-11-10' }),
-  k({ tipo: 'honorarios', importe: 110_111.74, persona: { id: crypto.randomUUID(), nombre: 'Propietario' }, descripcion: 'Honorarios noviembre 2026' }),
+  k({ sentido: 'a_pagar', persona: { id: crypto.randomUUID(), nombre: 'Propietario' }, vencimiento: '2026-11-10', papel: 'propietario' }),
+  k({ tipo: 'honorarios', importe: 110_111.74, persona: { id: crypto.randomUUID(), nombre: 'Propietario' }, descripcion: 'Honorarios noviembre 2026', papel: 'propietario' }),
 ];
 
 const contrato = { id: crypto.randomUUID(), codigo: '5', estado: 'vigente', propiedad: { direccion: 'Calle 1', unidad: null } } as ContratoResumenDto;
@@ -52,10 +57,33 @@ describe('ConceptosMes', () => {
   });
 
   it('un anulado se ve tachado con su motivo y no suma', () => {
-    const anulado = k({ importe: 999, descripcion: 'Expensas', tipo: 'expensa', generado: false, anulado: { en: '2026-11-02T10:00:00Z', motivo: 'Cargado dos veces' } });
+    const anulado = k({ importe: 999, descripcion: 'Expensas', tipo: 'expensa', generado: false, anulado: { en: '2026-11-02T10:00:00Z', motivo: 'Cargado dos veces', por: null } });
     render(<ConceptosMes periodo="2026-11" conceptos={[...NOVIEMBRE, anulado]} contratos={[contrato]} />);
     expect(within(screen.getByRole('table')).getByText(/Anulado: Cargado dos veces/)).toBeInTheDocument();
     expect(screen.getByText('A cobrar', { selector: 'p' }).closest('.rounded-brand')).toHaveTextContent('$ 1.275.157,68');
+  });
+
+  // Punto 4 de Javier: por contrato, con lo que deja, a quién va y en qué estado está.
+  it('agrupa por contrato: paga el inquilino, recibe el propietario, para la inmobiliaria', () => {
+    render(<ConceptosMes periodo="2026-11" conceptos={NOVIEMBRE} contratos={[contrato]} />);
+    const grupo = within(screen.getByRole('region', { name: 'Contrato ALT-0005' }));
+    // El inquilino: alquiler + gastos. El propietario: alquiler − honorarios.
+    expect(grupo.getByText('Paga el inquilino').nextSibling).toHaveTextContent('$ 1.165.045,94');
+    expect(grupo.getByText('Recibe el propietario').nextSibling).toHaveTextContent('$ 1.027.406,26');
+    expect(grupo.getByText('Para la inmobiliaria').nextSibling).toHaveTextContent('$ 137.639,68');
+    const tabla = within(grupo.getByRole('table'));
+    expect(tabla.getAllByText('Cobrar a').length).toBe(2);
+    expect(tabla.getByText('Pagar a')).toBeInTheDocument();
+    expect(tabla.getByText('Descontar a')).toBeInTheDocument();
+    expect(tabla.getAllByText('Pendiente').length).toBe(4);
+  });
+
+  it('el estado de cada concepto, en palabras', () => {
+    render(<ConceptosMes periodo="2026-11" conceptos={[k({ estado: 'parcial', saldo: 37_518 }), k({ estado: 'liquidado', sentido: 'a_pagar', papel: 'propietario' })]} contratos={[contrato]} />);
+    const tabla = within(screen.getByRole('table'));
+    expect(tabla.getByText('Cobrado en parte')).toBeInTheDocument();
+    expect(tabla.getByText('falta $ 37.518')).toBeInTheDocument();
+    expect(tabla.getByText('Liquidado')).toBeInTheDocument();
   });
 
   it('lo que tiene cobros aplicados no ofrece «Anular»', () => {

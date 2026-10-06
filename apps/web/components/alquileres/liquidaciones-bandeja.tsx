@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import type { ContratoDeLiquidacion, LiquidacionResumenDto, PendienteLiquidarDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarLiquidacionPdf } from '../../lib/alquileres-api';
+import { anularLiquidacion, generarLiquidacionPdf } from '../../lib/alquileres-api';
+import { AnularModal } from './anular-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
@@ -43,6 +44,7 @@ function Propiedades({ contratos }: { contratos: ContratoDeLiquidacion[] }) {
 export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes: PendienteLiquidarDto[]; liquidaciones: LiquidacionResumenDto[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [aAnular, setAAnular] = useState<LiquidacionResumenDto | null>(null);
   const listos = pendientes.filter((p) => p.neto > 0);
   const soloEspera = pendientes.filter((p) => p.neto <= 0);
   const pdf = (l: LiquidacionResumenDto) =>
@@ -110,12 +112,18 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                       <Propiedades contratos={l.contratos} />
                       <CamposTarjeta>
                         <CampoTarjeta etiqueta="Neto">{neto(l)}</CampoTarjeta>
+                        <CampoTarjeta etiqueta="Registró">{l.registradoPor ?? '—'}</CampoTarjeta>
                       </CamposTarjeta>
                     </button>
                     <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
                       <button type="button" onClick={() => pdf(l)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
                         📄 PDF
                       </button>
+                      {!l.anulado && (
+                        <button type="button" onClick={() => setAAnular(l)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+                          🚫 Anular
+                        </button>
+                      )}
                     </div>
                   </Tarjeta>
                 ))}
@@ -131,6 +139,7 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                     <th className={CLASE_TH}>Propiedades e inquilinos</th>
                     <th className={`${CLASE_TH} text-right`}>Neto</th>
                     <th className={CLASE_TH}>Estado</th>
+                    <th className={CLASE_TH}>Registró</th>
                     <th className={`${CLASE_TH} right-0 z-30 border-l`} />
                   </tr>
                 </thead>
@@ -145,7 +154,9 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                       </td>
                       <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{neto(l)}</td>
                       <td className={CLASE_TD}>{estado(l)}</td>
+                      <td className={`${CLASE_TD} text-muted`}>{l.registradoPor ?? '—'}</td>
                       <td className="sticky right-0 border-l border-line bg-white px-2 py-2">
+                        <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -158,6 +169,21 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                         >
                           📄
                         </button>
+                        {!l.anulado && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAAnular(l);
+                            }}
+                            aria-label={`Anular la liquidación ${numero(l.numero)}`}
+                            title="Anular, con un motivo"
+                            className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
+                          >
+                            🚫
+                          </button>
+                        )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -167,6 +193,18 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
           </>
         )}
       </Bloque>
+      {aAnular && (
+        <AnularModal
+          titulo={`Anular la liquidación ${numero(aAnular.numero)}`}
+          detalle={`${aAnular.persona.nombre} · ${fmtMoneda(aAnular.neto, aAnular.moneda)}. Lo que incluía vuelve a quedar por liquidar. La liquidación no se borra: queda tachada, con el motivo y quién la anuló.`}
+          anular={async (motivo) => anularLiquidacion(await getAccessToken(), aAnular.id, motivo)}
+          onClose={() => setAAnular(null)}
+          onDone={() => {
+            setAAnular(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

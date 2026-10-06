@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CobroInputSchema, type CobroInput } from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { CobrosService } from './cobros.service';
+import { mocksDeHistorial } from './historial.testing';
 
 const CTX = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
 const PERSONA = '11111111-1111-4111-8111-111111111111';
@@ -64,6 +65,7 @@ const filaCobro = {
 
 function makeTx(over: { conceptos?: unknown[]; cobros?: unknown[]; cobroAAnular?: unknown } = {}) {
   return {
+    ...mocksDeHistorial(),
     $executeRaw: vi.fn().mockResolvedValue(1),
     alqPersona: { findUnique: vi.fn().mockResolvedValue({ id: PERSONA, nombre: 'Inquilino' }) },
     alqConcepto: {

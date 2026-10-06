@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { IndexacionesService } from './indexaciones.service';
+import { mocksDeHistorial } from './historial.testing';
 
 const CTX = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
 const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -43,6 +44,7 @@ function tramo(over: { numero?: number; desde?: string; importe?: number | null;
 
 function makeTx(over: { tramos?: unknown[]; tramo?: unknown; valores?: unknown[]; grupos?: unknown[]; actualizados?: number } = {}) {
   return {
+    ...mocksDeHistorial(),
     alqTramo: {
       findMany: vi.fn().mockResolvedValue(over.tramos ?? [tramo()]),
       findUnique: vi.fn().mockResolvedValue(over.tramo === undefined ? tramo() : over.tramo),

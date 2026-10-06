@@ -103,7 +103,11 @@ export type PropiedadAlquilerDto = z.infer<typeof PropiedadAlquilerDtoSchema>;
 // @vacker/domain, para que la web las muestre mientras se carga y la API las
 // aplique al guardar con el mismo código.
 
-export const EstadoContratoSchema = z.enum(['borrador', 'vigente', 'finalizado', 'rescindido']);
+/**
+ * `anulado`: se cargó por error y se deshizo, con motivo (decidido con Javier
+ * el 6/10/2026: lo que tiene historia no se borra, se anula).
+ */
+export const EstadoContratoSchema = z.enum(['borrador', 'vigente', 'finalizado', 'rescindido', 'anulado']);
 export type EstadoContrato = z.infer<typeof EstadoContratoSchema>;
 
 export const TipoContratoSchema = z.enum(['vivienda', 'comercial']);
@@ -114,6 +118,32 @@ export type TipoContrato = z.infer<typeof TipoContratoSchema>;
  * Gexion (decidido con Javier el 6/10/2026). En la base sigue `vivienda`.
  */
 export const NOMBRE_TIPO_CONTRATO: Record<TipoContrato, string> = { vivienda: 'Particular', comercial: 'Comercial' };
+
+/**
+ * El prefijo de los códigos de contrato de una inmobiliaria: las tres primeras
+ * letras de su nombre corto, o de su nombre. «Alteva Propiedades» → «ALT»,
+ * «Vacker» → «VAC» (pedido de Javier del 6/10/2026). La migración
+ * `alquileres_trazabilidad` hace la misma cuenta en SQL.
+ */
+export function prefijoDeContratos(nombre: string): string {
+  const letras = nombre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z]/g, '');
+  return letras.slice(0, 3).toUpperCase() || 'CTO';
+}
+
+/** «ALT-0005»: el prefijo y el número con cuatro cifras. */
+export function codigoDeContrato(prefijo: string, numero: number): string {
+  return `${prefijo}-${String(numero).padStart(4, '0')}`;
+}
+
+/** La persona del equipo que registró algo, con el nombre que tenía ese día. */
+export const RegistroSchema = z.object({ en: z.string(), por: z.string().nullable() });
+export type Registro = z.infer<typeof RegistroSchema>;
+
+/** Una anulación: cuándo, quién y por qué. */
+export const AnulacionSchema = z.object({ en: z.string(), motivo: z.string(), por: z.string().nullable().default(null) });
 
 export const MonedaAlquilerSchema = z.enum(['ARS', 'USD']);
 export type MonedaAlquiler = z.infer<typeof MonedaAlquilerSchema>;
@@ -247,6 +277,9 @@ export const ContratoDtoSchema = z.object({
   depositoDevolucion: FechaIso.nullable(),
   rescindidoEl: FechaIso.nullable(),
   obs: z.string().nullable(),
+  /** Quién lo cargó y cuándo; `por` es null en los cargados antes de que se guardara. */
+  registrado: RegistroSchema.default({ en: '', por: null }),
+  anulado: AnulacionSchema.nullable().default(null),
   propiedad: z.object({ id: z.string().uuid(), direccion: z.string(), unidad: z.string().nullable(), ciudad: z.string().nullable() }),
   partes: z.array(
     z.object({ personaId: z.string().uuid(), nombre: z.string(), papel: PapelContratoSchema, porcentaje: z.number().nullable() }),
@@ -273,6 +306,45 @@ export const CambiarEstadoContratoSchema = z.discriminatedUnion('estado', [
   z.object({ estado: z.literal('rescindido'), fecha: FechaIso }),
 ]);
 export type CambiarEstadoContrato = z.infer<typeof CambiarEstadoContratoSchema>;
+
+/** Anular cualquier cosa con historia: el motivo es obligatorio. */
+export const AnularConMotivoSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.').max(300) });
+export type AnularConMotivo = z.infer<typeof AnularConMotivoSchema>;
+
+/**
+ * Lo que se edita de un contrato vigente: lo que no toca plata (decidido con
+ * Javier el 6/10/2026). Importes, tramos y porcentajes, solo en borrador.
+ */
+export const ContratoDatosSchema = z.object({
+  fechaFirma: FechaIso.nullish().transform((v) => v ?? null),
+  diaVencimiento: z.number().int().min(1).max(28),
+  diaPagoPropietario: z.number().int().min(1).max(28),
+  obs: z
+    .string()
+    .trim()
+    .max(2000)
+    .nullish()
+    .transform((v) => (v ? v : null)),
+});
+export type ContratoDatos = z.infer<typeof ContratoDatosSchema>;
+
+// --- Historial (pedido de Javier del 6/10/2026: quién registró cada cosa) --------
+
+export const EntidadEventoSchema = z.enum(['contrato', 'persona', 'propiedad', 'concepto', 'cobro', 'liquidacion', 'tramo', 'documento']);
+export type EntidadEvento = z.infer<typeof EntidadEventoSchema>;
+
+export const AccionEventoSchema = z.enum(['alta', 'edicion', 'estado', 'anulacion', 'borrado', 'indexacion', 'generacion', 'documento']);
+export type AccionEvento = z.infer<typeof AccionEventoSchema>;
+
+export const EventoDtoSchema = z.object({
+  id: z.string().uuid(),
+  en: z.string(),
+  usuario: z.string().nullable(),
+  entidad: EntidadEventoSchema,
+  accion: AccionEventoSchema,
+  resumen: z.string(),
+});
+export type EventoDto = z.infer<typeof EventoDtoSchema>;
 
 // --- Indexación (reglas 5 a 8) --------------------------------------------------
 
@@ -406,9 +478,17 @@ export const ConceptoDtoSchema = z.object({
   generado: z.boolean(),
   /** Tiene cobros o pagos aplicados, o ya se liquidó: no se puede anular. */
   aplicado: z.boolean(),
-  anulado: z.object({ en: z.string(), motivo: z.string() }).nullable(),
+  anulado: AnulacionSchema.nullable(),
+  /** Lo que falta cobrar o pagar. */
+  saldo: z.number().default(0),
+  /** Qué es la persona en ese contrato: «Cobrar a» el inquilino, «Descontar a» o «Pagar a» el propietario. */
+  papel: z.enum(['inquilino', 'propietario']).nullable().default(null),
+  /** Cómo está, en palabras (punto 4 de Javier): se calcula en la API. */
+  estado: z.enum(['pendiente', 'parcial', 'cobrado', 'pagado', 'liquidado', 'anulado']).default('pendiente'),
+  registrado: RegistroSchema.nullable().default(null),
 });
 export type ConceptoDto = z.infer<typeof ConceptoDtoSchema>;
+export type EstadoConcepto = ConceptoDto['estado'];
 
 /** Los conceptos que se cargan a mano (regla 14). */
 export const TipoConceptoSueltoSchema = z.enum(['expensa', 'impuesto', 'servicio', 'reparacion', 'otro']);
@@ -554,7 +634,9 @@ export const CobroDtoSchema = z.object({
   ),
   /** Lo que sobró y queda a favor para el próximo cobro. */
   aFavor: z.number(),
-  anulado: z.object({ en: z.string(), motivo: z.string() }).nullable(),
+  anulado: AnulacionSchema.nullable(),
+  /** El operador que lo registró: va en el recibo (decidido con Javier el 6/10/2026). */
+  registradoPor: z.string().nullable().default(null),
 });
 export type CobroDto = z.infer<typeof CobroDtoSchema>;
 
@@ -567,10 +649,27 @@ export const CobroResumenDtoSchema = z.object({
   importe: z.number(),
   medio: MedioCobroSchema,
   anulado: z.boolean(),
+  registradoPor: z.string().nullable().default(null),
 });
 export type CobroResumenDto = z.infer<typeof CobroResumenDtoSchema>;
 
 export const AnularCobroSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.') });
+
+/**
+ * A quién se le puede cobrar o liquidar (punto 6 de Javier): cada persona con
+ * su papel —INQ o PROP—, sus contratos y lo que hay pendiente. Lo que se
+ * busca en el selector es nombre, dirección o número de contrato.
+ */
+export const CandidatoDtoSchema = z.object({
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  papel: z.enum(['inquilino', 'propietario']),
+  contratos: z.array(z.object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() })),
+  /** Para cobrar: lo que debe. Para liquidar: lo que hay para liquidarle. Por moneda. */
+  pendiente: z.array(z.object({ moneda: MonedaAlquilerSchema, importe: z.number() })),
+});
+export type CandidatoDto = z.infer<typeof CandidatoDtoSchema>;
+
+export const CandidatosQuerySchema = z.object({ papel: z.enum(['inquilino', 'propietario']).default('inquilino') });
 export type AnularCobro = z.infer<typeof AnularCobroSchema>;
 
 /**
@@ -716,7 +815,8 @@ export const LiquidacionDtoSchema = z.object({
   aPagar: z.array(LineaLiquidacionSchema),
   aDescontar: z.array(LineaLiquidacionSchema),
   neto: z.number(),
-  anulado: z.object({ en: z.string(), motivo: z.string() }).nullable(),
+  anulado: AnulacionSchema.nullable(),
+  registradoPor: z.string().nullable().default(null),
 });
 export type LiquidacionDto = z.infer<typeof LiquidacionDtoSchema>;
 
@@ -728,6 +828,7 @@ export const LiquidacionResumenDtoSchema = z.object({
   moneda: MonedaAlquilerSchema,
   neto: z.number(),
   anulado: z.boolean(),
+  registradoPor: z.string().nullable().default(null),
   /** Las propiedades que liquida, con sus inquilinos. */
   contratos: z.array(ContratoDeLiquidacionSchema).default([]),
 });

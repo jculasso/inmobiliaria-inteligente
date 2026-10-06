@@ -5,7 +5,8 @@ const TONO: Record<EstadoContrato, TonoInsignia> = {
   borrador: 'neutro',
   vigente: 'exito',
   finalizado: 'neutro',
-  rescindido: 'marca',
+  rescindido: 'aviso',
+  anulado: 'marca',
 };
 
 const NOMBRE: Record<EstadoContrato, string> = {
@@ -13,6 +14,7 @@ const NOMBRE: Record<EstadoContrato, string> = {
   vigente: 'Vigente',
   finalizado: 'Finalizado',
   rescindido: 'Rescindido',
+  anulado: 'Anulado',
 };
 
 export function EstadoContratoBadge({ estado }: { estado: EstadoContrato }) {
