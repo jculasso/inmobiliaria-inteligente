@@ -60,6 +60,8 @@ model Tenant {
   alqPlantillas            AlqPlantilla[]
   alqReclamos              AlqReclamo[]
   alqReclamoNotas          AlqReclamoNota[]
+  alqProveedores           AlqProveedor[]
+  alqComprobantes          AlqComprobante[]
 
   @@map("tenant")
 }
@@ -1164,4 +1166,62 @@ model AlqReclamoNota {
   @@index([tenantId])
   @@index([reclamoId])
   @@map("alq_reclamo_nota")
+}
+
+/// Un proveedor de la inmobiliaria: plomero, electricista, pintor… (entrega 18).
+model AlqProveedor {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  nombre    String
+  /// plomero | electricista | pintor | gasista | cerrajero | albanil | aseguradora | ente | otro
+  rubro     String
+  cuit      String?
+  telefono  String?
+  email     String?
+  alias     String?
+  cbu       String?
+  obs       String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  comprobantes AlqComprobante[]
+
+  @@index([tenantId])
+  @@map("alq_proveedor")
+}
+
+/// Un comprobante de un proveedor: lo que se hizo, cuánto, a cargo de quién y
+/// si ya se le pagó. Lo que va a cargo del propietario o del inquilino se le
+/// carga como concepto (clave `prov|<id>|<persona>`).
+model AlqComprobante {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  proveedorId     String    @map("proveedor_id") @db.Uuid
+  contratoId      String?   @map("contrato_id") @db.Uuid
+  fecha           DateTime  @db.Date
+  tipoComprobante String    @default("factura_c") @map("tipo_comprobante")
+  numero          String?
+  descripcion     String
+  importe         Decimal   @db.Decimal(14, 2)
+  moneda          String    @default("ARS")
+  /// propietario | inquilino | inmobiliaria
+  aCargoDe        String    @default("propietario") @map("a_cargo_de")
+  pagadoEl        DateTime? @map("pagado_el") @db.Date
+  medio           String?
+  creadoPorId     String?   @map("creado_por_id") @db.Uuid
+  pagadoPorId     String?   @map("pagado_por_id") @db.Uuid
+  anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(6)
+  anuladoPorId    String?   @map("anulado_por_id") @db.Uuid
+  motivoAnulacion String?   @map("motivo_anulacion")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proveedor AlqProveedor @relation(fields: [proveedorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([proveedorId])
+  @@index([contratoId])
+  @@index([tenantId, fecha])
+  @@map("alq_comprobante")
 }
