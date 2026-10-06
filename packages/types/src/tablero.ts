@@ -73,10 +73,28 @@ export const PuntaInputSchema = z.object({
 });
 export type PuntaInput = z.infer<typeof PuntaInputSchema>;
 
+/**
+ * Moneda de una operación del Tablero. Solo USD, y a propósito: el volumen, el
+ * ticket y las comisiones se SUMAN entre operaciones, y una venta en pesos
+ * sumada como si fueran dólares infla el volumen mil veces sin ningún aviso.
+ * Era texto libre; la web manda siempre 'USD'. Si algún día hace falta otra
+ * moneda, se agrega acá Y se separa en los KPIs (`kpis.calc.ts`), no antes.
+ * La lectura (`OperacionDtoSchema`) sigue aceptando cualquier texto.
+ */
+export const MONEDAS_OPERACION = ['USD'] as const;
+// `refine` sobre string y no `z.enum`: el tipo sigue siendo `string` para no
+// obligar a los formularios que ya arman la operación a tipar el literal; la
+// restricción es la misma en tiempo de ejecución, que es donde importa.
+export const MonedaOperacionSchema = z
+  .string()
+  .refine((m) => (MONEDAS_OPERACION as readonly string[]).includes(m), {
+    message: 'Las operaciones del Tablero se cargan en USD.',
+  });
+
 const OperacionBaseFields = {
   codigo: z.string().min(1).max(40),
   direccion: z.string().min(1),
-  moneda: z.string().default('USD'),
+  moneda: MonedaOperacionSchema.default('USD'),
   fechaReserva: IsoDateSchema.nullish(),
   fechaFirma: IsoDateSchema.nullish(),
   obs: z.string().nullish(),
@@ -111,7 +129,7 @@ export const UpdateOperacionSchema = z
   .object({
     codigo: z.string().min(1).max(40),
     direccion: z.string().min(1),
-    moneda: z.string(),
+    moneda: MonedaOperacionSchema,
     precio: MontoSchema.nullable(),
     valorMensual: MontoSchema.nullable(),
     comision: MontoSchema,
@@ -317,6 +335,31 @@ export const ResumenKpisSchema = z.object({
   alquileres: AlquileresResumenSchema,
 });
 export type ResumenKpis = z.infer<typeof ResumenKpisSchema>;
+
+/** Agregado + ranking de un rango de meses (`GET /tablero/kpis/rango`). */
+export const ResumenRangoSchema = z.object({
+  agregado: AgregadoKpiSchema,
+  ranking: z.array(RankingItemSchema),
+});
+export type ResumenRango = z.infer<typeof ResumenRangoSchema>;
+
+/**
+ * Todo lo que la portada del Tablero necesita, en UN pedido
+ * (`GET /tablero/kpis/dashboard`). La pantalla pedía resumen + rango anual en
+ * paralelo, y después el gráfico mensual y los alquileres al montar: cuatro
+ * viajes a la API y cuatro transacciones, cada una trayendo las mismas ventas
+ * del año. Acá es una transacción, una consulta de ventas y una de alquileres.
+ *
+ * `alquileres` es `null` para quien no puede verlos (`puedeVerAlquileres`): el
+ * dato es de la inmobiliaria, no del vendedor, y un cero sería mentir.
+ */
+export const DashboardTableroSchema = z.object({
+  resumen: ResumenKpisSchema,
+  anual: ResumenRangoSchema,
+  mensual: z.array(AgregadoKpiSchema).length(12),
+  alquileres: z.array(AlquileresMesSchema).length(12).nullable(),
+});
+export type DashboardTablero = z.infer<typeof DashboardTableroSchema>;
 
 export const SeguimientoObjetivoSchema = z.object({
   usuarioId: z.string(),

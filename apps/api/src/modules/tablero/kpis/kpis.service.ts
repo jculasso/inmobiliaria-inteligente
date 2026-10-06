@@ -4,6 +4,8 @@ import {
   puedeVerAlquileres,
   type AgregadoKpi,
   type AlquileresMes,
+  type AlquileresResumen,
+  type DashboardTablero,
   type KpiFiltro,
   type LadoPunta,
   type RankingItem,
@@ -19,6 +21,7 @@ import {
   alquileresPorMes,
   ranking,
   seguimientoObjetivos,
+  type AlquilerRow,
   type ObjetivoRow,
   type PuntaCalc,
   type ScopeSet,
@@ -39,36 +42,55 @@ export class KpisService {
   async resumen(filtro: KpiFiltro, ctx: TenantContext): Promise<ResumenKpis> {
     return this.db.withTenant(async (tx) => {
       const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
-      const scopeSet = toScopeSet(scope);
-
       const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
-      const puntasAnio = aplanarPuntas(escrituradas);
-      const puntasMes = filtro.mes != null ? puntasDeMes(escrituradas, filtro.mes) : [];
-
-      // Pendiente de cobro = comisión de puntas de operaciones señadas del año.
       const senadas = await this.ventas(tx, filtro.anio, 'senada', scope.usuarioIds);
-      const puntasSenadas = aplanarPuntas(senadas).filter(
-        (p) => scopeSet === null || scopeSet.has(p.usuarioId),
-      );
-      const opsSenadas = new Set(puntasSenadas.map((p) => p.operacionId));
-
       // Alquileres: métrica de la inmobiliaria, no de un vendedor —se cargan
       // sin puntas—. Por eso no los rige el alcance sino el ROL: antes dependía
       // de `scope.mode === 'tenant'`, y un director sin tildar «Ver todo» veía
       // 0 en la tarjeta mientras la inmobiliaria tenía 35. Ver
       // `puedeVerAlquileres` en @vacker/types.
       const alquileres = puedeVerAlquileres(ctx.roles)
-        ? await this.alquileres(tx, filtro.anio)
-        : { firmados: 0, comision: 0, valorMensualPromedio: 0 };
+        ? await this.filasAlquiler(tx, filtro.anio)
+        : null;
+      return armarResumen(filtro, escrituradas, senadas, alquileres, toScopeSet(scope));
+    });
+  }
 
+  /**
+   * La portada del Tablero en un solo pedido: el resumen del mes, el agregado
+   * y el ranking del año, los doce meses y los alquileres.
+   *
+   * Una transacción, UNA consulta de ventas (escrituradas y señadas juntas) y
+   * una de alquileres. Antes eran cuatro pedidos —resumen, rango anual,
+   * mensual y alquileres—, cuatro transacciones y las mismas ventas del año
+   * leídas tres veces. Los números salen de las mismas funciones puras que
+   * los endpoints viejos (que siguen vivos), así que tienen que coincidir: lo
+   * fija `kpis.dashboard.spec.ts`.
+   */
+  async dashboard(filtro: KpiFiltro, ctx: TenantContext): Promise<DashboardTablero> {
+    return this.db.withTenant(async (tx) => {
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
+      const scopeSet = toScopeSet(scope);
+      const ventas = await this.ventas(
+        tx,
+        filtro.anio,
+        ['escriturada', 'senada'],
+        scope.usuarioIds,
+      );
+      const escrituradas = ventas.filter((v) => v.estado === 'escriturada');
+      const senadas = ventas.filter((v) => v.estado === 'senada');
+      const alquileres = puedeVerAlquileres(ctx.roles)
+        ? await this.filasAlquiler(tx, filtro.anio)
+        : null;
+
+      const puntasAnio = aplanarPuntas(escrituradas);
       return {
-        anio: filtro.anio,
-        mes: filtro.mes,
-        anual: agregar(puntasAnio, scopeSet),
-        mesActual: filtro.mes != null ? agregar(puntasMes, scopeSet) : undefined,
-        pendienteCobro: puntasSenadas.reduce((s, p) => s + p.comision, 0),
-        operacionesSenadas: opsSenadas.size,
-        alquileres,
+        resumen: armarResumen(filtro, escrituradas, senadas, alquileres, scopeSet),
+        anual: { agregado: agregar(puntasAnio, scopeSet), ranking: ranking(puntasAnio, scopeSet) },
+        mensual: Array.from({ length: 12 }, (_, i) =>
+          agregar(puntasDeMes(escrituradas, i + 1), scopeSet),
+        ),
+        alquileres: alquileres ? alquileresPorMes(alquileres) : null,
       };
     });
   }
@@ -96,19 +118,7 @@ export class KpisService {
    * el `@Roles` del controlador; acá ya se sabe que puede.
    */
   async alquileresMensual(anio: number): Promise<AlquileresMes[]> {
-    return this.db.withTenant(async (tx) => {
-      const rows = await tx.operacion.findMany({
-        where: { tipo: 'alquiler', estado: 'firmado', anio },
-        select: { mes: true, comTotal: true, valorMensual: true },
-      });
-      return alquileresPorMes(
-        rows.map((r) => ({
-          mes: r.mes,
-          comision: decToNum(r.comTotal),
-          valorMensual: decToNum(r.valorMensual),
-        })),
-      );
-    });
+    return this.db.withTenant(async (tx) => alquileresPorMes(await this.filasAlquiler(tx, anio)));
   }
 
   /** Ranking de vendedores por volumen (dentro del alcance). */
@@ -180,28 +190,74 @@ export class KpisService {
   private ventas(
     tx: Prisma.TransactionClient,
     anio: number,
-    estado: 'escriturada' | 'senada',
+    estado: EstadoVenta | EstadoVenta[],
     usuarioIds: string[] | null,
   ): Promise<VentaRow[]> {
-    const where: Prisma.OperacionWhereInput = { tipo: 'venta', estado, anio };
+    const where: Prisma.OperacionWhereInput = {
+      tipo: 'venta',
+      estado: Array.isArray(estado) ? { in: estado } : estado,
+      anio,
+    };
     if (usuarioIds !== null) {
       where.puntas = { some: { usuarioId: { in: usuarioIds } } };
     }
     return tx.operacion.findMany({ where, include: ventaConPuntas });
   }
 
-  private async alquileres(tx: Prisma.TransactionClient, anio: number) {
+  /** Los alquileres firmados del año, con lo mínimo para agregarlos. */
+  private async filasAlquiler(tx: Prisma.TransactionClient, anio: number): Promise<AlquilerRow[]> {
     const rows = await tx.operacion.findMany({
       where: { tipo: 'alquiler', estado: 'firmado', anio },
-      select: { comTotal: true, valorMensual: true },
+      select: { mes: true, comTotal: true, valorMensual: true },
     });
-    const firmados = rows.length;
-    const comision = rows.reduce((s, r) => s + decToNum(r.comTotal), 0);
-    const valorMensualPromedio = firmados
-      ? rows.reduce((s, r) => s + decToNum(r.valorMensual), 0) / firmados
-      : 0;
-    return { firmados, comision, valorMensualPromedio };
+    return rows.map((r) => ({
+      mes: r.mes,
+      comision: decToNum(r.comTotal),
+      valorMensual: decToNum(r.valorMensual),
+    }));
   }
+}
+
+type EstadoVenta = 'escriturada' | 'senada';
+
+/**
+ * Arma el resumen de cabecera a partir de filas ya traídas. Puro: lo usan
+ * `resumen` y `dashboard`, que difieren solo en cómo traen las filas.
+ */
+function armarResumen(
+  filtro: KpiFiltro,
+  escrituradas: VentaRow[],
+  senadas: VentaRow[],
+  alquileres: AlquilerRow[] | null,
+  scopeSet: ScopeSet,
+): ResumenKpis {
+  const puntasAnio = aplanarPuntas(escrituradas);
+  const puntasMes = filtro.mes != null ? puntasDeMes(escrituradas, filtro.mes) : [];
+  // Pendiente de cobro = comisión de puntas de operaciones señadas del año.
+  const puntasSenadas = aplanarPuntas(senadas).filter(
+    (p) => scopeSet === null || scopeSet.has(p.usuarioId),
+  );
+  const opsSenadas = new Set(puntasSenadas.map((p) => p.operacionId));
+  return {
+    anio: filtro.anio,
+    mes: filtro.mes,
+    anual: agregar(puntasAnio, scopeSet),
+    mesActual: filtro.mes != null ? agregar(puntasMes, scopeSet) : undefined,
+    pendienteCobro: puntasSenadas.reduce((s, p) => s + p.comision, 0),
+    operacionesSenadas: opsSenadas.size,
+    alquileres: alquileres ? resumenAlquileres(alquileres) : SIN_ALQUILERES,
+  };
+}
+
+const SIN_ALQUILERES: AlquileresResumen = { firmados: 0, comision: 0, valorMensualPromedio: 0 };
+
+function resumenAlquileres(rows: AlquilerRow[]): AlquileresResumen {
+  const firmados = rows.length;
+  const comision = rows.reduce((s, r) => s + r.comision, 0);
+  const valorMensualPromedio = firmados
+    ? rows.reduce((s, r) => s + r.valorMensual, 0) / firmados
+    : 0;
+  return { firmados, comision, valorMensualPromedio };
 }
 
 function toScopeSet(scope: Scope): ScopeSet {
