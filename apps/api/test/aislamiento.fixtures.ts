@@ -50,6 +50,10 @@ export interface IdsDeTenant {
   alqReclamoNota: string;
   alqProveedor: string;
   alqComprobante: string;
+  alqServicio: string;
+  alqCuentaServicio: string;
+  alqPoliza: string;
+  alqBoleta: string;
   /**
    * Un segundo usuario y una segunda tasación por inmobiliaria.
    *
@@ -110,6 +114,10 @@ export function nuevosIds(n: number): IdsDeTenant {
     alqReclamoNota: randomUUID(),
     alqProveedor: randomUUID(),
     alqComprobante: randomUUID(),
+    alqServicio: randomUUID(),
+    alqCuentaServicio: randomUUID(),
+    alqPoliza: randomUUID(),
+    alqBoleta: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
     contratoSecundario: randomUUID(),
@@ -632,6 +640,40 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'descripcion',
     fila: (t, i) => ({ id: i.alqComprobante, tenantId: t, proveedorId: i.alqProveedor, fecha: HOY, descripcion: `Arreglo ${i.n}`, importe: 1000 }),
+  },
+  {
+    tabla: 'alq_servicio',
+    modelo: 'alqServicio',
+    claveId: 'alqServicio',
+    campoTenant: 'tenantId',
+    campoEditable: 'nombre',
+    // `nombre` es único por inmobiliaria: sale de `n`, que la fila intrusa cambia.
+    fila: (t, i) => ({ id: i.alqServicio, tenantId: t, nombre: `TGI ${i.n}`, clase: 'impuesto' }),
+  },
+  {
+    tabla: 'alq_cuenta_servicio',
+    modelo: 'alqCuentaServicio',
+    claveId: 'alqCuentaServicio',
+    campoTenant: 'tenantId',
+    campoEditable: 'numeroCuenta',
+    fila: (t, i) => ({ id: i.alqCuentaServicio, tenantId: t, propiedadId: i.alqPropiedad, servicioId: i.alqServicio, numeroCuenta: `${i.n}` }),
+  },
+  {
+    tabla: 'alq_poliza',
+    modelo: 'alqPoliza',
+    claveId: 'alqPoliza',
+    campoTenant: 'tenantId',
+    campoEditable: 'aseguradora',
+    fila: (t, i) => ({ id: i.alqPoliza, tenantId: t, contratoId: i.alqContrato, aseguradora: `Aseguradora ${i.n}`, desde: HOY, hasta: HOY, premio: 1000 }),
+  },
+  {
+    tabla: 'alq_boleta',
+    modelo: 'alqBoleta',
+    claveId: 'alqBoleta',
+    campoTenant: 'tenantId',
+    campoEditable: 'cuota',
+    // `clave` es única por inmobiliaria: sale de `n`, que la fila intrusa cambia.
+    fila: (t, i) => ({ id: i.alqBoleta, tenantId: t, cuentaId: i.alqCuentaServicio, clave: `cuenta|${i.n}`, periodo: '2026-10', vencimiento: HOY, importe: 1000, aCargoDe: 'inquilino', paga: 'inquilino' }),
   },
 ];
 

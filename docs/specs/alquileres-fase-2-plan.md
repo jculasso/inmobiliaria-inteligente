@@ -85,7 +85,7 @@ cada cosa. Se revisa al cerrar cada entrega.
 | 16 | D | **Caja y bancos**: cuentas (cajas por moneda, bancos); cada cobro, liquidación y pago mueve una cuenta; ingresos y egresos manuales; cierre de caja; cheques | 15 | sí |
 | 17 | D | **Conciliación bancaria**: importar extractos en Excel y CSV (formato recordado por banco), sugerir el par de cada movimiento, marcar conciliados | 15 | sí |
 | 18 ✅ | E | **Proveedores**: plomero, electricista, pintor (y aseguradoras, entes); su comprobante; el pago (fecha y medio; la cuenta de la que sale llega con la 16) y, en el mismo paso, se le carga al propietario como adelantado y se le descuenta en la próxima liquidación; reportes de pendientes y por tipo de gasto | 15 | sí |
-| 19 | E | **Impuestos, servicios y pólizas**: catálogo por inmobiliaria (API, TGI, EPE, gas, agua); cuáles aplican a cada propiedad, con su número de cuenta; boletas en cuotas con su contraparte; carga de varios juntos y copiando el mes anterior; control de lo que paga la inmobiliaria; pólizas con cuotas y vencimientos | 9, 10 | sí |
+| 19 ✅ | E | **Impuestos, servicios y pólizas**: catálogo por inmobiliaria (API, TGI, EPE, gas, agua); cuáles aplican a cada propiedad, con su número de cuenta; boletas en cuotas con su contraparte; carga de varios juntos y copiando el mes anterior; control de lo que paga la inmobiliaria; pólizas con cuotas y vencimientos | 9, 10 | sí |
 | 20 | — | **Migración de Vacker** desde Gexion, con fecha de corte parametrizable y ensayo previo | — | — |
 | 21 | — | **Facturación electrónica**, después de la marcha blanca | — | sí |
 
@@ -139,9 +139,9 @@ Relevado el 6/10/2026 en la cuenta de Vacker, sin copiar datos personales.
 | Fondos: movimientos, cierre de caja, cheques | Entrega 16 |
 | Movimientos bancarios y conciliación | Entrega 17 |
 | Proveedores, comprobantes, pagos, tipos de gasto | ✅ Entrega 18 |
-| Impuestos y servicios (catálogo, cuotas, contraparte, control) | Entrega 19 |
-| Cargas múltiples y desde el período anterior | Entrega 19 |
-| Pólizas de seguro | Entrega 19 |
+| Impuestos y servicios (catálogo, cuotas, contraparte, control) | ✅ Entrega 19 |
+| Cargas múltiples y desde el período anterior | ✅ Entrega 19 |
+| Pólizas de seguro | ✅ Entrega 19 |
 | Reportes: cuenta corriente, conceptos cobrados/pagados, pendientes | Entregas 12 y 18 |
 | Facturación electrónica (factura A/B, notas de crédito) | Entrega 21 |
 | Cargas por código de barras | Más adelante (decisión del 6/10) |

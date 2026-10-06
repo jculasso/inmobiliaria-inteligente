@@ -25,6 +25,16 @@ import {
   ComprobanteDtoSchema,
   GastosReporteDtoSchema,
   ProveedorDtoSchema,
+  ServicioDtoSchema,
+  CuentaServicioDtoSchema,
+  PlanillaBoletasDtoSchema,
+  LoteBoletasResultadoSchema,
+  BoletaDtoSchema,
+  PolizaDtoSchema,
+  type ServicioInput,
+  type CuentaServicioInput,
+  type LoteBoletasInput,
+  type PolizaInput,
   type ComprobanteInput,
   type MedioCobro,
   type ProveedorInput,
@@ -425,4 +435,71 @@ export async function pagarComprobante(accessToken: string, id: string, fecha: s
 
 export async function anularComprobante(accessToken: string, id: string, motivo: string) {
   return apiFetch(`/alquileres/comprobantes/${id}/anular`, ComprobanteDtoSchema, { accessToken, method: 'POST', body: { motivo } });
+}
+
+// --- Impuestos, servicios y pólizas (entrega 19) ---
+
+export async function listServicios(accessToken: string) {
+  return apiFetch('/alquileres/servicios', z.array(ServicioDtoSchema), { accessToken });
+}
+
+export async function cargarServiciosSugeridos(accessToken: string) {
+  return apiFetch('/alquileres/servicios/sugeridos', z.object({ creados: z.number() }), { accessToken, method: 'POST', body: {} });
+}
+
+export async function guardarServicio(accessToken: string, id: string | null, dto: ServicioInput) {
+  return id
+    ? apiFetch(`/alquileres/servicios/${id}`, z.object({ id: z.string() }), { accessToken, method: 'PATCH', body: dto })
+    : apiFetch('/alquileres/servicios', z.object({ id: z.string() }), { accessToken, method: 'POST', body: dto });
+}
+
+export async function borrarServicio(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/servicios/${id}`, z.object({ id: z.string() }), { accessToken, method: 'DELETE' });
+}
+
+export async function listCuentasServicio(accessToken: string, propiedadId?: string) {
+  return apiFetch(`/alquileres/cuentas-servicio${propiedadId ? `?propiedadId=${propiedadId}` : ''}`, z.array(CuentaServicioDtoSchema), { accessToken });
+}
+
+export async function guardarCuentaServicio(accessToken: string, id: string | null, dto: CuentaServicioInput) {
+  return id
+    ? apiFetch(`/alquileres/cuentas-servicio/${id}`, z.object({ id: z.string() }), { accessToken, method: 'PATCH', body: dto })
+    : apiFetch('/alquileres/cuentas-servicio', z.object({ id: z.string() }), { accessToken, method: 'POST', body: dto });
+}
+
+export async function borrarCuentaServicio(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/cuentas-servicio/${id}`, z.object({ id: z.string() }), { accessToken, method: 'DELETE' });
+}
+
+export async function getPlanillaBoletas(accessToken: string, periodo: string) {
+  return apiFetch(`/alquileres/boletas/planilla?periodo=${periodo}`, PlanillaBoletasDtoSchema, { accessToken });
+}
+
+export async function cargarLoteBoletas(accessToken: string, dto: LoteBoletasInput) {
+  return apiFetch('/alquileres/boletas/lote', LoteBoletasResultadoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+export async function listBoletas(accessToken: string, q: { periodo?: string; ver?: 'mes' | 'control'; contratoId?: string }) {
+  const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]);
+  return apiFetch(`/alquileres/boletas${p.toString() ? `?${p}` : ''}`, z.array(BoletaDtoSchema), { accessToken });
+}
+
+export async function pagarBoleta(accessToken: string, id: string, fecha: string, medio: MedioCobro) {
+  return apiFetch(`/alquileres/boletas/${id}/pagar`, BoletaDtoSchema, { accessToken, method: 'POST', body: { fecha, medio } });
+}
+
+export async function anularBoleta(accessToken: string, id: string, motivo: string) {
+  return apiFetch(`/alquileres/boletas/${id}/anular`, BoletaDtoSchema, { accessToken, method: 'POST', body: { motivo } });
+}
+
+export async function listPolizas(accessToken: string, contratoId?: string) {
+  return apiFetch(`/alquileres/polizas${contratoId ? `?contratoId=${contratoId}` : ''}`, z.array(PolizaDtoSchema), { accessToken });
+}
+
+export async function crearPoliza(accessToken: string, dto: PolizaInput) {
+  return apiFetch('/alquileres/polizas', z.object({ id: z.string() }), { accessToken, method: 'POST', body: dto });
+}
+
+export async function anularPoliza(accessToken: string, id: string, motivo: string) {
+  return apiFetch(`/alquileres/polizas/${id}/anular`, z.object({ id: z.string(), cuotasAnuladas: z.number() }), { accessToken, method: 'POST', body: { motivo } });
 }

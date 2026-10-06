@@ -17,6 +17,7 @@ const TABS = [
   { href: '/alquileres/propiedades', label: 'Propiedades' },
   { href: '/alquileres/reclamos', label: 'Reclamos' },
   { href: '/alquileres/proveedores', label: 'Proveedores' },
+  { href: '/alquileres/impuestos', label: 'Impuestos' },
   { href: '/alquileres/configuracion', label: '⚙️ Configuración' },
 ];
 

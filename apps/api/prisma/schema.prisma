@@ -62,6 +62,10 @@ model Tenant {
   alqReclamoNotas          AlqReclamoNota[]
   alqProveedores           AlqProveedor[]
   alqComprobantes          AlqComprobante[]
+  alqServicios             AlqServicio[]
+  alqCuentasServicio       AlqCuentaServicio[]
+  alqBoletas               AlqBoleta[]
+  alqPolizas               AlqPoliza[]
 
   @@map("tenant")
 }
@@ -616,15 +620,15 @@ model ProtocoloAccion {
 /// acá sino en cada contrato (`AlqContratoParte`): la misma persona puede ser
 /// propietaria de un contrato e inquilina de otro.
 model AlqPersona {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  tipo      String   @default("fisica") // fisica | juridica
-  nombre    String
-  documento String? // DNI o CUIT, sin puntos ni guiones
-  email     String?
-  telefono  String?
-  domicilio String?
-  obs       String?
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  tipo            String    @default("fisica") // fisica | juridica
+  nombre          String
+  documento       String? // DNI o CUIT, sin puntos ni guiones
+  email           String?
+  telefono        String?
+  domicilio       String?
+  obs             String?
   /// CUIT/CUIL, solo dígitos y con dígito verificador válido (aparte del DNI de `documento`).
   cuit            String?
   /// consumidor_final | responsable_inscripto | monotributista | exento | no_responsable
@@ -636,10 +640,10 @@ model AlqPersona {
   nacionalidad    String?
   /// soltero | casado | divorciado | viudo | union_convivencial
   estadoCivil     String?   @map("estado_civil")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   cuentas       AlqCuentaBancaria[]
   contactos     AlqContacto[]
   partes        AlqContratoParte[]
@@ -668,8 +672,9 @@ model AlqPropiedad {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contratos AlqContrato[]
+  cuentas   AlqCuentaServicio[]
 
   @@index([tenantId])
   @@map("alq_propiedad")
@@ -723,6 +728,7 @@ model AlqContrato {
   conceptos  AlqConcepto[]
   documentos AlqDocumento[]
   garantias  AlqGarantia[]
+  polizas    AlqPoliza[]
 
   @@unique([tenantId, codigo])
   @@index([tenantId])
@@ -1224,4 +1230,120 @@ model AlqComprobante {
   @@index([contratoId])
   @@index([tenantId, fecha])
   @@map("alq_comprobante")
+}
+
+/// El catálogo de impuestos y servicios de cada inmobiliaria (API, TGI, EPE…).
+model AlqServicio {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  nombre    String
+  /// impuesto | servicio | expensa: el tipo del concepto que genera
+  clase     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuentas AlqCuentaServicio[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+  @@map("alq_servicio")
+}
+
+/// Un impuesto o servicio de una propiedad, con su número de cuenta, quién lo
+/// debe y quién paga la boleta.
+model AlqCuentaServicio {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  propiedadId  String   @map("propiedad_id") @db.Uuid
+  servicioId   String   @map("servicio_id") @db.Uuid
+  numeroCuenta String?  @map("numero_cuenta")
+  /// inquilino | propietario
+  aCargoDe     String   @default("inquilino") @map("a_cargo_de")
+  /// inmobiliaria | inquilino | propietario
+  paga         String   @default("inquilino")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propiedad AlqPropiedad @relation(fields: [propiedadId], references: [id], onDelete: Restrict)
+  servicio  AlqServicio  @relation(fields: [servicioId], references: [id], onDelete: Restrict)
+  boletas   AlqBoleta[]
+
+  @@index([tenantId])
+  @@index([propiedadId])
+  @@index([servicioId])
+  @@map("alq_cuenta_servicio")
+}
+
+/// Una boleta: de un impuesto o servicio, o la cuota de una póliza. Lo que va
+/// a cargo de una parte se le carga como concepto (clave `bol|<id>|…`).
+model AlqBoleta {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  cuentaId        String?   @map("cuenta_id") @db.Uuid
+  polizaId        String?   @map("poliza_id") @db.Uuid
+  contratoId      String?   @map("contrato_id") @db.Uuid
+  /// `<cuenta|poliza>|<periodo>|<cuota>`: no se carga dos veces la misma.
+  clave           String
+  periodo         String
+  cuota           String?
+  vencimiento     DateTime  @db.Date
+  importe         Decimal   @db.Decimal(14, 2)
+  moneda          String    @default("ARS")
+  aCargoDe        String    @map("a_cargo_de")
+  paga            String
+  pagadaEl        DateTime? @map("pagada_el") @db.Date
+  medio           String?
+  creadoPorId     String?   @map("creado_por_id") @db.Uuid
+  pagadaPorId     String?   @map("pagada_por_id") @db.Uuid
+  anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(6)
+  anuladoPorId    String?   @map("anulado_por_id") @db.Uuid
+  motivoAnulacion String?   @map("motivo_anulacion")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuenta AlqCuentaServicio? @relation(fields: [cuentaId], references: [id], onDelete: Restrict)
+  poliza AlqPoliza?         @relation(fields: [polizaId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, clave])
+  @@index([tenantId, periodo])
+  @@index([tenantId, vencimiento])
+  @@index([cuentaId])
+  @@index([polizaId])
+  @@index([contratoId])
+  @@map("alq_boleta")
+}
+
+/// Una póliza de seguro de un contrato; sus cuotas son boletas.
+model AlqPoliza {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  contratoId      String    @map("contrato_id") @db.Uuid
+  aseguradora     String
+  numero          String?
+  /// incendio | integral | responsabilidad_civil | caucion | otro
+  cobertura       String    @default("incendio")
+  desde           DateTime  @db.Date
+  hasta           DateTime  @db.Date
+  sumaAsegurada   Decimal?  @map("suma_asegurada") @db.Decimal(14, 2)
+  premio          Decimal   @db.Decimal(14, 2)
+  cuotas          Int       @default(1)
+  moneda          String    @default("ARS")
+  aCargoDe        String    @default("inquilino") @map("a_cargo_de")
+  paga            String    @default("inmobiliaria")
+  creadoPorId     String?   @map("creado_por_id") @db.Uuid
+  anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(6)
+  anuladoPorId    String?   @map("anulado_por_id") @db.Uuid
+  motivoAnulacion String?   @map("motivo_anulacion")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato AlqContrato @relation(fields: [contratoId], references: [id], onDelete: Restrict)
+  boletas  AlqBoleta[]
+
+  @@index([tenantId])
+  @@index([contratoId])
+  @@index([tenantId, hasta])
+  @@map("alq_poliza")
 }

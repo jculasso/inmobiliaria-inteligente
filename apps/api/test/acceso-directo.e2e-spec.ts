@@ -353,7 +353,7 @@ describe('Acceso a Prisma fuera del contexto de tenant (análisis estático)', (
     // garantías (entrega 14), las plantillas y los reclamos (entrega 15), y
     // los proveedores y sus comprobantes (entrega 18).
     // Si baja, alguien sacó una tabla de `TABLAS` y su acceso dejó de vigilarse.
-    expect(MODELOS_CON_RLS.size).toBe(37);
+    expect(MODELOS_CON_RLS.size).toBe(41);
   });
 
   it('ningún archivo de src/ consulta una tabla con RLS por fuera de withTenant', () => {
