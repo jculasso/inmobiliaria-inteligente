@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import {
   BandejaIndexacionDtoSchema,
+  LiquidacionDtoSchema,
+  LiquidacionResumenDtoSchema,
+  PendienteLiquidarDtoSchema,
+  PreparacionLiquidacionDtoSchema,
+  type LiquidacionInput,
   CobroDtoSchema,
   CobroResumenDtoSchema,
   CuentaCorrienteDtoSchema,
@@ -133,4 +138,32 @@ export async function generarRecibo(accessToken: string, id: string) {
 /** Cuenta corriente y estado de cuenta de una persona (reglas 18 y 24). */
 export async function getCuentaCorriente(accessToken: string, personaId: string) {
   return apiFetch(`/alquileres/personas/${personaId}/cuenta`, CuentaCorrienteDtoSchema, { accessToken });
+}
+
+/** Propietarios con algo para liquidar hoy (regla 31). */
+export async function listPendientesLiquidar(accessToken: string) {
+  return apiFetch('/alquileres/liquidaciones/pendientes', z.array(PendienteLiquidarDtoSchema), { accessToken });
+}
+
+/** Lo que entra en la liquidación de un propietario; `excluidos` son los que se dejan para después. */
+export async function prepararLiquidacion(accessToken: string, personaId: string, moneda: MonedaAlquiler, fecha: string, excluidos: string[]) {
+  const fuera = excluidos.length ? `&excluidos=${excluidos.join(',')}` : '';
+  return apiFetch(`/alquileres/liquidaciones/preparar?personaId=${personaId}&moneda=${moneda}&fecha=${fecha}${fuera}`, PreparacionLiquidacionDtoSchema, { accessToken });
+}
+
+export async function liquidar(accessToken: string, dto: LiquidacionInput) {
+  return apiFetch('/alquileres/liquidaciones', LiquidacionDtoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+export async function listLiquidaciones(accessToken: string, personaId?: string) {
+  return apiFetch(`/alquileres/liquidaciones${personaId ? `?personaId=${personaId}` : ''}`, z.array(LiquidacionResumenDtoSchema), { accessToken });
+}
+
+export async function anularLiquidacion(accessToken: string, id: string, motivo: string) {
+  return apiFetch(`/alquileres/liquidaciones/${id}/anular`, LiquidacionDtoSchema, { accessToken, method: 'POST', body: { motivo } });
+}
+
+/** La liquidación en PDF (regla 23). */
+export async function generarLiquidacionPdf(accessToken: string, id: string) {
+  return apiFetchPdf(`/alquileres/liquidaciones/${id}/pdf`, { accessToken });
 }

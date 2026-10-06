@@ -581,7 +581,7 @@ export const CuentaCorrienteDtoSchema = z.object({
       movimientos: z.array(
         z.object({
           id: z.string().uuid(),
-          tipo: z.enum(['concepto', 'cobro']),
+          tipo: z.enum(['concepto', 'cobro', 'liquidacion']),
           fecha: FechaIso,
           descripcion: z.string(),
           contrato: ContratoMiniSchema,
@@ -609,3 +609,88 @@ export const CuentaCorrienteDtoSchema = z.object({
   ),
 });
 export type CuentaCorrienteDto = z.infer<typeof CuentaCorrienteDtoSchema>;
+
+// --- Liquidaciones al propietario (reglas 20 a 23) ---------------------------------
+
+export const PrepararLiquidacionSchema = z.object({
+  personaId: z.string().uuid(),
+  moneda: MonedaAlquilerSchema.default('ARS'),
+  fecha: FechaIso,
+  /** Por query string: ids separados por coma. La vista previa con lo que se deja para después. */
+  excluidos: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.split(',') : []))
+    .pipe(z.array(z.string().uuid())),
+});
+export type PrepararLiquidacion = z.infer<typeof PrepararLiquidacionSchema>;
+
+/** Una línea de la liquidación: un concepto con lo que se le paga o se le descuenta. */
+export const LineaLiquidacionSchema = z.object({
+  conceptoId: z.string().uuid(),
+  contrato: ContratoMiniSchema,
+  tipo: TipoConceptoSchema,
+  descripcion: z.string(),
+  importe: z.number(),
+});
+export type LineaLiquidacion = z.infer<typeof LineaLiquidacionSchema>;
+
+export const PreparacionLiquidacionDtoSchema = z.object({
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  moneda: MonedaAlquilerSchema,
+  fecha: FechaIso,
+  aPagar: z.array(LineaLiquidacionSchema),
+  aDescontar: z.array(LineaLiquidacionSchema),
+  /** Lo que espera a que pague el inquilino (regla 22): se muestra, no se liquida. */
+  enEspera: z.array(LineaLiquidacionSchema),
+  neto: z.number(),
+});
+export type PreparacionLiquidacionDto = z.infer<typeof PreparacionLiquidacionDtoSchema>;
+
+export const LiquidacionInputSchema = z.object({
+  personaId: z.string().uuid(),
+  moneda: MonedaAlquilerSchema.default('ARS'),
+  fecha: FechaIso,
+  medio: MedioCobroSchema.default('transferencia'),
+  /** Conceptos que se dejan para otra liquidación. Si se deja un alquiler, sus honorarios esperan con él. */
+  excluidos: z.array(z.string().uuid()).default([]),
+});
+export type LiquidacionInput = z.input<typeof LiquidacionInputSchema>;
+export type Liquidacion = z.output<typeof LiquidacionInputSchema>;
+
+export const LiquidacionDtoSchema = z.object({
+  id: z.string().uuid(),
+  numero: z.number().int(),
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  fecha: FechaIso,
+  moneda: MonedaAlquilerSchema,
+  medio: MedioCobroSchema,
+  aPagar: z.array(LineaLiquidacionSchema),
+  aDescontar: z.array(LineaLiquidacionSchema),
+  neto: z.number(),
+  anulado: z.object({ en: z.string(), motivo: z.string() }).nullable(),
+});
+export type LiquidacionDto = z.infer<typeof LiquidacionDtoSchema>;
+
+export const LiquidacionResumenDtoSchema = z.object({
+  id: z.string().uuid(),
+  numero: z.number().int(),
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  fecha: FechaIso,
+  moneda: MonedaAlquilerSchema,
+  neto: z.number(),
+  anulado: z.boolean(),
+});
+export type LiquidacionResumenDto = z.infer<typeof LiquidacionResumenDtoSchema>;
+
+/** Propietarios con algo para liquidar hoy, y lo que les espera. */
+export const PendienteLiquidarDtoSchema = z.object({
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  moneda: MonedaAlquilerSchema,
+  neto: z.number(),
+  enEspera: z.number(),
+});
+export type PendienteLiquidarDto = z.infer<typeof PendienteLiquidarDtoSchema>;
+
+export const AnularLiquidacionSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.') });
+export type AnularLiquidacion = z.infer<typeof AnularLiquidacionSchema>;
