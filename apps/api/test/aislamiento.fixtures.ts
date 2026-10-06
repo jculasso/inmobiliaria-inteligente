@@ -466,7 +466,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqLiquidacion',
     campoTenant: 'tenantId',
     campoEditable: 'periodo',
-    fila: (t, i) => ({ id: i.alqLiquidacion, tenantId: t, personaId: i.alqPersona, periodo: '2026-01', neto: 1, fecha: HOY }),
+    fila: (t, i) => ({ id: i.alqLiquidacion, tenantId: t, numero: 1, personaId: i.alqPersona, periodo: '2026-01', neto: 1, fecha: HOY, detalle: {} }),
   },
   {
     tabla: 'alq_concepto',
@@ -493,7 +493,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqCobro',
     campoTenant: 'tenantId',
     campoEditable: 'obs',
-    fila: (t, i) => ({ id: i.alqCobro, tenantId: t, personaId: i.alqPersona, fecha: HOY, importe: 1, medio: 'efectivo' }),
+    fila: (t, i) => ({ id: i.alqCobro, tenantId: t, numero: 1, personaId: i.alqPersona, fecha: HOY, importe: 1, medio: 'efectivo' }),
   },
   {
     tabla: 'alq_imputacion',
@@ -501,7 +501,7 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqImputacion',
     campoTenant: 'tenantId',
     campoEditable: 'importe',
-    fila: (t, i) => ({ id: i.alqImputacion, tenantId: t, cobroId: i.alqCobro, conceptoId: i.alqConcepto, importe: 1 }),
+    fila: (t, i) => ({ id: i.alqImputacion, tenantId: t, cobroId: i.alqCobro, conceptoId: i.alqConcepto, importe: 1, registradaEnCobroId: i.alqCobro }),
   },
   {
     tabla: 'alq_documento',
