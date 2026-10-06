@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  DIAS_TABLERO_PROXIMOS,
   TRAMOS_MORA,
+  type FiltroTipoContrato,
   type FilaTablero,
   type Indicador,
   type MonedaAlquiler,
@@ -62,14 +64,23 @@ export class TableroAlquileresService {
    * anterior para comparar), como el Tablero Comercial. Lo demás —cartera,
    * cobranza del mes, morosidad, tareas— es siempre a hoy.
    */
-  async tablero(hoy = hoyArgentina(), anio = Number(hoy.slice(0, 4))): Promise<TableroAlquileresDto> {
+  async tablero(hoy = hoyArgentina(), anio = Number(hoy.slice(0, 4)), tipo: FiltroTipoContrato = 'todos'): Promise<TableroAlquileresDto> {
     const mes = hoy.slice(0, 7);
-    const [datos, bandeja, aLiquidar] = await Promise.all([
-      this.db.withTenant((tx) => this.leer(tx, hoy, mes, anio)),
-      this.indexaciones.bandeja(hoy),
+    const [datos, bandejaTodas, aLiquidarTodos] = await Promise.all([
+      this.db.withTenant((tx) => this.leer(tx, hoy, mes, anio, tipo)),
+      this.indexaciones.bandeja(hoy, DIAS_TABLERO_PROXIMOS),
       this.liquidaciones.pendientes(),
     ]);
-    const { contratos, delMes, mora, evolucion, ingresos } = datos;
+    const { contratos: todos, delMes: delMesTodos, mora, evolucion, ingresos } = datos;
+
+    // El filtro Particulares / Comerciales (punto 8 de Javier) mira todo el
+    // tablero. Lo que crece con la historia ya viene filtrado de la base; lo
+    // demás se filtra acá, sobre los contratos de la inmobiliaria.
+    const contratos = tipo === 'todos' ? todos : todos.filter((c) => c.tipo === tipo);
+    const delTipo = new Set(contratos.map((c) => c.id));
+    const delMes = tipo === 'todos' ? delMesTodos : delMesTodos.filter((k) => k.contratoId != null && delTipo.has(k.contratoId));
+    const bandeja = tipo === 'todos' ? bandejaTodas : { ...bandejaTodas, tramos: bandejaTodas.tramos.filter((t) => delTipo.has(t.contrato.id)) };
+    const aLiquidar = tipo === 'todos' ? aLiquidarTodos : aLiquidarTodos.filter((p) => p.contratos.some((c) => delTipo.has(c.id)));
 
     // --- Cartera (regla 27) ---
     const vigentes = contratos.filter((c) => c.estado === 'vigente');
@@ -187,11 +198,45 @@ export class TableroAlquileresService {
       });
     }
 
+    // --- Reparto de la cartera por tipo, siempre de todos (punto 8) ---
+    const vigentesTodos = todos.filter((c) => c.estado === 'vigente');
+    const pesosDe = (xs: typeof todos) => redondear2(xs.filter((c) => c.moneda === 'ARS').reduce((s, c) => s + (importeDeHoy(c) ?? 0), 0));
+    const totalPesos = pesosDe(vigentesTodos);
+    const porTipo = (['vivienda', 'comercial'] as const).map((t) => {
+      const xs = vigentesTodos.filter((c) => c.tipo === t);
+      const importe = pesosDe(xs);
+      return { tipo: t, cantidad: xs.length, importe, pct: totalPesos > 0 ? Math.round((importe / totalPesos) * 1000) / 10 : 0 };
+    });
+
+    // --- Contratos nuevos (punto 8): los que empiezan en cada mes ---
+    const empiezaEn = (c: (typeof contratos)[number]) => fromDate(c.inicio)!.slice(0, 7);
+    const importeInicial = (c: (typeof contratos)[number]) => (c.tramos[0]?.importe != null ? decToNum(c.tramos[0].importe) : 0);
+    const meses = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+    const nuevosDe = (a: number, m: string) => contratos.filter((c) => empiezaEn(c) === `${a}-${m}`);
+    const nuevos = {
+      porMes: meses.map((m) => porCantidad(nuevosDe(anio, m).map((c) => filaContrato(c, importeInicial(c), `Empieza el ${fechaCorta(fromDate(c.inicio)!)}`)))),
+      importePorMes: meses.map((m) => redondear2(nuevosDe(anio, m).filter((c) => c.moneda === 'ARS').reduce((s, c) => s + importeInicial(c), 0))),
+      anterior: meses.map((m) => nuevosDe(anio - 1, m).length),
+    };
+
+    // --- Escalones por iniciar (Gexion): contratos escalonados que cambian de importe pronto ---
+    const hasta = sumarDiasIso(hoy, DIAS_TABLERO_PROXIMOS);
+    const escalones = vigentes.flatMap((c) =>
+      c.ajuste !== 'escalonado'
+        ? []
+        : c.tramos
+            .filter((t) => t.numero > 1 && fromDate(t.desde)! > hoy && fromDate(t.desde)! <= hasta)
+            .map((t) => ({ ...filaContrato(c, t.importe == null ? null : decToNum(t.importe), `Escalón ${t.numero} desde el ${fechaCorta(fromDate(t.desde)!)}`), id: `${c.id}|${t.numero}`, fecha: fromDate(t.desde) })),
+    );
+
     return {
       hoy,
       mes,
       anio,
+      tipo,
+      nuevos,
       cartera: {
+        porTipo,
         vigentes: porCantidad(vigentes.map((c) => filaContrato(c, importeDeHoy(c)))),
         vivienda: vigentes.filter((c) => c.tipo === 'vivienda').length,
         comercial: vigentes.filter((c) => c.tipo === 'comercial').length,
@@ -234,41 +279,47 @@ export class TableroAlquileresService {
             .filter((c) => !c.documentos.some((d) => d.estadoFirma === 'firmado'))
             .map((c) => filaContrato(c, null, c.documentos.length ? 'Falta completar la firma' : 'Falta cargar el contrato firmado')),
         ),
+        escalones: porCantidad(escalones.sort((a, b) => ((a.fecha ?? '') < (b.fecha ?? '') ? -1 : 1))),
       },
     };
   }
 
   /** Cinco consultas, en una transacción: todas ven la misma foto de la base. */
-  private async leer(tx: Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0], hoy: string, mes: string, anio: number) {
+  private async leer(tx: Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0], hoy: string, mes: string, anio: number, tipo: FiltroTipoContrato) {
+    // El filtro por tipo en lo que se agrega en la base (punto 8).
+    const delTipo = tipo === 'todos' ? Prisma.empty : Prisma.sql`AND c.tipo = ${tipo}`;
     const desdeEvolucion = `${anio}-01`;
     const hastaEvolucion = `${anio}-12`;
     const desdeIngresos = `${anio - 1}-01-01`;
     const hastaIngresos = `${anio + 1}-01-01`;
     const [contratos, delMes, mora, evolucion, ingresos] = await Promise.all([
       tx.alqContrato.findMany({
-        where: { estado: { not: 'borrador' } },
+        where: { estado: { notIn: ['borrador', 'anulado'] } },
         select: {
           id: true,
           codigo: true,
           estado: true,
           tipo: true,
           moneda: true,
+          ajuste: true,
+          inicio: true,
           fin: true,
           rescindidoEl: true,
           depositoImporte: true,
           depositoDevolucion: true,
           propiedad: { select: { direccion: true, unidad: true } },
           partes: { select: { personaId: true, papel: true, persona: { select: { nombre: true } } } },
-          tramos: { select: { desde: true, importe: true }, orderBy: { numero: 'asc' } },
+          tramos: { select: { numero: true, desde: true, importe: true }, orderBy: { numero: 'asc' } },
           documentos: { select: { estadoFirma: true } },
         },
-        orderBy: { codigo: 'asc' },
+        orderBy: [{ codigoNum: 'asc' }, { codigo: 'asc' }],
       }),
       // Los alquileres del mes, del lado del inquilino.
       tx.alqConcepto.findMany({
         where: { periodo: mes, tipo: 'alquiler', sentido: 'a_cobrar', anuladoEn: null },
         select: {
           id: true,
+          contratoId: true,
           moneda: true,
           importe: true,
           vencimiento: true,
@@ -293,6 +344,7 @@ export class TableroAlquileresService {
           LEFT JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id
          WHERE k.sentido = 'a_cobrar' AND k.anulado_en IS NULL AND k.liquidacion_id IS NULL
            AND k.tipo <> 'honorarios' AND k.vencimiento < ${toDate(hoy)}
+           ${delTipo}
            AND NOT EXISTS (SELECT 1 FROM alq_contrato_parte pp
                             WHERE pp.contrato_id = k.contrato_id AND pp.persona_id = k.persona_id AND pp.papel = 'propietario')
          GROUP BY k.id, c.id, p.id
@@ -302,6 +354,7 @@ export class TableroAlquileresService {
       tx.$queryRaw<{ periodo: string; moneda: string; emitido: Prisma.Decimal; cobrado: Prisma.Decimal }[]>`
         SELECT k.periodo, k.moneda, SUM(k.importe) AS emitido, COALESCE(SUM(x.cobrado), 0) AS cobrado
           FROM alq_concepto k
+          JOIN alq_contrato c ON c.id = k.contrato_id
           LEFT JOIN LATERAL (
             SELECT SUM(im.importe) AS cobrado
               FROM alq_imputacion im
@@ -312,6 +365,7 @@ export class TableroAlquileresService {
           ) x ON true
          WHERE k.tipo = 'alquiler' AND k.sentido = 'a_cobrar' AND k.anulado_en IS NULL
            AND k.periodo BETWEEN ${desdeEvolucion} AND ${hastaEvolucion}
+           ${delTipo}
          GROUP BY k.periodo, k.moneda
          ORDER BY k.periodo, k.moneda`,
       // Regla 30: gastos y punitorios cobrados (por la fecha del cobro) y
@@ -325,14 +379,18 @@ export class TableroAlquileresService {
             SELECT to_char(re.fecha, 'YYYY-MM') AS mes, k.moneda, k.tipo, im.importe
               FROM alq_imputacion im
               JOIN alq_concepto k ON k.id = im.concepto_id
+              JOIN alq_contrato c ON c.id = k.contrato_id
               JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
               JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
              WHERE k.tipo IN ('gastos_adm', 'punitorio') AND re.fecha >= ${toDate(desdeIngresos)} AND re.fecha < ${toDate(hastaIngresos)}
+               ${delTipo}
             UNION ALL
             SELECT to_char(l.fecha, 'YYYY-MM'), k.moneda, k.tipo, k.importe
               FROM alq_concepto k
+              JOIN alq_contrato c ON c.id = k.contrato_id
               JOIN alq_liquidacion l ON l.id = k.liquidacion_id AND l.anulado_en IS NULL
              WHERE k.tipo = 'honorarios' AND l.fecha >= ${toDate(desdeIngresos)} AND l.fecha < ${toDate(hastaIngresos)}
+               ${delTipo}
           ) movimientos
          GROUP BY mes, moneda
          ORDER BY mes, moneda`,

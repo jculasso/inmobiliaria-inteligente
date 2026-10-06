@@ -17,6 +17,8 @@ function contrato(over: Record<string, unknown> = {}) {
     estado: 'vigente',
     tipo: 'vivienda',
     moneda: 'ARS',
+    ajuste: 'indexado',
+    inicio: d('2025-08-15'),
     fin: d('2027-08-14'),
     rescindidoEl: null,
     depositoImporte: null,
@@ -27,9 +29,9 @@ function contrato(over: Record<string, unknown> = {}) {
       { personaId: 'dueno', papel: 'propietario', persona: { nombre: 'Dueño' } },
     ],
     tramos: [
-      { desde: d('2026-04-15'), importe: dec(1_043_387) },
-      { desde: d('2026-08-15'), importe: dec(1_137_518) },
-      { desde: d('2026-12-15'), importe: null },
+      { numero: 1, desde: d('2026-04-15'), importe: dec(1_043_387) },
+      { numero: 2, desde: d('2026-08-15'), importe: dec(1_137_518) },
+      { numero: 3, desde: d('2026-12-15'), importe: null },
     ],
     documentos: [] as { estadoFirma: string }[],
     ...over,
@@ -43,6 +45,7 @@ function alquilerDelMes(id: string, importe: number, pagado: number) {
     importe: dec(importe),
     vencimiento: d('2026-10-05'),
     descripcion: 'Alquiler octubre 2026',
+    contratoId: `c${id}`,
     persona: { id: `inq-${id}`, nombre: `Inquilino ${id}` },
     contrato: { codigo: id },
     imputaciones: pagado ? [{ importe: dec(pagado) }] : [],
@@ -94,8 +97,8 @@ function servicio(over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unkn
   } as unknown as IndexacionesService;
   const liquidaciones = {
     pendientes: vi.fn().mockResolvedValue([
-      { persona: { id: 'dueno', nombre: 'Dueño' }, moneda: 'ARS', neto: 1_027_406.26, enEspera: 0 },
-      { persona: { id: 'otro', nombre: 'Otro' }, moneda: 'ARS', neto: 0, enEspera: 430_375 },
+      { persona: { id: 'dueno', nombre: 'Dueño' }, moneda: 'ARS', neto: 1_027_406.26, enEspera: 0, contratos: [{ id: 'c5', codigo: '5', propiedad: 'Calle 1', inquilinos: [] }] },
+      { persona: { id: 'otro', nombre: 'Otro' }, moneda: 'ARS', neto: 0, enEspera: 430_375, contratos: [] },
     ]),
   } as unknown as LiquidacionesService;
   return new TableroAlquileresService(db, indexaciones, liquidaciones);
@@ -211,10 +214,66 @@ describe('TableroAlquileresService', () => {
     await servicio().tablero(HOY, 2025);
     const llamadas = rawCalls.at(-1)!;
     expect(llamadas[1]).toEqual(expect.arrayContaining(['2025-01', '2025-12']));
-    expect(llamadas[2]!.map((v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : v))).toEqual(['2024-01-01', '2026-01-01', '2024-01-01', '2026-01-01']);
+    const fechas = llamadas[2]!.filter((v: unknown) => v instanceof Date).map((v) => (v as Date).toISOString().slice(0, 10));
+    expect(fechas).toEqual(['2024-01-01', '2026-01-01', '2024-01-01', '2026-01-01']);
   });
 
   it('los ingresos llegan por mes, con los punitorios en cero si no hubo', async () => {
     expect((await servicio().tablero(HOY)).ingresos).toEqual([{ mes: '2026-10', moneda: 'ARS', honorarios: 110_111.74, gastos: 27_527.94, punitorios: 0 }]);
+  });
+
+  // Punto 8 de Javier: Particulares y Comerciales por separado, en todo el tablero.
+  describe('filtro por tipo y contratos nuevos (punto 8)', () => {
+    const cartera = () => [
+      contrato(),
+      contrato({ id: 'c3', codigo: '3', tipo: 'comercial', inicio: d('2026-03-01'), tramos: [{ numero: 1, desde: d('2026-03-01'), importe: dec(1_200_000) }] }),
+      contrato({ id: 'c4', codigo: '4', inicio: d('2025-03-10'), tramos: [{ numero: 1, desde: d('2025-03-10'), importe: dec(380_000) }] }),
+    ];
+
+    it('el reparto de la cartera es de todos, con cantidad, importe y porcentaje', async () => {
+      const t = await servicio({ contratos: cartera() }).tablero(HOY, 2026, 'comercial');
+      expect(t.cartera.porTipo).toEqual([
+        { tipo: 'vivienda', cantidad: 2, importe: 1_517_518, pct: 55.8 },
+        { tipo: 'comercial', cantidad: 1, importe: 1_200_000, pct: 44.2 },
+      ]);
+    });
+
+    it('filtrado, el resto del tablero mira solo ese tipo, también en la base', async () => {
+      const antes = rawCalls.length;
+      const t = await servicio({ contratos: cartera() }).tablero(HOY, 2026, 'comercial');
+      expect(t.tipo).toBe('comercial');
+      expect(t.cartera.vigentes.filas.map((f) => f.contrato)).toEqual(['3']);
+      // Las tres consultas que agregan historia llevan el filtro.
+      expect(rawCalls[antes]!.map((v) => v.flat().some((x) => JSON.stringify(x ?? '').includes('comercial')))).toEqual([true, true, true]);
+    });
+
+    it('sin filtro, ninguna consulta lleva el tipo', async () => {
+      const antes = rawCalls.length;
+      await servicio({ contratos: cartera() }).tablero(HOY, 2026);
+      expect(rawCalls[antes]!.map((v) => v.flat().some((x) => JSON.stringify(x ?? '').includes('comercial')))).toEqual([false, false, false]);
+    });
+
+    it('contratos nuevos por el mes en que empiezan, con el alquiler inicial, y los del año anterior', async () => {
+      const t = await servicio({ contratos: cartera() }).tablero(HOY, 2026);
+      expect(t.nuevos.porMes.map((i) => i.valor)).toEqual([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      expect(t.nuevos.porMes[2]!.filas.map((f) => [f.contrato, f.importe])).toEqual([['3', 1_200_000]]);
+      expect(t.nuevos.importePorMes[2]).toBe(1_200_000);
+      expect(t.nuevos.anterior).toEqual([0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0]);
+    });
+
+    it('escalones que empiezan en los próximos 60 días', async () => {
+      const escalonado = contrato({
+        id: 'c7',
+        codigo: '7',
+        ajuste: 'escalonado',
+        tramos: [
+          { numero: 1, desde: d('2026-02-01'), importe: dec(300_000) },
+          { numero: 2, desde: d('2026-11-01'), importe: dec(330_000) },
+          { numero: 3, desde: d('2027-08-01'), importe: dec(360_000) },
+        ],
+      });
+      const t = (await servicio({ contratos: [contrato(), escalonado] }).tablero(HOY)).tareas.escalones;
+      expect(t.filas.map((f) => [f.contrato, f.importe, f.fecha])).toEqual([['7', 330_000, '2026-11-01']]);
+    });
   });
 });

@@ -14,7 +14,17 @@ const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto
   hoy: '2026-10-20',
   mes: '2026-10',
   anio: 2026,
+  tipo: 'todos',
+  nuevos: {
+    porMes: Array.from({ length: 12 }, (_, i) => (i === 2 ? ind([fila(9, 500_000)]) : vacio)),
+    importePorMes: Array.from({ length: 12 }, (_, i) => (i === 2 ? 500_000 : 0)),
+    anterior: Array.from({ length: 12 }, (_, i) => (i === 2 || i === 4 ? 1 : 0)),
+  },
   cartera: {
+    porTipo: [
+      { tipo: 'vivienda', cantidad: 2, importe: 1_537_518, pct: 100 },
+      { tipo: 'comercial', cantidad: 0, importe: 0, pct: 0 },
+    ],
     vigentes: ind([fila(5, 1_137_518), fila(6, 400_000)]),
     vivienda: 2,
     comercial: 0,
@@ -26,7 +36,7 @@ const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto
   morosidad: [],
   evolucion: [{ mes: '2026-10', moneda: 'ARS', emitido: 1_537_518, cobrado: 1_287_518 }],
   ingresos: [],
-  tareas: { indexacionesVencidas: ind([fila(5, null)]), indexacionesProximas: vacio, vencen: [{ dias: 30, indicador: vacio }, { dias: 60, indicador: vacio }, { dias: 90, indicador: vacio }], depositos: vacio, liquidaciones: vacio, deudores: vacio, sinFirmar: vacio },
+  tareas: { indexacionesVencidas: ind([fila(5, null)]), indexacionesProximas: vacio, vencen: [{ dias: 30, indicador: vacio }, { dias: 60, indicador: vacio }, { dias: 90, indicador: vacio }], depositos: vacio, liquidaciones: vacio, deudores: vacio, sinFirmar: vacio, escalones: vacio },
   ...over,
 });
 
@@ -87,5 +97,29 @@ describe('TableroAlquileres', () => {
   it('un año sin alquileres generados lo dice, en vez de un gráfico en cero', () => {
     render(<TableroAlquileres tablero={tablero({ evolucion: [], ingresos: [] })} />);
     expect(screen.getByText('Todavía no hay alquileres generados en 2026.')).toBeTruthy();
+  });
+
+  // Punto 8 de Javier: contratos nuevos del año, por trimestre y mes a mes.
+  it('contratos nuevos: el año, cada trimestre y el año anterior para comparar', () => {
+    render(<TableroAlquileres tablero={tablero()} />);
+    const nuevos = screen.getByRole('button', { name: /Nuevos en 2026: 1/ });
+    expect(nuevos).toHaveTextContent('2 en 2025');
+    expect(screen.getByRole('button', { name: /^Q1: 1/ })).toHaveTextContent('1 en 2025');
+    expect(screen.getByRole('button', { name: /^Q2: 0/ })).toHaveTextContent('1 en 2025');
+    fireEvent.click(nuevos);
+    expect(within(screen.getByRole('dialog')).getByText(/9 ·/)).toBeInTheDocument();
+  });
+
+  it('el filtro Todos / Particulares / Comerciales cambia la dirección', () => {
+    render(<TableroAlquileres tablero={tablero()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Comerciales' }));
+    expect(push).toHaveBeenCalledWith('/alquileres?tipo=comercial');
+    expect(screen.getByRole('button', { name: 'Todos' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('con todos, el reparto por tipo con cantidad, importe y porcentaje', () => {
+    render(<TableroAlquileres tablero={tablero()} />);
+    expect(screen.getByText('Particulares · 2')).toBeInTheDocument();
+    expect(screen.getByText('Particulares · 2').closest('div')).toHaveTextContent('$ 1.537.518 · 100%');
   });
 });

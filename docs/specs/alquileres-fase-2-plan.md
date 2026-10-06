@@ -76,9 +76,9 @@ cada cosa. Se revisa al cerrar cada entrega.
 
 | # | Bloque | Qué trae | Puntos de Javier | Migración |
 |---|---|---|---|---|
-| 10 | A | **Gráfica unificada y teléfono**: todas las pantallas del módulo con las piezas del Tablero Comercial; Particular/Comercial | 1 | — |
-| 11 | A | **Listas claras**: lápiz y papelera en cada fila (borrar lo que no tiene historia, anular lo demás; en un contrato vigente se edita solo lo que no toca plata); numeración ALT-0001 / VAC-0001 con orden numérico; buscador INQ/PROP en cobros y liquidaciones; conceptos agrupados por contrato con estado y columnas «A cobrar» / «A pagar» | 2, 4, 5, 6 | sí |
-| 12 | B | **Tablero completo e índices**: contratos nuevos del año, por trimestre y acumulado mensual; selector Todos/Particulares/Comerciales; por finalizar, depósitos y pólizas a 60 días; indexaciones a 60 días; escalones por iniciar; pestaña «Índices»; los valores usados en cada tramo | 3, 8 | — |
+| 10 ✅ | A | **Gráfica unificada y teléfono**: todas las pantallas del módulo con las piezas del Tablero Comercial; Particular/Comercial | 1 | — |
+| 11 ✅ | A | **Listas claras**: lápiz y papelera en cada fila (borrar lo que no tiene historia, anular lo demás; en un contrato vigente se edita solo lo que no toca plata); numeración ALT-0001 / VAC-0001 con orden numérico; buscador INQ/PROP en cobros y liquidaciones; conceptos agrupados por contrato con estado y columnas «A cobrar» / «A pagar» | 2, 4, 5, 6 | sí |
+| 12 ✅ | B | **Tablero completo e índices**: contratos nuevos del año, por trimestre y acumulado mensual; selector Todos/Particulares/Comerciales; por finalizar, depósitos y pólizas a 60 días; indexaciones a 60 días; escalones por iniciar; pestaña «Índices»; los valores usados en cada tramo | 3, 8 | — |
 | 13 | C | **Personas completas**: ficha con solapas (resumen, información básica, gestión administrativa, datos complementarios, cuenta corriente); condición de IVA y CUIT; cuentas bancarias con CBU y alias (validados); contactos adicionales; datos personales; **envío de recibos y liquidaciones por mail** (Resend, a la dirección de la persona, con el PDF adjunto) | 14 | sí |
 | 14 | C | **Contrato completo**: garantías con su ficha e informe; depósito en garantía que se entrega al propietario y su devolución; extender contrato; cargos al firmar parametrizables (comisión: 5% del valor total + IVA en 2 cuotas por defecto, editable; informes de garantía; **sellado**: alícuota y reparto entre las partes, parametrizables) | 7, 11, 12, 13 | sí |
 | 15 | C | **Contrato desde plantilla y reclamos**: plantillas de contrato por inmobiliaria con los datos del contrato (partes, propiedad, importes, tramos, garantías) que generan el PDF que después se firma; **reclamos** por persona o propiedad (asunto, tipo, prioridad, estado, asignado a, historial) | — | sí |
@@ -96,6 +96,11 @@ producción, prendido solo en Alteva.
 Al cerrar cada una se actualizan los 10 contratos de Alteva
 (`scripts-demo/alquileres-alteva.mjs`) para que muestren lo nuevo.
 
+**Estado (6/10/2026):** 10 y 11 en producción (#215, #216); la 11 sumó la
+trazabilidad (punto 17: quién registró cada transacción, con historial). Javier
+pidió seguir con 12, 13, 14, 15, 18 y 19; las 16 y 17 esperan los extractos de
+Vacker, y la 18 registra el pago con su medio hasta que exista la cuenta de la 16.
+
 ## 4. Decisiones ya tomadas (6/10/2026)
 
 - Borrar de verdad solo lo que no tiene historia; lo demás se anula.
@@ -107,6 +112,8 @@ Al cerrar cada una se actualizan los 10 contratos de Alteva
 - A los proveedores les paga la inmobiliaria y se lo retiene al propietario.
 - Extractos en Excel y CSV; fecha de corte parametrizable.
 - Contabilidad afuera; facturación después de la marcha blanca.
+- El operador que registra cada transacción queda guardado, se ve en el
+  historial y va en el recibo y en la liquidación.
 - Código de barras, más adelante; envío por mail con Resend, sí; contrato
   desde plantilla, sí; reclamos, sí; administradores de consorcio, por ahora
   no; sellados, sí.

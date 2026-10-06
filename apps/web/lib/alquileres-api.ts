@@ -22,6 +22,9 @@ import {
   type ConceptoSueltoInput,
   ContratoDtoSchema,
   CandidatoDtoSchema,
+  IndicesDtoSchema,
+  type FiltroTipoContrato,
+  type IndicesQuery,
   EventoDtoSchema,
   type ContratoDatos,
   IndexacionConfirmadaDtoSchema,
@@ -177,8 +180,12 @@ export async function generarLiquidacionPdf(accessToken: string, id: string) {
 }
 
 /** El tablero del módulo (reglas 26 a 32). */
-export async function getTableroAlquileres(accessToken: string, anio?: number) {
-  return apiFetch(`/alquileres/tablero${anio ? `?anio=${anio}` : ''}`, TableroAlquileresDtoSchema, { accessToken });
+export async function getTableroAlquileres(accessToken: string, anio?: number, tipo: FiltroTipoContrato = 'todos') {
+  const q = new URLSearchParams();
+  if (anio) q.set('anio', String(anio));
+  if (tipo !== 'todos') q.set('tipo', tipo);
+  const qs = q.toString();
+  return apiFetch(`/alquileres/tablero${qs ? `?${qs}` : ''}`, TableroAlquileresDtoSchema, { accessToken });
 }
 
 /** El documento del contrato y su firma (reglas 33 a 36). */
@@ -243,4 +250,10 @@ export async function borrarPropiedadAlquiler(accessToken: string, id: string) {
 /** Inquilinos con lo que deben, o propietarios con lo que hay para liquidarles. */
 export async function listCandidatos(accessToken: string, papel: 'inquilino' | 'propietario') {
   return apiFetch(`/alquileres/candidatos?papel=${papel}`, z.array(CandidatoDtoSchema), { accessToken });
+}
+
+/** Los valores del ICL (por rango) o del IPC (todos, con variaciones). */
+export async function getIndices(accessToken: string, q: Partial<IndicesQuery>) {
+  const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]);
+  return apiFetch(`/alquileres/indices?${p.toString()}`, IndicesDtoSchema, { accessToken });
 }

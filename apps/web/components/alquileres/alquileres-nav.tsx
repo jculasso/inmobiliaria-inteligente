@@ -9,6 +9,7 @@ const TABS = [
   { href: '/alquileres', label: 'Inicio' },
   { href: '/alquileres/contratos', label: 'Contratos' },
   { href: '/alquileres/indexaciones', label: 'A indexar' },
+  { href: '/alquileres/indices', label: 'Índices' },
   { href: '/alquileres/conceptos', label: 'Conceptos' },
   { href: '/alquileres/cobros', label: 'Cobros' },
   { href: '/alquileres/liquidaciones', label: 'Liquidaciones' },
@@ -18,7 +19,7 @@ const TABS = [
 
 /**
  * Pestañas del módulo. Mismo aspecto que las del Tablero (`TableroNav`), pero
- * son ocho y en un teléfono de 375px no entran: repartidas o achicadas, se
+ * son nueve y en un teléfono de 375px no entran: repartidas o achicadas, se
  * cortaban todas («Inic…», «Contrat…»). En el teléfono la barra se desliza de
  * costado —ella sola, no la página— con los nombres enteros, y la pestaña
  * activa se trae a la vista al entrar.

@@ -16,6 +16,7 @@ import { EstadoContratoBadge } from './estado-contrato';
 import { Panel, Registrado } from './piezas';
 
 const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
+const fmtIndice = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 4 });
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
@@ -33,6 +34,8 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const [fecha, setFecha] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [accion, setAccion] = useState<null | 'datos' | 'anular' | 'borrar'>(null);
+  // Punto 3 de Javier: con qué valores del índice se calculó cada tramo.
+  const conIndice = contrato.ajuste === 'indexado' && contrato.tramos.some((t) => t.indiceBase != null);
   const unidad = `${contrato.propiedad.direccion}${contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}`;
   const nombresDe = (papel: string) => contrato.partes.filter((p) => p.papel === papel).map((p) => p.nombre).join(', ') || '—';
   const [enviando, setEnviando] = useState(false);
@@ -179,6 +182,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
                 <th className="py-2 pr-3">N°</th>
                 <th className="py-2 pr-3">Desde</th>
                 <th className="py-2 pr-3">Hasta</th>
+                {conIndice && <th className="py-2 pr-3">Índice usado</th>}
                 <th className="py-2 text-right">Importe mensual</th>
               </tr>
             </thead>
@@ -188,6 +192,24 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
                   <td className="py-2 pr-3 tabular-nums text-muted">{t.numero}</td>
                   <td className="py-2 pr-3 tabular-nums">{fmtFecha(t.desde)}</td>
                   <td className="py-2 pr-3 tabular-nums">{fmtFecha(t.hasta)}</td>
+                  {conIndice && (
+                    <td className="py-2 pr-3 text-xs tabular-nums text-muted">
+                      {t.indiceBase != null && t.indiceRequerido != null ? (
+                        <>
+                          {fmtIndice(t.indiceBase)} → {fmtIndice(t.indiceRequerido)}{' '}
+                          <span className="font-semibold text-ink">
+                            ({t.indiceRequerido >= t.indiceBase ? '+' : ''}
+                            {((t.indiceRequerido / t.indiceBase - 1) * 100).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%)
+                          </span>
+                          {t.importePropuesto != null && t.importe != null && Math.abs(t.importePropuesto - t.importe) > 0.5 && (
+                            <span className="block">Propuesto {m(t.importePropuesto)}, se confirmó otro importe</span>
+                          )}
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                  )}
                   <td className="py-2 text-right font-semibold tabular-nums text-ink">
                     {t.importe == null ? <span className="text-xs font-bold text-warning">A indexar</span> : m(t.importe)}
                   </td>
