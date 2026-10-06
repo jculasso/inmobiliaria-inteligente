@@ -9,12 +9,13 @@ import {
   type ProtocoloResumenDto,
 } from '@vacker/types';
 import { Button } from '@vacker/ui';
-import { fmtUSD } from '../../lib/format';
+import { fmtFecha, fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
 import { desarchivarProtocolo } from '../../lib/protocolo-api';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { useRouter } from 'next/navigation';
-import { BarraAvance, Pill, porcentaje } from './protocolo-ui';
+import { CLASE_FOCO, Insignia, MensajeError } from '../piezas';
+import { BarraAvance, porcentaje } from './protocolo-ui';
 import { ArchivarModal } from './archivar-modal';
 
 type Grupo = 'captadas' | 'activas' | 'archivadas';
@@ -37,6 +38,7 @@ export function ReporteGeneral({
   const [grupo, setGrupo] = useState<Grupo>('activas');
   const [archivando, setArchivando] = useState<ProtocoloResumenDto | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Copia local para mover la fila de solapa al instante. El server refresca
@@ -70,8 +72,12 @@ export function ReporteGeneral({
   async function reabrir(p: ProtocoloResumenDto) {
     moverLocal(p, 'activa');
     setGuardando(true);
+    setError(null);
     try {
       await desarchivarProtocolo(await getAccessToken(), p.id);
+    } catch (err) {
+      // El refresh de abajo la devuelve a «Archivadas»; esto dice por qué.
+      setError(err instanceof Error ? err.message : 'No se pudo reabrir la propiedad.');
     } finally {
       setGuardando(false);
       router.refresh();
@@ -86,7 +92,8 @@ export function ReporteGeneral({
             key={s.key}
             type="button"
             onClick={() => setGrupo(s.key)}
-            className={`min-w-0 flex-1 truncate rounded-brand border px-2 py-2 text-center text-xs font-bold transition-colors sm:flex-none sm:px-3.5 sm:text-sm ${
+            aria-pressed={grupo === s.key}
+            className={`${CLASE_FOCO} min-w-0 flex-1 truncate rounded-brand border px-2 py-2.5 text-center text-xs font-bold transition-colors sm:flex-none sm:px-3.5 sm:text-sm ${
               grupo === s.key
                 ? 'border-ink bg-ink text-white'
                 : 'border-line text-muted hover:bg-surface'
@@ -96,6 +103,8 @@ export function ReporteGeneral({
           </button>
         ))}
       </div>
+
+      <MensajeError>{error}</MensajeError>
 
       {grupo === 'captadas' && (
         <Tabla
@@ -134,7 +143,7 @@ export function ReporteGeneral({
               <Celda
                 key="p"
                 titulo={p.propiedad.direccion}
-                sub={`${p.diasPublicada} días · desde ${p.fechaInicio}`}
+                sub={`${p.diasPublicada} días · desde ${fmtFecha(p.fechaInicio)}`}
               />,
               `${p.semanaActual} de ${TOTAL_SEMANAS}`,
               <div key="av" className="flex min-w-[90px] items-center gap-2">
@@ -167,10 +176,10 @@ export function ReporteGeneral({
             id: p.id,
             celdas: [
               <Celda key="p" titulo={p.propiedad.direccion} sub={p.propiedad.tipoPropiedad} />,
-              <Pill key="m" tono={p.motivoArchivo === 'vendida' ? 'verde' : 'neutro'}>
+              <Insignia key="m" tono={p.motivoArchivo === 'vendida' ? 'exito' : 'neutro'}>
                 {p.motivoArchivo ? MOTIVO_ARCHIVO_LABEL[p.motivoArchivo] : '—'}
-              </Pill>,
-              p.archivadoEn ?? '—',
+              </Insignia>,
+              fmtFecha(p.archivadoEn),
               String(p.diasPublicada),
               p.agente.nombre,
               <div key="acc" className="flex items-center gap-2.5">
@@ -203,6 +212,7 @@ export function ReporteGeneral({
             setArchivando(null);
           }}
           onGuardando={setGuardando}
+          onError={setError}
           onClose={() => setArchivando(null)}
         />
       )}

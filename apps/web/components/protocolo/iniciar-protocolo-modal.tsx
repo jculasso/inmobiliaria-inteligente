@@ -6,12 +6,11 @@ import type { CandidataDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { iniciarProtocolo } from '../../lib/protocolo-api';
+import { hoyIso } from '../../lib/format';
+import { escribirImporte, leerImporte } from '../../lib/importe';
 import { Campo, Seccion, inputClass } from '../form-ui';
-
-/** Hoy en Argentina (YYYY-MM-DD) — offset fijo -03:00, el país no tiene DST. */
-function hoyArg(): string {
-  return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
-}
+import { InputImporte } from '../input-importe';
+import { MensajeError } from '../piezas';
 
 function sumarDias(fecha: string, dias: number): string {
   return new Date(Date.parse(`${fecha}T12:00:00Z`) + dias * 86_400_000).toISOString().slice(0, 10);
@@ -30,15 +29,19 @@ export function IniciarProtocoloModal({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [fechaInicio, setFechaInicio] = useState(hoyArg());
+  const [fechaInicio, setFechaInicio] = useState(hoyIso());
+  // Como se escribe acá, «185.000,00»: con `type=number` y `Number()`, un
+  // «185.000» tipeado a mano se guardaba como 185 dólares.
   const [precio, setPrecio] = useState(
-    candidata.valorRecomendado != null ? String(Math.round(candidata.valorRecomendado)) : '',
+    candidata.valorRecomendado != null
+      ? escribirImporte(Math.round(candidata.valorRecomendado))
+      : '',
   );
   const [propietarioNombre, setPropietarioNombre] = useState(candidata.cliente);
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
   const [vencimiento, setVencimiento] = useState(
-    candidata.diasExclusividad != null ? sumarDias(hoyArg(), candidata.diasExclusividad) : '',
+    candidata.diasExclusividad != null ? sumarDias(hoyIso(), candidata.diasExclusividad) : '',
   );
 
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +49,12 @@ export function IniciarProtocoloModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (loading) return;
+    const precioPublicado = leerImporte(precio);
+    if (precioPublicado != null && Number.isNaN(precioPublicado)) {
+      setError('Revisá el precio: escribilo como 185.000 o 185000.');
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -53,7 +62,7 @@ export function IniciarProtocoloModal({
       const creado = await iniciarProtocolo(accessToken, {
         tasacionId: candidata.tasacionId,
         fechaInicio,
-        precioPublicado: precio ? Number(precio) : null,
+        precioPublicado,
         moneda: 'USD',
         propietarioNombre: propietarioNombre.trim() || null,
         propietarioTelefono: telefono.trim() || null,
@@ -69,7 +78,7 @@ export function IniciarProtocoloModal({
   }
 
   return (
-    <Modal title="Iniciar protocolo de 5 semanas" onClose={onClose} size="xl">
+    <Modal title="Iniciar protocolo de 5 semanas" onClose={onClose} size="xl" cerrable={!loading}>
       <form className="grid gap-2.5 sm:grid-cols-2" onSubmit={handleSubmit}>
         <div className="rounded-brand border border-line bg-surface px-3 py-2.5 sm:col-span-2">
           <p className="text-sm font-bold text-ink">{candidata.direccion}</p>
@@ -94,14 +103,7 @@ export function IniciarProtocoloModal({
               label="Precio de publicación (USD)"
               hint="Sugerido: el valor recomendado de la tasación."
             >
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={precio}
-                onChange={(e) => setPrecio(e.target.value)}
-                className={inputClass}
-              />
+              <InputImporte moneda="USD" value={precio} onChange={setPrecio} />
             </Campo>
             <Campo
               label="Vencimiento de la autorización"
@@ -151,14 +153,10 @@ export function IniciarProtocoloModal({
           </div>
         </Seccion>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red sm:col-span-2">
-            {error}
-          </p>
-        )}
+        <MensajeError className="sm:col-span-2">{error}</MensajeError>
 
         <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
           <Button type="submit" variant="primary" disabled={loading}>

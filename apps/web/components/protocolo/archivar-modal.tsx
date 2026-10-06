@@ -6,30 +6,36 @@ import { MOTIVO_ARCHIVO_LABEL, type MotivoArchivo, type ProtocoloResumenDto } fr
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { archivarProtocolo } from '../../lib/protocolo-api';
+import { hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
+import { MensajeError } from '../piezas';
+import { porcentaje } from './protocolo-ui';
 
 const MOTIVOS: MotivoArchivo[] = ['vendida', 'retirada', 'vencida', 'otro'];
-
-function hoyArg(): string {
-  return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
-}
 
 /** Cierra la comercialización de una propiedad, dejando registrado por qué. */
 export function ArchivarModal({
   protocolo,
   onArchivada,
   onGuardando,
+  onError,
   onClose,
 }: {
   protocolo: ProtocoloResumenDto;
   /** Se avisa apenas se confirma, para mover la fila de solapa al instante. */
   onArchivada: (motivo: MotivoArchivo, fecha: string) => void;
   onGuardando: (v: boolean) => void;
+  /**
+   * El modal ya se cerró cuando vuelve la respuesta: si el guardado falla, el
+   * error lo muestra la pantalla de atrás (antes se perdía con el modal y la
+   * fila volvía sola a su lugar sin que nadie supiera por qué).
+   */
+  onError?: (mensaje: string) => void;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [motivo, setMotivo] = useState<MotivoArchivo>('vendida');
-  const [fecha, setFecha] = useState(hoyArg());
+  const [fecha, setFecha] = useState(hoyIso());
   const [observacion, setObservacion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,7 +57,9 @@ export function ArchivarModal({
       });
     } catch (err) {
       // El refresh de abajo devuelve la fila a su lugar si el guardado falló.
-      setError(err instanceof Error ? err.message : 'No se pudo archivar la propiedad.');
+      const mensaje = err instanceof Error ? err.message : 'No se pudo archivar la propiedad.';
+      setError(mensaje);
+      onError?.(mensaje);
       setLoading(false);
     } finally {
       onGuardando(false);
@@ -66,7 +74,7 @@ export function ArchivarModal({
           <p className="text-sm font-bold text-ink">{protocolo.propiedad.direccion}</p>
           <p className="text-xs text-muted">
             {protocolo.diasPublicada} días en comercialización · avance{' '}
-            {Math.round(protocolo.avance * 100)}%
+            {porcentaje(protocolo.avance)}
           </p>
         </div>
 
@@ -108,11 +116,7 @@ export function ArchivarModal({
           error.
         </p>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
-            {error}
-          </p>
-        )}
+        <MensajeError>{error}</MensajeError>
 
         <div className="mt-1 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>

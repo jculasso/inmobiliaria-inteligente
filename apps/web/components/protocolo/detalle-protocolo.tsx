@@ -11,11 +11,13 @@ import {
   type ProtocoloAccionDto,
   type ProtocoloDto,
 } from '@vacker/types';
-import { fmtUSD } from '../../lib/format';
+import { Button } from '@vacker/ui';
+import { fmtUSD, hoyIso } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarInformeProtocolo, updateAccion, updateProtocolo } from '../../lib/protocolo-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { AlertaItem, BarraAvance, FotoPropiedad, Pill, porcentaje } from './protocolo-ui';
+import { CLASE_FOCO, Insignia, MensajeError } from '../piezas';
+import { AlertaItem, BarraAvance, FotoPropiedad, porcentaje } from './protocolo-ui';
 
 const ESTADOS: EstadoAccion[] = ['pendiente', 'en_proceso', 'realizada', 'no_corresponde'];
 
@@ -78,7 +80,6 @@ export function DetalleProtocolo({
   const [p, setP] = useState(inicial);
   // `semanaInicial` viene del link de una alerta; si no, se abre en la semana en curso.
   const [semana, setSemana] = useState(semanaInicial ?? inicial.semanaActual);
-  const [guardando, setGuardando] = useState(false);
   const [generandoInforme, setGenerandoInforme] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,32 +110,58 @@ export function DetalleProtocolo({
   }
 
   /**
-   * Guarda con UI optimista: `local` se aplica al instante y recién después se
-   * llama a la API. Con Render y Supabase en regiones distintas, esperar la
+   * El último estado que la API confirmó. Si un guardado falla, la pantalla
+   * vuelve a ESTO —no a la foto del momento del click—: con dos cambios en
+   * vuelo, volver a la foto del segundo deshacía en pantalla el primero, que
+   * sí había llegado a la base.
+   */
+  const confirmado = useRef(inicial);
+
+  /**
+   * Los guardados van en fila, uno detrás del otro. Cada uno sale recién
+   * cuando volvió el anterior, así lee la versión que ese le dejó: antes, dos
+   * contadores tocados seguidos salían juntos con la MISMA versión y el
+   * segundo rebotaba como si otra persona hubiera tocado la ficha.
+   */
+  const cola = useRef<Promise<void>>(Promise.resolve());
+  const [pendientes, setPendientes] = useState(0);
+
+  /**
+   * Guarda con UI optimista: `local` se aplica al instante y el pedido entra
+   * en la fila. Con Render y Supabase en regiones distintas, esperar la
    * respuesta para pintar el cambio hacía sentir la pantalla trabada.
    *
    * La respuesta del server reemplaza el estado (trae los derivados: avance,
    * semana, alertas) pero se conserva la foto ya firmada, porque las mutaciones
    * devuelven la key cruda para ahorrarse el round trip a Storage.
    */
-  async function guardar(
+  function guardar(
     local: (prev: ProtocoloDto) => ProtocoloDto,
     fn: (token: string) => Promise<ProtocoloDto>,
-  ) {
-    const previo = p;
+  ): Promise<void> {
     setP(local);
-    setGuardando(true);
+    setPendientes((n) => n + 1);
     setError(null);
-    try {
-      const fresco = await fn(await getAccessToken());
-      version.current = fresco.version;
-      setP({ ...fresco, propiedad: { ...fresco.propiedad, fotoUrl: previo.propiedad.fotoUrl } });
-    } catch (err) {
-      setP(previo); // revierte: el cambio no llegó a la base
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el cambio.');
-    } finally {
-      setGuardando(false);
-    }
+    const paso = cola.current.then(async () => {
+      try {
+        const fresco = await fn(await getAccessToken());
+        version.current = fresco.version;
+        const conFoto = {
+          ...fresco,
+          propiedad: { ...fresco.propiedad, fotoUrl: confirmado.current.propiedad.fotoUrl },
+        };
+        confirmado.current = conFoto;
+        setP(conFoto);
+      } catch (err) {
+        // Vuelve a lo último que la base confirmó: el cambio no llegó.
+        setP(confirmado.current);
+        setError(err instanceof Error ? err.message : 'No se pudo guardar el cambio.');
+      } finally {
+        setPendientes((n) => n - 1);
+      }
+    });
+    cola.current = paso;
+    return paso;
   }
 
   // Tildar una acción NO lleva versión: es una fila propia con campos
@@ -178,31 +205,30 @@ export function DetalleProtocolo({
             Propietario: {p.propietarioNombre ?? 'No informado'}
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <Pill tono={archivada ? 'neutro' : 'rojo'}>
+            {/* La semana es información, no urgencia: va en el color de la
+                marca. Lo urgente (atrasos) va en `peligro`, más abajo. */}
+            <Insignia tono={archivada ? 'neutro' : 'marca'}>
               {archivada ? 'Archivada' : `Semana ${p.semanaActual} de ${TOTAL_SEMANAS}`}
-            </Pill>
-            <Pill>{p.diasPublicada} días en comercialización</Pill>
-            <Pill tono={p.avance === 1 ? 'verde' : 'neutro'}>
+            </Insignia>
+            <Insignia tono="neutro">{p.diasPublicada} días en comercialización</Insignia>
+            <Insignia tono={p.avance === 1 ? 'exito' : 'neutro'}>
               {porcentaje(p.avance)} completado
-            </Pill>
-            <Pill>{p.agente.nombre}</Pill>
+            </Insignia>
+            <Insignia tono="neutro">{p.agente.nombre}</Insignia>
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Link
-            href="/protocolo"
-            className="flex-1 rounded-brand border border-line px-3 py-2 text-center text-sm font-semibold text-ink hover:bg-surface sm:flex-none"
-          >
-            ← Volver
-          </Link>
-          <button
-            type="button"
+          <Button asChild variant="secondary" className="flex-1 sm:flex-none">
+            <Link href="/protocolo">← Volver</Link>
+          </Button>
+          <Button
+            variant="primary"
             onClick={() => void generarInforme()}
             disabled={generandoInforme}
-            className="flex-1 rounded-brand bg-brand-red px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-red-dark disabled:opacity-60 sm:flex-none"
+            className="flex-1 sm:flex-none"
           >
-            {generandoInforme ? 'Generando…' : '📄 Informe'}
-          </button>
+            {generandoInforme ? 'Generando…' : '📄 Descargar PDF'}
+          </Button>
         </div>
       </div>
 
@@ -214,7 +240,7 @@ export function DetalleProtocolo({
                 key={i}
                 type="button"
                 onClick={() => setSemana(a.semana!)}
-                className="text-left"
+                className={`rounded-brand text-left ${CLASE_FOCO}`}
               >
                 <AlertaItem alerta={a} />
               </button>
@@ -225,18 +251,26 @@ export function DetalleProtocolo({
         </div>
       )}
 
+      {/* El error flota abajo, a la vista: arriba de todo quedaba fuera de
+          pantalla mientras se editaba un campo de la semana 5, y parecía que
+          el cambio se había guardado. Se cierra a mano o con el próximo cambio. */}
       {error && (
-        <p
-          role="alert"
-          className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red"
-        >
-          {error}
-        </p>
+        <div className="fixed inset-x-4 bottom-[max(4rem,calc(env(safe-area-inset-bottom)+3rem))] z-40 mx-auto flex max-w-md items-start gap-2 rounded-brand border border-danger/30 bg-white px-3 py-2.5 shadow-lg">
+          <MensajeError className="min-w-0 flex-1">{error}</MensajeError>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            aria-label="Cerrar el aviso"
+            className={`-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg text-muted hover:bg-surface ${CLASE_FOCO}`}
+          >
+            ×
+          </button>
+        </div>
       )}
 
       {/* Aviso flotante: los cambios se ven al instante, así que sin esto no
           habría señal de que todavía se están guardando. */}
-      {guardando && (
+      {pendientes > 0 && (
         <div
           role="status"
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink/90 px-3.5 py-2 text-xs font-semibold text-white shadow-lg"
@@ -258,9 +292,7 @@ export function DetalleProtocolo({
               Se guardan al salir del campo y alimentan el informe del propietario.
             </p>
           </div>
-          <span className="rounded-full bg-brand-red/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-brand-red-dark">
-            Alimenta el informe
-          </span>
+          <Insignia tono="marca">Alimenta el informe</Insignia>
         </div>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
           {METRICAS.map((m) => (
@@ -268,8 +300,13 @@ export function DetalleProtocolo({
               <span className="block text-[10px] font-extrabold uppercase tracking-wide text-muted">
                 {m.label}
               </span>
+              {/* La `key` lleva el valor: si el guardado rebota y la ficha
+                  vuelve atrás, el campo se vuelve a montar con el número real
+                  (con `defaultValue` solo, seguía mostrando el que no se guardó). */}
               <input
+                key={`${m.key}:${p.embudo[m.key]}`}
                 type="number"
+                inputMode="numeric"
                 min={0}
                 step={1}
                 defaultValue={p.embudo[m.key]}
@@ -304,7 +341,8 @@ export function DetalleProtocolo({
               key={n}
               type="button"
               onClick={() => setSemana(n)}
-              className={`min-w-0 flex-1 truncate rounded-brand border px-1 py-2 text-center text-[11px] font-bold transition-colors sm:flex-none sm:px-3.5 sm:text-sm ${
+              aria-pressed={semana === n}
+              className={`${CLASE_FOCO} min-w-0 flex-1 truncate rounded-brand border px-1 py-2.5 text-center text-[11px] font-bold transition-colors sm:flex-none sm:px-3.5 sm:text-sm ${
                 semana === n
                   ? 'border-ink bg-ink text-white'
                   : completa
@@ -315,7 +353,7 @@ export function DetalleProtocolo({
               {/* En el celular cinco solapas no entran con la palabra completa. */}
               <span className="sm:hidden">S{n}</span>
               <span className="hidden sm:inline">Semana {n}</span> ·{' '}
-              {acciones.length === 0 ? '—' : `${Math.round((hechas / acciones.length) * 100)}%`}
+              {acciones.length === 0 ? '—' : porcentaje(hechas / acciones.length)}
             </button>
           );
         })}
@@ -349,6 +387,7 @@ export function DetalleProtocolo({
                   {campo.label}
                 </span>
                 <textarea
+                  key={`${campo.key}:${p[campo.key] ?? ''}`}
                   defaultValue={p[campo.key] ?? ''}
                   placeholder={campo.ph}
                   disabled={archivada}
@@ -387,7 +426,7 @@ function AccionFila({
     accion.estado !== 'realizada' &&
     accion.estado !== 'no_corresponde' &&
     accion.fechaPrevista != null &&
-    accion.fechaPrevista < new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+    accion.fechaPrevista < hoyIso();
 
   return (
     <div className="px-4 py-3">
@@ -395,8 +434,8 @@ function AccionFila({
         <p className="flex-1 text-sm font-bold text-ink">
           {accion.titulo}
           {atrasada && (
-            <span className="ml-2 rounded-full bg-brand-red/10 px-2 py-0.5 text-[10px] font-extrabold text-brand-red">
-              Atrasada
+            <span className="ml-2">
+              <Insignia tono="peligro">Atrasada</Insignia>
             </span>
           )}
         </p>
@@ -423,9 +462,10 @@ function AccionFila({
           <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-wide text-muted">
             Realizada
           </span>
+          {/* Controlado: si el guardado rebota, muestra la fecha que quedó en la base. */}
           <input
             type="date"
-            defaultValue={accion.fechaRealizada ?? ''}
+            value={accion.fechaRealizada ?? ''}
             disabled={deshabilitada}
             onChange={(e) => onCambio({ fechaRealizada: e.target.value || null })}
             className="h-9 w-full rounded-brand border border-line px-2 text-sm text-ink outline-none focus:border-brand-red disabled:bg-surface"
@@ -435,7 +475,8 @@ function AccionFila({
         <button
           type="button"
           onClick={() => setAbierta((v) => !v)}
-          className="shrink-0 px-2 py-2 text-sm font-bold text-brand-red hover:underline"
+          aria-expanded={abierta}
+          className={`h-10 shrink-0 rounded-brand px-2 text-sm font-bold text-brand-red hover:underline ${CLASE_FOCO}`}
         >
           {abierta ? 'Ocultar' : 'Detalles'}
         </button>
@@ -467,6 +508,7 @@ function AccionFila({
                 {campo.label}
               </span>
               <textarea
+                key={`${campo.key}:${accion[campo.key] ?? ''}`}
                 defaultValue={accion[campo.key] ?? ''}
                 placeholder={campo.ph}
                 disabled={deshabilitada}
