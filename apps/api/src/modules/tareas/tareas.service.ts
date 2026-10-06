@@ -43,6 +43,10 @@ export class TareasService {
 
   async enviarReportesSemanales(): Promise<ResumenCorrida> {
     const tenants = await this.prisma.tenant.findMany({
+      // Una inmobiliaria suspendida no recibe el reporte: sus usuarios ya no
+      // pueden entrar (lo frena el AuthGuard), y mandarle mails igual sería
+      // seguir prestándole el servicio por otra puerta.
+      where: { estado: 'activo' },
       select: { id: true, nombre: true, modulos: true },
       orderBy: { nombre: 'asc' },
     });
@@ -89,6 +93,13 @@ export class TareasService {
       }
     }
 
+    // El detalle se registra acá, en los logs de Render, y no en los del cron:
+    // el workflow de GitHub Actions es público y solo imprime los conteos.
+    for (const d of detalle) {
+      this.logger.log(
+        `Reporte semanal · ${d.tenant}: ${d.enviado ? `enviado a ${d.destinatarios}` : (d.motivo ?? 'no se mandó')}`,
+      );
+    }
     const enviados = detalle.filter((d) => d.enviado).length;
     this.logger.log(`Reporte semanal: ${enviados}/${detalle.length} inmobiliaria(s) con envío.`);
     return { tenants: detalle.length, enviados, detalle };

@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AUTH_PROVIDER } from './auth-provider.interface';
 import { SupabaseAuthProvider } from './supabase-auth.provider';
 import { AuthGuard } from './auth.guard';
@@ -13,8 +14,10 @@ import { PrincipalCacheService } from './principal-cache.service';
     { provide: AUTH_PROVIDER, useClass: SupabaseAuthProvider },
     PrincipalCacheService,
     // Orden importante: AuthGuard primero (arma el principal), después los que
-    // lo leen — RolesGuard (rol) y ModuloGuard (módulo habilitado del tenant).
+    // lo leen — ThrottlerGuard (cuenta por usuario, no por IP), RolesGuard
+    // (rol) y ModuloGuard (módulo habilitado del tenant).
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ModuloGuard },
   ],

@@ -112,15 +112,25 @@ export class AdminUsuariosService {
     if (dto.recibeReporteSemanal !== undefined) {
       data.recibeReporteSemanal = dto.recibeReporteSemanal;
     }
-    if (Object.keys(data).length > 0) {
-      await this.db.usuario.update({ where: { id }, data });
-    }
-
-    if (dto.roles !== undefined) {
-      await this.db.usuarioRol.deleteMany({ where: { usuarioId: id } });
-      await this.db.usuarioRol.createMany({
-        data: [...new Set(dto.roles)].map((rol) => ({ usuarioId: id, rol, tenantId })),
-      });
+    // Datos y roles en UNA transacción: con dos pasos sueltos, si el
+    // `createMany` fallaba después del `deleteMany`, el usuario quedaba sin
+    // ningún rol —y sin poder entrar— hasta que alguien lo notara.
+    await this.db.$transaction([
+      ...(Object.keys(data).length > 0 ? [this.db.usuario.update({ where: { id }, data })] : []),
+      ...(dto.roles !== undefined
+        ? [
+            this.db.usuarioRol.deleteMany({ where: { usuarioId: id } }),
+            this.db.usuarioRol.createMany({
+              data: [...new Set(dto.roles)].map((rol) => ({ usuarioId: id, rol, tenantId })),
+            }),
+          ]
+        : []),
+    ]);
+    // Una baja o un cambio de roles tiene que aplicarse en la PRÓXIMA request,
+    // no cuando venza el cache del principal (30 s operando con permisos que
+    // ya no tiene).
+    if (dto.estado !== undefined || dto.roles !== undefined) {
+      this.principalCache.invalidarUsuario(id);
     }
 
     const row = await this.db.usuario.findUniqueOrThrow({

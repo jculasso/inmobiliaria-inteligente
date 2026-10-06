@@ -198,3 +198,153 @@ describe('VendedoresService', () => {
     ).rejects.toThrow(/rol de administrador/);
   });
 });
+
+describe('VendedoresService · auditoría del 6/10/2026', () => {
+  const DIRECCION: TenantContext = { ...CTX, roles: ['direccion'] };
+  const conAcceso = { id: 'u1', email: 'viejo@x.test', authUserId: 'auth-1', roles: [] };
+  const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0]);
+
+  function armar(actual: unknown) {
+    const tx = makeTx();
+    tx.usuario.findUnique = vi.fn().mockResolvedValue(actual);
+    tx.usuario.findUniqueOrThrow = vi.fn().mockResolvedValue(vendedorRow);
+    tx.usuario.update = vi.fn().mockResolvedValue(vendedorRow);
+    let enTx = false;
+    const db = {
+      withTenant: vi.fn(async (fn: (t: unknown) => unknown) => {
+        enTx = true;
+        try {
+          return await fn(tx);
+        } finally {
+          enTx = false;
+        }
+      }),
+    } as unknown as TenantPrismaService;
+    const llamadasEnTx: string[] = [];
+    const supabaseAdmin = {
+      setEmail: vi.fn(async () => {
+        if (enTx) llamadasEnTx.push('setEmail');
+      }),
+    } as unknown as SupabaseAdminService & { setEmail: ReturnType<typeof vi.fn> };
+    const upload = vi.fn(async () => {
+      if (enTx) llamadasEnTx.push('upload');
+      return 'https://storage.test/usuarios-avatares/t1/u1.jpg';
+    });
+    const remove = vi.fn(async () => {
+      if (enTx) llamadasEnTx.push('remove');
+    });
+    const storage = makeStorage({ upload, remove });
+    const cache = makeCache();
+    const svc = new VendedoresService(db, supabaseAdmin, cache, storage);
+    return { svc, tx, supabaseAdmin, upload, remove, cache, llamadasEnTx };
+  }
+
+  // Cambiar el email de alguien que ya entra es cambiar adónde llega «olvidé
+  // mi clave»: quien lo cambie se puede quedar con la cuenta.
+  it('dirección NO cambia el email de alguien que ya tiene acceso', async () => {
+    const { svc, supabaseAdmin, tx } = armar(conAcceso);
+    await expect(
+      svc.update('u1', { email: 'mio@x.test' } as unknown as UpdateVendedor, DIRECCION),
+    ).rejects.toThrow(/solo lo cambia el administrador/);
+    expect(supabaseAdmin.setEmail).not.toHaveBeenCalled();
+    expect(tx.usuario.update).not.toHaveBeenCalled();
+  });
+
+  it('el administrador sí puede cambiarlo', async () => {
+    const { svc, supabaseAdmin } = armar(conAcceso);
+    await svc.update('u1', { email: 'nuevo@x.test' } as unknown as UpdateVendedor, CTX);
+    expect(supabaseAdmin.setEmail).toHaveBeenCalledWith('auth-1', 'nuevo@x.test');
+  });
+
+  it('dirección sí cambia el email de alguien que todavía no tiene acceso', async () => {
+    const { svc, tx } = armar({ ...conAcceso, authUserId: null });
+    await svc.update('u1', { email: 'nuevo@x.test' } as unknown as UpdateVendedor, DIRECCION);
+    expect(tx.usuario.update).toHaveBeenCalled();
+  });
+
+  it('Supabase Auth se llama FUERA de la transacción', async () => {
+    const { svc, llamadasEnTx } = armar(conAcceso);
+    await svc.update('u1', { email: 'nuevo@x.test' } as unknown as UpdateVendedor, CTX);
+    expect(llamadasEnTx).toEqual([]);
+  });
+
+  it('si la base falla después de cambiar Auth, el email de Auth vuelve al anterior', async () => {
+    const { svc, tx, supabaseAdmin } = armar(conAcceso);
+    tx.usuario.update = vi.fn().mockRejectedValue(new Error('base caída'));
+    await expect(
+      svc.update('u1', { email: 'nuevo@x.test' } as unknown as UpdateVendedor, CTX),
+    ).rejects.toThrow('base caída');
+    expect(supabaseAdmin.setEmail).toHaveBeenNthCalledWith(1, 'auth-1', 'nuevo@x.test');
+    expect(supabaseAdmin.setEmail).toHaveBeenNthCalledWith(2, 'auth-1', 'viejo@x.test');
+  });
+
+  it('dirección no crea un usuario con rol de administrador', async () => {
+    const { svc, tx } = armar(null);
+    await expect(
+      svc.create(
+        {
+          nombre: 'X',
+          email: 'x@x.test',
+          estado: 'activo',
+          roles: ['admin_tenant'],
+        } as unknown as CreateVendedor,
+        DIRECCION,
+      ),
+    ).rejects.toThrow(/rol de administrador/);
+    expect(tx.usuario.create).not.toHaveBeenCalled();
+  });
+
+  it('objetivo y foto también respetan a quién se puede administrar', async () => {
+    const admin = { id: 'a1', fotoUrl: null, roles: [{ rol: 'admin_tenant' }] };
+    const { svc, tx, upload } = armar(admin);
+    await expect(
+      svc.setObjetivo('a1', { anio: 2026, objComision: 1, objVolumen: 1, objPuntas: 1 }, DIRECCION),
+    ).rejects.toThrow(/otro administrador/);
+    await expect(
+      svc.subirFoto(
+        'a1',
+        { buffer: JPG, mimetype: 'image/jpeg', originalname: 'a.jpg', size: 8 },
+        DIRECCION,
+      ),
+    ).rejects.toThrow(/otro administrador/);
+    await expect(svc.eliminarFoto('a1', DIRECCION)).rejects.toThrow(/otro administrador/);
+    expect(tx.objetivo.upsert).not.toHaveBeenCalled();
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it('la cuenta de plataforma tampoco: ni objetivo ni foto', async () => {
+    const plataforma = { id: 'p1', fotoUrl: null, roles: [{ rol: 'admin_plataforma' }] };
+    const { svc } = armar(plataforma);
+    await expect(
+      svc.setObjetivo('p1', { anio: 2026, objComision: 1, objVolumen: 1, objPuntas: 1 }, CTX),
+    ).rejects.toThrow(/plataforma/);
+    await expect(svc.eliminarFoto('p1', CTX)).rejects.toThrow(/plataforma/);
+  });
+
+  it('la foto se sube y se borra fuera de la transacción', async () => {
+    const vendedor = {
+      id: 'u1',
+      fotoUrl: 'https://s.test/usuarios-avatares/t1/u1.jpg',
+      roles: [{ rol: 'vendedor' }],
+    };
+    const { svc, llamadasEnTx, upload, remove } = armar(vendedor);
+    await svc.subirFoto(
+      'u1',
+      { buffer: JPG, mimetype: 'image/jpeg', originalname: 'a.jpg', size: 8 },
+      CTX,
+    );
+    await svc.eliminarFoto('u1', CTX);
+    expect(upload).toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith('usuarios-avatares', 't1/u1.jpg');
+    expect(llamadasEnTx).toEqual([]);
+  });
+
+  it('dar de baja o editar invalida el cache del principal en el momento', async () => {
+    const { svc, cache } = armar({ id: 'u1', email: 'a@x.test', fotoUrl: null, roles: [] });
+    await svc.desactivar('u1', CTX);
+    expect(cache.invalidarUsuario).toHaveBeenCalledWith('u1');
+    (cache.invalidarUsuario as ReturnType<typeof vi.fn>).mockClear();
+    await svc.update('u1', { roles: ['team_leader'] } as unknown as UpdateVendedor, CTX);
+    expect(cache.invalidarUsuario).toHaveBeenCalledWith('u1');
+  });
+});
