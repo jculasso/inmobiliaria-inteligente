@@ -207,13 +207,21 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 
 ### Liquidación al propietario
 
-20. El neto de una liquidación = alquileres cobrados del propietario en el
-    período − honorarios − gastos del propietario adelantados por la
-    inmobiliaria. Cada concepto se liquida **una sola vez**.
+20. El neto de una liquidación = alquileres cobrados del propietario −
+    honorarios de esos alquileres − lo que el propietario debe por fuera
+    (gastos adelantados por la inmobiliaria, o que pagó el inquilino por él)
+    + reintegros a su favor. Cada concepto se liquida **una sola vez**. Solo
+    cuenta lo de contratos donde la persona es propietaria. Un concepto se
+    puede dejar para la próxima liquidación; si es un alquiler, sus
+    honorarios esperan con él. Si los descuentos superan lo que se le paga,
+    no se liquida hasta dejar algún descuento para después.
 21. Con **pago garantizado**, el alquiler del propietario se liquida aunque el
     inquilino todavía no haya pagado; la deuda del inquilino sigue siendo con
     la inmobiliaria.
-22. Sin pago garantizado, un alquiler impago **no entra** en la liquidación.
+22. Sin pago garantizado, un alquiler impago **no entra** en la liquidación:
+    queda «en espera», como en Gexion, con sus honorarios. Un pago parcial del
+    inquilino todavía no lo libera. Un cobro cuyo alquiler ya se liquidó al
+    propietario no se anula antes que esa liquidación.
 
 ### Documentos
 
