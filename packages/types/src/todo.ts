@@ -38,6 +38,12 @@ export const TodoEventosDtoSchema = z.object({
   desde: z.string(), // ISO datetime (inicio del rango)
   hasta: z.string(), // ISO datetime (fin del rango)
   eventos: z.array(TodoEventoDtoSchema),
+  /**
+   * `true` si el rango tenía más eventos de los que se traen (ver
+   * `MAX_PAGINAS` en la API): la agenda está incompleta y conviene avisarlo.
+   * Opcional para no romper a quien todavía no lo lee.
+   */
+  truncado: z.boolean().optional(),
 });
 export type TodoEventosDto = z.infer<typeof TodoEventosDtoSchema>;
 
