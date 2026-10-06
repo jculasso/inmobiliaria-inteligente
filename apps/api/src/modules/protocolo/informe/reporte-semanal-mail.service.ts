@@ -104,7 +104,8 @@ export class ReporteSemanalMailService {
       };
     }
 
-    const reporte = await this.protocolos.reporteSemanal(ctx);
+    // Sin firmar fotos: ni el mail ni el PDF adjunto las muestran.
+    const reporte = await this.protocolos.reporteSemanal(ctx, { firmarFotos: false });
 
     // Una inmobiliaria sin propiedades activas NO recibe mail. Un reporte
     // vacío todas las semanas entrena a ignorar los que sí importan.
@@ -118,7 +119,8 @@ export class ReporteSemanalMailService {
 
     const urlApp = this.config.get<string>('WEB_URL') ?? 'https://app.inmobiliariainteligente.net';
     const { asunto, html, texto } = armarMailDelReporte(reporte, tenant.nombre, urlApp);
-    const { buffer, nombreArchivo } = await this.pdf.generar(ctx);
+    // El reporte y la inmobiliaria ya están en la mano: el PDF no los vuelve a pedir.
+    const { buffer, nombreArchivo } = await this.pdf.generar(ctx, { reporte, tenant });
 
     const slug = slugDeTenant(tenant.nombre);
     try {

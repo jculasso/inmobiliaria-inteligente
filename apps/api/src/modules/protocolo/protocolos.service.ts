@@ -8,6 +8,8 @@ import {
 import type { Prisma } from '@prisma/client';
 import {
   PLANTILLA_ACCIONES,
+  type AccionActualizada,
+  type AlertaProtocolo,
   type ArchivarProtocolo,
   type CandidataDto,
   type IniciarProtocolo,
@@ -31,7 +33,7 @@ import {
   calcularAlertas,
   calcularEmbudo,
   diasPublicada,
-  estaAtrasada,
+  estaDemorada,
   fechaPrevistaDeSemana,
   hoyArgentina,
   semanaActual,
@@ -68,6 +70,44 @@ const protocoloInclude = {
 } satisfies Prisma.ProtocoloInclude;
 
 type ProtocoloRow = Prisma.ProtocoloGetPayload<{ include: typeof protocoloInclude }>;
+
+/**
+ * Lo único que hace falta de cada acción para el resumen de una ficha: el
+ * avance, las alertas y cuál es la próxima. El listado y los KPIs traían las
+ * acciones enteras —observaciones, resultado, evidencia— de cada protocolo
+ * para no usarlas.
+ */
+const accionResumenSelect = {
+  semana: true,
+  estado: true,
+  fechaPrevista: true,
+  titulo: true,
+} satisfies Prisma.ProtocoloAccionSelect;
+
+const protocoloResumenInclude = {
+  ...protocoloInclude,
+  acciones: {
+    orderBy: protocoloInclude.acciones.orderBy,
+    select: accionResumenSelect,
+  },
+} satisfies Prisma.ProtocoloInclude;
+
+type ProtocoloResumenRow = Prisma.ProtocoloGetPayload<{
+  include: typeof protocoloResumenInclude;
+}>;
+
+/** La ficha sin tasación ni agente: lo que se recalcula al tildar una acción. */
+const protocoloEstadoSelect = {
+  estado: true,
+  fechaInicio: true,
+  vencimientoAutorizacion: true,
+  updatedAt: true,
+  consultas: true,
+  visitas: true,
+  acciones: { orderBy: protocoloInclude.acciones.orderBy, select: accionResumenSelect },
+} satisfies Prisma.ProtocoloSelect;
+
+type ProtocoloEstadoRow = Prisma.ProtocoloGetPayload<{ select: typeof protocoloEstadoSelect }>;
 
 @Injectable()
 export class ProtocolosService {
@@ -215,7 +255,7 @@ export class ProtocolosService {
         where,
         orderBy: { fechaInicio: 'desc' },
         take: LIMITE_LISTA_CON_SONDA,
-        include: protocoloInclude,
+        include: protocoloResumenInclude,
       });
     }, ctx);
 
@@ -269,7 +309,7 @@ export class ProtocolosService {
     return toDto(row);
   }
 
-  /** Actualiza una acción del checklist. */
+  /** Actualiza una acción del checklist y devuelve la ficha completa. */
   async updateAccion(
     id: string,
     accionId: string,
@@ -277,49 +317,7 @@ export class ProtocolosService {
     ctx: TenantContext,
   ): Promise<ProtocoloDto> {
     const row = await this.db.withTenant(async (tx) => {
-      // El acceso y la pertenencia de la acción se validan en una sola lectura:
-      // cada round trip extra a la base pesa (Render y Supabase están en
-      // regiones distintas) y esto se dispara con cada tilde del checklist.
-      const accion = await tx.protocoloAccion.findUnique({
-        where: { id: accionId },
-        select: {
-          protocoloId: true,
-          fechaRealizada: true,
-          protocolo: { select: { agenteId: true } },
-        },
-      });
-      if (!accion || accion.protocoloId !== id) {
-        throw new NotFoundException('Acción no encontrada.');
-      }
-      const scope = await scopeDePermiso(ctx, tx);
-      if (scope.usuarioIds !== null && !scope.usuarioIds.includes(accion.protocolo.agenteId)) {
-        throw new NotFoundException('Protocolo no encontrado.');
-      }
-      // SIN control de versión, a propósito — ver UpdateAccionSchema. Lo tenía
-      // y era un falso positivo constante: se comparaba contra
-      // `protocolo.updatedAt`, que este mismo método pisa cuatro líneas más
-      // abajo. Tildar dos acciones seguidas te acusaba de pisar a otra persona
-      // que no existía.
-
-      const data: Prisma.ProtocoloAccionUpdateInput = {};
-      if (dto.estado !== undefined) data.estado = dto.estado;
-      if (dto.fechaPrevista !== undefined) data.fechaPrevista = toDate(dto.fechaPrevista);
-      if (dto.fechaRealizada !== undefined) data.fechaRealizada = toDate(dto.fechaRealizada);
-      if (dto.observaciones !== undefined) data.observaciones = dto.observaciones;
-      if (dto.resultado !== undefined) data.resultado = dto.resultado;
-      if (dto.evidencia !== undefined) data.evidencia = dto.evidencia;
-
-      // Marcar "realizada" sin fecha completa con hoy (como el prototipo): la
-      // fecha alimenta el informe, y pedirla aparte se olvida siempre.
-      if (
-        dto.estado === 'realizada' &&
-        dto.fechaRealizada === undefined &&
-        !accion.fechaRealizada
-      ) {
-        data.fechaRealizada = toDate(hoyArgentina());
-      }
-
-      await tx.protocoloAccion.update({ where: { id: accionId }, data });
+      await this.aplicarAccion(id, accionId, dto, tx, ctx);
       // `updatedAt` del protocolo alimenta la alerta de inactividad.
       return tx.protocolo.update({
         where: { id },
@@ -329,6 +327,91 @@ export class ProtocolosService {
     }, ctx);
 
     return toDto(row);
+  }
+
+  /**
+   * Igual que `updateAccion`, con la respuesta liviana (`AccionActualizada`):
+   * la acción, la versión nueva y lo que se recalcula con el tilde. Es lo que
+   * se dispara con cada tilde del checklist, y la respuesta completa traía la
+   * ficha entera con la tasación y las 29 acciones cada vez.
+   */
+  async updateAccionLiviana(
+    id: string,
+    accionId: string,
+    dto: UpdateAccion,
+    ctx: TenantContext,
+  ): Promise<AccionActualizada> {
+    const { accion, ficha } = await this.db.withTenant(async (tx) => {
+      const accion = await this.aplicarAccion(id, accionId, dto, tx, ctx);
+      const ficha = await tx.protocolo.update({
+        where: { id },
+        data: { updatedAt: new Date() },
+        select: protocoloEstadoSelect,
+      });
+      return { accion, ficha };
+    }, ctx);
+
+    const r = resumenDeEstado(ficha);
+    return {
+      accion: toAccionDto(accion),
+      version: ficha.updatedAt.toISOString(),
+      avance: r.avance,
+      semanaActual: r.semanaActual,
+      alertas: r.alertas,
+      proximaAccion: r.proximaAccion,
+    };
+  }
+
+  /**
+   * Valida acceso y pertenencia de la acción y la actualiza. Devuelve la
+   * acción ya guardada. Compartido por las dos respuestas del tilde.
+   */
+  private async aplicarAccion(
+    id: string,
+    accionId: string,
+    dto: UpdateAccion,
+    tx: Prisma.TransactionClient,
+    ctx: TenantContext,
+  ) {
+    // El acceso y la pertenencia de la acción se validan en una sola lectura:
+    // cada round trip extra a la base pesa (Render y Supabase están en
+    // regiones distintas) y esto se dispara con cada tilde del checklist.
+    const accion = await tx.protocoloAccion.findUnique({
+      where: { id: accionId },
+      select: {
+        protocoloId: true,
+        fechaRealizada: true,
+        protocolo: { select: { agenteId: true } },
+      },
+    });
+    if (!accion || accion.protocoloId !== id) {
+      throw new NotFoundException('Acción no encontrada.');
+    }
+    const scope = await scopeDePermiso(ctx, tx);
+    if (scope.usuarioIds !== null && !scope.usuarioIds.includes(accion.protocolo.agenteId)) {
+      throw new NotFoundException('Protocolo no encontrado.');
+    }
+    // SIN control de versión, a propósito — ver UpdateAccionSchema. Lo tenía
+    // y era un falso positivo constante: se comparaba contra
+    // `protocolo.updatedAt`, que este mismo método pisa cuatro líneas más
+    // abajo. Tildar dos acciones seguidas te acusaba de pisar a otra persona
+    // que no existía.
+
+    const data: Prisma.ProtocoloAccionUpdateInput = {};
+    if (dto.estado !== undefined) data.estado = dto.estado;
+    if (dto.fechaPrevista !== undefined) data.fechaPrevista = toDate(dto.fechaPrevista);
+    if (dto.fechaRealizada !== undefined) data.fechaRealizada = toDate(dto.fechaRealizada);
+    if (dto.observaciones !== undefined) data.observaciones = dto.observaciones;
+    if (dto.resultado !== undefined) data.resultado = dto.resultado;
+    if (dto.evidencia !== undefined) data.evidencia = dto.evidencia;
+
+    // Marcar "realizada" sin fecha completa con hoy (como el prototipo): la
+    // fecha alimenta el informe, y pedirla aparte se olvida siempre.
+    if (dto.estado === 'realizada' && dto.fechaRealizada === undefined && !accion.fechaRealizada) {
+      data.fechaRealizada = toDate(hoyArgentina());
+    }
+
+    return tx.protocoloAccion.update({ where: { id: accionId }, data });
   }
 
   /** Archiva la propiedad (vendida, retirada, autorización vencida u otro motivo). */
@@ -372,39 +455,65 @@ export class ProtocolosService {
     return toDto(row);
   }
 
-  /** KPIs de cabecera del dashboard del módulo. */
+  /**
+   * KPIs de cabecera del dashboard del módulo.
+   *
+   * Los CONTADORES (activas, archivadas, captadas sin iniciar) salen de
+   * `groupBy`/`count`: exactos y sin traer filas. Antes se contaban sobre un
+   * `findMany` con `take: 501` y sin `orderBy`, o sea que pasadas las 500
+   * fichas los números eran de un subconjunto cualquiera, distinto en cada
+   * pedido.
+   *
+   * Las alertas y el avance sí necesitan las acciones, y solo de las ACTIVAS
+   * (las propiedades que están hoy en el mercado, decenas). Van ordenadas y
+   * con el tope de siempre: si alguna vez hubiera más de 500 activas, esos
+   * dos números serían de las 500 más recientes, no de unas al azar.
+   *
+   * «Alertas críticas» cuenta las fichas con alguna acción DEMORADA
+   * (`estaDemorada`), el mismo criterio que la alerta roja de cada ficha y que
+   * el reporte semanal. Con `estaAtrasada` una acción sin fecha prevista de
+   * una semana ya pasada no contaba: la tarjeta decía 0 y la lista mostraba
+   * fichas en rojo.
+   */
   async kpis(verTodo: boolean, ctx: TenantContext): Promise<ProtocoloKpis> {
     return this.db.withTenant(async (tx) => {
       const scope = await scopeDeVista(ctx, tx, verTodo);
       const porAgente = scope.usuarioIds !== null ? { agenteId: { in: scope.usuarioIds } } : {};
 
-      const [protocolos, captadasSinIniciar] = await Promise.all([
+      const [porEstado, activas, captadasSinIniciar] = await Promise.all([
+        tx.protocolo.groupBy({ by: ['estado'], where: porAgente, _count: { _all: true } }),
         tx.protocolo.findMany({
-          where: porAgente,
+          where: { ...porAgente, estado: 'activa' },
+          orderBy: { fechaInicio: 'desc' },
           take: LIMITE_LISTA_CON_SONDA,
-          include: { acciones: { select: { semana: true, estado: true, fechaPrevista: true } } },
+          select: {
+            fechaInicio: true,
+            acciones: { select: { semana: true, estado: true, fechaPrevista: true } },
+          },
         }),
         tx.tasacion.count({
           where: { estado: ESTADO_CAPTADA, protocolo: { is: null }, ...porAgente },
         }),
       ]);
 
-      const activas = protocolos.filter((p) => p.estado === 'activa');
+      const cuantas = (estado: string) =>
+        porEstado.find((g) => g.estado === estado)?._count._all ?? 0;
       const hoy = hoyArgentina();
-      const alertasCriticas = activas.filter((p) =>
-        p.acciones.some((a) => estaAtrasada(aAccionCalc(a), hoy)),
-      ).length;
+      const alertasCriticas = activas.filter((p) => {
+        const semana = semanaActual(fromDate(p.fechaInicio)!, hoy);
+        return p.acciones.some((a) => estaDemorada(aAccionCalc(a), semana, hoy));
+      }).length;
       const avancePromedio =
         activas.length === 0
           ? 0
           : activas.reduce((s, p) => s + avance(p.acciones.map(aAccionCalc)), 0) / activas.length;
 
       return {
-        activas: activas.length,
+        activas: cuantas('activa'),
         alertasCriticas,
         avancePromedio,
         captadasSinIniciar,
-        archivadas: protocolos.length - activas.length,
+        archivadas: cuantas('archivada'),
       };
     }, ctx);
   }
@@ -423,7 +532,10 @@ export class ProtocolosService {
    * la base en São Paulo, y ya nos costó un timeout importar 25 filas con dos
    * consultas cada una.
    */
-  async reporteSemanal(ctx: TenantContext): Promise<ReporteSemanal> {
+  async reporteSemanal(
+    ctx: TenantContext,
+    { firmarFotos = true }: { firmarFotos?: boolean } = {},
+  ): Promise<ReporteSemanal> {
     const filas = await this.db.withTenant(async (tx) => {
       const scope = await scopeDeVista(ctx, tx, true);
       return tx.protocolo.findMany({
@@ -466,7 +578,11 @@ export class ProtocolosService {
     // Las portadas se firman DESPUÉS de generar y todas juntas: el bucket es
     // privado y una llamada a Storage por propiedad multiplicaría los round
     // trips justo en la pantalla que mira toda la inmobiliaria de una vez.
-    await this.firmarPortadas(reporte.porVendedor.flatMap((v) => v.propiedades));
+    // El PDF y el mail no muestran las fotos: ahí se saltea (`firmarFotos`),
+    // y con eso el cron del lunes no le pega a Storage por cada inmobiliaria.
+    if (firmarFotos) {
+      await this.firmarPortadas(reporte.porVendedor.flatMap((v) => v.propiedades));
+    }
     return reporte;
   }
 
@@ -573,25 +689,58 @@ function diasDeExclusividad(exclusividad: Prisma.JsonValue): number | null {
   return typeof dias === 'number' ? dias : null;
 }
 
-function toResumen(row: ProtocoloRow): ProtocoloResumenDto {
+/**
+ * Lo que se recalcula de una ficha a partir de su estado y sus acciones:
+ * avance, semana, alertas y próxima acción. Lo usan el resumen del listado,
+ * la ficha completa y la respuesta liviana del tilde — una sola definición,
+ * para que las tres digan lo mismo.
+ */
+function resumenDeEstado(row: ProtocoloEstadoRow): {
+  avance: number;
+  semanaActual: number;
+  alertas: AlertaProtocolo[];
+  proximaAccion: string | null;
+} {
   const fechaInicio = fromDate(row.fechaInicio)!;
   const acciones = row.acciones.map(aAccionCalc);
   const hoy = hoyArgentina();
-
   const proxima = row.acciones
     .filter((a) => a.estado !== 'realizada' && a.estado !== 'no_corresponde')
     .sort((a, b) =>
       (fromDate(a.fechaPrevista) ?? '9999').localeCompare(fromDate(b.fechaPrevista) ?? '9999'),
     )[0];
+  return {
+    avance: avance(acciones),
+    semanaActual: semanaActual(fechaInicio, hoy),
+    alertas: calcularAlertas(
+      {
+        estado: row.estado as 'activa' | 'archivada',
+        fechaInicio,
+        vencimientoAutorizacion: fromDate(row.vencimientoAutorizacion),
+        actualizadoEn: row.updatedAt.toISOString().slice(0, 10),
+        acciones,
+        consultas: row.consultas,
+        visitas: row.visitas,
+      },
+      hoy,
+    ),
+    proximaAccion: proxima?.titulo ?? null,
+  };
+}
+
+function toResumen(row: ProtocoloResumenRow): ProtocoloResumenDto {
+  const fechaInicio = fromDate(row.fechaInicio)!;
+  const hoy = hoyArgentina();
+  const r = resumenDeEstado(row);
 
   return {
     id: row.id,
     version: row.updatedAt.toISOString(),
     estado: row.estado as ProtocoloResumenDto['estado'],
     fechaInicio,
-    semanaActual: semanaActual(fechaInicio, hoy),
+    semanaActual: r.semanaActual,
     diasPublicada: diasPublicada(fechaInicio, hoy),
-    avance: avance(acciones),
+    avance: r.avance,
     precioPublicado: row.precioPublicado == null ? null : decToNum(row.precioPublicado),
     moneda: row.moneda,
     vencimientoAutorizacion: fromDate(row.vencimientoAutorizacion),
@@ -613,19 +762,8 @@ function toResumen(row: ProtocoloRow): ProtocoloResumenDto {
         row.tasacion.valorRecomendado == null ? null : decToNum(row.tasacion.valorRecomendado),
       fotoUrl: row.tasacion.fotos[0]?.url ?? null,
     },
-    alertas: calcularAlertas(
-      {
-        estado: row.estado as 'activa' | 'archivada',
-        fechaInicio,
-        vencimientoAutorizacion: fromDate(row.vencimientoAutorizacion),
-        actualizadoEn: row.updatedAt.toISOString().slice(0, 10),
-        acciones,
-        consultas: row.consultas,
-        visitas: row.visitas,
-      },
-      hoy,
-    ),
-    proximaAccion: proxima?.titulo ?? null,
+    alertas: r.alertas,
+    proximaAccion: r.proximaAccion,
   };
 }
 
@@ -648,18 +786,22 @@ function toDto(row: ProtocoloRow): ProtocoloDto {
     decisionPropietario: row.decisionPropietario,
     proximasAcciones: row.proximasAcciones,
     observacionArchivo: row.observacionArchivo,
-    acciones: row.acciones.map((a) => ({
-      id: a.id,
-      semana: a.semana,
-      orden: a.orden,
-      clave: a.clave,
-      titulo: a.titulo,
-      estado: a.estado as ProtocoloDto['acciones'][number]['estado'],
-      fechaPrevista: fromDate(a.fechaPrevista),
-      fechaRealizada: fromDate(a.fechaRealizada),
-      observaciones: a.observaciones,
-      resultado: a.resultado,
-      evidencia: a.evidencia,
-    })),
+    acciones: row.acciones.map(toAccionDto),
+  };
+}
+
+function toAccionDto(a: ProtocoloRow['acciones'][number]): ProtocoloDto['acciones'][number] {
+  return {
+    id: a.id,
+    semana: a.semana,
+    orden: a.orden,
+    clave: a.clave,
+    titulo: a.titulo,
+    estado: a.estado as ProtocoloDto['acciones'][number]['estado'],
+    fechaPrevista: fromDate(a.fechaPrevista),
+    fechaRealizada: fromDate(a.fechaRealizada),
+    observaciones: a.observaciones,
+    resultado: a.resultado,
+    evidencia: a.evidencia,
   };
 }

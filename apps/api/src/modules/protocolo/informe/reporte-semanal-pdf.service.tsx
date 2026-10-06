@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
+import type { ReporteSemanal } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { ProtocolosService } from '../protocolos.service';
@@ -14,21 +15,37 @@ export class ReporteSemanalPdfService {
     private readonly protocolos: ProtocolosService,
   ) {}
 
-  async generar(ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+  /**
+   * @param yaCalculado el reporte y la inmobiliaria, si quien llama ya los
+   *   tiene. El mail del lunes los calcula para armar el cuerpo, y sin esto el
+   *   PDF los volvía a pedir: una segunda corrida del reporte entero y otra
+   *   lectura de la inmobiliaria, por cada inmobiliaria, en el mismo cron.
+   */
+  async generar(
+    ctx: TenantContext,
+    yaCalculado?: { reporte: ReporteSemanal; tenant: TenantDelReporte },
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     // El MISMO método que sirve la pantalla: el PDF no puede contar distinto
-    // que lo que el CEO acaba de ver.
-    const [reporte, marca] = await Promise.all([
-      this.protocolos.reporteSemanal(ctx),
-      this.db.withTenant(async (tx) => {
-        const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } });
-        const config = tenant.config as { logoUrl?: string; colorPrimario?: string } | null;
-        return {
-          nombre: tenant.nombre,
-          logoUrl: config?.logoUrl ?? null,
-          colorPrimario: config?.colorPrimario ?? null,
-        };
-      }, ctx),
-    ]);
+    // que lo que el CEO acaba de ver. Sin firmar fotos: el PDF no las dibuja.
+    const [reporte, tenant] = yaCalculado
+      ? [yaCalculado.reporte, yaCalculado.tenant]
+      : await Promise.all([
+          this.protocolos.reporteSemanal(ctx, { firmarFotos: false }),
+          this.db.withTenant(
+            (tx) =>
+              tx.tenant.findUniqueOrThrow({
+                where: { id: ctx.tenantId },
+                select: { nombre: true, config: true },
+              }),
+            ctx,
+          ),
+        ]);
+    const config = tenant.config as { logoUrl?: string; colorPrimario?: string } | null;
+    const marca = {
+      nombre: tenant.nombre,
+      logoUrl: config?.logoUrl ?? null,
+      colorPrimario: config?.colorPrimario ?? null,
+    };
 
     const buffer = await renderToBuffer(
       <ReporteSemanalDocument
@@ -41,6 +58,12 @@ export class ReporteSemanalPdfService {
 
     return { buffer, nombreArchivo: nombrePdf(marca.nombre, reporte.generadoEl) };
   }
+}
+
+/** Lo que el PDF usa de la inmobiliaria: el nombre y la marca. */
+export interface TenantDelReporte {
+  nombre: string;
+  config: unknown;
 }
 
 /**
