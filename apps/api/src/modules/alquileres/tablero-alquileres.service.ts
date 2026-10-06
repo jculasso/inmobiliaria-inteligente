@@ -71,7 +71,7 @@ export class TableroAlquileresService {
       this.indexaciones.bandeja(hoy, DIAS_TABLERO_PROXIMOS),
       this.liquidaciones.pendientes(),
     ]);
-    const { contratos: todos, delMes: delMesTodos, mora, evolucion, ingresos } = datos;
+    const { contratos: todos, delMes: delMesTodos, mora, evolucion, ingresos, reclamos } = datos;
 
     // El filtro Particulares / Comerciales (punto 8 de Javier) mira todo el
     // tablero. Lo que crece con la historia ya viene filtrado de la base; lo
@@ -281,6 +281,19 @@ export class TableroAlquileresService {
             .map((c) => filaContrato(c, null, c.documentos.length ? 'Falta completar la firma' : 'Falta cargar el contrato firmado')),
         ),
         escalones: porCantidad(escalones.sort((a, b) => ((a.fecha ?? '') < (b.fecha ?? '') ? -1 : 1))),
+        reclamos: porCantidad(
+          reclamos
+            .filter((r) => tipo === 'todos' || (r.contratoId != null && delTipo.has(r.contratoId)))
+            .map((r) => ({
+              id: r.id,
+              href: `/alquileres/reclamos/${r.id}`,
+              contrato: r.contratoId ? (todos.find((c) => c.id === r.contratoId)?.codigo ?? null) : null,
+              persona: null,
+              detalle: `${r.asunto} · ${r.prioridad}`,
+              fecha: fromDate(r.createdAt),
+              importe: null,
+            })),
+        ),
       },
     };
   }
@@ -293,7 +306,7 @@ export class TableroAlquileresService {
     const hastaEvolucion = `${anio}-12`;
     const desdeIngresos = `${anio - 1}-01-01`;
     const hastaIngresos = `${anio + 1}-01-01`;
-    const [contratos, delMes, mora, evolucion, ingresos] = await Promise.all([
+    const [contratos, delMes, mora, evolucion, ingresos, reclamos] = await Promise.all([
       tx.alqContrato.findMany({
         where: { estado: { notIn: ['borrador', 'anulado'] } },
         select: {
@@ -396,7 +409,13 @@ export class TableroAlquileresService {
           ) movimientos
          GROUP BY mes, moneda
          ORDER BY mes, moneda`,
+      // Reclamos abiertos o en curso (entrega 15).
+      tx.alqReclamo.findMany({
+        where: { estado: { in: ['abierto', 'en_curso'] } },
+        select: { id: true, asunto: true, prioridad: true, contratoId: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
-    return { contratos, delMes, mora, evolucion, ingresos };
+    return { contratos, delMes, mora, evolucion, ingresos, reclamos };
   }
 }

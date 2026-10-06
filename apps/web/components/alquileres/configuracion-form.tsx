@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type { ConfiguracionAlquileres } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -41,7 +42,11 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
   const ejemplo = 350_000 * 24 * (c.comisionInicialPct / 100) * (c.comisionInicialConIva ? 1 + c.ivaHonorariosPct / 100 : 1);
   return (
     <div className="flex max-w-3xl flex-col gap-4">
-      <EncabezadoPagina titulo="Configuración" />
+      <EncabezadoPagina titulo="Configuración">
+        <Link href="/alquileres/plantillas" className="text-sm font-semibold text-brand-red hover:underline">
+          📝 Plantillas de contrato →
+        </Link>
+      </EncabezadoPagina>
       <Panel icono="💼" titulo="Comisión inicial">
         <div className="grid gap-3 sm:grid-cols-3">
           <Campo label="% del valor total del contrato">

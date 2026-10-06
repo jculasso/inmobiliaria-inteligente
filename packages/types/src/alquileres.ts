@@ -500,7 +500,7 @@ export type ContratoDatos = z.infer<typeof ContratoDatosSchema>;
 
 // --- Historial (pedido de Javier del 6/10/2026: quién registró cada cosa) --------
 
-export const EntidadEventoSchema = z.enum(['contrato', 'persona', 'propiedad', 'concepto', 'cobro', 'liquidacion', 'tramo', 'documento']);
+export const EntidadEventoSchema = z.enum(['contrato', 'persona', 'propiedad', 'concepto', 'cobro', 'liquidacion', 'tramo', 'documento', 'reclamo']);
 export type EntidadEvento = z.infer<typeof EntidadEventoSchema>;
 
 export const AccionEventoSchema = z.enum(['alta', 'edicion', 'estado', 'anulacion', 'borrado', 'indexacion', 'generacion', 'documento', 'envio']);
@@ -1137,6 +1137,8 @@ export const TableroAlquileresDtoSchema = z.object({
     sinFirmar: IndicadorSchema.default({ valor: 0, filas: [] }),
     /** Escalones de contratos escalonados que empiezan en los próximos 60 días (Gexion). */
     escalones: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /** Reclamos abiertos o en curso (entrega 15). */
+    reclamos: IndicadorSchema.default({ valor: 0, filas: [] }),
   }),
 });
 export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;
@@ -1362,3 +1364,114 @@ export const CompletoContratoDtoSchema = z.object({
   cargos: CargosIngresoDtoSchema,
 });
 export type CompletoContratoDto = z.infer<typeof CompletoContratoDtoSchema>;
+
+// --- Contrato desde plantilla (entrega 15) ----------------------------------------------
+
+/**
+ * Las variables que se pueden usar en una plantilla de contrato, con lo que
+ * ponen. Se escriben entre llaves dobles: {{inquilinos}}.
+ */
+export const VARIABLES_PLANTILLA: [string, string][] = [
+  ['inmobiliaria', 'Nombre de la inmobiliaria'],
+  ['contrato.codigo', 'Número de contrato (ALT-0001)'],
+  ['contrato.tipo', 'Particular o Comercial'],
+  ['contrato.destino', 'vivienda o uso comercial'],
+  ['contrato.inicio', 'Fecha de inicio'],
+  ['contrato.fin', 'Fecha de fin'],
+  ['contrato.meses', 'Duración en meses'],
+  ['propiedad.direccion', 'Dirección, piso y depto'],
+  ['propiedad.ciudad', 'Ciudad'],
+  ['propietarios', 'Propietarios con documento y domicilio'],
+  ['inquilinos', 'Inquilinos con documento y domicilio'],
+  ['garantes', 'Garantes con documento y domicilio'],
+  ['alquiler.inicial', 'Alquiler del primer tramo ($ 350.000,00)'],
+  ['alquiler.inicial.letras', 'El mismo, en letras'],
+  ['ajuste', 'Cómo se ajusta (ICL cada 4 meses, escalonado)'],
+  ['tramos', 'Lista de tramos con fechas e importes'],
+  ['vencimiento.dia', 'Día del mes en que vence el alquiler'],
+  ['punitorio', 'Punitorio diario (%)'],
+  ['deposito', 'Depósito en garantía'],
+  ['deposito.letras', 'El depósito, en letras'],
+  ['fecha.hoy', 'Fecha de hoy'],
+];
+
+export const PlantillaInputSchema = z.object({
+  nombre: z.string().trim().min(1, 'Ponele un nombre.').max(80),
+  tipoContrato: TipoContratoSchema.nullish().transform((v) => v ?? null),
+  cuerpo: z.string().trim().min(20, 'La plantilla está vacía.').max(100_000),
+});
+export type PlantillaInput = z.input<typeof PlantillaInputSchema>;
+export type Plantilla = z.output<typeof PlantillaInputSchema>;
+export const PlantillaDtoSchema = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  tipoContrato: TipoContratoSchema.nullable(),
+  cuerpo: z.string(),
+  actualizada: z.string(),
+});
+export type PlantillaDto = z.infer<typeof PlantillaDtoSchema>;
+export const GenerarDesdePlantillaSchema = z.object({ plantillaId: z.string().uuid() });
+export const VistaPreviaPlantillaSchema = z.object({ cuerpo: z.string().max(100_000), contratoId: z.string().uuid() });
+
+// --- Reclamos (entrega 15) -----------------------------------------------------------------
+
+export const TipoReclamoSchema = z.enum(['mantenimiento', 'administrativo', 'cobranza', 'otro']);
+export const PrioridadReclamoSchema = z.enum(['baja', 'media', 'alta', 'urgente']);
+export const EstadoReclamoSchema = z.enum(['abierto', 'en_curso', 'resuelto', 'cerrado']);
+export type TipoReclamo = z.infer<typeof TipoReclamoSchema>;
+export type PrioridadReclamo = z.infer<typeof PrioridadReclamoSchema>;
+export type EstadoReclamo = z.infer<typeof EstadoReclamoSchema>;
+export const NOMBRE_TIPO_RECLAMO: Record<TipoReclamo, string> = { mantenimiento: 'Mantenimiento', administrativo: 'Administrativo', cobranza: 'Cobranza', otro: 'Otro' };
+export const NOMBRE_PRIORIDAD: Record<PrioridadReclamo, string> = { baja: 'Baja', media: 'Media', alta: 'Alta', urgente: 'Urgente' };
+export const NOMBRE_ESTADO_RECLAMO: Record<EstadoReclamo, string> = { abierto: 'Abierto', en_curso: 'En curso', resuelto: 'Resuelto', cerrado: 'Cerrado' };
+
+export const ReclamoInputSchema = z
+  .object({
+    asunto: z.string().trim().min(3, 'Escribí el asunto.').max(160),
+    descripcion: z.string().trim().max(4000).nullish().transform((v) => (v ? v : null)),
+    tipo: TipoReclamoSchema.default('mantenimiento'),
+    prioridad: PrioridadReclamoSchema.default('media'),
+    contratoId: z.string().uuid().nullish().transform((v) => v ?? null),
+    personaId: z.string().uuid().nullish().transform((v) => v ?? null),
+    asignadoAId: z.string().uuid().nullish().transform((v) => v ?? null),
+  })
+  .refine((r) => r.contratoId || r.personaId, { message: 'Elegí el contrato o la persona del reclamo.', path: ['contratoId'] });
+export type ReclamoInput = z.input<typeof ReclamoInputSchema>;
+export type Reclamo = z.output<typeof ReclamoInputSchema>;
+
+export const CambioReclamoSchema = z.object({
+  estado: EstadoReclamoSchema.optional(),
+  prioridad: PrioridadReclamoSchema.optional(),
+  asignadoAId: z.string().uuid().nullable().optional(),
+  /** Lo que se hizo o se habló: queda en el historial del reclamo. */
+  nota: z.string().trim().max(4000).nullish().transform((v) => (v ? v : null)),
+});
+export type CambioReclamo = z.output<typeof CambioReclamoSchema>;
+
+export const ReclamoResumenDtoSchema = z.object({
+  id: z.string().uuid(),
+  numero: z.number().int(),
+  asunto: z.string(),
+  tipo: TipoReclamoSchema,
+  prioridad: PrioridadReclamoSchema,
+  estado: EstadoReclamoSchema,
+  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() }).nullable(),
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }).nullable(),
+  asignadoA: z.string().nullable(),
+  abierto: z.string(),
+  actualizado: z.string(),
+});
+export type ReclamoResumenDto = z.infer<typeof ReclamoResumenDtoSchema>;
+export const ReclamoDtoSchema = ReclamoResumenDtoSchema.extend({
+  descripcion: z.string().nullable(),
+  asignadoAId: z.string().uuid().nullable(),
+  abiertoPor: z.string().nullable(),
+  notas: z.array(z.object({ id: z.string().uuid(), en: z.string(), usuario: z.string().nullable(), texto: z.string() })),
+});
+export type ReclamoDto = z.infer<typeof ReclamoDtoSchema>;
+export const UsuarioMiniSchema = z.object({ id: z.string().uuid(), nombre: z.string() });
+export const ReclamosQuerySchema = z.object({
+  estado: z.enum(['abiertos', 'todos']).default('abiertos'),
+  contratoId: z.string().uuid().optional(),
+  personaId: z.string().uuid().optional(),
+});

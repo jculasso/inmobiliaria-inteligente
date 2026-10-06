@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   alertaIndice,
+  completarPlantilla,
+  enLetras,
+  importeEnLetras,
   cargoConIva,
   estadoDeFirma,
   fechaDelIndice,
@@ -553,5 +556,26 @@ describe('redondear2', () => {
   it('redondea mitad hacia arriba sin el error de coma flotante', () => {
     expect(redondear2(1.005)).toBe(1.01);
     expect(redondear2(471_207.032)).toBe(471_207.03);
+  });
+});
+
+describe('enLetras y plantillas (entrega 15)', () => {
+  it('números en letras, como en un contrato', () => {
+    expect(enLetras(350_000)).toBe('trescientos cincuenta mil');
+    expect(enLetras(1_137_518)).toBe('un millón ciento treinta y siete mil quinientos dieciocho');
+    expect(enLetras(21_000)).toBe('veintiún mil');
+    expect(enLetras(101)).toBe('ciento uno');
+    expect(enLetras(100)).toBe('cien');
+    expect(enLetras(2_500_000)).toBe('dos millones quinientos mil');
+    expect(enLetras(1000)).toBe('mil');
+  });
+
+  it('el importe en letras con su moneda y los centavos', () => {
+    expect(importeEnLetras(254_100.5, 'ARS')).toBe('pesos doscientos cincuenta y cuatro mil cien con 50/100');
+    expect(importeEnLetras(1500, 'USD')).toBe('dólares estadounidenses mil quinientos');
+  });
+
+  it('completa las variables y deja a la vista las que faltan', () => {
+    expect(completarPlantilla('Entre {{propietarios}} y {{ inquilinos }}, por {{nada}}.', { propietarios: 'Juan', inquilinos: 'Ana' })).toBe('Entre Juan y Ana, por [falta: nada].');
   });
 });
