@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 // Cliente HTTP de Google (OAuth 2.0 + Calendar API v3). Solo lectura del
@@ -9,6 +9,11 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const CALENDAR_BASE = 'https://www.googleapis.com/calendar/v3';
 /** Scope de solo lectura del calendario (espejo, sin escritura). */
 const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+/**
+ * Techo de espera de cada llamada a Google. Sin esto, un Google lento deja la
+ * request del usuario colgada hasta que la corte el proxy de Render.
+ */
+const GOOGLE_TIMEOUT_MS = 15_000;
 
 /** Recurso "event" de Google Calendar, reducido a lo que usamos. */
 export interface GoogleEvento {
@@ -24,6 +29,8 @@ export interface GoogleEvento {
 
 @Injectable()
 export class GoogleService {
+  private readonly logger = new Logger(GoogleService.name);
+
   constructor(private readonly config: ConfigService) {}
 
   /** Lanza claro si el módulo no está configurado (faltan env vars de Google). */
@@ -35,6 +42,18 @@ export class GoogleService {
       );
     }
     return valor;
+  }
+
+  /** Falla claro, ANTES de mandar al usuario a ningún lado, si falta configurar Google. */
+  assertConfigurado(): void {
+    this.cfg('GOOGLE_OAUTH_CLIENT_ID');
+    this.cfg('GOOGLE_OAUTH_CLIENT_SECRET');
+    this.cfg('GOOGLE_OAUTH_REDIRECT_URI');
+  }
+
+  /** La URL del callback en esta API; las demás rutas del flujo cuelgan de la misma base. */
+  redirectUri(): string {
+    return this.cfg('GOOGLE_OAUTH_REDIRECT_URI');
   }
 
   /** URL a la que se manda al usuario para autorizar el acceso a su calendario. */
@@ -88,11 +107,15 @@ export class GoogleService {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
     if (!res.ok) {
+      // La respuesta de Google (p. ej. `invalid_grant` con su descripción) va
+      // al log, no al navegador: sirve para diagnosticar, no para el usuario.
       const detalle = await res.text().catch(() => '');
+      this.logger.error(`Google rechazó el intercambio de token (${res.status}): ${detalle}`);
       throw new ServiceUnavailableException(
-        `Google rechazó el intercambio de token (${res.status}). ${detalle}`,
+        'Google no aceptó la conexión con tu calendario. Probá desconectarlo y volver a conectarlo.',
       );
     }
     return (await res.json()) as Record<string, unknown>;
@@ -105,6 +128,7 @@ export class GoogleService {
   async getPrimaryEmail(accessToken: string): Promise<string | null> {
     const res = await fetch(`${CALENDAR_BASE}/calendars/primary`, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const cal = (await res.json()) as { id?: string };
@@ -126,11 +150,13 @@ export class GoogleService {
     });
     const res = await fetch(`${CALENDAR_BASE}/calendars/primary/events?${params.toString()}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
     if (!res.ok) {
       const detalle = await res.text().catch(() => '');
+      this.logger.error(`Google no devolvió los eventos (${res.status}): ${detalle}`);
       throw new ServiceUnavailableException(
-        `No se pudo leer el calendario (${res.status}). ${detalle}`,
+        'No se pudo leer tu calendario de Google. Probá de nuevo en unos minutos.',
       );
     }
     const data = (await res.json()) as { items?: GoogleEvento[] };
