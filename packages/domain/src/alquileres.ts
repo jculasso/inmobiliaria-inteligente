@@ -699,3 +699,52 @@ export function estadoDeFirma(actual: EstadoFirma, firmantes: EstadoFirmante[]):
   if (firmantes.some((f) => f === 'firmado')) return 'firmado_parcial';
   return actual === 'firmado' || actual === 'firmado_parcial' || actual === 'rechazado' ? 'enviado' : actual;
 }
+
+// --- Contrato desde plantilla (entrega 15) ----------------------------------------------
+
+const UNIDADES = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve'];
+const DECENAS = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+const CENTENAS = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+
+function hastaMil(n: number): string {
+  if (n === 0) return '';
+  if (n === 100) return 'cien';
+  const c = Math.floor(n / 100);
+  const r = n % 100;
+  const resto = r < 30 ? UNIDADES[r]! : `${DECENAS[Math.floor(r / 10)]}${r % 10 ? ` y ${UNIDADES[r % 10]}` : ''}`;
+  return [CENTENAS[c], resto].filter(Boolean).join(' ');
+}
+
+/**
+ * Un número entero en letras, como se escribe en un contrato: 350000 →
+ * «trescientos cincuenta mil». «Uno» delante de «mil» se dice «un» y antes de
+ * un sustantivo se apocopa («veintiún mil»).
+ */
+export function enLetras(n: number): string {
+  const entero = Math.floor(Math.abs(n));
+  if (entero === 0) return 'cero';
+  const millones = Math.floor(entero / 1_000_000);
+  const miles = Math.floor((entero % 1_000_000) / 1000);
+  const resto = entero % 1000;
+  const apocope = (t: string) => t.replace(/uno$/, 'ún').replace(/^ún$/, 'un');
+  const partes: string[] = [];
+  if (millones) partes.push(millones === 1 ? 'un millón' : `${apocope(enLetras(millones))} millones`);
+  if (miles) partes.push(miles === 1 ? 'mil' : `${apocope(hastaMil(miles))} mil`);
+  if (resto) partes.push(hastaMil(resto));
+  return partes.join(' ');
+}
+
+/** «$ 350.000,00 (pesos trescientos cincuenta mil)». */
+export function importeEnLetras(n: number, moneda: 'ARS' | 'USD'): string {
+  const centavos = Math.round((n - Math.floor(n)) * 100);
+  const signo = moneda === 'USD' ? 'dólares estadounidenses' : 'pesos';
+  return `${signo} ${enLetras(n)}${centavos ? ` con ${centavos}/100` : ''}`;
+}
+
+/**
+ * Reemplaza las variables `{{así}}` de una plantilla. La que no existe queda
+ * a la vista entre corchetes, para que se note antes de mandar a firmar.
+ */
+export function completarPlantilla(cuerpo: string, valores: Record<string, string>): string {
+  return cuerpo.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, clave: string) => valores[clave] ?? `[falta: ${clave}]`);
+}

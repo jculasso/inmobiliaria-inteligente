@@ -57,6 +57,9 @@ model Tenant {
   alqCuentasBancarias      AlqCuentaBancaria[]
   alqContactos             AlqContacto[]
   alqGarantias             AlqGarantia[]
+  alqPlantillas            AlqPlantilla[]
+  alqReclamos              AlqReclamo[]
+  alqReclamoNotas          AlqReclamoNota[]
 
   @@map("tenant")
 }
@@ -1090,4 +1093,75 @@ model AlqGarantia {
   @@index([tenantId])
   @@index([contratoId])
   @@map("alq_garantia")
+}
+
+/// Una plantilla de contrato de la inmobiliaria, con variables {{así}} que se
+/// completan con los datos del contrato para generar el PDF que se firma.
+model AlqPlantilla {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  nombre       String
+  /// vivienda | comercial | null (sirve para los dos)
+  tipoContrato String?  @map("tipo_contrato")
+  cuerpo       String
+  creadoPorId  String?  @map("creado_por_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("alq_plantilla")
+}
+
+/// Un reclamo de un inquilino o propietario (Gexion; entrega 15). Las
+/// referencias a contrato y persona no tienen clave foránea: el reclamo queda
+/// aunque se borre lo que menciona.
+model AlqReclamo {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  numero      Int
+  asunto      String
+  descripcion String?
+  /// mantenimiento | administrativo | cobranza | otro
+  tipo        String    @default("mantenimiento")
+  /// baja | media | alta | urgente
+  prioridad   String    @default("media")
+  /// abierto | en_curso | resuelto | cerrado
+  estado      String    @default("abierto")
+  contratoId  String?   @map("contrato_id") @db.Uuid
+  personaId   String?   @map("persona_id") @db.Uuid
+  asignadoAId String?   @map("asignado_a_id") @db.Uuid
+  creadoPorId String?   @map("creado_por_id") @db.Uuid
+  cerradoEn   DateTime? @map("cerrado_en") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  notas  AlqReclamoNota[]
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([tenantId, estado])
+  @@index([contratoId])
+  @@index([personaId])
+  @@map("alq_reclamo")
+}
+
+/// El historial de un reclamo: cada nota y cada cambio, con quién y cuándo.
+model AlqReclamoNota {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  reclamoId     String   @map("reclamo_id") @db.Uuid
+  usuarioId     String?  @map("usuario_id") @db.Uuid
+  usuarioNombre String?  @map("usuario_nombre")
+  texto         String
+  en            DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reclamo AlqReclamo @relation(fields: [reclamoId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([reclamoId])
+  @@map("alq_reclamo_nota")
 }

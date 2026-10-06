@@ -158,7 +158,7 @@ export interface PdfGenerado {
  */
 export async function apiFetchPdf(
   path: string,
-  { accessToken, searchParams }: { accessToken: string; searchParams?: Record<string, string | number | undefined> },
+  { accessToken, searchParams, body }: { accessToken: string; searchParams?: Record<string, string | number | undefined>; body?: unknown },
 ): Promise<PdfGenerado> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
@@ -172,7 +172,8 @@ export async function apiFetchPdf(
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     cache: 'no-store',
   });
 

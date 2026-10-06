@@ -79,6 +79,7 @@ function servicio(over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unkn
   ];
   const tx = {
     alqContrato: { findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]) },
+    alqReclamo: { findMany: vi.fn().mockResolvedValue([{ id: 'r1', asunto: 'Pérdida de agua', prioridad: 'alta', contratoId: 'c5', createdAt: new Date('2026-10-10T12:00:00Z') }]) },
     alqConcepto: { findMany: vi.fn().mockResolvedValue(over.delMes ?? [alquilerDelMes('5', 1_137_518, 1_137_518), alquilerDelMes('6', 400_000, 150_000)]) },
     $queryRaw: vi.fn(async (_t: TemplateStringsArray, ...v: unknown[]) => {
       valores.push(v);
@@ -128,6 +129,7 @@ function indicadores(t: TableroAlquileresDto): [string, Indicador, 'importe' | '
     ['liquidaciones', t.tareas.liquidaciones, 'cantidad'],
     ['deudores', t.tareas.deudores, 'cantidad'],
     ['sin firmar', t.tareas.sinFirmar, 'cantidad'],
+    ['reclamos', t.tareas.reclamos, 'cantidad'],
   ];
 }
 

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, P
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AnularConMotivoSchema,
+  GenerarDesdePlantillaSchema,
   CargarCargosIngresoSchema,
   DevolverDepositoSchema,
   ExtenderContratoSchema,
@@ -23,6 +24,7 @@ import { ctxDe } from '../tablero/tablero.util';
 import { ContratosService } from './contratos.service';
 import { HistorialService } from './historial';
 import { ContratoCompletoService } from './contrato-completo.service';
+import { PlantillasService } from './plantillas.service';
 import type { z } from 'zod';
 
 /** Contratos de alquiler: alta, edición en borrador, ficha y cambios de estado. */
@@ -35,6 +37,7 @@ export class ContratosController {
     private readonly contratos: ContratosService,
     private readonly historial: HistorialService,
     private readonly completo: ContratoCompletoService,
+    private readonly plantillas: PlantillasService,
   ) {}
 
   @Get()
@@ -171,5 +174,17 @@ export class ContratosController {
   @ApiOperation({ summary: 'Extiende un contrato vigente: suma tramos desde el día siguiente al fin' })
   extender(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(ExtenderContratoSchema)) dto: ExtenderContrato, @CurrentUser() user: AuthPrincipal) {
     return this.contratos.extender(ctxDe(user), id, dto);
+  }
+
+  @Post(':id/generar-desde-plantilla')
+  @HttpCode(200)
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Genera el PDF del contrato desde una plantilla y lo deja como su documento, para firmar' })
+  generarDesdePlantilla(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(GenerarDesdePlantillaSchema)) body: z.output<typeof GenerarDesdePlantillaSchema>,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.plantillas.generar(ctxDe(user), id, body.plantillaId);
   }
 }

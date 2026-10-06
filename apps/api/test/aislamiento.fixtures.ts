@@ -45,6 +45,9 @@ export interface IdsDeTenant {
   alqCuentaBancaria: string;
   alqContacto: string;
   alqGarantia: string;
+  alqPlantilla: string;
+  alqReclamo: string;
+  alqReclamoNota: string;
   /**
    * Un segundo usuario y una segunda tasación por inmobiliaria.
    *
@@ -100,6 +103,9 @@ export function nuevosIds(n: number): IdsDeTenant {
     alqCuentaBancaria: randomUUID(),
     alqContacto: randomUUID(),
     alqGarantia: randomUUID(),
+    alqPlantilla: randomUUID(),
+    alqReclamo: randomUUID(),
+    alqReclamoNota: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
     contratoSecundario: randomUUID(),
@@ -581,6 +587,31 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'obs',
     fila: (t, i) => ({ id: i.alqGarantia, tenantId: t, contratoId: i.alqContrato, tipo: 'propietaria', garante: `Garante ${i.n}` }),
+  },
+  {
+    tabla: 'alq_plantilla',
+    modelo: 'alqPlantilla',
+    claveId: 'alqPlantilla',
+    campoTenant: 'tenantId',
+    campoEditable: 'nombre',
+    fila: (t, i) => ({ id: i.alqPlantilla, tenantId: t, nombre: `Plantilla ${i.n}`, cuerpo: 'Contrato de locación entre {{propietarios}} y {{inquilinos}}.' }),
+  },
+  {
+    tabla: 'alq_reclamo',
+    modelo: 'alqReclamo',
+    claveId: 'alqReclamo',
+    campoTenant: 'tenantId',
+    campoEditable: 'asunto',
+    // `numero` es único por inmobiliaria: sale de `n`, que la fila intrusa cambia.
+    fila: (t, i) => ({ id: i.alqReclamo, tenantId: t, numero: i.n, asunto: `Pérdida de agua ${i.n}`, contratoId: i.alqContrato }),
+  },
+  {
+    tabla: 'alq_reclamo_nota',
+    modelo: 'alqReclamoNota',
+    claveId: 'alqReclamoNota',
+    campoTenant: 'tenantId',
+    campoEditable: 'texto',
+    fila: (t, i) => ({ id: i.alqReclamoNota, tenantId: t, reclamoId: i.alqReclamo, texto: `Nota ${i.n}` }),
   },
 ];
 

@@ -22,6 +22,13 @@ import {
   type ConceptoSueltoInput,
   ContratoDtoSchema,
   CandidatoDtoSchema,
+  PlantillaDtoSchema,
+  ReclamoDtoSchema,
+  ReclamoResumenDtoSchema,
+  UsuarioMiniSchema,
+  type CambioReclamo,
+  type PlantillaInput,
+  type ReclamoInput,
   CompletoContratoDtoSchema,
   ConfiguracionAlquileresSchema,
   GarantiaDtoSchema,
@@ -325,4 +332,54 @@ export async function guardarGarantias(accessToken: string, id: string, garantia
 
 export async function extenderContrato(accessToken: string, id: string, dto: ExtenderContrato) {
   return apiFetch(`/alquileres/contratos/${id}/extender`, ContratoDtoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+// --- Entrega 15: plantillas de contrato y reclamos -----------------------------
+
+export async function listPlantillas(accessToken: string) {
+  return apiFetch('/alquileres/plantillas', z.array(PlantillaDtoSchema), { accessToken });
+}
+
+export async function getModeloPlantilla(accessToken: string) {
+  return apiFetch('/alquileres/plantillas/modelo', z.object({ cuerpo: z.string() }), { accessToken });
+}
+
+export async function guardarPlantilla(accessToken: string, id: string | null, dto: PlantillaInput) {
+  return id
+    ? apiFetch(`/alquileres/plantillas/${id}`, PlantillaDtoSchema, { accessToken, method: 'PATCH', body: dto })
+    : apiFetch('/alquileres/plantillas', PlantillaDtoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+export async function borrarPlantilla(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/plantillas/${id}`, z.object({ id: z.string() }), { accessToken, method: 'DELETE' });
+}
+
+/** El PDF de un texto con los datos de un contrato, para ver cómo queda. */
+export async function vistaPreviaPlantilla(accessToken: string, contratoId: string, cuerpo: string) {
+  return apiFetchPdf('/alquileres/plantillas/vista-previa', { accessToken, body: { contratoId, cuerpo } });
+}
+
+export async function generarDesdePlantilla(accessToken: string, contratoId: string, plantillaId: string) {
+  return apiFetch(`/alquileres/contratos/${contratoId}/generar-desde-plantilla`, DocumentoContratoDtoSchema, { accessToken, method: 'POST', body: { plantillaId } });
+}
+
+export async function listReclamos(accessToken: string, q: { estado?: 'abiertos' | 'todos'; contratoId?: string; personaId?: string } = {}) {
+  const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]);
+  return apiFetch(`/alquileres/reclamos${p.toString() ? `?${p}` : ''}`, z.array(ReclamoResumenDtoSchema), { accessToken });
+}
+
+export async function getReclamo(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/reclamos/${id}`, ReclamoDtoSchema, { accessToken });
+}
+
+export async function crearReclamo(accessToken: string, dto: ReclamoInput) {
+  return apiFetch('/alquileres/reclamos', ReclamoDtoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+export async function cambiarReclamo(accessToken: string, id: string, cambio: Partial<CambioReclamo>) {
+  return apiFetch(`/alquileres/reclamos/${id}`, ReclamoDtoSchema, { accessToken, method: 'PATCH', body: cambio });
+}
+
+export async function listUsuariosAsignables(accessToken: string) {
+  return apiFetch('/alquileres/reclamos/usuarios', z.array(UsuarioMiniSchema), { accessToken });
 }
