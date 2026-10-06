@@ -56,8 +56,8 @@ describe('DetalleDrillModal — la comisión de una venta compartida', () => {
     );
 
     // 6.000 es lo de Rocío; 10.000 sería la comisión entera de la operación.
-    expect(await screen.findAllByText('$6.000')).not.toHaveLength(0);
-    expect(screen.queryByText('$10.000')).not.toBeInTheDocument();
+    expect(await screen.findAllByText('U$S 6.000')).not.toHaveLength(0);
+    expect(screen.queryByText('U$S 10.000')).not.toBeInTheDocument();
   });
 
   it('sin vendedor en el filtro, muestra la comisión completa', async () => {
@@ -65,7 +65,7 @@ describe('DetalleDrillModal — la comisión de una venta compartida', () => {
       <DetalleDrillModal titulo="Todas" filtro={{ anio: 2026 } as never} onClose={() => {}} />,
     );
 
-    expect(await screen.findAllByText('$10.000')).not.toHaveLength(0);
+    expect(await screen.findAllByText('U$S 10.000')).not.toHaveLength(0);
   });
 });
 
@@ -87,10 +87,10 @@ describe('DetalleDrillModal — abierto desde una tarjeta de un solo lado', () =
     );
     const caja = await screen.findByLabelText('Resumen del detalle');
     expect(caja).toHaveTextContent('Puntas compradoras1');
-    expect(caja).toHaveTextContent('Comisión$4.000');
+    expect(caja).toHaveTextContent('ComisiónU$S 4.000');
     // 10.000 sería la comisión entera; 6.000, la punta vendedora.
-    expect(screen.queryByText('$10.000')).not.toBeInTheDocument();
-    expect(screen.queryByText('$6.000')).not.toBeInTheDocument();
+    expect(screen.queryByText('U$S 10.000')).not.toBeInTheDocument();
+    expect(screen.queryByText('U$S 6.000')).not.toBeInTheDocument();
   });
 
   it('el volumen cuenta el precio una vez por punta, como la tarjeta', async () => {
@@ -103,6 +103,6 @@ describe('DetalleDrillModal — abierto desde una tarjeta de un solo lado', () =
       />,
     );
     // Una venta de 200.000 con las dos puntas: aporta 400.000 al volumen.
-    expect(await screen.findByText('$400.000')).toBeInTheDocument();
+    expect(await screen.findByText('U$S 400.000')).toBeInTheDocument();
   });
 });

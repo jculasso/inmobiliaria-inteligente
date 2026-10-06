@@ -3,12 +3,12 @@ import { fmtFecha, fmtFechaDe, fmtFechaHora, fmtK, fmtNum, fmtUSD } from './form
 
 describe('fmtUSD', () => {
   it('redondea y agrega separador de miles es-AR con prefijo $', () => {
-    expect(fmtUSD(45231.7)).toBe('$45.232');
+    expect(fmtUSD(45231.7)).toBe('U$S 45.232');
   });
 
   it('trata null/undefined como 0', () => {
-    expect(fmtUSD(null)).toBe('$0');
-    expect(fmtUSD(undefined)).toBe('$0');
+    expect(fmtUSD(null)).toBe('U$S 0');
+    expect(fmtUSD(undefined)).toBe('U$S 0');
   });
 });
 

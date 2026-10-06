@@ -6,6 +6,8 @@ const variantClasses = {
   primary: 'bg-brand-red text-white hover:bg-brand-red-dark',
   secondary: 'border border-line bg-white text-ink hover:bg-surface',
   ghost: 'bg-transparent text-brand-red hover:bg-surface',
+  // Borrar, anular: en el color de peligro, nunca en el de la marca de la inmobiliaria.
+  peligro: 'bg-danger text-white hover:bg-danger-dark',
 } as const;
 
 const sizeClasses = {

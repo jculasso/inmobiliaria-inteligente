@@ -1,122 +1,34 @@
 import type { ReactNode } from 'react';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import type { AuthPrincipal } from '@vacker/types';
-import { Avatar, Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui';
-import { getMe, MeError } from '../../lib/api';
-import { createClient } from '../../lib/supabase/server';
-import { tenantBrandStyle } from '../../lib/tenant-style';
-import { LogoutButton } from '../../components/logout-button';
-import { MarcaPlataforma } from '../../components/marca-plataforma';
-import { MenuModulos } from '../../components/menu-modulos';
-import { AlquileresNav } from '../../components/alquileres/alquileres-nav';
 import { puedeAdministrarAlquileres } from '@vacker/types';
+import { MarcoModulo, principalDelModulo } from '../../components/marco-modulo';
+import { AlquileresNav } from '../../components/alquileres/alquileres-nav';
 
 export default async function AlquileresLayout({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) return null;
-
-  let principal: AuthPrincipal;
-  try {
-    principal = await getMe(session.access_token);
-  } catch (err) {
-    // Solo MeError es un problema real de la cuenta (p. ej. 401 sin tenant
-    // vinculado). Cualquier otro error (timeout/red hacia la API) se
-    // relanza para que lo resuelva error.tsx con un mensaje correcto.
-    if (!(err instanceof MeError)) throw err;
-    return (
-      <main className="mx-auto flex min-h-screen max-w-lg items-center px-6">
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Tu cuenta no está habilitada todavía</CardTitle>
-            <CardDescription>{err.message}</CardDescription>
-          </CardHeader>
-          <LogoutButton />
-        </Card>
-      </main>
-    );
-  }
-
-  // El módulo se contrata por inmobiliaria. La API ya rechaza con 403, pero
-  // sin esto la pantalla se vería vacía en vez de explicar por qué.
-  if (!principal.tenant.modulos.alquileres) {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-lg items-center px-6">
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>El módulo de Alquileres no está habilitado</CardTitle>
-            <CardDescription>
-              Tu inmobiliaria todavía no tiene contratado el módulo de Alquileres. Escribinos si
-              querés activarla.
-            </CardDescription>
-          </CardHeader>
-          <Link href="/" className="text-sm font-semibold text-brand-red hover:underline">
-            ← Volver al inicio
-          </Link>
-        </Card>
-      </main>
-    );
-  }
-
-  // Clave temporal sin cambiar: no se entra a ningún módulo hasta elegir una
-  // propia. El chequeo no cuesta un round trip extra — viaja en el perfil que
-  // este layout ya pide.
-  if (principal.debeCambiarPassword) redirect('/cambiar-clave');
+  const r = await principalDelModulo('alquileres', 'Alquileres');
+  if (!r) return null;
+  if ('pantalla' in r) return r.pantalla;
+  const { principal } = r;
 
   // Contratado no alcanza: el módulo lo opera quien administra los contratos
   // (spec alquileres-fase-1.md §3). Se resuelve acá, una vez, para todas las
   // páginas del módulo. La API responde 403 igual; esto explica por qué.
-  const conAcceso = puedeAdministrarAlquileres(principal.roles);
-
-  return (
-    <main
-      className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10"
-      style={tenantBrandStyle(principal.tenant.config)}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar
-            nombre={principal.tenant.nombre}
-            fotoUrl={principal.tenant.config.logoUrl}
-            size="lg"
-          />
-          <div>
-            <MarcaPlataforma />
-            <div className="mt-1 flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl font-extrabold text-ink sm:text-2xl">Alquileres</h1>
-              <MenuModulos modulos={principal.tenant.modulos} />
-            </div>
-          </div>
-        </div>
-        <div className="flex max-w-full flex-col items-end gap-2">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="min-w-0 truncate text-sm text-muted">{principal.email}</span>
-            <Avatar nombre={principal.nombre} fotoUrl={principal.fotoUrl} size="md" />
-          </div>
-          <LogoutButton />
-        </div>
-      </div>
-
-      {conAcceso ? (
-        <>
-          <div className="mt-5">
-            <AlquileresNav />
-          </div>
-          <div className="mt-5">{children}</div>
-        </>
-      ) : (
-        <div className="mt-6 rounded-brand border border-line bg-white p-6">
+  if (!puedeAdministrarAlquileres(principal.roles)) {
+    return (
+      <MarcoModulo principal={principal} titulo="Alquileres">
+        <div className="rounded-brand border border-line bg-white p-6">
           <h2 className="text-base font-bold text-ink">No tenés acceso a Alquileres</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">
             Este módulo lo usan la dirección y quien tiene el rol <strong>Administración</strong>.
             Si te corresponde, pedile a la administración de tu inmobiliaria que te lo asigne.
           </p>
         </div>
-      )}
-    </main>
+      </MarcoModulo>
+    );
+  }
+
+  return (
+    <MarcoModulo principal={principal} titulo="Alquileres" nav={<AlquileresNav />} contenido="mt-5">
+      {children}
+    </MarcoModulo>
   );
 }

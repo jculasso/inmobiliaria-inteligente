@@ -29,13 +29,24 @@ interface ApiErrorBody {
 }
 
 /**
+ * Cuánto se espera una respuesta común: alcanza para que Render despierte
+ * (30-60 s) y corta un pedido colgado, que antes dejaba «Guardando…» para
+ * siempre (revisión PWA del 6/10/2026).
+ */
+const LIMITE_COMUN_MS = 90_000;
+
+/**
  * `fetch` con un error que se entiende. Sin conexión, el navegador rechaza con
  * «Load failed» o «Failed to fetch», en inglés, y eso llegaba tal cual a la
  * pantalla. `limiteMs` corta una espera eterna (un PDF con la API dormida).
  */
-async function pedir(url: string | URL, init: RequestInit, limiteMs?: number): Promise<Response> {
+async function pedir(
+  url: string | URL,
+  init: RequestInit,
+  limiteMs = LIMITE_COMUN_MS,
+): Promise<Response> {
   try {
-    return await fetch(url, limiteMs ? { ...init, signal: AbortSignal.timeout(limiteMs) } : init);
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(limiteMs) });
   } catch (err) {
     if (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
       throw new ApiError('El servidor tardó demasiado en responder. Probá de nuevo en un momento.');
@@ -138,12 +149,16 @@ export async function apiFetchForm<T>(
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await pedir(`${apiUrl}${path}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: formData,
-    cache: 'no-store',
-  });
+  const res = await pedir(
+    `${apiUrl}${path}`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+      cache: 'no-store',
+    },
+    180_000,
+  ); // una foto por datos móviles tarda más que un pedido común
 
   if (!res.ok) {
     const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;

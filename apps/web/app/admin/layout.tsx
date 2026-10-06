@@ -7,6 +7,8 @@ import { createClient } from '../../lib/supabase/server';
 import { LogoutButton } from '../../components/logout-button';
 import { AdminLogin } from '../../components/admin/admin-login';
 import { AdminNav } from '../../components/admin/admin-nav';
+import { MarcaPlataforma } from '../../components/marca-plataforma';
+import { marcaPlataformaStyle } from '../../lib/tenant-style';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -50,7 +52,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             </CardDescription>
           </CardHeader>
           <Link href="/" className="text-sm font-medium text-brand-red hover:underline">
-            ← Volver a la Home
+            ← Volver al inicio
           </Link>
         </Card>
       </main>
@@ -58,19 +60,21 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10 print:px-0 print:py-0">
-      <div className="flex items-start justify-between gap-4 print:hidden">
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand-red hover:underline"
-          >
-            ⌂ Inmobiliaria Inteligente
-          </Link>
-          <h1 className="mt-1 text-2xl font-extrabold text-ink">Administración de plataforma</h1>
+    // Los colores de la plataforma (azul), no los de una inmobiliaria: el panel
+    // es nuestro. Y los márgenes de los módulos, que en el teléfono entran.
+    <main
+      className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 print:px-0 print:py-0"
+      style={marcaPlataformaStyle()}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4 print:hidden">
+        <div className="min-w-0">
+          <MarcaPlataforma />
+          <h1 className="mt-1 text-xl font-extrabold text-ink sm:text-2xl">
+            Administración de plataforma
+          </h1>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <span className="text-sm text-muted">{principal.email}</span>
+        <div className="flex max-w-full flex-col items-end gap-2">
+          <span className="min-w-0 max-w-full truncate text-sm text-muted">{principal.email}</span>
           <LogoutButton redirectTo="/admin" />
         </div>
       </div>

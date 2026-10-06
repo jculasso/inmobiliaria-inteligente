@@ -237,7 +237,7 @@ describe('ReporteSemanalVista', () => {
   it('muestra el precio publicado junto a la propiedad', () => {
     render(<ReporteSemanalVista reporte={reporte()} />);
 
-    expect(screen.getByText('$145.000')).toBeInTheDocument();
+    expect(screen.getByText('U$S 145.000')).toBeInTheDocument();
   });
 
   it('abre con la frase que resume la semana', () => {

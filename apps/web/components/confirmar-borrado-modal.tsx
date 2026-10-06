@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { Button, Modal } from '@vacker/ui';
+import { MensajeError } from './piezas';
 
 /**
  * Confirmación de borrado con la ficha de lo que se va a borrar a la vista.
@@ -43,19 +44,15 @@ export function ConfirmarBorradoModal({
   }
 
   return (
-    <Modal title={titulo} onClose={onClose}>
+    <Modal title={titulo} onClose={onClose} cerrable={!borrando}>
       <div className="flex flex-col gap-4">
         <p className="text-sm leading-relaxed text-ink">{descripcion}</p>
 
         <div className="rounded-brand border border-line bg-surface p-3">{detalle}</div>
 
-        <p className="text-xs font-semibold text-brand-red">Esta acción no se puede deshacer.</p>
+        <p className="text-xs font-semibold text-danger">Esta acción no se puede deshacer.</p>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
-            {error}
-          </p>
-        )}
+        <MensajeError>{error}</MensajeError>
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose} disabled={borrando}>
@@ -63,7 +60,7 @@ export function ConfirmarBorradoModal({
           </Button>
           <Button
             type="button"
-            variant="primary"
+            variant="peligro"
             onClick={() => void confirmar()}
             disabled={borrando}
           >

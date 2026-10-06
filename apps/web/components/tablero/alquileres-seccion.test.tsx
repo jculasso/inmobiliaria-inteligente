@@ -78,8 +78,8 @@ describe('Alquileres — la planilla de Vacker', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Acumulado Trimestral/ }));
 
     expect(fila('Alquileres firmados').slice(0, 2)).toEqual(['11', '24']);
-    expect(fila('Com. total USD').slice(0, 2)).toEqual(['$6.576', '$11.079']);
-    expect(fila('Valor prom. alq. USD').slice(0, 2)).toEqual(['$435', '$379']);
+    expect(fila('Com. total USD').slice(0, 2)).toEqual(['U$S 6.576', 'U$S 11.079']);
+    expect(fila('Valor prom. alq. USD').slice(0, 2)).toEqual(['U$S 435', 'U$S 379']);
   });
 
   /*
@@ -92,8 +92,8 @@ describe('Alquileres — la planilla de Vacker', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Acumulado Trimestral/ }));
 
     expect(fila('Alquileres firmados').at(-1)).toBe('35');
-    expect(fila('Com. total USD').at(-1)).toBe('$17.655');
-    expect(fila('Valor prom. alq. USD').at(-1)).toBe('$397');
+    expect(fila('Com. total USD').at(-1)).toBe('U$S 17.655');
+    expect(fila('Valor prom. alq. USD').at(-1)).toBe('U$S 397');
   });
 
   it('por mes muestra las doce columnas, con los meses del Excel', async () => {
@@ -127,8 +127,8 @@ describe('Alquileres — la planilla de Vacker', () => {
     render(<AlquileresSeccion anio={2026} mesSeleccionado={9} />);
     expect(await screen.findByText('Año 2026')).toBeInTheDocument();
     expect(screen.getByText('35')).toBeInTheDocument();
-    expect(screen.getByText('$17.655')).toBeInTheDocument();
-    expect(screen.getByText('$397')).toBeInTheDocument();
+    expect(screen.getByText('U$S 17.655')).toBeInTheDocument();
+    expect(screen.getByText('U$S 397')).toBeInTheDocument();
   });
 
   it('elegir un mes en el cuadro muestra las tarjetas de ese mes', async () => {
