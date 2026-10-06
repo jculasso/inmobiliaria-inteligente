@@ -17,6 +17,7 @@ const STATUS_CODE: Record<number, string> = {
   409: 'conflict',
   413: 'payload_too_large',
   422: 'unprocessable_entity',
+  429: 'too_many_requests',
   500: 'internal_error',
   503: 'service_unavailable',
 };
@@ -69,7 +70,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (exception.code === 'P2002') {
         status = HttpStatus.CONFLICT;
         message = 'Ya existe un registro con esos datos únicos.';
-        details = exception.meta?.target;
+        // Sin `details`: `meta.target` es el nombre del índice o de las
+        // columnas de la base, y eso es esquema interno. Queda en el log de
+        // arriba, que es donde sirve.
       } else if (exception.code === 'P2025') {
         status = HttpStatus.NOT_FOUND;
         message = 'Registro no encontrado.';
