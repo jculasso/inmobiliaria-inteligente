@@ -25,6 +25,10 @@ import { ProtocolosService } from './protocolos.service';
 const VerTodoSchema = z.object({ verTodo: BoolQuerySchema });
 type VerTodoQuery = z.infer<typeof VerTodoSchema>;
 
+/** `?liviana=1` en el tilde del checklist. */
+const LivianaSchema = z.object({ liviana: BoolQuerySchema });
+type LivianaQuery = z.infer<typeof LivianaSchema>;
+
 const ROLES_MODULO = ['vendedor', 'team_leader', 'direccion', 'admin_tenant'] as const;
 
 @ApiTags('protocolo')
@@ -103,16 +107,26 @@ export class ProtocolosController {
     return this.protocolos.update(id, dto, ctxDe(user));
   }
 
+  /**
+   * Con `?liviana=1` devuelve solo lo que el tilde cambia (`AccionActualizada`)
+   * en vez de la ficha completa. Sin el parámetro, la ficha completa, como
+   * siempre: la web actual sigue funcionando sin cambios.
+   */
   @Patch(':id/acciones/:accionId')
   @Roles(...ROLES_MODULO)
-  @ApiOperation({ summary: 'Actualiza una acción del checklist' })
+  @ApiOperation({
+    summary: 'Actualiza una acción del checklist (`liviana=1`: solo lo que cambia)',
+  })
   updateAccion(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('accionId', ParseUUIDPipe) accionId: string,
     @Body(new ZodValidationPipe(UpdateAccionSchema)) dto: UpdateAccion,
+    @Query(new ZodValidationPipe(LivianaSchema)) query: LivianaQuery,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.protocolos.updateAccion(id, accionId, dto, ctxDe(user));
+    return query.liviana
+      ? this.protocolos.updateAccionLiviana(id, accionId, dto, ctxDe(user))
+      : this.protocolos.updateAccion(id, accionId, dto, ctxDe(user));
   }
 
   @Post(':id/archivar')

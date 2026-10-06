@@ -351,6 +351,27 @@ export const ProtocoloFiltroSchema = z.object({
 });
 export type ProtocoloFiltro = z.infer<typeof ProtocoloFiltroSchema>;
 
+/**
+ * Respuesta liviana al tildar una acción del checklist
+ * (`PATCH /protocolo/:id/acciones/:accionId?liviana=1`).
+ *
+ * La respuesta completa devuelve la ficha entera —propietario, embudo,
+ * tasación, foto, las 29 acciones con sus observaciones— por cada tilde. Acá
+ * va solo lo que el tilde cambia: la acción, la nueva versión de la ficha y lo
+ * que se recalcula con ella (avance, alertas, próxima acción). La web reemplaza
+ * esa acción y esos campos en la ficha que ya tiene.
+ */
+export const AccionActualizadaSchema = z.object({
+  accion: ProtocoloAccionDtoSchema,
+  /** `updatedAt` nuevo de la ficha: el que hay que mandar en el próximo `version`. */
+  version: z.string(),
+  avance: z.number(),
+  semanaActual: z.number().int(),
+  alertas: z.array(AlertaProtocoloSchema),
+  proximaAccion: z.string().nullable(),
+});
+export type AccionActualizada = z.infer<typeof AccionActualizadaSchema>;
+
 /** KPIs de cabecera del dashboard del módulo. */
 export const ProtocoloKpisSchema = z.object({
   activas: z.number().int(),
