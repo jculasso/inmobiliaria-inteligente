@@ -16,7 +16,7 @@
  *    Cuando no hay conexión, las navegaciones muestran la pantalla offline.
  */
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE_ESTATICOS = `estaticos-${VERSION}`;
 const OFFLINE_URL = '/offline';
 
