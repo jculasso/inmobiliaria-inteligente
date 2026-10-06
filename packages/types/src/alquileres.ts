@@ -449,3 +449,163 @@ export const AnularConceptoSchema = z.object({
   motivo: z.string().trim().min(3, 'Escribí el motivo.'),
 });
 export type AnularConcepto = z.infer<typeof AnularConceptoSchema>;
+
+// --- Cobros y cuenta corriente (reglas 15 a 19, 23 y 24) ---------------------------
+
+export const MedioCobroSchema = z.enum(['transferencia', 'efectivo', 'cheque', 'otro']);
+export type MedioCobro = z.infer<typeof MedioCobroSchema>;
+
+export const PrepararCobroSchema = z.object({
+  personaId: z.string().uuid(),
+  moneda: MonedaAlquilerSchema.default('ARS'),
+  fecha: FechaIso,
+});
+export type PrepararCobro = z.infer<typeof PrepararCobroSchema>;
+
+const ContratoMiniSchema = z.object({ id: z.string().uuid(), codigo: z.string() }).nullable();
+
+/** Lo que la persona debe, para elegir qué se cobra. */
+export const DeudaDtoSchema = z.object({
+  conceptoId: z.string().uuid(),
+  contrato: ContratoMiniSchema,
+  tipo: TipoConceptoSchema,
+  descripcion: z.string(),
+  vencimiento: FechaIso,
+  importe: z.number(),
+  saldo: z.number(),
+  /** Regla 16: el punitorio que se propone a la fecha del cobro, si corresponde. */
+  punitorio: z.object({ dias: z.number().int(), importe: z.number() }).nullable(),
+});
+export type DeudaDto = z.infer<typeof DeudaDtoSchema>;
+
+/** Todo lo que hace falta para armar un cobro: deudas, reintegros y saldo a favor. */
+export const PreparacionCobroDtoSchema = z.object({
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  moneda: MonedaAlquilerSchema,
+  fecha: FechaIso,
+  deudas: z.array(DeudaDtoSchema),
+  /** Reintegros que se le deben y se compensan contra la deuda (un gasto del dueño que pagó el inquilino). */
+  compensables: z.array(z.object({ conceptoId: z.string().uuid(), descripcion: z.string(), saldo: z.number() })),
+  /** Lo que sobró de cobros anteriores (regla 17), del más viejo al más nuevo. */
+  creditos: z.array(z.object({ cobroId: z.string().uuid(), numero: z.number().int(), disponible: z.number() })),
+});
+export type PreparacionCobroDto = z.infer<typeof PreparacionCobroDtoSchema>;
+
+export const CobroInputSchema = z.object({
+  personaId: z.string().uuid(),
+  fecha: FechaIso,
+  moneda: MonedaAlquilerSchema.default('ARS'),
+  importe: z.number().positive('El importe tiene que ser mayor que cero.'),
+  medio: MedioCobroSchema.default('transferencia'),
+  obs: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v ? v : null)),
+  /** Qué conceptos se cobran. Sin elegir, todos, del más viejo al más nuevo (regla 15). */
+  conceptoIds: z.array(z.string().uuid()).nullish().transform((v) => v ?? null),
+  /**
+   * El punitorio que se cobra por cada alquiler atrasado (regla 16). Menos que
+   * lo propuesto es una condonación y pide motivo; más, no se acepta.
+   */
+  punitorios: z
+    .array(
+      z.object({
+        conceptoId: z.string().uuid(),
+        importe: z.number().min(0),
+        motivo: z
+          .string()
+          .trim()
+          .nullish()
+          .transform((v) => (v ? v : null)),
+      }),
+    )
+    .default([]),
+});
+export type CobroInput = z.input<typeof CobroInputSchema>;
+export type Cobro = z.output<typeof CobroInputSchema>;
+
+export const CobroDtoSchema = z.object({
+  id: z.string().uuid(),
+  numero: z.number().int(),
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  fecha: FechaIso,
+  moneda: MonedaAlquilerSchema,
+  importe: z.number(),
+  medio: MedioCobroSchema,
+  obs: z.string().nullable(),
+  /** Lo que se canceló al registrar este cobro, incluido lo pagado con saldo a favor anterior. */
+  imputaciones: z.array(
+    z.object({
+      conceptoId: z.string().uuid(),
+      contrato: ContratoMiniSchema,
+      descripcion: z.string(),
+      sentido: SentidoConceptoSchema,
+      importe: z.number(),
+      /** Salió del saldo a favor de este cobro anterior, no de la plata de hoy. */
+      deSaldoAFavor: z.number().int().nullable(),
+    }),
+  ),
+  /** Lo que sobró y queda a favor para el próximo cobro. */
+  aFavor: z.number(),
+  anulado: z.object({ en: z.string(), motivo: z.string() }).nullable(),
+});
+export type CobroDto = z.infer<typeof CobroDtoSchema>;
+
+export const CobroResumenDtoSchema = z.object({
+  id: z.string().uuid(),
+  numero: z.number().int(),
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  fecha: FechaIso,
+  moneda: MonedaAlquilerSchema,
+  importe: z.number(),
+  medio: MedioCobroSchema,
+  anulado: z.boolean(),
+});
+export type CobroResumenDto = z.infer<typeof CobroResumenDtoSchema>;
+
+export const AnularCobroSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.') });
+export type AnularCobro = z.infer<typeof AnularCobroSchema>;
+
+/**
+ * La cuenta corriente de una persona, por moneda (regla 18), y su estado de
+ * cuenta: lo pendiente, cuyo total es exactamente el saldo (regla 24).
+ * Saldo positivo: debe. Negativo: tiene a favor.
+ */
+export const CuentaCorrienteDtoSchema = z.object({
+  persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
+  monedas: z.array(
+    z.object({
+      moneda: MonedaAlquilerSchema,
+      saldo: z.number(),
+      movimientos: z.array(
+        z.object({
+          id: z.string().uuid(),
+          tipo: z.enum(['concepto', 'cobro']),
+          fecha: FechaIso,
+          descripcion: z.string(),
+          contrato: ContratoMiniSchema,
+          debe: z.number(),
+          haber: z.number(),
+          /** Saldo después del movimiento; los anulados no lo mueven. */
+          saldo: z.number(),
+          anulado: z.boolean(),
+          numero: z.number().int().nullable(),
+        }),
+      ),
+      pendientes: z.array(
+        z.object({
+          conceptoId: z.string().uuid(),
+          contrato: ContratoMiniSchema,
+          descripcion: z.string(),
+          sentido: SentidoConceptoSchema,
+          vencimiento: FechaIso,
+          importe: z.number(),
+          saldo: z.number(),
+        }),
+      ),
+      aFavor: z.array(z.object({ cobroId: z.string().uuid(), numero: z.number().int(), disponible: z.number() })),
+    }),
+  ),
+});
+export type CuentaCorrienteDto = z.infer<typeof CuentaCorrienteDtoSchema>;

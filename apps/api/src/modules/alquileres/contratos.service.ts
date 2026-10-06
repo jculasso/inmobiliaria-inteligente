@@ -13,6 +13,7 @@ import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
+import { IMPUTACION_ACTIVA } from './imputacion-activa';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -116,7 +117,7 @@ export class ContratosService {
         // Regla 3: lo generado de meses posteriores que no se cobró se anula.
         // Lo cobrado no se toca: esa plata entró y queda a la vista.
         await tx.alqConcepto.updateMany({
-          where: { contratoId: id, anuladoEn: null, periodo: { gt: cambio.fecha.slice(0, 7) }, imputaciones: { none: {} } },
+          where: { contratoId: id, anuladoEn: null, periodo: { gt: cambio.fecha.slice(0, 7) }, imputaciones: { none: IMPUTACION_ACTIVA } },
           data: { anuladoEn: new Date(), anuladoPorId: ctx.userId, motivoAnulacion: 'rescisión' },
         });
       }

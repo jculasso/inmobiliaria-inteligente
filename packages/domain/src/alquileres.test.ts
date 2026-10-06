@@ -7,6 +7,8 @@ import {
   generarTramos,
   importeIndexado,
   partesDelMes,
+  planificarCobro,
+  proponerPunitorio,
   proponerIndexacion,
   redondear2,
   repartir,
@@ -414,6 +416,71 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
 
   it('un contrato en dólares genera en dólares (regla 18)', () => {
     expect(generarPeriodo(c5({ moneda: 'USD' }), '2026-11', 21).conceptos.every((x) => x.moneda === 'USD')).toBe(true);
+  });
+});
+
+describe('planificarCobro (reglas 15 y 17)', () => {
+  const alquiler = { conceptoId: 'alq', saldo: 1_137_518 };
+  const gastos = { conceptoId: 'gas', saldo: 27_527.94 };
+
+  it('paga del más viejo al más nuevo y el último queda parcial', () => {
+    const p = planificarCobro({ importe: 1_150_000, creditos: [], compensables: [], deudas: [alquiler, gastos] });
+    expect(p.imputaciones).toEqual([
+      { cobroId: null, conceptoId: 'alq', importe: 1_137_518 },
+      { cobroId: null, conceptoId: 'gas', importe: 12_482 },
+    ]);
+    expect(p.sobrante).toBe(0);
+  });
+
+  // Regla 17.
+  it('lo que sobra queda a favor', () => {
+    expect(planificarCobro({ importe: 1_200_000, creditos: [], compensables: [], deudas: [alquiler, gastos] }).sobrante).toBe(34_954.06);
+  });
+
+  it('el saldo a favor de un cobro anterior se usa primero', () => {
+    const p = planificarCobro({ importe: 1_130_000, creditos: [{ cobroId: 'viejo', disponible: 34_954.06 }], compensables: [], deudas: [alquiler] });
+    expect(p.imputaciones).toEqual([
+      { cobroId: 'viejo', conceptoId: 'alq', importe: 34_954.06 },
+      { cobroId: null, conceptoId: 'alq', importe: 1_102_563.94 },
+    ]);
+    expect(p).toMatchObject({ saldoAFavorUsado: 34_954.06, sobrante: 27_436.06 });
+  });
+
+  // El inquilino pagó una reparación del dueño: se le descuenta de lo que debe.
+  it('un reintegro a favor se compensa contra la deuda', () => {
+    const p = planificarCobro({ importe: 996_819, creditos: [], compensables: [{ conceptoId: 'rep', saldo: 140_699 }], deudas: [alquiler] });
+    expect(p.imputaciones).toEqual([
+      { cobroId: null, conceptoId: 'rep', importe: 140_699 },
+      { cobroId: null, conceptoId: 'alq', importe: 1_137_518 },
+    ]);
+    expect(p).toMatchObject({ compensado: 140_699, sobrante: 0 });
+  });
+
+  it('el reintegro no se compensa más allá de la deuda', () => {
+    const p = planificarCobro({ importe: 1, creditos: [], compensables: [{ conceptoId: 'rep', saldo: 500 }], deudas: [{ conceptoId: 'x', saldo: 200 }] });
+    expect(p.compensado).toBe(200);
+    expect(p.sobrante).toBe(1);
+  });
+
+  it('centavos exactos, sin restos de coma flotante', () => {
+    const p = planificarCobro({ importe: 0.3, creditos: [], compensables: [], deudas: [{ conceptoId: 'a', saldo: 0.1 }, { conceptoId: 'b', saldo: 0.2 }] });
+    expect(p.imputaciones.map((i) => i.importe)).toEqual([0.1, 0.2]);
+    expect(p.sobrante).toBe(0);
+  });
+});
+
+describe('proponerPunitorio (regla 16)', () => {
+  it('saldo × tasa diaria × días de atraso', () => {
+    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-15', 0.1)).toEqual({ dias: 10, importe: 11_375.18 });
+  });
+
+  it('pagado en fecha o antes, nada', () => {
+    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-05', 0.1)).toEqual({ dias: 0, importe: 0 });
+    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-02', 0.1)).toEqual({ dias: 0, importe: 0 });
+  });
+
+  it('sin tasa en el contrato, nada', () => {
+    expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-15', 0).importe).toBe(0);
   });
 });
 

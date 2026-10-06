@@ -18,7 +18,7 @@ export function documentoLegible(doc: string | null): string {
 export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
-  const [modal, setModal] = useState<'nueva' | PersonaDto | null>(null);
+  const [modal, setModal] = useState<'nueva' | null>(null);
   const { visibles, hayMas } = recortarAlLimite(personas);
 
   const filtradas = useMemo(() => {
@@ -26,6 +26,9 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
     if (!q) return visibles;
     return visibles.filter((p) => [p.nombre, p.documento, p.email, p.telefono].some((c) => paraBuscar(c).includes(q)));
   }, [visibles, busqueda]);
+
+  // La fila abre la cuenta corriente; los datos se editan desde ahí.
+  const abrir = (p: PersonaDto) => router.push(`/alquileres/personas/${p.id}`);
 
   const guardado = () => {
     setModal(null);
@@ -59,7 +62,7 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
         <>
           <ListaTarjetas etiqueta="Personas">
             {filtradas.map((p) => (
-              <Tarjeta key={p.id} onClick={() => setModal(p)} titulo={`Editar ${p.nombre}`}>
+              <Tarjeta key={p.id} onClick={() => abrir(p)} titulo={`Abrir la cuenta de ${p.nombre}`}>
                 <span className="block text-sm font-bold text-ink">{p.nombre}</span>
                 <CamposTarjeta>
                   <CampoTarjeta etiqueta="Documento">{documentoLegible(p.documento)}</CampoTarjeta>
@@ -82,7 +85,7 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
                 {filtradas.map((p) => (
                   <tr
                     key={p.id}
-                    onClick={() => setModal(p)}
+                    onClick={() => abrir(p)}
                     className="cursor-pointer border-b border-line last:border-0 hover:bg-surface/60"
                   >
                     <td className="px-4 py-2.5 font-semibold text-ink">{p.nombre}</td>
@@ -98,7 +101,7 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
       )}
 
       {modal && (
-        <PersonaFormModal persona={modal === 'nueva' ? undefined : modal} onClose={() => setModal(null)} onSaved={guardado} />
+        <PersonaFormModal onClose={() => setModal(null)} onSaved={guardado} />
       )}
     </div>
   );
