@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { CredencialEstado, PropiedadDto, ResultadoImportacion } from '@vacker/types';
+import {
+  LIMITE_LISTA_CON_SONDA,
+  type CredencialEstado,
+  type PropiedadDto,
+  type ResultadoImportacion,
+} from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { desencriptarSecreto } from '../../common/cripto-secreto';
@@ -161,7 +166,11 @@ export class PublicacionService {
       const filas = await tx.propiedad.findMany({
         include: { agente: { select: { nombre: true } } },
         orderBy: [{ creadoEnTokko: 'desc' }, { tokkoId: 'desc' }],
-        take: 100,
+        // El tope de todas las listas, con la fila de sonda: si vuelven
+        // LIMITE_LISTA + 1, la web avisa que hay más (`recortarAlLimite`).
+        // Antes cortaba MUDO en 100: con 389 propiedades en Tokko, cualquiera
+        // que importara más de cien veía las primeras y creía que eran todas.
+        take: LIMITE_LISTA_CON_SONDA,
       });
       return filas.map((f) => ({
         id: f.id,
