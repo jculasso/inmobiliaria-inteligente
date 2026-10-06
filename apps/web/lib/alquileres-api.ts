@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import {
   BandejaIndexacionDtoSchema,
+  CobroDtoSchema,
+  CobroResumenDtoSchema,
+  CuentaCorrienteDtoSchema,
+  PreparacionCobroDtoSchema,
+  type CobroInput,
+  type MonedaAlquiler,
   ConceptoDtoSchema,
   ResultadoGeneracionDtoSchema,
   type ConceptoSueltoInput,
@@ -15,7 +21,7 @@ import {
   type PersonaInput,
   type PropiedadAlquilerInput,
 } from '@vacker/types';
-import { apiFetch } from './api-client';
+import { apiFetch, apiFetchPdf } from './api-client';
 
 /** Cuánto tiene cargado la inmobiliaria en el módulo (GET /alquileres/resumen). */
 export async function getResumenAlquileres(accessToken: string) {
@@ -100,4 +106,31 @@ export async function crearConceptoSuelto(accessToken: string, dto: ConceptoSuel
 
 export async function anularConcepto(accessToken: string, id: string, motivo: string) {
   return apiFetch(`/alquileres/conceptos/${id}/anular`, z.object({ anulados: z.number() }), { accessToken, method: 'POST', body: { motivo } });
+}
+
+/** Lo que debe una persona a una fecha: deudas, punitorios propuestos, reintegros y saldo a favor. */
+export async function prepararCobro(accessToken: string, personaId: string, moneda: MonedaAlquiler, fecha: string) {
+  return apiFetch(`/alquileres/cobros/preparar?personaId=${personaId}&moneda=${moneda}&fecha=${fecha}`, PreparacionCobroDtoSchema, { accessToken });
+}
+
+export async function registrarCobro(accessToken: string, dto: CobroInput) {
+  return apiFetch('/alquileres/cobros', CobroDtoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+export async function listCobros(accessToken: string, personaId?: string) {
+  return apiFetch(`/alquileres/cobros${personaId ? `?personaId=${personaId}` : ''}`, z.array(CobroResumenDtoSchema), { accessToken });
+}
+
+export async function anularCobro(accessToken: string, id: string, motivo: string) {
+  return apiFetch(`/alquileres/cobros/${id}/anular`, CobroDtoSchema, { accessToken, method: 'POST', body: { motivo } });
+}
+
+/** El recibo en PDF (regla 23). */
+export async function generarRecibo(accessToken: string, id: string) {
+  return apiFetchPdf(`/alquileres/cobros/${id}/recibo`, { accessToken });
+}
+
+/** Cuenta corriente y estado de cuenta de una persona (reglas 18 y 24). */
+export async function getCuentaCorriente(accessToken: string, personaId: string) {
+  return apiFetch(`/alquileres/personas/${personaId}/cuenta`, CuentaCorrienteDtoSchema, { accessToken });
 }

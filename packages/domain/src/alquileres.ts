@@ -497,3 +497,99 @@ export function generarPeriodo(c: ContratoParaGenerar, periodo: string, ivaInmob
   }
   return { conceptos, sinIndexar };
 }
+
+// --- Cobros (reglas 15 a 17) ------------------------------------------------------
+
+/** Algo que se puede imputar, con lo que todavía le falta. */
+export interface PendienteDeCobro {
+  conceptoId: string;
+  saldo: number;
+}
+
+export interface ImputacionPlaneada {
+  /** De qué cobro sale la plata: `null` es el cobro que se está registrando. */
+  cobroId: string | null;
+  conceptoId: string;
+  importe: number;
+}
+
+export interface PlanCobro {
+  imputaciones: ImputacionPlaneada[];
+  /** Reintegros a favor de la persona que se compensaron contra su deuda. */
+  compensado: number;
+  /** Lo que se usó de cobros anteriores que habían sobrado (regla 17). */
+  saldoAFavorUsado: number;
+  /** Lo que sobra del cobro nuevo: queda a favor para el próximo (regla 17). */
+  sobrante: number;
+}
+
+const aCentavos = (n: number) => Math.round(n * 100);
+
+/**
+ * Reglas 15 y 17: cómo se reparte un cobro.
+ *
+ * `deudas` llega en el orden en que se cancela —del vencimiento más viejo al
+ * más nuevo, o solo las que eligió la persona— y la última puede quedar
+ * parcial. La plata sale, en este orden:
+ * 1. del saldo a favor de cobros anteriores, del más viejo al más nuevo;
+ * 2. de los reintegros que se le deben a la persona (`compensables`: un gasto
+ *    del dueño que pagó el inquilino), hasta donde alcance la deuda;
+ * 3. del cobro nuevo. Lo que sobre de este queda a favor.
+ *
+ * Todo en centavos enteros: un cobro de 360.000 con un reintegro de 140.699 no
+ * puede dejar 0,0000001 colgando.
+ */
+export function planificarCobro(p: {
+  importe: number;
+  creditos: { cobroId: string; disponible: number }[];
+  compensables: PendienteDeCobro[];
+  deudas: PendienteDeCobro[];
+}): PlanCobro {
+  const imputaciones: ImputacionPlaneada[] = [];
+  let deudaTotal = p.deudas.reduce((s, d) => s + aCentavos(d.saldo), 0);
+
+  const fuentes: { cobroId: string | null; centavos: number }[] = p.creditos.map((c) => ({ cobroId: c.cobroId, centavos: aCentavos(c.disponible) }));
+  const usadoDeCreditos = Math.min(deudaTotal, fuentes.reduce((s, f) => s + f.centavos, 0));
+
+  let compensado = 0;
+  let porCompensar = deudaTotal - usadoDeCreditos;
+  for (const c of p.compensables) {
+    const monto = Math.min(aCentavos(c.saldo), porCompensar);
+    if (monto <= 0) break;
+    imputaciones.push({ cobroId: null, conceptoId: c.conceptoId, importe: monto / 100 });
+    compensado += monto;
+    porCompensar -= monto;
+  }
+  const nuevo = { cobroId: null, centavos: aCentavos(p.importe) + compensado };
+  fuentes.push(nuevo);
+
+  let f = 0;
+  for (const d of p.deudas) {
+    let falta = aCentavos(d.saldo);
+    while (falta > 0 && f < fuentes.length) {
+      const fuente = fuentes[f]!;
+      const monto = Math.min(falta, fuente.centavos);
+      if (monto > 0) {
+        const previa = imputaciones.find((i) => i.cobroId === fuente.cobroId && i.conceptoId === d.conceptoId);
+        if (previa) previa.importe = (aCentavos(previa.importe) + monto) / 100;
+        else imputaciones.push({ cobroId: fuente.cobroId, conceptoId: d.conceptoId, importe: monto / 100 });
+        fuente.centavos -= monto;
+        falta -= monto;
+        deudaTotal -= monto;
+      }
+      if (fuente.centavos === 0) f++;
+    }
+  }
+  return { imputaciones, compensado: compensado / 100, saldoAFavorUsado: usadoDeCreditos / 100, sobrante: nuevo.centavos / 100 };
+}
+
+/**
+ * Regla 16: el punitorio que se propone por pagar tarde. Saldo del alquiler ×
+ * tasa diaria × días de atraso, con centavos. Los días se cuentan desde el
+ * vencimiento o, si ya se cobró un punitorio por ese alquiler, desde ese
+ * último: un pago parcial no hace cobrar dos veces los mismos días.
+ */
+export function proponerPunitorio(saldo: number, desde: string, fecha: string, tasaDiariaPct: number): { dias: number; importe: number } {
+  const dias = Math.max(0, diasInclusive(desde, fecha) - 1);
+  return { dias, importe: dias === 0 || tasaDiariaPct <= 0 ? 0 : redondear2((saldo * tasaDiariaPct * dias) / 100) };
+}

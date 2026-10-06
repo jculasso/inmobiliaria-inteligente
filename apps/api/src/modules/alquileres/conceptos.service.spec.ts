@@ -190,7 +190,7 @@ describe('ConceptosService.anular (regla 19)', () => {
     const tx = makeTx();
     await new ConceptosService(makeDb(tx)).anular(CTX, 'k1', 'Cargado dos veces');
     expect(tx.alqConcepto.updateMany).toHaveBeenCalledWith({
-      where: { OR: [{ id: 'k1' }, { origenId: 'k1' }], anuladoEn: null, liquidacionId: null, imputaciones: { none: {} } },
+      where: { OR: [{ id: 'k1' }, { origenId: 'k1' }], anuladoEn: null, liquidacionId: null, imputaciones: { none: { cobro: { anuladoEn: null }, registradaEnCobro: { anuladoEn: null } } } },
       data: expect.objectContaining({ anuladoPorId: 'u1', motivoAnulacion: 'Cargado dos veces' }),
     });
   });

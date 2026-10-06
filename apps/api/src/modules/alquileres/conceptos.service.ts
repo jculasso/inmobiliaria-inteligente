@@ -15,11 +15,12 @@ import { diasDelMes, generarPeriodo, repartir, type ContratoParaGenerar } from '
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
+import { IMPUTACION_ACTIVA } from './imputacion-activa';
 
 const INCLUIR_CONCEPTO = {
   contrato: { select: { id: true, codigo: true, propiedad: { select: { direccion: true } } } },
   persona: { select: { id: true, nombre: true } },
-  _count: { select: { imputaciones: true } },
+  _count: { select: { imputaciones: { where: IMPUTACION_ACTIVA } } },
 } satisfies Prisma.AlqConceptoInclude;
 
 type FilaConcepto = Prisma.AlqConceptoGetPayload<{ include: typeof INCLUIR_CONCEPTO }>;
@@ -168,14 +169,14 @@ export class ConceptosService {
    */
   async anular(ctx: TenantContext, id: string, motivo: string): Promise<{ anulados: number }> {
     return this.db.withTenant(async (tx) => {
-      const c = await tx.alqConcepto.findUnique({ where: { id }, select: { anuladoEn: true, liquidacionId: true, _count: { select: { imputaciones: true } } } });
+      const c = await tx.alqConcepto.findUnique({ where: { id }, select: { anuladoEn: true, liquidacionId: true, _count: { select: { imputaciones: { where: IMPUTACION_ACTIVA } } } } });
       if (!c) throw new NotFoundException('El concepto no existe.');
       if (c.anuladoEn) throw new ConflictException('El concepto ya está anulado.');
       if (c._count.imputaciones > 0 || c.liquidacionId) {
         throw new BadRequestException('El concepto tiene cobros o pagos aplicados: primero hay que anular esos movimientos.');
       }
       const { count } = await tx.alqConcepto.updateMany({
-        where: { OR: [{ id }, { origenId: id }], anuladoEn: null, liquidacionId: null, imputaciones: { none: {} } },
+        where: { OR: [{ id }, { origenId: id }], anuladoEn: null, liquidacionId: null, imputaciones: { none: IMPUTACION_ACTIVA } },
         data: { anuladoEn: new Date(), anuladoPorId: ctx.userId, motivoAnulacion: motivo },
       });
       if (count === 0) throw new ConflictException('El concepto cambió mientras tanto. Recargá la página.');

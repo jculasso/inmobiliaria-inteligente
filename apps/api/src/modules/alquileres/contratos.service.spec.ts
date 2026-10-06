@@ -182,7 +182,7 @@ describe('ContratosService.cambiarEstado (reglas 2 y 3)', () => {
     const tx = makeTx({ existente: fila({ estado: 'vigente' }) });
     await new ContratosService(makeDb(tx)).cambiarEstado(CTX, 'c1', { estado: 'rescindido', fecha: '2025-06-30' });
     expect(tx.alqConcepto.updateMany).toHaveBeenCalledWith({
-      where: { contratoId: 'c1', anuladoEn: null, periodo: { gt: '2025-06' }, imputaciones: { none: {} } },
+      where: { contratoId: 'c1', anuladoEn: null, periodo: { gt: '2025-06' }, imputaciones: { none: { cobro: { anuladoEn: null }, registradaEnCobro: { anuladoEn: null } } } },
       data: expect.objectContaining({ motivoAnulacion: 'rescisión', anuladoPorId: 'u1' }),
     });
     expect(tx.alqContrato.update.mock.calls[0]![0].data).toMatchObject({ estado: 'rescindido' });
