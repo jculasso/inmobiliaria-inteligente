@@ -20,7 +20,7 @@ import {
   type TasacionFiltro,
   type UpdateTasacion,
 } from '@vacker/types';
-import { CurrentUser, Roles } from '../../../auth/decorators';
+import { CurrentUser, Modulo, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ZodValidationPipe } from '../../../common/zod-validation.pipe';
 import { ctxDe } from '../../tablero/tablero.util';
@@ -28,6 +28,7 @@ import { TasacionesService } from './tasaciones.service';
 
 @ApiTags('tasador')
 @ApiBearerAuth()
+@Modulo('tasador')
 @Controller('tasador/tasaciones')
 export class TasacionesController {
   constructor(private readonly tasaciones: TasacionesService) {}

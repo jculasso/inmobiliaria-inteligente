@@ -1,8 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import { KpiFiltroSchema, ROLES_ALQUILERES, type KpiFiltro } from '@vacker/types';
-import { CurrentUser, Roles } from '../../../auth/decorators';
+import { BoolQuerySchema, KpiFiltroSchema, ROLES_ALQUILERES, type KpiFiltro } from '@vacker/types';
+import { CurrentUser, Modulo, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ZodValidationPipe } from '../../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero.util';
@@ -10,7 +10,7 @@ import { KpisService } from './kpis.service';
 
 const AnioFiltroSchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
-  verTodo: z.coerce.boolean().optional(),
+  verTodo: BoolQuerySchema,
 });
 type AnioFiltro = z.infer<typeof AnioFiltroSchema>;
 
@@ -18,12 +18,13 @@ const RangoFiltroSchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
   mesInicio: z.coerce.number().int().min(1).max(12),
   mesFin: z.coerce.number().int().min(1).max(12),
-  verTodo: z.coerce.boolean().optional(),
+  verTodo: BoolQuerySchema,
 });
 type RangoFiltro = z.infer<typeof RangoFiltroSchema>;
 
 @ApiTags('tablero')
 @ApiBearerAuth()
+@Modulo('tablero')
 @Controller('tablero/kpis')
 export class KpisController {
   constructor(private readonly kpis: KpisService) {}

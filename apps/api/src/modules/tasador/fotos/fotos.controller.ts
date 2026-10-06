@@ -11,13 +11,14 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadUnArchivo } from '../../../common/upload';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CurrentUser, Roles } from '../../../auth/decorators';
+import { CurrentUser, Modulo, Roles } from '../../../auth/decorators';
 import type { AuthPrincipal } from '../../../auth/auth-principal';
 import { ctxDe } from '../../tablero/tablero.util';
 import { FotosService, type FotoFile } from './fotos.service';
 
 @ApiTags('tasador')
 @ApiBearerAuth()
+@Modulo('tasador')
 @Controller('tasador/tasaciones/:id/fotos')
 export class FotosController {
   constructor(private readonly fotos: FotosService) {}
