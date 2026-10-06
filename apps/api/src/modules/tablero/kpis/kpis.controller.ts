@@ -39,6 +39,22 @@ export class KpisController {
     return this.kpis.resumen(filtro, ctxDe(user));
   }
 
+  /**
+   * La portada del Tablero en un solo pedido. Los endpoints sueltos (resumen,
+   * rango, mensual, alquileres) siguen vivos para las otras pantallas.
+   */
+  @Get('dashboard')
+  @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
+  @ApiOperation({
+    summary: 'Portada del Tablero: resumen + año (agregado y ranking) + 12 meses + alquileres',
+  })
+  dashboard(
+    @Query(new ZodValidationPipe(KpiFiltroSchema)) filtro: KpiFiltro,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.kpis.dashboard(filtro, ctxDe(user));
+  }
+
   @Get('ranking')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
   @ApiOperation({ summary: 'Ranking de vendedores por volumen' })

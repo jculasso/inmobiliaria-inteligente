@@ -13,6 +13,12 @@ import type {
  *
  * Regla central: cada punta atribuida aporta el PRECIO COMPLETO de la operación
  * al volumen y su propia comisión. Volumen = Σ precio por punta; ticket = vol/puntas.
+ *
+ * Todo se suma como USD sin mirar `moneda`: es correcto porque la entrada solo
+ * acepta USD (`MonedaOperacionSchema`, desde el 6/10/2026; antes era texto
+ * libre, pero la web siempre mandó 'USD'). Si algún día se habilita otra
+ * moneda, estas sumas tienen que separarla: sumar pesos como dólares infla el
+ * volumen sin ningún aviso.
  */
 
 /** Punta de una venta escriturada, aplanada para el cálculo. */

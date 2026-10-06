@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   BoolQuerySchema,
   ComparableDtoSchema,
+  CreateOperacionSchema,
+  UpdateOperacionSchema,
   KpiFiltroSchema,
   LinkExternoSchema,
   ProtocoloFiltroSchema,
@@ -69,5 +71,27 @@ describe('LinkExternoSchema (link de un comparable)', () => {
   it('la LECTURA sigue aceptando lo que ya está guardado', () => {
     const fila = ComparableDtoSchema.shape.link.safeParse('javascript:viejo');
     expect(fila.success).toBe(true);
+  });
+});
+
+describe('Moneda de una operación del Tablero', () => {
+  const venta = {
+    tipo: 'venta',
+    codigo: 'OP-1',
+    direccion: 'Calle 1',
+    precio: 100,
+    puntas: [{ lado: 'vendedora', usuarioId: '00000000-0000-4000-8000-000000000000' }],
+  };
+
+  // El volumen suma precios entre operaciones: una en pesos sumada como
+  // dólares lo infla mil veces sin ningún aviso.
+  it('solo acepta USD al entrar', () => {
+    expect(CreateOperacionSchema.safeParse({ ...venta, moneda: 'ARS' }).success).toBe(false);
+    expect(UpdateOperacionSchema.safeParse({ moneda: 'pesos' }).success).toBe(false);
+    expect(CreateOperacionSchema.parse({ ...venta, moneda: 'USD' }).moneda).toBe('USD');
+  });
+
+  it('sin moneda, USD', () => {
+    expect(CreateOperacionSchema.parse(venta).moneda).toBe('USD');
   });
 });
