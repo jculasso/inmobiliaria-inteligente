@@ -321,6 +321,7 @@ model Tasacion {
   @@index([tenantId])
   @@index([tenantId, agenteId])
   @@index([tenantId, estado])
+  @@index([tenantId, fecha])
   @@map("tasacion")
 }
 
@@ -577,6 +578,7 @@ model Protocolo {
   @@index([tenantId])
   @@index([tenantId, agenteId])
   @@index([tenantId, estado])
+  @@index([tenantId, fechaInicio])
   @@map("protocolo")
 }
 

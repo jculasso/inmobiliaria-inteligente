@@ -3,6 +3,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { TenantContext } from '../../prisma/tenant-context';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { encriptarSecreto } from '../../common/cripto-secreto';
+import { LIMITE_LISTA_CON_SONDA } from '@vacker/types';
 import { PublicacionService } from './publicacion.service';
 
 const CTX: TenantContext = { tenantId: 't1', userId: 'u1', roles: ['admin_tenant'] };
@@ -139,5 +140,16 @@ describe('PublicacionService — importar no escala con la cantidad', () => {
     const { r, createMany } = await importarN(3);
     expect(r.sinAgente).toBe(0);
     expect(createMany.mock.calls[0]![0].data[0].agenteId).toBe('u1');
+  });
+});
+
+describe('PublicacionService — el listado no corta en silencio', () => {
+  // Cortaba en 100 sin avisar: quien tuviera más veía las primeras y creía que
+  // eran todas. Ahora usa el tope de todas las listas con su fila de sonda.
+  it('pide LIMITE_LISTA + 1 para que la web sepa si quedó algo afuera', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const svc = new PublicacionService(makeDb({ propiedad: { findMany } }), makeConfig(ENC_KEY));
+    await svc.listar();
+    expect(findMany.mock.calls[0]![0]).toMatchObject({ take: LIMITE_LISTA_CON_SONDA });
   });
 });
