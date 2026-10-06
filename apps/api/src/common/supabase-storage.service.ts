@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** TTL por defecto de las URLs firmadas (1 h) — suficiente para abrir un PDF o ver las fotos de una tasación. */
@@ -10,6 +10,9 @@ const SIGNED_URL_TTL = 60 * 60;
  * y que el llamador decida (ver `firmarFotos` en tasaciones.service).
  */
 const SIGN_TIMEOUT_MS = 8_000;
+
+/** Techo para subir o borrar un archivo (hasta 15 MB en el caso de los contratos). */
+const TRANSFER_TIMEOUT_MS = 30_000;
 
 /**
  * Wrapper mínimo de la Storage API de Supabase. Usa `SUPABASE_SERVICE_ROLE_KEY`
@@ -24,7 +27,24 @@ const SIGN_TIMEOUT_MS = 8_000;
  */
 @Injectable()
 export class SupabaseStorageService {
+  private readonly logger = new Logger(SupabaseStorageService.name);
+
   constructor(private readonly config: ConfigService) {}
+
+  /**
+   * Registra la respuesta cruda de Storage y devuelve un error genérico. El
+   * cuerpo de un error de Supabase puede nombrar el bucket, la ruta o la
+   * política que lo rechazó: sirve para diagnosticar, no para el navegador.
+   */
+  private async fallo(
+    res: Response,
+    queSeIntento: string,
+    mensaje: string,
+  ): Promise<InternalServerErrorException> {
+    const body = await res.text().catch(() => '');
+    this.logger.error(`Storage: ${queSeIntento} (${res.status}): ${body}`);
+    return new InternalServerErrorException(mensaje);
+  }
 
   /**
    * Sube a un bucket PÚBLICO y devuelve su URL pública permanente (avatares,
@@ -76,8 +96,7 @@ export class SupabaseStorageService {
       signal: AbortSignal.timeout(SIGN_TIMEOUT_MS),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new InternalServerErrorException(`No se pudo firmar la URL de Storage: ${body}`);
+      throw await this.fallo(res, `firmar ${bucket}/${path}`, 'No se pudo abrir el archivo.');
     }
     const data = (await res.json()) as { signedURL?: string; signedUrl?: string };
     const rel = data.signedURL ?? data.signedUrl;
@@ -103,8 +122,11 @@ export class SupabaseStorageService {
       signal: AbortSignal.timeout(SIGN_TIMEOUT_MS),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new InternalServerErrorException(`No se pudieron firmar las URLs de Storage: ${body}`);
+      throw await this.fallo(
+        res,
+        `firmar ${paths.length} archivos de ${bucket}`,
+        'No se pudieron abrir los archivos.',
+      );
     }
     const data = (await res.json()) as { path?: string; signedURL?: string; signedUrl?: string }[];
     // La respuesta viene en el mismo orden que `paths`.
@@ -135,12 +157,10 @@ export class SupabaseStorageService {
     const res = await fetch(`${this.baseUrl()}/storage/v1/object/${bucket}/${path}`, {
       method: 'DELETE',
       headers: this.headers(),
+      signal: AbortSignal.timeout(TRANSFER_TIMEOUT_MS),
     });
     if (!res.ok && res.status !== 404) {
-      const body = await res.text().catch(() => '');
-      throw new InternalServerErrorException(
-        `No se pudo borrar el archivo de Supabase Storage: ${body}`,
-      );
+      throw await this.fallo(res, `borrar ${bucket}/${path}`, 'No se pudo borrar el archivo.');
     }
   }
 
@@ -168,10 +188,7 @@ export class SupabaseStorageService {
       }
     }
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new InternalServerErrorException(
-        `No se pudo subir el archivo a Supabase Storage: ${body}`,
-      );
+      throw await this.fallo(res, `subir ${bucket}/${path}`, 'No se pudo subir el archivo.');
     }
   }
 
@@ -185,6 +202,7 @@ export class SupabaseStorageService {
       method: 'POST',
       headers: { ...this.headers(), 'Content-Type': contentType, 'x-upsert': 'true' },
       body: buffer,
+      signal: AbortSignal.timeout(TRANSFER_TIMEOUT_MS),
     });
   }
 
@@ -198,13 +216,15 @@ export class SupabaseStorageService {
       method: 'POST',
       headers: { ...this.headers(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: bucket, name: bucket, public: publico }),
+      signal: AbortSignal.timeout(SIGN_TIMEOUT_MS),
     });
     if (res.ok) return;
     const body = await res.text().catch(() => '');
     const yaExiste =
       res.status === 409 || /"statusCode":"?409"?/.test(body) || /duplicate/i.test(body);
     if (yaExiste) return;
-    throw new InternalServerErrorException(`No se pudo crear el bucket de Storage: ${body}`);
+    this.logger.error(`Storage: crear el bucket ${bucket} (${res.status}): ${body}`);
+    throw new InternalServerErrorException('No se pudo subir el archivo.');
   }
 
   private headers(): Record<string, string> {
