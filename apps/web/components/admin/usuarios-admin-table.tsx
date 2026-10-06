@@ -3,22 +3,38 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { UsuarioAdminDto } from '@vacker/types';
-import { Avatar, Button } from '@vacker/ui';
+import { Avatar } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { eliminarFotoUsuario, subirFotoUsuario } from '../../lib/admin-api';
+import { ETIQUETA_ROL } from '../../lib/rbac';
 import { AvatarUploader } from '../avatar-uploader';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
+import {
+  AccionesFila,
+  BotonNuevo,
+  CLASE_FOCO,
+  CLASE_LISTA_MOVIL,
+  CLASE_TABLA_ANCHA,
+  CLASE_TH,
+  CabezaTarjeta,
+  Insignia,
+  TituloSeccion,
+} from '../piezas';
 import { UsuarioAdminFormModal } from './usuario-admin-form-modal';
 import { ResetPasswordModal } from './reset-password-modal';
 import { ActivarAccesoModal } from './activar-acceso-modal';
 
-const ETIQUETA_ROL: Record<string, string> = {
-  vendedor: 'Vendedor',
-  team_leader: 'Team Leader',
-  direccion: 'Dirección',
-  admin_tenant: 'Admin tenant',
-  admin_plataforma: 'Admin plataforma',
-};
+// Las etiquetas de rol salen de `lib/rbac` (había una copia acá sin
+// «Publicador» ni «Administración»: esos roles se veían con el enum crudo).
+const rolesDe = (u: UsuarioAdminDto) =>
+  u.roles.map((r) => ETIQUETA_ROL[r as keyof typeof ETIQUETA_ROL] ?? r).join(', ');
+
+const EstadoUsuario = ({ u }: { u: UsuarioAdminDto }) =>
+  u.estado === 'activo' ? (
+    <Insignia tono="exito">Activo</Insignia>
+  ) : (
+    <Insignia tono="neutro">Inactivo</Insignia>
+  );
 
 export function UsuariosAdminTable({
   tenantId,
@@ -32,16 +48,32 @@ export function UsuariosAdminTable({
   const [resetModal, setResetModal] = useState<UsuarioAdminDto | null>(null);
   const [activarModal, setActivarModal] = useState<UsuarioAdminDto | null>(null);
 
+  /** Restablecer la clave o dar el acceso: lo propio de cada fila, con el nombre para el lector de pantalla. */
+  const accesoDe = (u: UsuarioAdminDto, tarjeta = false) => (
+    <button
+      type="button"
+      onClick={() => (u.tieneAcceso ? setResetModal(u) : setActivarModal(u))}
+      aria-label={
+        u.tieneAcceso
+          ? `Restablecer la contraseña de ${u.nombre}`
+          : `Activar el acceso de ${u.nombre}`
+      }
+      className={`whitespace-nowrap rounded px-2 py-1 font-semibold text-brand-red hover:underline ${tarjeta ? 'text-xs' : 'text-sm'} ${CLASE_FOCO}`}
+    >
+      {u.tieneAcceso ? 'Restablecer contraseña' : 'Activar acceso'}
+    </button>
+  );
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-ink">Usuarios</h2>
-        <Button variant="primary" size="sm" onClick={() => setModal('create')}>
-          ＋ Nuevo usuario
-        </Button>
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TituloSeccion icono="👥" detalle={`${usuarios.length}`}>
+          Usuarios
+        </TituloSeccion>
+        <BotonNuevo onClick={() => setModal('create')}>Nuevo usuario</BotonNuevo>
       </div>
 
-      <div className="rounded-brand border border-line bg-white sm:hidden">
+      <div className={CLASE_LISTA_MOVIL}>
         {usuarios.length === 0 ? (
           <p className="px-4 py-6 text-center text-muted">
             Todavía no hay usuarios en esta inmobiliaria.
@@ -50,63 +82,49 @@ export function UsuariosAdminTable({
           <ListaTarjetas etiqueta="Usuarios">
             {usuarios.map((u) => (
               <Tarjeta key={u.id}>
-                <div className="flex items-center gap-2">
-                  <Avatar nombre={u.nombre} fotoUrl={u.fotoUrl} size="sm" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-ink">{u.nombre}</span>
-                    <span className="block truncate text-[11px] text-muted">{u.email}</span>
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                      u.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-surface text-muted'
-                    }`}
-                  >
-                    {u.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                  </span>
-                </div>
+                <CabezaTarjeta
+                  titulo={
+                    <span className="flex items-center gap-2">
+                      <Avatar nombre={u.nombre} fotoUrl={u.fotoUrl} size="sm" />
+                      <span className="min-w-0 truncate">{u.nombre}</span>
+                    </span>
+                  }
+                  detalle={u.email}
+                  insignia={<EstadoUsuario u={u} />}
+                />
 
                 <CamposTarjeta>
-                  <CampoTarjeta etiqueta="Roles">
-                    {u.roles.map((r) => ETIQUETA_ROL[r] ?? r).join(', ')}
-                  </CampoTarjeta>
+                  <CampoTarjeta etiqueta="Roles">{rolesDe(u)}</CampoTarjeta>
                   <CampoTarjeta etiqueta="Acceso">
-                    {u.tieneAcceso ? 'Con acceso' : 'Sin acceso'}
+                    {u.tieneAcceso ? 'Con acceso' : <Insignia tono="aviso">Sin acceso</Insignia>}
                   </CampoTarjeta>
                 </CamposTarjeta>
 
-                <div className="mt-2 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setModal(u)}
-                    className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
-                  >
-                    ✏️ Editar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => (u.tieneAcceso ? setResetModal(u) : setActivarModal(u))}
-                    className="text-xs font-semibold text-brand-red hover:underline"
-                  >
-                    {u.tieneAcceso ? 'Restablecer contraseña' : 'Activar acceso'}
-                  </button>
-                </div>
+                <AccionesFila
+                  nombre={`a ${u.nombre}`}
+                  onEditar={() => setModal(u)}
+                  extra={accesoDe(u, true)}
+                  tarjeta
+                />
               </Tarjeta>
             ))}
           </ListaTarjetas>
         )}
       </div>
 
-      <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
+      <div className={CLASE_TABLA_ANCHA}>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-2">Foto</th>
-              <th className="px-4 py-2">Nombre</th>
-              <th className="px-4 py-2">Email</th>
-              <th className="px-4 py-2">Roles</th>
-              <th className="px-4 py-2">Estado</th>
-              <th className="px-4 py-2">Acceso</th>
-              <th className="px-4 py-2" />
+            <tr>
+              <th className={CLASE_TH}>Foto</th>
+              <th className={CLASE_TH}>Nombre</th>
+              <th className={CLASE_TH}>Email</th>
+              <th className={CLASE_TH}>Roles</th>
+              <th className={CLASE_TH}>Estado</th>
+              <th className={CLASE_TH}>Acceso</th>
+              <th className={CLASE_TH}>
+                <span className="sr-only">Acciones</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -119,7 +137,7 @@ export function UsuariosAdminTable({
             ) : (
               usuarios.map((u) => (
                 <tr key={u.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2">
+                  <td className="px-3 py-2">
                     <AvatarUploader
                       nombre={u.nombre}
                       fotoUrl={u.fotoUrl}
@@ -139,55 +157,26 @@ export function UsuariosAdminTable({
                       }
                     />
                   </td>
-                  <td className="px-4 py-2 font-medium text-ink">{u.nombre}</td>
-                  <td className="px-4 py-2 text-muted">{u.email}</td>
-                  <td className="px-4 py-2 text-muted">
-                    {u.roles.map((r) => ETIQUETA_ROL[r] ?? r).join(', ')}
+                  <td className="px-3 py-2 font-medium text-ink">{u.nombre}</td>
+                  <td className="px-3 py-2 text-muted">{u.email}</td>
+                  <td className="px-3 py-2 text-muted">{rolesDe(u)}</td>
+                  <td className="px-3 py-2">
+                    <EstadoUsuario u={u} />
                   </td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        u.estado === 'activo'
-                          ? 'bg-success/10 text-success'
-                          : 'bg-surface text-muted'
-                      }`}
-                    >
-                      {u.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                    </span>
+                  <td className="px-3 py-2">
+                    {!u.tieneAcceso && <Insignia tono="aviso">Sin acceso</Insignia>}
                   </td>
-                  <td className="px-4 py-2">
-                    {!u.tieneAcceso && (
-                      <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
-                        Sin acceso
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setModal(u)}
-                      aria-label="Editar"
-                      className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
-                    >
-                      ✏️
-                    </button>
-                    {u.tieneAcceso ? (
-                      <button
-                        type="button"
-                        onClick={() => setResetModal(u)}
-                        className="text-sm font-medium text-brand-red hover:underline"
-                      >
-                        Restablecer contraseña
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setActivarModal(u)}
-                        className="text-sm font-medium text-brand-red hover:underline"
-                      >
-                        Activar acceso
-                      </button>
-                    )}
+                  {/*
+                    El `flex` va en el div de `AccionesFila` y no en la celda:
+                    un `<td>` con `display: flex` deja de ser celda y la fila
+                    se desalinea.
+                  */}
+                  <td className="px-3 py-2">
+                    <AccionesFila
+                      nombre={`a ${u.nombre}`}
+                      onEditar={() => setModal(u)}
+                      extra={accesoDe(u)}
+                    />
                   </td>
                 </tr>
               ))
@@ -228,6 +217,6 @@ export function UsuariosAdminTable({
           }}
         />
       )}
-    </div>
+    </section>
   );
 }

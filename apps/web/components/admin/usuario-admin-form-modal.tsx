@@ -6,6 +6,7 @@ import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createUsuarioAdmin, updateUsuarioAdmin } from '../../lib/admin-api';
 import { Campo, CheckCard, Seccion, inputClass } from '../form-ui';
+import { MensajeError } from '../piezas';
 
 /** Qué ve/puede cada rol — evita tener que recordarlo de memoria al dar de alta. */
 const ROLES_DISPONIBLES: { value: Rol; label: string; descripcion: string }[] = [
@@ -218,11 +219,7 @@ export function UsuarioAdminFormModal({ tenantId, usuario, onClose, onSaved }: P
           </div>
         </Seccion>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red sm:col-span-2">
-            {error}
-          </p>
-        )}
+        <MensajeError className="sm:col-span-2">{error}</MensajeError>
 
         <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onClose}>

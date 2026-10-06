@@ -18,7 +18,7 @@ export function BotonImprimir({ nombre }: { nombre: string }) {
       title={`Guardar “${nombre}” como PDF`}
       className="shrink-0 rounded-brand border border-line bg-white px-3 py-2 text-xs font-bold text-ink transition-colors hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40 print:hidden"
     >
-      ⇩ Descargar PDF
+      📄 Descargar PDF
     </button>
   );
 }

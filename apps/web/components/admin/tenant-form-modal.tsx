@@ -14,6 +14,9 @@ import { createTenant, subirLogoTenant, updateTenant } from '../../lib/admin-api
 import { AvatarUploader } from '../avatar-uploader';
 import { NOMBRE_MODULO } from '../../lib/modulos';
 import { Campo, CheckCard, Seccion, inputClass } from '../form-ui';
+import { MensajeError } from '../piezas';
+import { leerNumero } from '../../lib/importe';
+import { InputPorcentajeTexto } from '../input-importe';
 
 /** Qué hace cada módulo — se muestra bajo el check para no vender a ciegas. */
 const DESCRIPCION_MODULO: Record<string, string> = {
@@ -52,6 +55,20 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
     String(Math.round((tenant?.config.coefDescubierta ?? 0.3) * 100)),
   );
 
+  /**
+   * Un porcentaje del criterio de tasación como coeficiente. Vacío es el
+   * criterio de siempre (100% y 30%), no cero. Antes era `Number(texto) || 100`:
+   * un 0 escrito a propósito en la semicubierta se guardaba como 100, y
+   * «12,5» (con coma, como se escribe acá) era NaN y caía al valor por defecto
+   * sin avisar. `leerNumero` acepta coma y punto.
+   */
+  function coeficiente(texto: string, porDefecto: number): number | null {
+    const n = leerNumero(texto);
+    if (n == null) return porDefecto / 100;
+    if (Number.isNaN(n) || n < 0 || n > 100) return null;
+    return n / 100;
+  }
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -60,6 +77,12 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const coefSemicubierta = coeficiente(pctSemicubierta, 100);
+    const coefDescubierta = coeficiente(pctDescubierta, 30);
+    if (coefSemicubierta == null || coefDescubierta == null) {
+      setError('Los porcentajes del criterio de tasación van de 0 a 100.');
+      return;
+    }
     setLoading(true);
     try {
       const accessToken = await getAccessToken();
@@ -70,8 +93,8 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
         nombreCorto: nombreCorto || null,
         // Vacío se lee como el criterio de siempre, no como cero: dejar el
         // campo en blanco no puede significar «la semicubierta no cuenta».
-        coefSemicubierta: (Number(pctSemicubierta) || 100) / 100,
-        coefDescubierta: (Number(pctDescubierta) || 0) / 100,
+        coefSemicubierta,
+        coefDescubierta,
       };
       if (tenant) {
         await updateTenant(accessToken, tenant.id, { nombre, slug, plan, modulos, estado, config });
@@ -237,25 +260,17 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
           </p>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <Campo label="Semicubierta (%)" hint="Balcones, galerías, cocheras cubiertas.">
-              <input
-                type="number"
-                min={0}
-                max={100}
+              <InputPorcentajeTexto
                 value={pctSemicubierta}
-                onChange={(e) => setPctSemicubierta(e.target.value)}
+                onChange={setPctSemicubierta}
                 placeholder="100"
-                className={inputClass}
               />
             </Campo>
             <Campo label="Descubierta (%)" hint="Patios, jardines, terrazas sin techo.">
-              <input
-                type="number"
-                min={0}
-                max={100}
+              <InputPorcentajeTexto
                 value={pctDescubierta}
-                onChange={(e) => setPctDescubierta(e.target.value)}
+                onChange={setPctDescubierta}
                 placeholder="30"
-                className={inputClass}
               />
             </Campo>
           </div>
@@ -270,11 +285,7 @@ export function TenantFormModal({ tenant, onClose, onSaved }: Props) {
           </p>
         </Seccion>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red sm:col-span-2">
-            {error}
-          </p>
-        )}
+        <MensajeError className="sm:col-span-2">{error}</MensajeError>
 
         <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onClose}>

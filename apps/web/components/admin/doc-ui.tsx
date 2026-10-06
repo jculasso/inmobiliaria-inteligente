@@ -58,8 +58,9 @@ export function Aviso({
   children: ReactNode;
 }) {
   const estilos = {
-    atencion: 'border-l-amber-500 bg-amber-50',
-    peligro: 'border-l-brand-red bg-brand-red/5',
+    atencion: 'border-l-warning bg-warning/5',
+    // `danger` y no `brand-red`: el panel va en el azul de la plataforma, y un peligro azul no se lee (CONVENCIONES §13).
+    peligro: 'border-l-danger bg-danger/5',
     ok: 'border-l-success bg-success/5',
   }[tono];
 
