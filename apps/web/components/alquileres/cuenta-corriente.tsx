@@ -3,16 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { CobroResumenDto, CuentaCorrienteDto, LiquidacionResumenDto, PersonaDto } from '@vacker/types';
-import { Button, Modal } from '@vacker/ui';
+import type { CobroResumenDto, CuentaCorrienteDto, EventoDto, LiquidacionResumenDto, PersonaDto } from '@vacker/types';
+import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularCobro, anularLiquidacion, generarLiquidacionPdf, generarRecibo } from '../../lib/alquileres-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
-import { Campo, inputClass } from '../form-ui';
 import { documentoLegible } from './personas-lista';
 import { PersonaFormModal } from './persona-form-modal';
 import { Bloque, CLASE_TH, Vacio } from './piezas';
+import { AnularModal } from './anular-modal';
+import { Historial } from './historial';
 
 const recibo = (n: number) => String(n).padStart(6, '0');
 
@@ -36,11 +37,13 @@ export function CuentaCorriente({
   persona,
   cobros,
   liquidaciones = [],
+  historial,
 }: {
   cuenta: CuentaCorrienteDto;
   persona: PersonaDto | null;
   cobros: CobroResumenDto[];
   liquidaciones?: LiquidacionResumenDto[];
+  historial?: EventoDto[];
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
@@ -191,8 +194,11 @@ export function CuentaCorriente({
           <ul className="divide-y divide-line text-sm">
             {cobros.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-                <span className={c.anulado ? 'text-muted line-through' : 'text-ink'}>
-                  Recibo {recibo(c.numero)} · {fmtFecha(c.fecha)} · <span className="tabular-nums">{fmtMoneda(c.importe, c.moneda)}</span>
+                <span className="min-w-0">
+                  <span className={`block ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                    Recibo {recibo(c.numero)} · {fmtFecha(c.fecha)} · <span className="tabular-nums">{fmtMoneda(c.importe, c.moneda)}</span>
+                  </span>
+                  {c.registradoPor && <span className="block text-xs text-muted">Registró {c.registradoPor}</span>}
                 </span>
                 <span className="flex gap-1">
                   <button type="button" onClick={() => descargar(c)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
@@ -230,6 +236,7 @@ export function CuentaCorriente({
                   <span className={`block ${l.anulado ? 'text-muted line-through' : 'text-ink'}`}>
                     Liquidación {recibo(l.numero)} · {fmtFecha(l.fecha)} · <span className="tabular-nums">{fmtMoneda(l.neto, l.moneda)}</span>
                   </span>
+                  {l.registradoPor && <span className="block text-xs text-muted">Registró {l.registradoPor}</span>}
                   {l.contratos.length > 0 && (
                     <span className="block text-xs text-muted">
                       {l.contratos.map((c) => `🏠 ${c.propiedad || c.codigo}${c.inquilinos.length ? ` (${c.inquilinos.join(', ')})` : ''}`).join(' · ')}
@@ -272,6 +279,8 @@ export function CuentaCorriente({
           }}
         />
       )}
+      {historial && <Historial eventos={historial} />}
+
       {anulando && (
         <AnularModal
           {...anulando}
@@ -283,60 +292,5 @@ export function CuentaCorriente({
         />
       )}
     </div>
-  );
-}
-
-/** Regla 19: anular revierte el efecto y deja el documento tachado, con el motivo. */
-function AnularModal({
-  titulo,
-  detalle,
-  anular: ejecutar,
-  onClose,
-  onDone,
-}: {
-  titulo: string;
-  detalle: string;
-  anular: (motivo: string) => Promise<unknown>;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [motivo, setMotivo] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-
-  async function anular() {
-    setError(null);
-    setEnviando(true);
-    try {
-      await ejecutar(motivo);
-      onDone();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo anular.');
-      setEnviando(false);
-    }
-  }
-
-  return (
-    <Modal title={titulo} onClose={onClose}>
-      <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted">{detalle}</p>
-        <Campo label="Motivo" requerido>
-          <input className={inputClass} value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus />
-        </Campo>
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
-            {error}
-          </p>
-        )}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button variant="primary" onClick={anular} disabled={enviando || motivo.trim().length < 3}>
-            {enviando ? 'Anulando…' : 'Anular'}
-          </Button>
-        </div>
-      </div>
-    </Modal>
   );
 }

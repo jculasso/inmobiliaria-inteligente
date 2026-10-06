@@ -4,6 +4,7 @@ import { ContratoInputSchema } from '@vacker/types';
 import { generarTramos } from '@vacker/domain';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { ContratosService } from './contratos.service';
+import { mocksDeHistorial } from './historial.testing';
 
 const CTX = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
 const PROP = '11111111-1111-4111-8111-111111111111';
@@ -57,6 +58,11 @@ function fila(over: Record<string, unknown> = {}) {
     depositoDevolucion: null,
     rescindidoEl: null,
     obs: null,
+    createdAt: new Date('2026-10-06T15:00:00Z'),
+    creadoPorId: 'u1',
+    anuladoEn: null,
+    anuladoPorId: null,
+    motivoAnulacion: null,
     propiedad: { id: PROP, direccion: 'Calle 1', unidad: null, ciudad: null },
     partes: [],
     tramos: [],
@@ -71,9 +77,13 @@ interface Datos {
   [campo: string]: unknown;
 }
 
-function makeTx(over: { contratos?: unknown[]; personas?: number; propiedad?: unknown; existente?: unknown } = {}) {
+function makeTx(over: { contratos?: unknown[]; personas?: number; propiedad?: unknown; existente?: unknown; maximo?: number | null; cobrados?: number; liquidados?: number } = {}) {
   return {
+    ...mocksDeHistorial(),
+    tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ nombre: 'Alteva Propiedades', config: {} }) },
     alqContrato: {
+      aggregate: vi.fn().mockResolvedValue({ _max: { codigoNum: over.maximo ?? null } }),
+      delete: vi.fn(),
       findMany: vi.fn().mockResolvedValue(over.contratos ?? []),
       findFirst: vi.fn().mockResolvedValue(null),
       findUnique: vi.fn().mockResolvedValue(over.existente ?? fila()),
@@ -85,7 +95,10 @@ function makeTx(over: { contratos?: unknown[]; personas?: number; propiedad?: un
     alqPersona: { count: vi.fn().mockResolvedValue(over.personas ?? 2) },
     alqContratoParte: { deleteMany: vi.fn() },
     alqTramo: { deleteMany: vi.fn() },
-    alqConcepto: { updateMany: vi.fn() },
+    alqConcepto: {
+      updateMany: vi.fn(),
+      count: vi.fn(async (args: { where: { liquidacionId?: unknown } }) => (args.where.liquidacionId ? (over.liquidados ?? 0) : (over.cobrados ?? 0))),
+    },
   };
 }
 
@@ -94,11 +107,25 @@ function makeDb(tx: unknown): TenantPrismaService {
 }
 
 describe('ContratosService.crear', () => {
-  it('nace en borrador, con el siguiente código libre y el tenant del usuario', async () => {
-    const tx = makeTx({ contratos: [{ codigo: '24' }, { codigo: '25' }, { codigo: 'VIEJO-3' }] });
+  // Pedido de Javier del 6/10/2026: el prefijo de la inmobiliaria y el número.
+  it('nace en borrador, con el siguiente número con prefijo, el tenant y quién lo cargó', async () => {
+    const tx = makeTx({ maximo: 25 });
     await new ContratosService(makeDb(tx)).crear(CTX, contrato());
     const data = tx.alqContrato.create.mock.calls[0]![0].data;
-    expect(data).toMatchObject({ codigo: '26', estado: 'borrador', tenantId: 't1' });
+    expect(data).toMatchObject({ codigo: 'ALT-0026', estado: 'borrador', tenantId: 't1', creadoPorId: 'u1' });
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({ entidad: 'contrato', accion: 'alta', usuarioNombre: 'Lucía Operadora' });
+  });
+
+  it('el primero de la inmobiliaria es el 0001', async () => {
+    const tx = makeTx({ maximo: null });
+    await new ContratosService(makeDb(tx)).crear(CTX, contrato());
+    expect(tx.alqContrato.create.mock.calls[0]![0].data.codigo).toBe('ALT-0001');
+  });
+
+  it('si se escribe solo el número, se completa con el prefijo', async () => {
+    const tx = makeTx();
+    await new ContratosService(makeDb(tx)).crear(CTX, contrato({ codigo: '25' }));
+    expect(tx.alqContrato.create.mock.calls[0]![0].data.codigo).toBe('ALT-0025');
   });
 
   it('un único propietario sin porcentaje queda con el 100%', async () => {
@@ -220,5 +247,52 @@ describe('ContratosService.listar', () => {
     const [c] = await new ContratosService(makeDb(tx)).listar();
     expect(c!.importeVigente).toBe(250_000);
     expect(c!.proximaIndexacion).toBe(dia(31).toISOString().slice(0, 10));
+  });
+});
+
+describe('ContratosService · borrar, anular y editar lo que no toca plata (decidido con Javier el 6/10/2026)', () => {
+  const conCuentas = (estado: string, counts: Partial<{ conceptos: number; documentos: number }> = {}) => ({
+    codigo: 'ALT-0003',
+    estado,
+    _count: { conceptos: 0, documentos: 0, ...counts },
+  });
+
+  it('un borrador se borra de verdad, y el historial lo recuerda', async () => {
+    const tx = makeTx({ existente: conCuentas('borrador') });
+    await new ContratosService(makeDb(tx)).borrar(CTX, 'c1');
+    expect(tx.alqContrato.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({ accion: 'borrado', contratoId: 'c1' });
+  });
+
+  it('un vigente no se borra: se anula', async () => {
+    const tx = makeTx({ existente: conCuentas('vigente') });
+    await expect(new ContratosService(makeDb(tx)).borrar(CTX, 'c1')).rejects.toThrow(/se anula con un motivo/);
+    expect(tx.alqContrato.delete).not.toHaveBeenCalled();
+  });
+
+  it('anular deja el motivo y quién, y anula sus conceptos', async () => {
+    const tx = makeTx({ existente: fila({ estado: 'vigente', codigo: 'ALT-0003' }) });
+    await new ContratosService(makeDb(tx)).anular(CTX, 'c1', 'Cargado dos veces');
+    expect(tx.alqConcepto.updateMany.mock.calls[0]![0]).toMatchObject({ where: { contratoId: 'c1', anuladoEn: null }, data: { anuladoPorId: 'u1' } });
+    expect(tx.alqContrato.update.mock.calls[0]![0].data).toMatchObject({ estado: 'anulado', anuladoPorId: 'u1', motivoAnulacion: 'Cargado dos veces' });
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({ accion: 'anulacion', resumen: 'Contrato ALT-0003 anulado: Cargado dos veces' });
+  });
+
+  it('con cobros registrados no se anula: primero los recibos', async () => {
+    const tx = makeTx({ existente: fila({ estado: 'vigente' }), cobrados: 2 });
+    await expect(new ContratosService(makeDb(tx)).anular(CTX, 'c1', 'Error')).rejects.toThrow(/Anulá primero esos recibos/);
+    expect(tx.alqContrato.update).not.toHaveBeenCalled();
+  });
+
+  it('en un vigente se edita lo que no toca plata, y el historial dice qué cambió', async () => {
+    const tx = makeTx({ existente: fila({ estado: 'vigente' }) });
+    await new ContratosService(makeDb(tx)).actualizarDatos(CTX, 'c1', { fechaFirma: '2024-10-28', diaVencimiento: 5, diaPagoPropietario: 12, obs: null });
+    expect(tx.alqContrato.update.mock.calls[0]![0].data).toEqual({ fechaFirma: new Date('2024-10-28T00:00:00.000Z'), diaVencimiento: 5, diaPagoPropietario: 12, obs: null });
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({ resumen: 'Cambió fecha de firma, día de pago al propietario' });
+  });
+
+  it('un borrador no usa la edición corta: se edita completo', async () => {
+    const tx = makeTx({ existente: fila({ estado: 'borrador' }) });
+    await expect(new ContratosService(makeDb(tx)).actualizarDatos(CTX, 'c1', { fechaFirma: null, diaVencimiento: 5, diaPagoPropietario: 10, obs: null })).rejects.toThrow(/se edita completo/);
   });
 });

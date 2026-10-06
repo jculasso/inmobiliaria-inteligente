@@ -5,8 +5,25 @@ import { useRouter } from 'next/navigation';
 import { LIMITE_LISTA, recortarAlLimite, type PersonaDto } from '@vacker/types';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { paraBuscar } from './buscador';
-import { BarraLista, BotonNuevo, CabezaTarjeta, CLASE_LISTA_MOVIL, CLASE_TABLA_ANCHA, CLASE_TD, CLASE_TH, CLASE_TR_ABRIBLE, EncabezadoPagina, Vacio } from './piezas';
+import {
+  AccionesFila,
+  BarraLista,
+  BotonNuevo,
+  CabezaTarjeta,
+  CLASE_LISTA_MOVIL,
+  CLASE_TABLA_ANCHA,
+  CLASE_TD,
+  CLASE_TD_ACCIONES,
+  CLASE_TH,
+  CLASE_TH_ACCIONES,
+  CLASE_TR_ABRIBLE,
+  EncabezadoPagina,
+  Vacio,
+} from './piezas';
 import { PersonaFormModal } from './persona-form-modal';
+import { getAccessToken } from '../../lib/supabase/client';
+import { borrarPersona } from '../../lib/alquileres-api';
+import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 
 /** Documento con formato legible: DNI con puntos, CUIT con guiones. */
 export function documentoLegible(doc: string | null): string {
@@ -18,7 +35,8 @@ export function documentoLegible(doc: string | null): string {
 export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
-  const [modal, setModal] = useState<'nueva' | null>(null);
+  const [modal, setModal] = useState<'nueva' | PersonaDto | null>(null);
+  const [aBorrar, setABorrar] = useState<PersonaDto | null>(null);
   const { visibles, hayMas } = recortarAlLimite(personas);
 
   const filtradas = useMemo(() => {
@@ -65,12 +83,15 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
           <div className={CLASE_LISTA_MOVIL}>
             <ListaTarjetas etiqueta="Personas">
               {filtradas.map((p) => (
-                <Tarjeta key={p.id} onClick={() => abrir(p)} titulo={`Abrir la cuenta de ${p.nombre}`}>
-                  <CabezaTarjeta titulo={p.nombre} detalle={documentoLegible(p.documento)} />
-                  <CamposTarjeta>
-                    <CampoTarjeta etiqueta="Teléfono">{p.telefono ?? '—'}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Email">{p.email ?? '—'}</CampoTarjeta>
-                  </CamposTarjeta>
+                <Tarjeta key={p.id}>
+                  <button type="button" onClick={() => abrir(p)} title={`Abrir la cuenta de ${p.nombre}`} className="block w-full text-left">
+                    <CabezaTarjeta titulo={p.nombre} detalle={documentoLegible(p.documento)} />
+                    <CamposTarjeta>
+                      <CampoTarjeta etiqueta="Teléfono">{p.telefono ?? '—'}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Email">{p.email ?? '—'}</CampoTarjeta>
+                    </CamposTarjeta>
+                  </button>
+                  <AccionesFila tarjeta nombre={p.nombre} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
                 </Tarjeta>
               ))}
             </ListaTarjetas>
@@ -83,6 +104,7 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
                   <th className={CLASE_TH}>Documento</th>
                   <th className={CLASE_TH}>Email</th>
                   <th className={CLASE_TH}>Teléfono</th>
+                  <th className={CLASE_TH_ACCIONES} />
                 </tr>
               </thead>
               <tbody>
@@ -92,6 +114,9 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
                     <td className={`${CLASE_TD} tabular-nums text-muted`}>{documentoLegible(p.documento)}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.email ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.telefono ?? '—'}</td>
+                    <td className={CLASE_TD_ACCIONES}>
+                      <AccionesFila nombre={p.nombre} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -101,7 +126,24 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
       )}
 
       {modal && (
-        <PersonaFormModal onClose={() => setModal(null)} onSaved={guardado} />
+        <PersonaFormModal persona={modal === 'nueva' ? undefined : modal} onClose={() => setModal(null)} onSaved={guardado} />
+      )}
+      {aBorrar && (
+        <ConfirmarBorradoModal
+          titulo={`Borrar a ${aBorrar.nombre}`}
+          descripcion="Se borra solo si no tiene historia: ningún contrato, cobro ni liquidación. Si la tiene, queda, y te decimos qué tiene."
+          detalle={
+            <>
+              <DatoBorrado etiqueta="Documento">{documentoLegible(aBorrar.documento)}</DatoBorrado>
+              <DatoBorrado etiqueta="Teléfono">{aBorrar.telefono ?? '—'}</DatoBorrado>
+            </>
+          }
+          onConfirm={async () => {
+            await borrarPersona(await getAccessToken(), aBorrar.id);
+            router.refresh();
+          }}
+          onClose={() => setABorrar(null)}
+        />
       )}
     </div>
   );

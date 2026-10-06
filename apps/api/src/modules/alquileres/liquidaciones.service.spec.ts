@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LiquidacionInputSchema } from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { LiquidacionesService } from './liquidaciones.service';
+import { mocksDeHistorial } from './historial.testing';
 
 const CTX = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
 const DUENO = '11111111-1111-4111-8111-111111111111';
@@ -52,6 +53,7 @@ const alquilerDelInquilino = (pagado: number) => ({
 function makeTx(over: { delDueno?: unknown[]; delInquilino?: unknown[]; marcados?: number } = {}) {
   const deDueno = over.delDueno ?? [delDueno(), honorarios()];
   return {
+    ...mocksDeHistorial(),
     $executeRaw: vi.fn().mockResolvedValue(1),
     alqPersona: {
       findUnique: vi.fn().mockResolvedValue({ id: DUENO, nombre: 'Propietario' }),

@@ -104,6 +104,13 @@ export function ReciboDocument({
             <Text style={e.datoLabel}>FECHA</Text>
             <Text style={e.datoValor}>{fecha(cobro.fecha)}</Text>
           </View>
+          {/* Quién lo registró: va en el recibo (decidido con Javier el 6/10/2026). */}
+          {cobro.registradoPor && (
+            <View>
+              <Text style={e.datoLabel}>OPERADOR</Text>
+              <Text style={e.datoValor}>{cobro.registradoPor}</Text>
+            </View>
+          )}
         </View>
 
         <View style={e.filaHead}>
@@ -132,7 +139,7 @@ export function ReciboDocument({
         </View>
         {cobro.aFavor > 0 && <Text style={e.aFavor}>Queda a su favor para el próximo pago: {pesos(cobro.aFavor, cobro.moneda)}</Text>}
         {cobro.obs && <Text style={e.obs}>{cobro.obs}</Text>}
-        {cobro.anulado && <Text style={e.anulado}>RECIBO ANULADO · {cobro.anulado.motivo}</Text>}
+        {cobro.anulado && <Text style={e.anulado}>{`RECIBO ANULADO · ${cobro.anulado.motivo}${cobro.anulado.por ? ` · ${cobro.anulado.por}` : ''}`}</Text>}
 
         <Text style={e.pie} fixed>
           {LEYENDA_NO_FACTURA}

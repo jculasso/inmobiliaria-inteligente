@@ -53,6 +53,7 @@ model Tenant {
   alqDocumentos            AlqDocumento[]
   alqFirmantes             AlqFirmante[]
   alqFirmaEventos          AlqFirmaEvento[]
+  alqEventos               AlqEvento[]
 
   @@map("tenant")
 }
@@ -679,9 +680,16 @@ model AlqContrato {
   depositoImporte    Decimal?  @map("deposito_importe") @db.Decimal(14, 2)
   depositoMoneda     String?   @map("deposito_moneda")
   depositoDevolucion DateTime? @map("deposito_devolucion") @db.Date
-  estado             String    @default("borrador") // borrador | vigente | finalizado | rescindido
+  estado             String    @default("borrador") // borrador | vigente | finalizado | rescindido | anulado
   rescindidoEl       DateTime? @map("rescindido_el") @db.Date
   obs                String?
+  /// Parte numérica del código, para ordenar ALT-0002 antes que ALT-0010.
+  /// Columna GENERADA por Postgres: no se escribe nunca desde acá.
+  codigoNum          Decimal?  @map("codigo_num") @db.Decimal
+  creadoPorId        String?   @map("creado_por_id") @db.Uuid
+  anuladoEn          DateTime? @map("anulado_en") @db.Timestamptz(6)
+  anuladoPorId       String?   @map("anulado_por_id") @db.Uuid
+  motivoAnulacion    String?   @map("motivo_anulacion")
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -695,6 +703,7 @@ model AlqContrato {
   @@unique([tenantId, codigo])
   @@index([tenantId])
   @@index([tenantId, estado])
+  @@index([tenantId, codigoNum])
   @@map("alq_contrato")
 }
 
@@ -766,6 +775,7 @@ model AlqConcepto {
   claveGeneracion           String?   @map("clave_generacion")
   /// El cobro que lo creó: los punitorios nacen al cobrar (regla 16).
   cobroId                   String?   @map("cobro_id") @db.Uuid
+  creadoPorId               String?   @map("creado_por_id") @db.Uuid
   anuladoEn                 DateTime? @map("anulado_en") @db.Timestamptz(6)
   anuladoPorId              String?   @map("anulado_por_id") @db.Uuid
   motivoAnulacion           String?   @map("motivo_anulacion")
@@ -954,4 +964,39 @@ model IndiceValor {
 
   @@id([indice, fecha])
   @@map("indice_valor")
+}
+
+/// El historial del módulo: quién hizo qué y cuándo (pedido de Javier del
+/// 6/10/2026: «quién es el operador que registra la transacción»). Cada
+/// servicio escribe su evento en la misma transacción que el cambio: si el
+/// cambio no se guarda, el evento tampoco. Nunca se edita ni se borra.
+///
+/// Sin claves foráneas a propósito, como los `*PorId`: el evento de un
+/// contrato en borrador que se borró tiene que seguir existiendo. El nombre
+/// del usuario se guarda tal como era ese día.
+model AlqEvento {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  en            DateTime @default(now()) @db.Timestamptz(6)
+  usuarioId     String?  @map("usuario_id") @db.Uuid
+  usuarioNombre String?  @map("usuario_nombre")
+  /// contrato | persona | propiedad | concepto | cobro | liquidacion | tramo | documento
+  entidad       String
+  entidadId     String   @map("entidad_id") @db.Uuid
+  /// alta | edicion | estado | anulacion | borrado | indexacion | generacion | documento
+  accion        String
+  /// Para ver el historial de un contrato o de una persona sin recorrer todo.
+  contratoId    String?  @map("contrato_id") @db.Uuid
+  personaId     String?  @map("persona_id") @db.Uuid
+  /// Lo que se lee en el historial: «Recibo 000123 por $ 650.000».
+  resumen       String
+  detalle       Json?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, contratoId, en])
+  @@index([tenantId, personaId, en])
+  @@index([tenantId, entidad, entidadId])
+  @@map("alq_evento")
 }

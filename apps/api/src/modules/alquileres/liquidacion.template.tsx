@@ -66,6 +66,12 @@ export function LiquidacionDocument({
             <Text style={e.datoLabel}>MEDIO DE PAGO</Text>
             <Text style={e.datoValor}>{MEDIO[l.medio]}</Text>
           </View>
+          {l.registradoPor && (
+            <View>
+              <Text style={e.datoLabel}>OPERADOR</Text>
+              <Text style={e.datoValor}>{l.registradoPor}</Text>
+            </View>
+          )}
         </View>
 
         {/* Una propiedad por bloque: qué es, quién la alquila y lo suyo. */}
@@ -96,7 +102,7 @@ export function LiquidacionDocument({
           <Text style={e.totalLabel}>NETO A PAGAR</Text>
           <Text style={e.totalValor}>{pesos(l.neto, l.moneda)}</Text>
         </View>
-        {l.anulado && <Text style={e.anulado}>LIQUIDACIÓN ANULADA · {l.anulado.motivo}</Text>}
+        {l.anulado && <Text style={e.anulado}>{`LIQUIDACIÓN ANULADA · ${l.anulado.motivo}${l.anulado.por ? ` · ${l.anulado.por}` : ''}`}</Text>}
 
         <Text style={e.pie} fixed>
           {LEYENDA_NO_FACTURA}

@@ -20,6 +20,7 @@ const cobro = (over: Partial<CobroDto> = {}): CobroDto => ({
   ],
   aFavor: 103_181,
   anulado: null,
+  registradoPor: 'Lucía Operadora',
   ...over,
 });
 
@@ -35,6 +36,13 @@ describe('Recibo (regla 23)', () => {
     expect(t).toContain(LEYENDA_NO_FACTURA);
   });
 
+  // Decidido con Javier el 6/10/2026: el recibo dice quién lo registró.
+  it('lleva el operador que lo registró', async () => {
+    const t = await texto(cobro());
+    expect(t).toContain('OPERADOR');
+    expect(t).toContain('Lucía Operadora');
+  });
+
   it('dice qué se pagó con saldo a favor, qué se compensó y qué queda a favor', async () => {
     const t = await texto(cobro());
     expect(t).toContain('Pagado con el saldo a favor del recibo 000007');
@@ -43,7 +51,7 @@ describe('Recibo (regla 23)', () => {
   });
 
   it('un recibo anulado lo dice con su motivo', async () => {
-    expect(await texto(cobro({ anulado: { en: '2026-11-06T10:00:00Z', motivo: 'Transferencia rechazada' } }))).toContain('Transferencia rechazada');
+    expect(await texto(cobro({ anulado: { en: '2026-11-06T10:00:00Z', motivo: 'Transferencia rechazada', por: null } }))).toContain('Transferencia rechazada');
   });
 });
 
@@ -71,6 +79,7 @@ describe('Liquidación en PDF (regla 23)', () => {
           aDescontar: [linea('Honorarios noviembre 2026', 110_111.74, 'honorarios')],
           neto: 1_027_406.26,
           anulado: null,
+          registradoPor: 'Lucía Operadora',
         }}
         tenantNombre="Alteva Propiedades"
         logoUrl={null}
@@ -82,6 +91,7 @@ describe('Liquidación en PDF (regla 23)', () => {
     expect(t).toContain('Honorarios noviembre 2026');
     // Pedido de Javier del 6/10/2026: cada propiedad con su inquilino y su propietario.
     expect(t).toContain('PROPIEDAD: Córdoba 1452 3° B');
+    expect(t).toContain('Lucía Operadora');
     expect(t).toMatch(/Inquilino: Ana Inquilina.*Propietario: Juan Propietario.*Contrato: ALT-0005/);
     expect(t).toContain('$ 1.027.406,26');
     expect(t).toContain(LEYENDA_NO_FACTURA);

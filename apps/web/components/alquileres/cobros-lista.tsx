@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LIMITE_LISTA, recortarAlLimite, type CobroResumenDto } from '@vacker/types';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarRecibo } from '../../lib/alquileres-api';
+import { anularCobro, generarRecibo } from '../../lib/alquileres-api';
+import { AnularModal } from './anular-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
@@ -32,6 +33,7 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [aAnular, setAAnular] = useState<CobroResumenDto | null>(null);
   const { visibles, hayMas } = recortarAlLimite(cobros);
 
   const filtrados = useMemo(() => {
@@ -83,12 +85,18 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                     <CamposTarjeta>
                       <CampoTarjeta etiqueta="Importe">{importe(c)}</CampoTarjeta>
                       <CampoTarjeta etiqueta="Medio">{MEDIO[c.medio]}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Registró">{c.registradoPor ?? '—'}</CampoTarjeta>
                     </CamposTarjeta>
                   </button>
                   <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
                     <button type="button" onClick={() => descargar(c)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
                       📄 Recibo
                     </button>
+                    {!c.anulado && (
+                      <button type="button" onClick={() => setAAnular(c)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+                        🚫 Anular
+                      </button>
+                    )}
                   </div>
                 </Tarjeta>
               ))}
@@ -104,6 +112,7 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                   <th className={CLASE_TH}>Medio</th>
                   <th className={`${CLASE_TH} text-right`}>Importe</th>
                   <th className={CLASE_TH}>Estado</th>
+                  <th className={CLASE_TH}>Registró</th>
                   <th className={`${CLASE_TH} right-0 z-30 border-l`} />
                 </tr>
               </thead>
@@ -116,7 +125,9 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                     <td className={`${CLASE_TD} text-muted`}>{MEDIO[c.medio]}</td>
                     <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{importe(c)}</td>
                     <td className={CLASE_TD}>{estado(c)}</td>
+                    <td className={`${CLASE_TD} text-muted`}>{c.registradoPor ?? '—'}</td>
                     <td className="sticky right-0 border-l border-line bg-white px-2 py-2">
+                      <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -129,6 +140,21 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                       >
                         📄
                       </button>
+                      {!c.anulado && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAAnular(c);
+                          }}
+                          aria-label={`Anular el recibo ${recibo(c.numero)}`}
+                          title="Anular, con un motivo"
+                          className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
+                        >
+                          🚫
+                        </button>
+                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -136,6 +162,18 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
             </table>
           </div>
         </>
+      )}
+      {aAnular && (
+        <AnularModal
+          titulo={`Anular el recibo ${recibo(aAnular.numero)}`}
+          detalle={`${aAnular.persona.nombre} · ${fmtMoneda(aAnular.importe, aAnular.moneda)}. Lo que este cobro canceló vuelve a quedar pendiente, y el punitorio que se cobró con él se anula. El recibo no se borra: queda tachado, con el motivo y quién lo anuló.`}
+          anular={async (motivo) => anularCobro(await getAccessToken(), aAnular.id, motivo)}
+          onClose={() => setAAnular(null)}
+          onDone={() => {
+            setAAnular(null);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ConceptoSueltoInputSchema } from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { ConceptosService } from './conceptos.service';
+import { mocksDeHistorial } from './historial.testing';
 
 const CTX = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
 const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -54,6 +55,7 @@ interface Fila {
 
 function makeTx(over: { contratos?: unknown[]; contrato?: unknown; existentes?: number; concepto?: unknown; anulados?: number } = {}) {
   return {
+    ...mocksDeHistorial(),
     tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: { ivaHonorariosPct: 21 } }) },
     alqContrato: {
       findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]),
@@ -206,5 +208,54 @@ describe('ConceptosService.anular (regla 19)', () => {
   it('dos veces, no', async () => {
     const tx = makeTx({ concepto: { anuladoEn: new Date(), liquidacionId: null, _count: { imputaciones: 0 } } });
     await expect(new ConceptosService(makeDb(tx)).anular(CTX, 'k1', 'x x x')).rejects.toThrow(ConflictException);
+  });
+});
+
+describe('ConceptosService.listar · estado y papel (punto 4 de Javier)', () => {
+  const DUENO = '11111111-1111-4111-8111-111111111111';
+  const INQ = '22222222-2222-4222-8222-222222222222';
+  const k = (over: Record<string, unknown>) => ({
+    id: crypto.randomUUID(),
+    contrato: { id: 'c5', codigo: 'ALT-0005', propiedad: { direccion: 'Calle 1' }, partes: [{ personaId: DUENO, papel: 'propietario' }, { personaId: INQ, papel: 'inquilino' }] },
+    persona: { id: INQ, nombre: 'Inquilina' },
+    personaId: INQ,
+    tipo: 'alquiler',
+    sentido: 'a_cobrar',
+    moneda: 'ARS',
+    periodo: '2026-11',
+    vencimiento: new Date('2026-11-05'),
+    importe: new Prisma.Decimal(1000),
+    adelantadoPorInmobiliaria: false,
+    descripcion: 'Alquiler',
+    claveGeneracion: 'x',
+    liquidacionId: null,
+    anuladoEn: null,
+    anuladoPorId: null,
+    motivoAnulacion: null,
+    creadoPorId: null,
+    createdAt: new Date(),
+    imputaciones: [] as { importe: Prisma.Decimal }[],
+    ...over,
+  });
+
+  it('pendiente, en parte, cobrado, liquidado y anulado; y quién es cada persona', async () => {
+    const tx = makeTx();
+    tx.alqConcepto.findMany.mockResolvedValueOnce([
+      k({}),
+      k({ imputaciones: [{ importe: new Prisma.Decimal(400) }] }),
+      k({ imputaciones: [{ importe: new Prisma.Decimal(1000) }] }),
+      k({ sentido: 'a_pagar', personaId: DUENO, persona: { id: DUENO, nombre: 'Dueño' }, liquidacionId: 'l1' }),
+      k({ anuladoEn: new Date(), anuladoPorId: 'u1', motivoAnulacion: 'Error' }),
+    ]);
+    const r = await new ConceptosService(makeDb(tx)).listar('2026-11');
+    expect(r.map((c) => [c.estado, c.saldo])).toEqual([
+      ['pendiente', 1000],
+      ['parcial', 600],
+      ['cobrado', 0],
+      ['liquidado', 0],
+      ['anulado', 0],
+    ]);
+    expect(r.map((c) => c.papel)).toEqual(['inquilino', 'inquilino', 'inquilino', 'propietario', 'inquilino']);
+    expect(r[4]!.anulado).toMatchObject({ motivo: 'Error', por: 'Lucía Operadora' });
   });
 });

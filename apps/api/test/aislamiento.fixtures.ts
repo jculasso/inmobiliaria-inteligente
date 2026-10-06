@@ -41,6 +41,7 @@ export interface IdsDeTenant {
   alqDocumento: string;
   alqFirmante: string;
   alqFirmaEvento: string;
+  alqEvento: string;
   /**
    * Un segundo usuario y una segunda tasación por inmobiliaria.
    *
@@ -92,6 +93,7 @@ export function nuevosIds(n: number): IdsDeTenant {
     alqDocumento: randomUUID(),
     alqFirmante: randomUUID(),
     alqFirmaEvento: randomUUID(),
+    alqEvento: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
     contratoSecundario: randomUUID(),
@@ -541,6 +543,14 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'origen',
     fila: (t, i) => ({ id: i.alqFirmaEvento, tenantId: t, documentoId: i.alqDocumento, estadoNuevo: 'firmado', origen: 'manual' }),
+  },
+  {
+    tabla: 'alq_evento',
+    modelo: 'alqEvento',
+    claveId: 'alqEvento',
+    campoTenant: 'tenantId',
+    campoEditable: 'resumen',
+    fila: (t, i) => ({ id: i.alqEvento, tenantId: t, entidad: 'contrato', entidadId: i.alqContrato, contratoId: i.alqContrato, accion: 'alta', resumen: `Alta ${i.n}` }),
   },
 ];
 

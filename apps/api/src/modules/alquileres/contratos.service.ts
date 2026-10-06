@@ -2,8 +2,11 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import type { Prisma } from '@prisma/client';
 import {
   LIMITE_LISTA_CON_SONDA,
+  codigoDeContrato,
+  prefijoDeContratos,
   type CambiarEstadoContrato,
   type Contrato,
+  type ContratoDatos,
   type ContratoDto,
   type ContratoResumenDto,
   type EstadoContrato,
@@ -14,6 +17,7 @@ import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { dia, nombresDeUsuarios, registrarEventos } from './historial';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -41,7 +45,8 @@ export class ContratosService {
     return this.db.withTenant(async (tx) => {
       const filas = await tx.alqContrato.findMany({
         include: INCLUIR,
-        orderBy: [{ estado: 'asc' }, { fin: 'asc' }],
+        // Por número, como en Gexion: ALT-0002 antes que ALT-0010.
+        orderBy: [{ codigoNum: 'asc' }, { codigo: 'asc' }],
         take: LIMITE_LISTA_CON_SONDA,
       });
       const hoy = hoyArgentina();
@@ -50,19 +55,20 @@ export class ContratosService {
   }
 
   async obtener(id: string): Promise<ContratoDto> {
-    return this.db.withTenant(async (tx) => aDto(await this.buscar(tx, id)));
+    return this.db.withTenant(async (tx) => this.dto(tx, await this.buscar(tx, id)));
   }
 
   async crear(ctx: TenantContext, dto: Contrato): Promise<ContratoDto> {
     return this.db.withTenant(async (tx) => {
       await this.validar(tx, dto);
-      const codigo = dto.codigo ?? (await this.siguienteCodigo(tx));
+      const codigo = dto.codigo ? await this.normalizarCodigo(tx, ctx, dto.codigo) : await this.siguienteCodigo(tx, ctx);
       await this.assertCodigoLibre(tx, codigo);
       const fila = await tx.alqContrato.create({
-        data: { ...columnas(dto), codigo, tenantId: ctx.tenantId, estado: 'borrador', ...hijos(ctx.tenantId, dto) },
+        data: { ...columnas(dto), codigo, tenantId: ctx.tenantId, estado: 'borrador', creadoPorId: ctx.userId, ...hijos(ctx.tenantId, dto) },
         include: INCLUIR,
       });
-      return aDto(fila);
+      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: fila.id, contratoId: fila.id, accion: 'alta', resumen: `Alta del contrato ${codigo}, en borrador` });
+      return this.dto(tx, fila);
     });
   }
 
@@ -79,7 +85,7 @@ export class ContratosService {
         throw new BadRequestException('Solo un contrato en borrador se edita completo. Uno vigente cambia por indexación o rescisión.');
       }
       await this.validar(tx, dto);
-      const codigo = dto.codigo ?? actual.codigo;
+      const codigo = dto.codigo ? await this.normalizarCodigo(tx, ctx, dto.codigo) : actual.codigo;
       if (codigo !== actual.codigo) await this.assertCodigoLibre(tx, codigo, id);
       // Partes y tramos se reemplazan: en borrador no hay nada que dependa de ellos.
       await tx.alqContratoParte.deleteMany({ where: { contratoId: id } });
@@ -89,7 +95,95 @@ export class ContratosService {
         data: { ...columnas(dto), codigo, ...hijos(ctx.tenantId, dto) },
         include: INCLUIR,
       });
-      return aDto(fila);
+      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'edicion', resumen: `Contrato ${codigo} editado (borrador)` });
+      return this.dto(tx, fila);
+    });
+  }
+
+  /**
+   * Lo que se edita de un contrato vigente: lo que no toca plata (decidido con
+   * Javier el 6/10/2026). El historial dice qué cambió, de qué a qué.
+   */
+  async actualizarDatos(ctx: TenantContext, id: string, datos: ContratoDatos): Promise<ContratoDto> {
+    return this.db.withTenant(async (tx) => {
+      const actual = await this.buscar(tx, id);
+      if (actual.estado !== 'vigente') {
+        throw new BadRequestException(actual.estado === 'borrador' ? 'Un contrato en borrador se edita completo.' : `Un contrato ${actual.estado} ya no se edita.`);
+      }
+      const antes = { fechaFirma: fromDate(actual.fechaFirma), diaVencimiento: actual.diaVencimiento, diaPagoPropietario: actual.diaPagoPropietario, obs: actual.obs };
+      const NOMBRE: Record<keyof ContratoDatos, string> = {
+        fechaFirma: 'fecha de firma',
+        diaVencimiento: 'día de vencimiento',
+        diaPagoPropietario: 'día de pago al propietario',
+        obs: 'observaciones',
+      };
+      const cambios = (Object.keys(NOMBRE) as (keyof ContratoDatos)[]).filter((k) => (antes[k] ?? null) !== (datos[k] ?? null));
+      const fila = await tx.alqContrato.update({
+        where: { id },
+        data: { fechaFirma: toDate(datos.fechaFirma), diaVencimiento: datos.diaVencimiento, diaPagoPropietario: datos.diaPagoPropietario, obs: datos.obs },
+        include: INCLUIR,
+      });
+      if (cambios.length) {
+        await registrarEventos(tx, ctx, {
+          entidad: 'contrato',
+          entidadId: id,
+          contratoId: id,
+          accion: 'edicion',
+          resumen: `Cambió ${cambios.map((k) => NOMBRE[k]).join(', ')}`,
+          detalle: Object.fromEntries(cambios.map((k) => [k, { antes: antes[k] ?? null, despues: datos[k] ?? null }])),
+        });
+      }
+      return this.dto(tx, fila);
+    });
+  }
+
+  /**
+   * Se borra de verdad solo en borrador: todavía no generó nada (decidido con
+   * Javier el 6/10/2026). El historial conserva que existió y quién lo borró.
+   */
+  async borrar(ctx: TenantContext, id: string): Promise<{ id: string }> {
+    return this.db.withTenant(async (tx) => {
+      const c = await tx.alqContrato.findUnique({ where: { id }, select: { codigo: true, estado: true, _count: { select: { conceptos: true, documentos: true } } } });
+      if (!c) throw new NotFoundException('Contrato no encontrado.');
+      if (c.estado !== 'borrador') throw new ConflictException(`El contrato ${c.codigo} está ${c.estado}: no se borra, se anula con un motivo.`);
+      if (c._count.conceptos) throw new ConflictException(`El contrato ${c.codigo} ya tiene conceptos: no se borra, se anula con un motivo.`);
+      if (c._count.documentos) throw new ConflictException(`El contrato ${c.codigo} tiene el PDF cargado: no se borra, se anula con un motivo.`);
+      await tx.alqContrato.delete({ where: { id } });
+      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'borrado', resumen: `Contrato ${c.codigo} borrado (estaba en borrador)` });
+      return { id };
+    });
+  }
+
+  /**
+   * Anular un contrato cargado por error: queda a la vista, tachado, con el
+   * motivo, y sus conceptos se anulan. Si ya entró o salió plata por él, se
+   * anulan primero esos recibos y liquidaciones: la plata no desaparece sola.
+   */
+  async anular(ctx: TenantContext, id: string, motivo: string): Promise<ContratoDto> {
+    return this.db.withTenant(async (tx) => {
+      const actual = await this.buscar(tx, id);
+      if (actual.estado === 'borrador') throw new BadRequestException('Un contrato en borrador se borra, no se anula.');
+      if (actual.estado === 'anulado') throw new ConflictException('El contrato ya está anulado.');
+      const [cobrados, liquidados] = await Promise.all([
+        tx.alqConcepto.count({ where: { contratoId: id, anuladoEn: null, imputaciones: { some: IMPUTACION_ACTIVA } } }),
+        tx.alqConcepto.count({ where: { contratoId: id, anuladoEn: null, liquidacionId: { not: null } } }),
+      ]);
+      if (cobrados || liquidados) {
+        const que = [cobrados && 'cobros', liquidados && 'liquidaciones'].filter(Boolean).join(' y ');
+        throw new ConflictException(`El contrato ${actual.codigo} tiene ${que} registrados. Anulá primero esos recibos o liquidaciones; después, el contrato.`);
+      }
+      const ahora = new Date();
+      await tx.alqConcepto.updateMany({
+        where: { contratoId: id, anuladoEn: null },
+        data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: `contrato anulado: ${motivo}` },
+      });
+      const fila = await tx.alqContrato.update({
+        where: { id },
+        data: { estado: 'anulado', anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: motivo },
+        include: INCLUIR,
+      });
+      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'anulacion', resumen: `Contrato ${actual.codigo} anulado: ${motivo}` });
+      return this.dto(tx, fila);
     });
   }
 
@@ -103,6 +197,7 @@ export class ContratosService {
         vigente: ['finalizado', 'rescindido'],
         finalizado: [],
         rescindido: [],
+        anulado: [],
       };
       if (!permitidas[desde].includes(cambio.estado)) {
         throw new BadRequestException(`Un contrato ${desde} no puede pasar a ${cambio.estado}.`);
@@ -127,7 +222,15 @@ export class ContratosService {
         data: { estado: cambio.estado, rescindidoEl: cambio.estado === 'rescindido' ? toDate(cambio.fecha) : null },
         include: INCLUIR,
       });
-      return aDto(fila);
+      const QUE = { vigente: 'activado', finalizado: 'finalizado', rescindido: 'rescindido' } as const;
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: id,
+        contratoId: id,
+        accion: 'estado',
+        resumen: `Contrato ${actual.codigo} ${QUE[cambio.estado]}${cambio.estado === 'rescindido' ? ` el ${dia(cambio.fecha)}` : ''}`,
+      });
+      return this.dto(tx, fila);
     });
   }
 
@@ -160,11 +263,31 @@ export class ContratosService {
     if (errores.length) throw new BadRequestException({ message: errores.join(' '), details: errores });
   }
 
-  /** El siguiente número libre, como en Gexion (los contratos se llaman 25, 26…). */
-  private async siguienteCodigo(tx: Tx): Promise<string> {
-    const codigos = await tx.alqContrato.findMany({ select: { codigo: true } });
-    const max = codigos.reduce((m, c) => (/^\d+$/.test(c.codigo) ? Math.max(m, Number(c.codigo)) : m), 0);
-    return String(max + 1);
+  /** La ficha con los nombres de quien la cargó y quien la anuló. */
+  private async dto(tx: Tx, f: FilaContrato): Promise<ContratoDto> {
+    const nombres = await nombresDeUsuarios(tx, [f.creadoPorId, f.anuladoPorId]);
+    return aDto(f, nombres);
+  }
+
+  private async prefijo(tx: Tx, ctx: TenantContext): Promise<string> {
+    const t = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { nombre: true, config: true } });
+    const corto = (t.config as { nombreCorto?: string | null } | null)?.nombreCorto;
+    return prefijoDeContratos(corto || t.nombre);
+  }
+
+  /**
+   * El siguiente número de la inmobiliaria con su prefijo: ALT-0011 (pedido de
+   * Javier del 6/10/2026). Sigue al más alto, así los de Vacker continúan
+   * desde el último número que traen de Gexion.
+   */
+  private async siguienteCodigo(tx: Tx, ctx: TenantContext): Promise<string> {
+    const [prefijo, max] = await Promise.all([this.prefijo(tx, ctx), tx.alqContrato.aggregate({ _max: { codigoNum: true } })]);
+    return codigoDeContrato(prefijo, (max._max.codigoNum ? decToNum(max._max.codigoNum) : 0) + 1);
+  }
+
+  /** Si se escribe solo el número («25»), se completa con el prefijo: VAC-0025. */
+  private async normalizarCodigo(tx: Tx, ctx: TenantContext, codigo: string): Promise<string> {
+    return /^\d+$/.test(codigo) ? codigoDeContrato(await this.prefijo(tx, ctx), Number(codigo)) : codigo.toUpperCase();
   }
 
   private async assertCodigoLibre(tx: Tx, codigo: string, exceptoId?: string): Promise<void> {
@@ -253,7 +376,7 @@ function aResumen(f: FilaContrato, hoy: string): ContratoResumenDto {
   };
 }
 
-function aDto(f: FilaContrato): ContratoDto {
+function aDto(f: FilaContrato, nombres: Map<string, string>): ContratoDto {
   return {
     id: f.id,
     codigo: f.codigo,
@@ -278,6 +401,8 @@ function aDto(f: FilaContrato): ContratoDto {
     depositoDevolucion: fromDate(f.depositoDevolucion),
     rescindidoEl: fromDate(f.rescindidoEl),
     obs: f.obs,
+    registrado: { en: f.createdAt.toISOString(), por: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null },
+    anulado: f.anuladoEn ? { en: f.anuladoEn.toISOString(), motivo: f.motivoAnulacion ?? '', por: f.anuladoPorId ? (nombres.get(f.anuladoPorId) ?? null) : null } : null,
     propiedad: f.propiedad,
     partes: f.partes.map((p) => ({
       personaId: p.personaId,

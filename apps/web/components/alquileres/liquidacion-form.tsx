@@ -9,7 +9,7 @@ import {
   type LiquidacionDto,
   type MedioCobro,
   type MonedaAlquiler,
-  type PersonaDto,
+  type CandidatoDto,
   type PreparacionLiquidacionDto,
 } from '@vacker/types';
 import { Button } from '@vacker/ui';
@@ -19,6 +19,7 @@ import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { EncabezadoPagina } from './piezas';
+import { SelectorPersona } from './selector-persona';
 
 const numero = (n: number) => String(n).padStart(6, '0');
 
@@ -83,7 +84,16 @@ function PanelResumen({ prep, grupos }: { prep: PreparacionLiquidacionDto; grupo
  * cada vez que se deja algo para después, se le vuelve a preguntar, porque
  * dejar un alquiler arrastra sus honorarios y eso lo sabe ella.
  */
-export function LiquidacionForm({ personas, personaInicial, hoy }: { personas: PersonaDto[]; personaInicial: string | null; hoy: string }) {
+export function LiquidacionForm({
+  propietarios,
+  personaInicial,
+  hoy,
+}: {
+  /** A quién se le liquida: los propietarios, con lo que hay para liquidarles (punto 6 de Javier). */
+  propietarios: CandidatoDto[];
+  personaInicial: string | null;
+  hoy: string;
+}) {
   const [personaId, setPersonaId] = useState(personaInicial ?? '');
   const [moneda, setMoneda] = useState<MonedaAlquiler>('ARS');
   const [medio, setMedio] = useState<MedioCobro>('transferencia');
@@ -184,24 +194,19 @@ export function LiquidacionForm({ personas, personaInicial, hoy }: { personas: P
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoPagina titulo="Nueva liquidación" volver={{ href: '/alquileres/liquidaciones', texto: 'Liquidaciones' }} />
-      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-[2fr_1fr_1fr]">
-        <Campo label="Propietario" requerido>
-          <select
-            className={inputClass}
+      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <SelectorPersona
+            etiqueta="Propietario"
+            opciones={propietarios}
+            pendienteRotulo="para liquidar"
             value={personaId}
-            onChange={(e) => {
-              setPersonaId(e.target.value);
+            onChange={(id) => {
+              setPersonaId(id);
               setExcluidos([]);
             }}
-          >
-            <option value="">Elegí una persona</option>
-            {personas.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-        </Campo>
+          />
+        </div>
         <Campo label="Moneda">
           <select className={inputClass} value={moneda} onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}>
             <option value="ARS">Pesos</option>

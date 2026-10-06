@@ -6,11 +6,14 @@ import { useRouter } from 'next/navigation';
 import { NOMBRE_TIPO_CONTRATO, type CambiarEstadoContrato, type ContratoDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { cambiarEstadoContrato } from '../../lib/alquileres-api';
+import { anularContrato, borrarContrato, cambiarEstadoContrato } from '../../lib/alquileres-api';
+import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
+import { AnularModal } from './anular-modal';
+import { DatosContratoModal } from './datos-contrato-modal';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { EstadoContratoBadge } from './estado-contrato';
-import { Panel } from './piezas';
+import { Panel, Registrado } from './piezas';
 
 const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
 
@@ -29,6 +32,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const [confirmar, setConfirmar] = useState<null | 'vigente' | 'finalizado' | 'rescindido'>(null);
   const [fecha, setFecha] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [accion, setAccion] = useState<null | 'datos' | 'anular' | 'borrar'>(null);
+  const unidad = `${contrato.propiedad.direccion}${contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}`;
+  const nombresDe = (papel: string) => contrato.partes.filter((p) => p.papel === papel).map((p) => p.nombre).join(', ') || '—';
   const [enviando, setEnviando] = useState(false);
   const m = (n: number | null) => (n == null ? '—' : fmtMoneda(n, contrato.moneda));
 
@@ -82,6 +88,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             {contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}
             {contrato.propiedad.ciudad ? ` · ${contrato.propiedad.ciudad}` : ''}
           </p>
+          <Registrado por={contrato.registrado.por} en={contrato.registrado.en || null} />
         </div>
         <div className="flex flex-wrap gap-2">
           {contrato.estado === 'borrador' && (
@@ -91,6 +98,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
                   ✏️ Editar
                 </Button>
               </Link>
+              <Button variant="secondary" size="sm" onClick={() => setAccion('borrar')}>
+                🗑️ Borrar
+              </Button>
               <Button variant="primary" size="sm" onClick={() => setConfirmar('vigente')}>
                 Activar contrato
               </Button>
@@ -98,6 +108,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           )}
           {contrato.estado === 'vigente' && (
             <>
+              <Button variant="secondary" size="sm" onClick={() => setAccion('datos')}>
+                ✏️ Editar datos
+              </Button>
               <Button variant="secondary" size="sm" onClick={() => setConfirmar('finalizado')}>
                 Finalizar
               </Button>
@@ -106,8 +119,20 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
               </Button>
             </>
           )}
+          {contrato.estado !== 'borrador' && contrato.estado !== 'anulado' && (
+            <Button variant="secondary" size="sm" onClick={() => setAccion('anular')}>
+              🚫 Anular
+            </Button>
+          )}
         </div>
       </div>
+
+      {contrato.anulado && (
+        <p role="status" className="rounded-brand border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-ink">
+          <span className="font-bold text-brand-red">Contrato anulado</span> el {fmtFecha(contrato.anulado.en.slice(0, 10))}
+          {contrato.anulado.por ? ` por ${contrato.anulado.por}` : ''}: {contrato.anulado.motivo}
+        </p>
+      )}
 
       <Panel icono="👥" titulo="Partes">
         <ul className="flex flex-col gap-1.5">
@@ -173,6 +198,47 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         </div>
       </Panel>
 
+      {accion === 'datos' && (
+        <DatosContratoModal
+          contratoId={contrato.id}
+          onClose={() => setAccion(null)}
+          onSaved={() => {
+            setAccion(null);
+            router.refresh();
+          }}
+        />
+      )}
+      {accion === 'anular' && (
+        <AnularModal
+          titulo={`Anular el contrato ${contrato.codigo}`}
+          detalle="Tiene historia: no se borra, queda anulado y tachado, con el motivo y quién lo anuló. Sus conceptos pendientes se anulan. Si ya tiene cobros o liquidaciones, primero hay que anular esos."
+          anular={async (motivo) => anularContrato(await getAccessToken(), contrato.id, motivo)}
+          onClose={() => setAccion(null)}
+          onDone={() => {
+            setAccion(null);
+            router.refresh();
+          }}
+        />
+      )}
+      {accion === 'borrar' && (
+        <ConfirmarBorradoModal
+          titulo={`Borrar el contrato ${contrato.codigo}`}
+          descripcion="Está en borrador: todavía no generó nada. El historial guarda que existió y quién lo borró."
+          detalle={
+            <>
+              <DatoBorrado etiqueta="Propiedad">{unidad}</DatoBorrado>
+              <DatoBorrado etiqueta="Inquilino">{nombresDe('inquilino')}</DatoBorrado>
+              <DatoBorrado etiqueta="Propietario">{nombresDe('propietario')}</DatoBorrado>
+            </>
+          }
+          onConfirm={async () => {
+            await borrarContrato(await getAccessToken(), contrato.id);
+            router.push('/alquileres/contratos');
+            router.refresh();
+          }}
+          onClose={() => setAccion(null)}
+        />
+      )}
       {confirmar && (
         <Modal title={textos[confirmar].titulo} onClose={() => setConfirmar(null)}>
           <div className="flex flex-col gap-3">

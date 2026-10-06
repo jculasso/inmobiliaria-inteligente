@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ContratoResumenDto } from '@vacker/types';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn() }));
+vi.mock('../../lib/alquileres-api', () => ({ borrarContrato: vi.fn(), anularContrato: vi.fn(), getContrato: vi.fn(), actualizarDatosContrato: vi.fn() }));
 
 import { ContratosLista } from './contratos-lista';
 
@@ -36,5 +38,30 @@ describe('ContratosLista', () => {
   it('un contrato cuyo tramo de hoy no está indexado dice «A indexar», no $ 0', () => {
     render(<ContratosLista contratos={[c('44', '2026-09-01', null)]} hoy="2026-10-05" />);
     expect(within(screen.getByRole('table')).getByText('A indexar')).toBeInTheDocument();
+  });
+
+  // Decidido con Javier el 6/10/2026: lápiz y papelera en cada fila; lo que tiene historia se anula.
+  it('borrador: editar y borrar; vigente: editar y anular; anulado: nada', () => {
+    const borrador = { ...c('ALT-0001', null), estado: 'borrador' as const };
+    const vigente = c('ALT-0002', null);
+    const anulado = { ...c('ALT-0003', null), estado: 'anulado' as const };
+    render(<ContratosLista contratos={[borrador, vigente, anulado]} hoy="2026-10-05" />);
+    const tabla = within(screen.getByRole('table'));
+    expect(tabla.getByRole('button', { name: 'Borrar el contrato ALT-0001' })).toBeInTheDocument();
+    expect(tabla.getByRole('button', { name: 'Anular el contrato ALT-0002' })).toBeInTheDocument();
+    expect(tabla.getByRole('button', { name: 'Editar el contrato ALT-0002' })).toBeInTheDocument();
+    expect(tabla.queryByRole('button', { name: /el contrato ALT-0003/ })).not.toBeInTheDocument();
+  });
+
+  it('la papelera de un vigente pide el motivo', () => {
+    render(<ContratosLista contratos={[c('ALT-0002', null)]} hoy="2026-10-05" />);
+    fireEvent.click(within(screen.getByRole('table')).getByRole('button', { name: 'Anular el contrato ALT-0002' }));
+    expect(within(screen.getByRole('dialog')).getByText('Motivo')).toBeInTheDocument();
+  });
+
+  // Un botón dentro de otro es HTML inválido: React no hidrata y la tarjeta del teléfono se rompe.
+  it('en el teléfono, las acciones no quedan dentro del botón de la tarjeta', () => {
+    const { container } = render(<ContratosLista contratos={[c('ALT-0002', null), { ...c('ALT-0001', null), estado: 'borrador' as const }]} hoy="2026-10-05" />);
+    expect(container.querySelectorAll('button button')).toHaveLength(0);
   });
 });

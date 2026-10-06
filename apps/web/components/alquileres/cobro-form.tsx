@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { CobroDto, MedioCobro, MonedaAlquiler, PersonaDto, PreparacionCobroDto } from '@vacker/types';
+import type { CandidatoDto, CobroDto, MedioCobro, MonedaAlquiler, PreparacionCobroDto } from '@vacker/types';
 import { planificarCobro } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -11,6 +11,7 @@ import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { Bloque, EncabezadoPagina } from './piezas';
+import { SelectorPersona } from './selector-persona';
 
 const numero = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'));
 const recibo = (n: number) => String(n).padStart(6, '0');
@@ -27,7 +28,19 @@ interface Punitorio {
  * que va a quedar imputado. Igual la API lo vuelve a calcular: el navegador no
  * decide cuánto va a cada concepto.
  */
-export function CobroForm({ personas, personaInicial, hoy }: { personas: PersonaDto[]; personaInicial: string | null; hoy: string }) {
+export function CobroForm({
+  inquilinos,
+  propietarios,
+  personaInicial,
+  hoy,
+}: {
+  /** A quién se le cobra: los inquilinos, con lo que deben (punto 6 de Javier). */
+  inquilinos: CandidatoDto[];
+  /** A pedido, los propietarios: el dueño que paga algo que no se le pudo descontar. */
+  propietarios: CandidatoDto[];
+  personaInicial: string | null;
+  hoy: string;
+}) {
   const [personaId, setPersonaId] = useState(personaInicial ?? '');
   const [moneda, setMoneda] = useState<MonedaAlquiler>('ARS');
   const [fecha, setFecha] = useState(hoy);
@@ -146,17 +159,18 @@ export function CobroForm({ personas, personaInicial, hoy }: { personas: Persona
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoPagina titulo="Nuevo cobro" volver={{ href: '/alquileres/cobros', texto: 'Cobros' }} />
-      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-[2fr_1fr_1fr]">
-        <Campo label="Quién paga" requerido>
-          <select className={inputClass} value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
-            <option value="">Elegí una persona</option>
-            {personas.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-        </Campo>
+      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <SelectorPersona
+            etiqueta="Quién paga"
+            opciones={inquilinos}
+            otros={propietarios}
+            textoOtros="Incluir propietarios (un dueño que paga algo que no se le pudo descontar)"
+            pendienteRotulo="debe"
+            value={personaId}
+            onChange={setPersonaId}
+          />
+        </div>
         <Campo label="Fecha">
           <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Campo>

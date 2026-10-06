@@ -348,9 +348,9 @@ describe('Acceso a Prisma fuera del contexto de tenant (análisis estático)', (
     expect(existsSync(resolve(RAIZ, 'src/prisma/tenant-prisma.service.ts'))).toBe(true);
     expect(analisis.archivosVistos).toBeGreaterThan(50);
     // Tiene que crecer con cada tabla nueva: 16 de negocio hasta el 5/10/2026,
-    // más las 12 del módulo Alquileres. Si baja, alguien sacó una tabla de
-    // `TABLAS` y su acceso dejó de vigilarse.
-    expect(MODELOS_CON_RLS.size).toBe(28);
+    // más las 12 del módulo Alquileres y su historial (`alq_evento`, 6/10).
+    // Si baja, alguien sacó una tabla de `TABLAS` y su acceso dejó de vigilarse.
+    expect(MODELOS_CON_RLS.size).toBe(29);
   });
 
   it('ningún archivo de src/ consulta una tabla con RLS por fuera de withTenant', () => {

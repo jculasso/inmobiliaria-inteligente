@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { registrarEventos } from './historial';
 import { LIMITE_LISTA_CON_SONDA, type Persona, type PersonaDto } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -39,16 +40,47 @@ export class PersonasService {
   async crear(ctx: TenantContext, dto: Persona): Promise<PersonaDto> {
     return this.db.withTenant(async (tx) => {
       await this.assertDocumentoLibre(tx, dto.documento);
-      return tx.alqPersona.create({ data: { ...dto, tenantId: ctx.tenantId }, select: CAMPOS }) as Promise<PersonaDto>;
+      const p = (await tx.alqPersona.create({ data: { ...dto, tenantId: ctx.tenantId }, select: CAMPOS })) as PersonaDto;
+      await registrarEventos(tx, ctx, { entidad: 'persona', entidadId: p.id, personaId: p.id, accion: 'alta', resumen: `Alta de ${p.nombre}` });
+      return p;
     });
   }
 
-  async actualizar(id: string, dto: Persona): Promise<PersonaDto> {
+  async actualizar(ctx: TenantContext, id: string, dto: Persona): Promise<PersonaDto> {
     return this.db.withTenant(async (tx) => {
       const actual = await tx.alqPersona.findUnique({ where: { id }, select: { id: true } });
       if (!actual) throw new NotFoundException('Persona no encontrada.');
       await this.assertDocumentoLibre(tx, dto.documento, id);
-      return tx.alqPersona.update({ where: { id }, data: dto, select: CAMPOS }) as Promise<PersonaDto>;
+      const p = (await tx.alqPersona.update({ where: { id }, data: dto, select: CAMPOS })) as PersonaDto;
+      await registrarEventos(tx, ctx, { entidad: 'persona', entidadId: id, personaId: id, accion: 'edicion', resumen: `Datos de ${p.nombre} editados` });
+      return p;
+    });
+  }
+
+  /**
+   * Se borra de verdad solo si no tiene historia: ningún contrato, concepto,
+   * cobro, liquidación ni firma (decidido con Javier el 6/10/2026). Si la
+   * tiene, la respuesta dice qué, para que se entienda por qué no.
+   */
+  async borrar(ctx: TenantContext, id: string): Promise<{ id: string }> {
+    return this.db.withTenant(async (tx) => {
+      const p = await tx.alqPersona.findUnique({
+        where: { id },
+        select: { nombre: true, _count: { select: { partes: true, conceptos: true, cobros: true, liquidaciones: true, firmas: true } } },
+      });
+      if (!p) throw new NotFoundException('Persona no encontrada.');
+      const c = p._count;
+      const motivos = [
+        c.partes && `${c.partes} ${c.partes === 1 ? 'contrato' : 'contratos'}`,
+        c.cobros && `${c.cobros} ${c.cobros === 1 ? 'cobro' : 'cobros'}`,
+        c.liquidaciones && `${c.liquidaciones} ${c.liquidaciones === 1 ? 'liquidación' : 'liquidaciones'}`,
+        c.conceptos && `${c.conceptos} ${c.conceptos === 1 ? 'concepto' : 'conceptos'}`,
+        c.firmas && 'firmas de contratos',
+      ].filter(Boolean);
+      if (motivos.length) throw new ConflictException(`${p.nombre} no se puede borrar: tiene ${motivos.join(', ')}. Lo que tiene historia queda.`);
+      await tx.alqPersona.delete({ where: { id } });
+      await registrarEventos(tx, ctx, { entidad: 'persona', entidadId: id, accion: 'borrado', resumen: `${p.nombre} borrada` });
+      return { id };
     });
   }
 

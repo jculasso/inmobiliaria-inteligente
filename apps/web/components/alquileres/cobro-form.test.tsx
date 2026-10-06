@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { PersonaDto, PreparacionCobroDto } from '@vacker/types';
+import type { CandidatoDto, PreparacionCobroDto } from '@vacker/types';
 
 const prepararCobro = vi.fn();
 const registrarCobro = vi.fn();
@@ -18,7 +18,6 @@ import { CobroForm } from './cobro-form';
 const PERSONA = '11111111-1111-4111-8111-111111111111';
 const ALQ = '22222222-2222-4222-8222-222222222222';
 const GAS = '33333333-3333-4333-8333-333333333333';
-const personas = [{ id: PERSONA, nombre: 'Romina Inquilina' }] as PersonaDto[];
 
 /* Noviembre de 2026 del contrato #5, cobrado el 15: diez días de atraso. */
 const prep = (over: Partial<PreparacionCobroDto> = {}): PreparacionCobroDto => ({
@@ -34,9 +33,14 @@ const prep = (over: Partial<PreparacionCobroDto> = {}): PreparacionCobroDto => (
   ...over,
 });
 
+const inquilinos: CandidatoDto[] = [
+  { persona: { id: PERSONA, nombre: 'Romina Inquilina' }, papel: 'inquilino', contratos: [{ id: crypto.randomUUID(), codigo: 'ALT-0005', propiedad: 'Calle 1' }], pendiente: [{ moneda: 'ARS', importe: 1_165_045.94 }] },
+  { persona: { id: crypto.randomUUID(), nombre: 'Pedro Al Día' }, papel: 'inquilino', contratos: [{ id: crypto.randomUUID(), codigo: 'ALT-0002', propiedad: 'Paraguay 925' }], pendiente: [] },
+];
+
 const abrir = async (p = prep()) => {
   prepararCobro.mockResolvedValue(p);
-  render(<CobroForm personas={personas} personaInicial={PERSONA} hoy="2026-11-15" />);
+  render(<CobroForm inquilinos={inquilinos} propietarios={[]} personaInicial={PERSONA} hoy="2026-11-15" />);
   await screen.findByText('Alquiler noviembre 2026', { exact: false });
 };
 

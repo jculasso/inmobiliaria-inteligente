@@ -7,6 +7,8 @@ import { CobrosService } from './cobros.service';
 import { ConceptosController } from './conceptos.controller';
 import { ConceptosService } from './conceptos.service';
 import { ContratosController } from './contratos.controller';
+import { CandidatosService } from './candidatos.service';
+import { HistorialService } from './historial';
 import { ContratosService } from './contratos.service';
 import { IndexacionesController } from './indexaciones.controller';
 import { LiquidacionesController } from './liquidaciones.controller';
@@ -33,6 +35,8 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
     PersonasService,
     PropiedadesAlquilerService,
     ContratosService,
+    HistorialService,
+    CandidatosService,
     ConceptosService,
     CobrosService,
     LiquidacionesService,

@@ -21,6 +21,9 @@ import {
   ResultadoGeneracionDtoSchema,
   type ConceptoSueltoInput,
   ContratoDtoSchema,
+  CandidatoDtoSchema,
+  EventoDtoSchema,
+  type ContratoDatos,
   IndexacionConfirmadaDtoSchema,
   ContratoResumenDtoSchema,
   type CambiarEstadoContrato,
@@ -202,4 +205,42 @@ export async function cargarContratoFirmado(accessToken: string, documentoId: st
 /** Link de vida corta al PDF: el bucket es privado. */
 export async function urlDocumento(accessToken: string, documentoId: string, firmado: boolean) {
   return apiFetch(`/alquileres/documentos/${documentoId}/archivo${firmado ? '?firmado=1' : ''}`, UrlArchivoDtoSchema, { accessToken });
+}
+
+// --- Entrega 11: borrar, anular, historial y a quién se cobra -----------------
+
+const Borrado = z.object({ id: z.string() });
+
+export async function borrarContrato(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/contratos/${id}`, Borrado, { accessToken, method: 'DELETE' });
+}
+
+export async function anularContrato(accessToken: string, id: string, motivo: string) {
+  return apiFetch(`/alquileres/contratos/${id}/anular`, ContratoDtoSchema, { accessToken, method: 'POST', body: { motivo } });
+}
+
+/** Lo que no toca plata de un contrato vigente. */
+export async function actualizarDatosContrato(accessToken: string, id: string, datos: ContratoDatos) {
+  return apiFetch(`/alquileres/contratos/${id}/datos`, ContratoDtoSchema, { accessToken, method: 'PATCH', body: datos });
+}
+
+export async function getHistorialContrato(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/contratos/${id}/historial`, z.array(EventoDtoSchema), { accessToken });
+}
+
+export async function getHistorialPersona(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/personas/${id}/historial`, z.array(EventoDtoSchema), { accessToken });
+}
+
+export async function borrarPersona(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/personas/${id}`, Borrado, { accessToken, method: 'DELETE' });
+}
+
+export async function borrarPropiedadAlquiler(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/propiedades/${id}`, Borrado, { accessToken, method: 'DELETE' });
+}
+
+/** Inquilinos con lo que deben, o propietarios con lo que hay para liquidarles. */
+export async function listCandidatos(accessToken: string, papel: 'inquilino' | 'propietario') {
+  return apiFetch(`/alquileres/candidatos?papel=${papel}`, z.array(CandidatoDtoSchema), { accessToken });
 }
