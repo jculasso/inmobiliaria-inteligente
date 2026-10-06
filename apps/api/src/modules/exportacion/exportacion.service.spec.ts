@@ -43,7 +43,7 @@ describe('ExportacionService', () => {
     }
   });
 
-  it('devuelve un ZIP con las siete planillas y el LEEME', async () => {
+  it('devuelve un ZIP con las ocho planillas y el LEEME', async () => {
     const { buffer, nombreArchivo } = await new ExportacionService(
       makeDb(makeTx()) as never,
     ).exportar(CTX);
@@ -59,6 +59,7 @@ describe('ExportacionService', () => {
       'protocolos.csv',
       'protocolos-acciones.csv',
       'vendedores.csv',
+      'objetivos.csv',
     ]) {
       expect(crudo, `falta ${n}`).toContain(n);
     }
