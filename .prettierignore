@@ -1,0 +1,14 @@
+# Lo que Prettier no tiene que tocar (además de lo que ya ignora .gitignore).
+
+# Generados.
+pnpm-lock.yaml
+**/next-env.d.ts
+
+# Referencia de UX: los prototipos HTML no son código del producto.
+docs/prototipos/
+
+# Procedimientos de Claude Code: se escriben a mano y se leen como texto.
+.claude/
+
+# Migraciones ya aplicadas en producción: son historia, no se reescriben.
+apps/api/prisma/migrations/

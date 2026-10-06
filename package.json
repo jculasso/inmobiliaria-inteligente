@@ -18,6 +18,7 @@
     "presentacion": "node scripts/comercial/presentacion.js"
   },
   "devDependencies": {
+    "@vacker/config": "workspace:*",
     "pptxgenjs": "^4.0.1",
     "prettier": "^3.4.2",
     "sharp": "^0.34.5",
