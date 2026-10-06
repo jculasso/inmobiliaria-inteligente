@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MODULO_KEYS, type ModuloKey, type ModulosTenant } from '@vacker/types';
 import { NOMBRE_MODULO } from '../lib/modulos';
+import { CLASE_FOCO } from './piezas';
 
 const ICONO: Record<ModuloKey, string> = {
   tablero: '📊',
@@ -28,6 +29,11 @@ const RUTA: Record<ModuloKey, string> = {
  * Salto directo entre los módulos habilitados, sin pasar por la Home. Muestra
  * solo los que la inmobiliaria tiene contratados: ofrecer un módulo que después
  * rebota con "no disponible" es peor que no mostrarlo.
+ *
+ * Arriba de todo, «Inicio». El menú se escondía cuando la inmobiliaria tenía
+ * un solo módulo, y entonces el único camino a la Home era el logo chico de la
+ * barra, que en el teléfono nadie identifica como un botón (revisión del
+ * 6/10/2026). Por eso se muestra siempre.
  */
 export function MenuModulos({ modulos }: { modulos: ModulosTenant }) {
   const pathname = usePathname();
@@ -52,7 +58,10 @@ export function MenuModulos({ modulos }: { modulos: ModulosTenant }) {
   }, [abierto]);
 
   const habilitados = MODULO_KEYS.filter((k) => modulos[k]);
-  if (habilitados.length <= 1) return null;
+  const claseItem = (activo: boolean) =>
+    `flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-red/40 ${
+      activo ? 'bg-brand-red/5 font-bold text-brand-red' : 'text-ink hover:bg-surface'
+    }`;
 
   return (
     <div ref={ref} className="relative">
@@ -61,7 +70,7 @@ export function MenuModulos({ modulos }: { modulos: ModulosTenant }) {
         onClick={() => setAbierto((v) => !v)}
         aria-expanded={abierto}
         aria-haspopup="menu"
-        className="flex items-center gap-1.5 rounded-brand border border-line bg-white px-2.5 py-1.5 text-sm font-semibold text-ink hover:bg-surface"
+        className={`flex items-center gap-1.5 rounded-brand border border-line bg-white px-2.5 py-1.5 text-sm font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`}
       >
         <span aria-hidden>⊞</span>
         Módulos
@@ -78,6 +87,15 @@ export function MenuModulos({ modulos }: { modulos: ModulosTenant }) {
           role="menu"
           className="absolute left-0 z-50 mt-1 w-56 overflow-hidden rounded-brand border border-line bg-white shadow-lg"
         >
+          <Link
+            href="/"
+            role="menuitem"
+            onClick={() => setAbierto(false)}
+            className={`${claseItem(false)} border-b border-line`}
+          >
+            <span aria-hidden>🏠</span>
+            Inicio
+          </Link>
           {habilitados.map((key) => {
             const activo = pathname === RUTA[key] || pathname.startsWith(`${RUTA[key]}/`);
             return (
@@ -85,10 +103,9 @@ export function MenuModulos({ modulos }: { modulos: ModulosTenant }) {
                 key={key}
                 href={RUTA[key]}
                 role="menuitem"
+                aria-current={activo ? 'page' : undefined}
                 onClick={() => setAbierto(false)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors ${
-                  activo ? 'bg-brand-red/5 font-bold text-brand-red' : 'text-ink hover:bg-surface'
-                }`}
+                className={claseItem(activo)}
               >
                 <span aria-hidden>{ICONO[key]}</span>
                 {NOMBRE_MODULO[key]}
