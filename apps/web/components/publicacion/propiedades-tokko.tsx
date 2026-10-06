@@ -2,17 +2,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { PropiedadDto, ResultadoImportacion } from '@vacker/types';
+import { recortarAlLimite, type PropiedadDto, type ResultadoImportacion } from '@vacker/types';
 import { Button, Card } from '@vacker/ui';
-import { fmtUSD } from '../../lib/format';
+import { fmtMoneda, fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
 import { importarPropiedades, vaciarPropiedades } from '../../lib/publicacion-api';
+import { AvisoListaRecortada } from '../aviso-lista-recortada';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
+import { CLASE_FOCO, MensajeError } from '../piezas';
 
-/** Precio con su moneda: Tokko devuelve USD y ARS mezclados. */
-function precioDe(p: PropiedadDto): string {
+/**
+ * Precio con su moneda: Tokko devuelve USD y ARS mezclados. Los pesos como en
+ * el resto de la app («$ 120.000.000,00»), no «ARS 120.000.000».
+ */
+export function precioDe(p: Pick<PropiedadDto, 'precio' | 'moneda'>): string {
   if (p.precio == null) return '—';
   if (p.moneda === 'USD') return fmtUSD(p.precio);
+  if (p.moneda === 'ARS') return fmtMoneda(p.precio, 'ARS');
   return `${p.moneda ?? ''} ${p.precio.toLocaleString('es-AR')}`.trim();
 }
 
@@ -30,6 +36,8 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmandoVaciar, setConfirmandoVaciar] = useState(false);
+  // Si la API manda una fila de más que el tope, quedó algo afuera: se dice.
+  const { visibles, hayMas } = recortarAlLimite(inicial);
 
   async function traer() {
     setTrayendo(true);
@@ -38,7 +46,12 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
       setResultado(await importarPropiedades(await getAccessToken(), cuantas));
       router.refresh();
     } catch (e) {
+      // Con 50 propiedades Tokko puede tardar más que el límite de 90 s del
+      // pedido: «Trayendo…» quedaba girando para siempre. Ahora corta con un
+      // error y se puede reintentar; se refresca la lista igual, por si la
+      // API terminó de traerlas después del corte.
       setError(e instanceof Error ? e.message : 'No se pudieron traer las propiedades.');
+      router.refresh();
     } finally {
       setTrayendo(false);
     }
@@ -84,7 +97,7 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
           <button
             type="button"
             onClick={() => setConfirmandoVaciar(true)}
-            className="h-10 text-xs font-semibold text-brand-red hover:underline"
+            className={`h-10 rounded-brand px-2 text-xs font-semibold text-danger hover:underline ${CLASE_FOCO}`}
           >
             Vaciar la lista
           </button>
@@ -111,25 +124,38 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
         </div>
       )}
 
-      {error && <p className="text-sm text-brand-red">{error}</p>}
+      {error && (
+        <div className="flex flex-wrap items-center gap-3">
+          <MensajeError>{error}</MensajeError>
+          <Button variant="secondary" size="sm" onClick={traer} disabled={trayendo}>
+            Reintentar
+          </Button>
+        </div>
+      )}
+
+      {hayMas && <AvisoListaRecortada que="propiedades" />}
 
       {confirmandoVaciar && (
         <ConfirmarBorradoModal
           titulo="Vaciar la lista de propiedades"
           descripcion="Se borra la copia local. En Tokko no se toca nada: podés volver a traerlas cuando quieras."
-          detalle={<DatoBorrado etiqueta="Propiedades a borrar">{inicial.length}</DatoBorrado>}
+          detalle={
+            <DatoBorrado etiqueta="Propiedades a borrar">
+              {hayMas ? `Más de ${visibles.length}` : visibles.length}
+            </DatoBorrado>
+          }
           onConfirm={vaciar}
           onClose={() => setConfirmandoVaciar(false)}
         />
       )}
 
-      {inicial.length > 0 && (
+      {visibles.length > 0 && (
         /* Grilla y no tabla: una propiedad se reconoce por la foto antes que
            por sus datos. Y grilla propia y no `ListaTarjetas`, que lleva
            `sm:hidden` porque es la vista de celular de las tablas — usarla acá
            hacía que la lista no se viera en pantalla ancha. */
         <ul aria-label="Propiedades" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {inicial.map((p) => (
+          {visibles.map((p) => (
             <li
               key={p.id}
               className="flex flex-col overflow-hidden rounded-brand border border-line bg-white"
@@ -173,13 +199,14 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
                 </div>
 
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-2 text-xs">
-                  <span className={p.agente ? 'text-muted' : 'font-semibold text-brand-red'}>
+                  {/* Sin vendedor es algo a revisar, no una urgencia ni la marca: `warning`. */}
+                  <span className={p.agente ? 'text-muted' : 'font-semibold text-warning'}>
                     {p.agente ?? `sin vincular · ${p.agenteTokko ?? '?'}`}
                   </span>
                   <span className="text-muted">{p.fotos} fotos</span>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-muted">
+                <div className="flex min-h-10 items-center justify-between text-[11px] text-muted">
                   <span className="truncate" title={p.referenceCode ?? undefined}>
                     {p.referenceCode ?? `Tokko ${p.tokkoId}`}
                   </span>
@@ -188,7 +215,7 @@ export function PropiedadesTokko({ inicial }: { inicial: PropiedadDto[] }) {
                       href={p.publicUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="shrink-0 font-semibold text-brand-red hover:underline"
+                      className={`-mr-2 inline-flex h-10 shrink-0 items-center rounded-brand px-2 text-xs font-semibold text-brand-red hover:underline ${CLASE_FOCO}`}
                     >
                       Ver ficha ↗
                     </a>
