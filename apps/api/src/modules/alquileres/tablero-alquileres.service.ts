@@ -8,7 +8,7 @@ import {
   type TableroAlquileresDto,
   type TramoMora,
 } from '@vacker/types';
-import { diasInclusive, fechaCorta, redondear2, sumarDiasIso, sumarMesesIso, tramoDeMora } from '@vacker/domain';
+import { diasInclusive, fechaCorta, redondear2, sumarDiasIso, tramoDeMora } from '@vacker/domain';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
@@ -57,10 +57,15 @@ export class TableroAlquileresService {
     private readonly liquidaciones: LiquidacionesService,
   ) {}
 
-  async tablero(hoy = hoyArgentina()): Promise<TableroAlquileresDto> {
+  /**
+   * `anio` elige el año de los gráficos (evolución e ingresos, con el año
+   * anterior para comparar), como el Tablero Comercial. Lo demás —cartera,
+   * cobranza del mes, morosidad, tareas— es siempre a hoy.
+   */
+  async tablero(hoy = hoyArgentina(), anio = Number(hoy.slice(0, 4))): Promise<TableroAlquileresDto> {
     const mes = hoy.slice(0, 7);
     const [datos, bandeja, aLiquidar] = await Promise.all([
-      this.db.withTenant((tx) => this.leer(tx, hoy, mes)),
+      this.db.withTenant((tx) => this.leer(tx, hoy, mes, anio)),
       this.indexaciones.bandeja(hoy),
       this.liquidaciones.pendientes(),
     ]);
@@ -185,6 +190,7 @@ export class TableroAlquileresService {
     return {
       hoy,
       mes,
+      anio,
       cartera: {
         vigentes: porCantidad(vigentes.map((c) => filaContrato(c, importeDeHoy(c)))),
         vivienda: vigentes.filter((c) => c.tipo === 'vivienda').length,
@@ -233,9 +239,11 @@ export class TableroAlquileresService {
   }
 
   /** Cinco consultas, en una transacción: todas ven la misma foto de la base. */
-  private async leer(tx: Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0], hoy: string, mes: string) {
-    const desdeEvolucion = sumarMesesIso(`${mes}-01`, -11).slice(0, 7);
-    const desdeIngresos = sumarMesesIso(`${mes}-01`, -23);
+  private async leer(tx: Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0], hoy: string, mes: string, anio: number) {
+    const desdeEvolucion = `${anio}-01`;
+    const hastaEvolucion = `${anio}-12`;
+    const desdeIngresos = `${anio - 1}-01-01`;
+    const hastaIngresos = `${anio + 1}-01-01`;
     const [contratos, delMes, mora, evolucion, ingresos] = await Promise.all([
       tx.alqContrato.findMany({
         where: { estado: { not: 'borrador' } },
@@ -303,7 +311,7 @@ export class TableroAlquileresService {
                AND re.fecha < (to_date(k.periodo, 'YYYY-MM') + INTERVAL '1 month')
           ) x ON true
          WHERE k.tipo = 'alquiler' AND k.sentido = 'a_cobrar' AND k.anulado_en IS NULL
-           AND k.periodo BETWEEN ${desdeEvolucion} AND ${mes}
+           AND k.periodo BETWEEN ${desdeEvolucion} AND ${hastaEvolucion}
          GROUP BY k.periodo, k.moneda
          ORDER BY k.periodo, k.moneda`,
       // Regla 30: gastos y punitorios cobrados (por la fecha del cobro) y
@@ -319,12 +327,12 @@ export class TableroAlquileresService {
               JOIN alq_concepto k ON k.id = im.concepto_id
               JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
               JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
-             WHERE k.tipo IN ('gastos_adm', 'punitorio') AND re.fecha >= ${toDate(desdeIngresos)}
+             WHERE k.tipo IN ('gastos_adm', 'punitorio') AND re.fecha >= ${toDate(desdeIngresos)} AND re.fecha < ${toDate(hastaIngresos)}
             UNION ALL
             SELECT to_char(l.fecha, 'YYYY-MM'), k.moneda, k.tipo, k.importe
               FROM alq_concepto k
               JOIN alq_liquidacion l ON l.id = k.liquidacion_id AND l.anulado_en IS NULL
-             WHERE k.tipo = 'honorarios' AND l.fecha >= ${toDate(desdeIngresos)}
+             WHERE k.tipo = 'honorarios' AND l.fecha >= ${toDate(desdeIngresos)} AND l.fecha < ${toDate(hastaIngresos)}
           ) movimientos
          GROUP BY mes, moneda
          ORDER BY mes, moneda`,

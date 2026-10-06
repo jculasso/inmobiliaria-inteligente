@@ -48,14 +48,14 @@ describe('ContratoFicha — acciones según el estado (reglas 2 y 3)', () => {
   it('en borrador: editar y activar; no se puede rescindir', () => {
     render(<ContratoFicha contrato={base} />);
     expect(screen.getByRole('button', { name: 'Activar contrato' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Editar' })).toHaveAttribute('href', '/alquileres/contratos/c1/editar');
+    expect(screen.getByRole('link', { name: '✏️ Editar' })).toHaveAttribute('href', '/alquileres/contratos/c1/editar');
     expect(screen.queryByRole('button', { name: 'Rescindir' })).not.toBeInTheDocument();
   });
 
   it('vigente: finalizar o rescindir; ya no se edita', () => {
     render(<ContratoFicha contrato={{ ...base, estado: 'vigente' }} />);
     expect(screen.getByRole('button', { name: 'Rescindir' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Editar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '✏️ Editar' })).not.toBeInTheDocument();
   });
 
   it('rescindir pide la fecha y la manda', async () => {

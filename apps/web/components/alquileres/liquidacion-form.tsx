@@ -9,6 +9,7 @@ import { generarLiquidacionPdf, liquidar, prepararLiquidacion } from '../../lib/
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
+import { Bloque, EncabezadoPagina } from './piezas';
 
 const numero = (n: number) => String(n).padStart(6, '0');
 
@@ -87,11 +88,8 @@ export function LiquidacionForm({ personas, personaInicial, hoy }: { personas: P
     );
   }
 
-  const Lista = ({ titulo, lineas, signo, enEspera = false }: { titulo: string; lineas: LineaLiquidacion[]; signo: string; enEspera?: boolean }) => (
-    <section className="rounded-brand border border-line bg-white">
-      <h2 className="border-b border-line px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wider text-muted">
-        {titulo} · {lineas.length}
-      </h2>
+  const Lista = ({ icono, titulo, lineas, signo, enEspera = false }: { icono: string; titulo: string; lineas: LineaLiquidacion[]; signo: string; enEspera?: boolean }) => (
+    <Bloque icono={icono} titulo={titulo} detalle={String(lineas.length)}>
       {lineas.length === 0 ? (
         <p className="px-4 py-3 text-sm text-muted">Nada.</p>
       ) : (
@@ -119,7 +117,7 @@ export function LiquidacionForm({ personas, personaInicial, hoy }: { personas: P
           ))}
         </ul>
       )}
-    </section>
+    </Bloque>
   );
 
   // Lo que se destildó sigue a la vista, para poder volver a tildarlo.
@@ -127,7 +125,8 @@ export function LiquidacionForm({ personas, personaInicial, hoy }: { personas: P
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 sm:grid-cols-[2fr_1fr_1fr]">
+      <EncabezadoPagina titulo="Nueva liquidación" volver={{ href: '/alquileres/liquidaciones', texto: 'Liquidaciones' }} />
+      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-[2fr_1fr_1fr]">
         <Campo label="Propietario" requerido>
           <select
             className={inputClass}
@@ -165,11 +164,11 @@ export function LiquidacionForm({ personas, personaInicial, hoy }: { personas: P
 
       {prep && (
         <>
-          <Lista titulo="Cobrado a su favor" lineas={prep.aPagar} signo="" />
-          <Lista titulo="Descuentos" lineas={prep.aDescontar} signo="− " />
+          <Lista icono="💵" titulo="Cobrado a su favor" lineas={prep.aPagar} signo="" />
+          <Lista icono="➖" titulo="Descuentos" lineas={prep.aDescontar} signo="− " />
           {prep.enEspera.length > 0 && (
             <>
-              <Lista titulo="En espera: el inquilino todavía no pagó" lineas={prep.enEspera} signo="" enEspera />
+              <Lista icono="⏳" titulo="En espera: el inquilino todavía no pagó" lineas={prep.enEspera} signo="" enEspera />
             </>
           )}
           {dejados > 0 && (
@@ -180,9 +179,9 @@ export function LiquidacionForm({ personas, personaInicial, hoy }: { personas: P
               </button>
             </p>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-brand border border-line bg-white px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-brand border border-line bg-white px-4 py-3 shadow-sm">
             <span>
-              <span className="block text-[10px] font-extrabold uppercase tracking-wider text-muted">Neto a pagar</span>
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-muted">💰 Neto a pagar</span>
               <span className={`text-2xl font-extrabold tabular-nums ${prep.neto < 0 ? 'text-brand-red' : 'text-ink'}`}>{fmtMoneda(prep.neto, moneda)}</span>
             </span>
             <Button variant="primary" onClick={confirmar} disabled={enviando || prep.aPagar.length === 0 || prep.neto < 0}>

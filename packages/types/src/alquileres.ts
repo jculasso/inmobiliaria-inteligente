@@ -109,6 +109,12 @@ export type EstadoContrato = z.infer<typeof EstadoContratoSchema>;
 export const TipoContratoSchema = z.enum(['vivienda', 'comercial']);
 export type TipoContrato = z.infer<typeof TipoContratoSchema>;
 
+/**
+ * Cómo se llama cada tipo en pantalla: «Particular» y «Comercial», como en
+ * Gexion (decidido con Javier el 6/10/2026). En la base sigue `vivienda`.
+ */
+export const NOMBRE_TIPO_CONTRATO: Record<TipoContrato, string> = { vivienda: 'Particular', comercial: 'Comercial' };
+
 export const MonedaAlquilerSchema = z.enum(['ARS', 'USD']);
 export type MonedaAlquiler = z.infer<typeof MonedaAlquilerSchema>;
 
@@ -727,6 +733,8 @@ export type TramoMora = (typeof TRAMOS_MORA)[number];
 export const TableroAlquileresDtoSchema = z.object({
   hoy: FechaIso,
   mes: PeriodoSchema,
+  /** El año de los gráficos; `.default` por el orden de despliegue. */
+  anio: z.number().int().default(new Date().getFullYear()),
   /** Regla 27. */
   cartera: z.object({
     vigentes: IndicadorSchema,
@@ -754,9 +762,9 @@ export const TableroAlquileresDtoSchema = z.object({
       tramos: z.array(z.object({ tramo: z.enum(TRAMOS_MORA), indicador: IndicadorSchema })),
     }),
   ),
-  /** Regla 29: porcentaje cobrado al cierre de cada mes, 12 meses. */
+  /** Regla 29: lo emitido y lo cobrado al cierre de cada mes del año elegido. */
   evolucion: z.array(z.object({ mes: PeriodoSchema, moneda: MonedaAlquilerSchema, emitido: z.number(), cobrado: z.number() })),
-  /** Regla 30: honorarios, gastos y punitorios cobrados, 24 meses (12 y los mismos del año anterior). */
+  /** Regla 30: honorarios, gastos y punitorios cobrados por mes, del año elegido y del anterior. */
   ingresos: z.array(
     z.object({ mes: PeriodoSchema, moneda: MonedaAlquilerSchema, honorarios: z.number(), gastos: z.number(), punitorios: z.number() }),
   ),
@@ -835,3 +843,8 @@ export type CambioFirmaManualInput = z.input<typeof CambioFirmaManualSchema>;
 export type CambioFirmaManual = z.output<typeof CambioFirmaManualSchema>;
 
 export const UrlArchivoDtoSchema = z.object({ url: z.string().url() });
+
+export const TableroAlquileresQuerySchema = z.object({
+  anio: z.coerce.number().int().min(2000).max(2100).optional(),
+});
+export type TableroAlquileresQuery = z.infer<typeof TableroAlquileresQuerySchema>;

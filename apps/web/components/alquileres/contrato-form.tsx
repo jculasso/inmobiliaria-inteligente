@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ContratoInputSchema,
+  NOMBRE_TIPO_CONTRATO,
   type AjusteContrato,
   type ContratoDto,
   type IndiceAlquiler,
@@ -19,6 +20,7 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarContrato, crearContrato } from '../../lib/alquileres-api';
 import { Campo, inputClass, textareaClass } from '../form-ui';
+import { EncabezadoPagina } from './piezas';
 
 interface Parte {
   clave: string;
@@ -174,6 +176,10 @@ export function ContratoForm({
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
+      <EncabezadoPagina
+        titulo={contrato ? `Editar el contrato ${contrato.codigo}` : 'Nuevo contrato'}
+        volver={contrato ? { href: `/alquileres/contratos/${contrato.id}`, texto: `Contrato ${contrato.codigo}` } : { href: '/alquileres/contratos', texto: 'Contratos' }}
+      />
       <ol className="flex gap-2" aria-label="Pasos del alta">
         {PASOS.map((nombre, i) => (
           <li key={nombre} className="flex-1">
@@ -182,18 +188,22 @@ export function ContratoForm({
               onClick={() => setPaso(i)}
               aria-current={paso === i ? 'step' : undefined}
               className={`w-full rounded-brand border px-3 py-2 text-left text-sm font-semibold ${
-                paso === i ? 'border-brand-red bg-brand-red/5 text-brand-red' : 'border-line bg-white text-muted hover:text-ink'
+                paso === i ? 'border-brand-red bg-brand-red text-white' : 'border-line bg-white text-muted hover:text-ink'
               }`}
             >
               <span className="mr-1.5 tabular-nums">{i + 1}.</span>
               {nombre}
-              {problemas[i]!.length === 0 && <span className="ml-1.5 text-success" aria-label="(completo)">✓</span>}
+              {problemas[i]!.length === 0 && (
+                <span className={`ml-1.5 ${paso === i ? 'text-white' : 'text-success'}`} aria-label="(completo)">
+                  ✓
+                </span>
+              )}
             </button>
           </li>
         ))}
       </ol>
 
-      <section className="rounded-brand border border-line bg-white p-5">
+      <section className="rounded-brand border border-line bg-white p-5 shadow-sm">
         {paso === 0 && (
           <div className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
@@ -215,7 +225,9 @@ export function ContratoForm({
             </div>
 
             <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Partes</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted">
+                <span aria-hidden>👥</span> Partes
+              </p>
               {partes.map((p) => (
                 // En el teléfono cada parte es una tarjeta: apiladas sin borde,
                 // el ✕ de una quedaba solo en un renglón y se leía como de la siguiente.
@@ -298,8 +310,8 @@ export function ContratoForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <Campo label="Tipo">
               <select className={inputClass} value={tipo} onChange={(e) => setTipo(e.target.value as TipoContrato)}>
-                <option value="vivienda">Vivienda</option>
-                <option value="comercial">Comercial</option>
+                <option value="vivienda">{NOMBRE_TIPO_CONTRATO.vivienda}</option>
+                <option value="comercial">{NOMBRE_TIPO_CONTRATO.comercial}</option>
               </select>
             </Campo>
             <Campo label="Moneda">

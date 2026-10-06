@@ -1,6 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ROLES_ADMINISTRACION_ALQUILERES } from '@vacker/types';
+import { Controller, Get, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ROLES_ADMINISTRACION_ALQUILERES, TableroAlquileresQuerySchema, type TableroAlquileresQuery } from '@vacker/types';
+import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { Modulo, Roles } from '../../auth/decorators';
 import { TableroAlquileresService } from './tablero-alquileres.service';
 
@@ -15,7 +16,8 @@ export class TableroAlquileresController {
   @Get()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Cartera, cobranza del mes, morosidad, ingresos y lo que hay que hacer' })
-  obtener() {
-    return this.tablero.tablero();
+  @ApiQuery({ name: 'anio', required: false, example: 2026, description: 'El año de la evolución y los ingresos mes a mes; por defecto, el actual.' })
+  obtener(@Query(new ZodValidationPipe(TableroAlquileresQuerySchema)) q: TableroAlquileresQuery) {
+    return this.tablero.tablero(undefined, q.anio);
   }
 }

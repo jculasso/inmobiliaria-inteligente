@@ -10,6 +10,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { confirmarIndexacion } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { inputClass } from '../form-ui';
+import { EncabezadoPagina, Insignia, TituloSeccion, Vacio } from './piezas';
 
 const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
 
@@ -30,6 +31,7 @@ function EstadoIndices({ indices }: { indices: EstadoIndiceDto[] }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2 text-xs text-muted">
+        <span className="py-1 font-bold uppercase tracking-wider">📈 Índices cargados</span>
         {indices.map((i) => (
           <span key={i.indice} className="rounded-full border border-line bg-white px-2.5 py-1">
             <span className="font-bold text-ink">{i.indice}</span>{' '}
@@ -72,13 +74,13 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
   }
 
   return (
-    <li className="flex flex-col gap-3 rounded-brand border border-line bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+    <li className="flex flex-col gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-ink">
           <Link href={`/alquileres/contratos/${t.contrato.id}`} className="hover:underline">
             {t.contrato.codigo} · {unidad}
           </Link>
-          {t.vencida && <span className="rounded-full bg-brand-red/10 px-2 py-0.5 text-[11px] font-bold text-brand-red">Vencida</span>}
+          {t.vencida && <Insignia tono="marca">Vencida</Insignia>}
         </p>
         <p className="text-xs text-muted">
           {t.inquilinos.join(', ') || 'Sin inquilino'} · Tramo {t.numero}, desde el {fmtFecha(t.desde)} · {NOMBRE_INDICE[t.indice]}
@@ -155,6 +157,7 @@ export function BandejaIndexacion({ bandeja }: { bandeja: BandejaIndexacionDto }
 
   return (
     <div className="flex flex-col gap-4">
+      <EncabezadoPagina titulo="A indexar" />
       <EstadoIndices indices={bandeja.indices} />
       {aviso && (
         <p role="status" className="rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink">
@@ -163,13 +166,13 @@ export function BandejaIndexacion({ bandeja }: { bandeja: BandejaIndexacionDto }
       )}
 
       {bandeja.tramos.length === 0 ? (
-        <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">
-          No hay tramos para indexar en los próximos {DIAS_ANTICIPACION_INDEXACION} días.
-        </p>
+        <Vacio>No hay tramos para indexar en los próximos {DIAS_ANTICIPACION_INDEXACION} días.</Vacio>
       ) : (
         <>
           <section className="flex flex-col gap-2">
-            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-muted">Para confirmar · {listas.length}</h2>
+            <TituloSeccion icono="✅" detalle={String(listas.length)}>
+              Para confirmar
+            </TituloSeccion>
             {listas.length === 0 ? (
               <p className="text-sm text-muted">Ninguno: los tramos que vienen esperan un índice.</p>
             ) : (
@@ -182,7 +185,9 @@ export function BandejaIndexacion({ bandeja }: { bandeja: BandejaIndexacionDto }
           </section>
           {esperando.length > 0 && (
             <section className="flex flex-col gap-2">
-              <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-muted">Esperando el índice · {esperando.length}</h2>
+              <TituloSeccion icono="⏳" detalle={String(esperando.length)}>
+                Esperando el índice
+              </TituloSeccion>
               <ul className="flex flex-col gap-2">
                 {esperando.map((t) => (
                   <Tramo key={t.tramoId} t={t} onConfirmado={confirmado} />

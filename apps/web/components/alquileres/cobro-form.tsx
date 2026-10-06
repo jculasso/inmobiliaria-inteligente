@@ -10,6 +10,7 @@ import { generarRecibo, prepararCobro, registrarCobro } from '../../lib/alquiler
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
+import { Bloque, EncabezadoPagina } from './piezas';
 
 const numero = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'));
 const recibo = (n: number) => String(n).padStart(6, '0');
@@ -118,7 +119,7 @@ export function CobroForm({ personas, personaInicial, hoy }: { personas: Persona
 
   if (hecho) {
     return (
-      <div className="flex flex-col gap-3 rounded-brand border border-success/30 bg-white p-5">
+      <div className="flex flex-col gap-3 rounded-brand border border-success/30 bg-success/5 p-5 shadow-sm">
         <p role="status" className="text-lg font-extrabold text-ink">
           Recibo {recibo(hecho.numero)} · {fmtMoneda(hecho.importe, hecho.moneda)} de {hecho.persona.nombre}
         </p>
@@ -128,7 +129,7 @@ export function CobroForm({ personas, personaInicial, hoy }: { personas: Persona
             variant="primary"
             onClick={() => abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), hecho.id), { titulo: `Recibo ${recibo(hecho.numero)}`, onError: setError })}
           >
-            Descargar el recibo
+            📄 Descargar el recibo
           </Button>
           <Link href={`/alquileres/personas/${hecho.persona.id}`}>
             <Button variant="secondary">Ver la cuenta</Button>
@@ -144,7 +145,8 @@ export function CobroForm({ personas, personaInicial, hoy }: { personas: Persona
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 sm:grid-cols-[2fr_1fr_1fr]">
+      <EncabezadoPagina titulo="Nuevo cobro" volver={{ href: '/alquileres/cobros', texto: 'Cobros' }} />
+      <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-[2fr_1fr_1fr]">
         <Campo label="Quién paga" requerido>
           <select className={inputClass} value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
             <option value="">Elegí una persona</option>
@@ -170,10 +172,7 @@ export function CobroForm({ personas, personaInicial, hoy }: { personas: Persona
 
       {prep && !cargando && (
         <>
-          <section className="rounded-brand border border-line bg-white">
-            <h2 className="border-b border-line px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wider text-muted">
-              Lo que debe · {prep.deudas.length}
-            </h2>
+          <Bloque icono="📋" titulo="Lo que debe" detalle={String(prep.deudas.length)}>
             {prep.deudas.length === 0 ? (
               <p className="px-4 py-4 text-sm text-muted">No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}. Lo que pague queda a su favor.</p>
             ) : (
@@ -261,9 +260,9 @@ export function CobroForm({ personas, personaInicial, hoy }: { personas: Persona
                 <p className="text-xs text-muted">Se descuenta solo de lo que debe.</p>
               </div>
             )}
-          </section>
+          </Bloque>
 
-          <section className="grid gap-3 rounded-brand border border-line bg-white p-4 sm:grid-cols-3">
+          <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-3">
             <Campo label="Importe recibido" requerido hint={sugerido > 0 ? `Para cancelar lo elegido: ${fmtMoneda(sugerido, moneda)}` : undefined}>
               <div className="flex gap-2">
                 <input className={`${inputClass} text-right tabular-nums`} inputMode="decimal" placeholder="$ 0" value={importe} onChange={(e) => setImporte(e.target.value)} />

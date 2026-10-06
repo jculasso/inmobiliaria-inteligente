@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { CambiarEstadoContrato, ContratoDto } from '@vacker/types';
+import { NOMBRE_TIPO_CONTRATO, type CambiarEstadoContrato, type ContratoDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cambiarEstadoContrato } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { EstadoContratoBadge } from './estado-contrato';
+import { Panel } from './piezas';
 
 const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
 
@@ -73,7 +74,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             </Link>{' '}
             /
           </p>
-          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-xl font-extrabold text-ink">
+          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-lg font-bold text-ink">
             Contrato {contrato.codigo} <EstadoContratoBadge estado={contrato.estado} />
           </h2>
           <p className="text-sm text-muted">
@@ -87,7 +88,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             <>
               <Link href={`/alquileres/contratos/${contrato.id}/editar`}>
                 <Button variant="secondary" size="sm">
-                  Editar
+                  ✏️ Editar
                 </Button>
               </Link>
               <Button variant="primary" size="sm" onClick={() => setConfirmar('vigente')}>
@@ -108,9 +109,8 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         </div>
       </div>
 
-      <section className="rounded-brand border border-line bg-white p-5">
-        <h3 className="text-sm font-bold text-ink">Partes</h3>
-        <ul className="mt-2 flex flex-col gap-1.5">
+      <Panel icono="👥" titulo="Partes">
+        <ul className="flex flex-col gap-1.5">
           {contrato.partes.map((p) => (
             <li key={`${p.papel}-${p.personaId}`} className="flex flex-wrap items-baseline gap-2 text-sm">
               <span className="w-24 text-[11px] font-bold uppercase tracking-wide text-muted">{p.papel}</span>
@@ -119,15 +119,14 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             </li>
           ))}
         </ul>
-      </section>
+      </Panel>
 
-      <section className="rounded-brand border border-line bg-white p-5">
-        <h3 className="text-sm font-bold text-ink">Condiciones</h3>
-        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+      <Panel icono="📑" titulo="Condiciones">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <Dato etiqueta="Vigencia">
             {fmtFecha(contrato.inicio)} al {fmtFecha(contrato.fin)}
           </Dato>
-          <Dato etiqueta="Tipo">{contrato.tipo === 'comercial' ? 'Comercial' : 'Vivienda'}</Dato>
+          <Dato etiqueta="Tipo">{NOMBRE_TIPO_CONTRATO[contrato.tipo]}</Dato>
           <Dato etiqueta="Ajuste">
             {contrato.ajuste === 'indexado' && contrato.indice
               ? `${NOMBRE_INDICE[contrato.indice]} cada ${contrato.periodicidadMeses} meses`
@@ -145,11 +144,10 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           {contrato.rescindidoEl && <Dato etiqueta="Rescindido el">{fmtFecha(contrato.rescindidoEl)}</Dato>}
         </dl>
         {contrato.obs && <p className="mt-3 whitespace-pre-line text-sm text-muted">{contrato.obs}</p>}
-      </section>
+      </Panel>
 
-      <section className="rounded-brand border border-line bg-white p-5">
-        <h3 className="text-sm font-bold text-ink">Tramos</h3>
-        <div className="mt-2 overflow-x-auto">
+      <Panel icono="📈" titulo="Tramos">
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[30rem] text-sm">
             <thead>
               <tr className="text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
@@ -173,7 +171,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             </tbody>
           </table>
         </div>
-      </section>
+      </Panel>
 
       {confirmar && (
         <Modal title={textos[confirmar].titulo} onClose={() => setConfirmar(null)}>

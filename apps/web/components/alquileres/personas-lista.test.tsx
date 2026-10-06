@@ -75,7 +75,7 @@ describe('PersonasLista — alta', () => {
   it('da de alta con lo que se escribió y refresca la lista', async () => {
     crearPersona.mockResolvedValue(persona('Carla Ruiz', '30111222'));
     render(<PersonasLista personas={PERSONAS} />);
-    await userEvent.click(screen.getByRole('button', { name: '+ Nueva persona' }));
+    await userEvent.click(screen.getByRole('button', { name: '＋ Nueva persona' }));
     const dialogo = within(screen.getByRole('dialog'));
     await userEvent.type(dialogo.getByLabelText(/Nombre y apellido/), 'Carla Ruiz');
     await userEvent.type(dialogo.getByLabelText(/DNI o CUIT/), '30.111.222');
@@ -91,7 +91,7 @@ describe('PersonasLista — alta', () => {
   it('si el documento ya existe, muestra el motivo y no cierra', async () => {
     crearPersona.mockRejectedValue(new Error('Ya hay una persona cargada con ese documento: José Pérez.'));
     render(<PersonasLista personas={PERSONAS} />);
-    await userEvent.click(screen.getByRole('button', { name: '+ Nueva persona' }));
+    await userEvent.click(screen.getByRole('button', { name: '＋ Nueva persona' }));
     const dialogo = within(screen.getByRole('dialog'));
     await userEvent.type(dialogo.getByLabelText(/Nombre y apellido/), 'Otro');
     await userEvent.click(dialogo.getByRole('button', { name: 'Guardar' }));
