@@ -1,5 +1,22 @@
 import type { NextConfig } from 'next';
 
+/**
+ * Cabeceras de seguridad para todas las páginas, las mismas que apps/web
+ * (auditoría del 6/10/2026). Sin `frame-ancestors`, cualquier página podía
+ * mostrar el sitio dentro de un iframe invisible y hacer que alguien mande el
+ * formulario sin saberlo.
+ *
+ * Sin CSP completa por el mismo motivo que en la web: una política mal armada
+ * rompe el sitio en producción. Solo lo que frena el iframe.
+ */
+const CABECERAS = [
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+];
+
 const nextConfig: NextConfig = {
   // Solo el design system: el sitio comercial no comparte tipos de negocio con
   // la aplicación, y mantenerlo así es lo que permite desplegarlo aparte sin
@@ -18,6 +35,10 @@ const nextConfig: NextConfig = {
    * existe y se compila en `.next`, como siempre.
    */
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
+
+  async headers() {
+    return [{ source: '/:path*', headers: CABECERAS }];
+  },
 };
 
 export default nextConfig;
