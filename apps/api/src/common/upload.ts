@@ -13,3 +13,13 @@ export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 export const uploadUnArchivo = {
   limits: { fileSize: UPLOAD_MAX_BYTES, files: 1 },
 };
+
+/**
+ * El PDF de un contrato: los firmados suelen ser escaneos, más pesados que una
+ * foto. Mismo motivo que arriba para pasárselo a Multer.
+ */
+export const UPLOAD_PDF_MAX_BYTES = 15 * 1024 * 1024;
+
+export const uploadPdf = {
+  limits: { fileSize: UPLOAD_PDF_MAX_BYTES, files: 1 },
+};

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   alertaIndice,
   cargoConIva,
+  estadoDeFirma,
   fechaDelIndice,
   generarPeriodo,
   generarTramos,
@@ -531,6 +532,20 @@ describe('proponerLiquidacion (reglas 20 a 22)', () => {
 describe('tramoDeMora (regla 29)', () => {
   it('cada borde cae en su tramo', () => {
     expect([1, 30, 31, 60, 61, 90, 91].map(tramoDeMora)).toEqual(['1-30', '1-30', '31-60', '31-60', '61-90', '61-90', '90+']);
+  });
+});
+
+describe('estadoDeFirma (regla 33)', () => {
+  it('sale de los firmantes', () => {
+    expect(estadoDeFirma('enviado', ['firmado', 'firmado', 'firmado'])).toBe('firmado');
+    expect(estadoDeFirma('enviado', ['firmado', 'pendiente'])).toBe('firmado_parcial');
+    expect(estadoDeFirma('firmado_parcial', ['firmado', 'rechazado'])).toBe('rechazado');
+  });
+
+  it('si nadie firmó, queda como estaba; y si se desmarca lo firmado, vuelve a enviado', () => {
+    expect(estadoDeFirma('sin_enviar', ['pendiente'])).toBe('sin_enviar');
+    expect(estadoDeFirma('vencido', ['pendiente'])).toBe('vencido');
+    expect(estadoDeFirma('firmado', ['pendiente', 'pendiente'])).toBe('enviado');
   });
 });
 

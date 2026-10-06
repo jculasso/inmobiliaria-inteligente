@@ -87,6 +87,16 @@ const PERMITIDOS: Excepcion[] = [
       'es este.',
   },
   {
+    archivo: 'src/modules/alquileres/firma/firma-avisos.service.ts',
+    funciones: ['constructor', 'procesar'],
+    motivo:
+      'El aviso de un proveedor de firma llega sin sesión ni inmobiliaria: lo único ' +
+      'que identifica al documento es el id del envío en el proveedor, así que ' +
+      'buscarlo es mirar todas las inmobiliarias. Antes de tocar nada, el adaptador ' +
+      'valida que el aviso sea auténtico; después solo se modifican ese documento, ' +
+      'sus firmantes y sus eventos, con el tenant_id del documento encontrado.',
+  },
+  {
     archivo: 'src/modules/alquileres/indices.service.ts',
     funciones: ['constructor'],
     motivo:

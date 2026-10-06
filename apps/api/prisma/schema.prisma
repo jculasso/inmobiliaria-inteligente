@@ -883,6 +883,9 @@ model AlqDocumento {
   tenantId       String   @map("tenant_id") @db.Uuid
   contratoId     String   @map("contrato_id") @db.Uuid
   archivo        String? // ruta en Storage
+  nombreArchivo  String?  @map("nombre_archivo")
+  /// El PDF firmado, cuando vuelve (regla 34).
+  archivoFirmado String?  @map("archivo_firmado")
   estadoFirma    String   @default("sin_enviar") @map("estado_firma") // sin_enviar | enviado | firmado_parcial | firmado | rechazado | vencido
   proveedor      String? // manual | <nombre del proveedor>
   envioExternoId String?  @map("envio_externo_id")
@@ -894,22 +897,26 @@ model AlqDocumento {
   firmantes AlqFirmante[]
   eventos   AlqFirmaEvento[]
 
+  @@unique([contratoId])
+  @@unique([proveedor, envioExternoId])
   @@index([tenantId])
   @@index([contratoId])
   @@map("alq_documento")
 }
 
 model AlqFirmante {
-  id          String @id @default(uuid()) @db.Uuid
-  tenantId    String @map("tenant_id") @db.Uuid
-  documentoId String @map("documento_id") @db.Uuid
-  personaId   String @map("persona_id") @db.Uuid
-  estado      String @default("pendiente") // pendiente | firmado | rechazado
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  documentoId String    @map("documento_id") @db.Uuid
+  personaId   String    @map("persona_id") @db.Uuid
+  estado      String    @default("pendiente") // pendiente | firmado | rechazado
+  firmadoEl   DateTime? @map("firmado_el") @db.Timestamptz(6)
 
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   documento AlqDocumento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
   persona   AlqPersona   @relation(fields: [personaId], references: [id], onDelete: Restrict)
 
+  @@unique([documentoId, personaId])
   @@index([tenantId])
   @@index([documentoId])
   @@map("alq_firmante")

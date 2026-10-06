@@ -768,6 +768,70 @@ export const TableroAlquileresDtoSchema = z.object({
     depositos: IndicadorSchema,
     liquidaciones: IndicadorSchema,
     deudores: IndicadorSchema,
+    /** Regla 36: vigentes sin el contrato firmado cargado. `.default` por el orden de despliegue. */
+    sinFirmar: IndicadorSchema.default({ valor: 0, filas: [] }),
   }),
 });
 export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;
+
+// --- Firma del contrato (reglas 33 a 36) -------------------------------------------
+
+export const EstadoFirmaSchema = z.enum(['sin_enviar', 'enviado', 'firmado_parcial', 'firmado', 'rechazado', 'vencido']);
+export type EstadoFirma = z.infer<typeof EstadoFirmaSchema>;
+
+export const EstadoFirmanteSchema = z.enum(['pendiente', 'firmado', 'rechazado']);
+export type EstadoFirmante = z.infer<typeof EstadoFirmanteSchema>;
+
+/** El documento de un contrato, sus firmantes y cada cambio de estado (reglas 33 y 34). */
+export const DocumentoContratoDtoSchema = z.object({
+  id: z.string().uuid(),
+  contratoId: z.string().uuid(),
+  estadoFirma: EstadoFirmaSchema,
+  /** `manual` o el nombre del proveedor de firma. */
+  proveedor: z.string().nullable(),
+  nombreArchivo: z.string().nullable(),
+  tieneFirmado: z.boolean(),
+  firmantes: z.array(
+    z.object({
+      personaId: z.string().uuid(),
+      nombre: z.string(),
+      papel: PapelContratoSchema,
+      estado: EstadoFirmanteSchema,
+      firmadoEl: z.string().nullable(),
+    }),
+  ),
+  eventos: z.array(
+    z.object({
+      fecha: z.string(),
+      estadoAnterior: EstadoFirmaSchema.nullable(),
+      estadoNuevo: EstadoFirmaSchema,
+      /** `manual` o el proveedor que avisó. */
+      origen: z.string(),
+      detalle: z.string().nullable(),
+    }),
+  ),
+});
+export type DocumentoContratoDto = z.infer<typeof DocumentoContratoDtoSchema>;
+
+export const DocumentoDeContratoDtoSchema = z.object({ documento: DocumentoContratoDtoSchema.nullable() });
+
+/**
+ * Un cambio cargado a mano (regla 34): el estado de cada firmante y, si hace
+ * falta, que se envió o que venció. El estado del documento sale de los
+ * firmantes (regla 33), no se elige.
+ */
+export const CambioFirmaManualSchema = z
+  .object({
+    marcar: z.enum(['enviado', 'vencido']).nullish().transform((v) => v ?? null),
+    firmantes: z.array(z.object({ personaId: z.string().uuid(), estado: EstadoFirmanteSchema })).default([]),
+    nota: z
+      .string()
+      .trim()
+      .nullish()
+      .transform((v) => (v ? v : null)),
+  })
+  .refine((v) => v.marcar !== null || v.firmantes.length > 0, 'No hay ningún cambio para guardar.');
+export type CambioFirmaManualInput = z.input<typeof CambioFirmaManualSchema>;
+export type CambioFirmaManual = z.output<typeof CambioFirmaManualSchema>;
+
+export const UrlArchivoDtoSchema = z.object({ url: z.string().url() });

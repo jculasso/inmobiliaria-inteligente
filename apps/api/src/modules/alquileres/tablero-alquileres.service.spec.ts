@@ -31,6 +31,7 @@ function contrato(over: Record<string, unknown> = {}) {
       { desde: d('2026-08-15'), importe: dec(1_137_518) },
       { desde: d('2026-12-15'), importe: null },
     ],
+    documentos: [] as { estadoFirma: string }[],
     ...over,
   };
 }
@@ -113,6 +114,7 @@ function indicadores(t: TableroAlquileresDto): [string, Indicador, 'importe' | '
     ['depósitos', t.tareas.depositos, 'cantidad'],
     ['liquidaciones', t.tareas.liquidaciones, 'cantidad'],
     ['deudores', t.tareas.deudores, 'cantidad'],
+    ['sin firmar', t.tareas.sinFirmar, 'cantidad'],
   ];
 }
 
@@ -171,6 +173,21 @@ describe('TableroAlquileresService', () => {
     expect(t.liquidaciones.filas.map((f) => f.persona)).toEqual(['Dueño']);
     // Solo la deuda de más de 30 días: la de agosto, no la de octubre.
     expect(t.deudores.filas.map((f) => [f.persona, f.importe])).toEqual([['Inquilina', 100_000]]);
+  });
+
+  // Regla 36.
+  it('vigentes sin el contrato firmado cargado: a completar', async () => {
+    const contratos = [
+      contrato(),
+      contrato({ id: 'c6', codigo: '6', documentos: [{ estadoFirma: 'firmado' }] }),
+      contrato({ id: 'c7', codigo: '7', documentos: [{ estadoFirma: 'enviado' }] }),
+      contrato({ id: 'c8', codigo: '8', estado: 'finalizado', fin: d('2026-09-30') }),
+    ];
+    const t = (await servicio({ contratos }).tablero(HOY)).tareas.sinFirmar;
+    expect(t.filas.map((f) => [f.contrato, f.detalle])).toEqual([
+      ['5', 'Falta cargar el contrato firmado'],
+      ['7', 'Falta completar la firma'],
+    ]);
   });
 
   it('cada fila lleva a la ficha o a la cuenta', async () => {
