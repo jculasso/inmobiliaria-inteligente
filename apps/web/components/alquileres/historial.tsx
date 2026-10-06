@@ -10,6 +10,7 @@ const ICONO: Record<AccionEvento, string> = {
   indexacion: '📈',
   generacion: '⚙️',
   documento: '📄',
+  envio: '✉️',
 };
 
 const cuando = (iso: string) =>

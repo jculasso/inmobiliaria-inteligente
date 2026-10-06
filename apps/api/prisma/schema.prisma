@@ -54,6 +54,8 @@ model Tenant {
   alqFirmantes             AlqFirmante[]
   alqFirmaEventos          AlqFirmaEvento[]
   alqEventos               AlqEvento[]
+  alqCuentasBancarias      AlqCuentaBancaria[]
+  alqContactos             AlqContacto[]
 
   @@map("tenant")
 }
@@ -617,10 +619,23 @@ model AlqPersona {
   telefono  String?
   domicilio String?
   obs       String?
+  /// CUIT/CUIL, solo dígitos y con dígito verificador válido (aparte del DNI de `documento`).
+  cuit            String?
+  /// consumidor_final | responsable_inscripto | monotributista | exento | no_responsable
+  condicionIva    String?   @map("condicion_iva")
+  localidad       String?
+  provincia       String?
+  codigoPostal    String?   @map("codigo_postal")
+  fechaNacimiento DateTime? @map("fecha_nacimiento") @db.Date
+  nacionalidad    String?
+  /// soltero | casado | divorciado | viudo | union_convivencial
+  estadoCivil     String?   @map("estado_civil")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuentas       AlqCuentaBancaria[]
+  contactos     AlqContacto[]
   partes        AlqContratoParte[]
   conceptos     AlqConcepto[]
   cobros        AlqCobro[]
@@ -999,4 +1014,50 @@ model AlqEvento {
   @@index([tenantId, personaId, en])
   @@index([tenantId, entidad, entidadId])
   @@map("alq_evento")
+}
+
+/// Una cuenta bancaria de una persona (Gexion, «Gestión administrativa»): a
+/// dónde se le transfiere al propietario. CBU y alias validados en la API.
+model AlqCuentaBancaria {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  personaId   String   @map("persona_id") @db.Uuid
+  banco       String
+  /// caja_ahorro | cuenta_corriente
+  tipo        String   @default("caja_ahorro")
+  moneda      String   @default("ARS")
+  numero      String?
+  cbu         String?
+  alias       String?
+  titular     String?
+  cuitTitular String?  @map("cuit_titular")
+  principal   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  persona AlqPersona @relation(fields: [personaId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([personaId])
+  @@map("alq_cuenta_bancaria")
+}
+
+/// Un contacto adicional de una persona: quien paga por ella, su contador, un familiar.
+model AlqContacto {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  personaId String   @map("persona_id") @db.Uuid
+  nombre    String
+  relacion  String?
+  email     String?
+  telefono  String?
+  principal Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  persona AlqPersona @relation(fields: [personaId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([personaId])
+  @@map("alq_contacto")
 }

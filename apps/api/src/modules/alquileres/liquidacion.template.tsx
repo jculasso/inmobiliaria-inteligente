@@ -102,6 +102,11 @@ export function LiquidacionDocument({
           <Text style={e.totalLabel}>NETO A PAGAR</Text>
           <Text style={e.totalValor}>{pesos(l.neto, l.moneda)}</Text>
         </View>
+        {l.cuentaDestino && (
+          <Text style={e.aFavor}>
+            {`Se transfiere a: ${l.cuentaDestino.banco}${l.cuentaDestino.cbu ? ` · CBU ${l.cuentaDestino.cbu}` : ''}${l.cuentaDestino.alias ? ` · Alias ${l.cuentaDestino.alias}` : ''}${l.cuentaDestino.titular ? ` · ${l.cuentaDestino.titular}` : ''}`}
+          </Text>
+        )}
         {l.anulado && <Text style={e.anulado}>{`LIQUIDACIÓN ANULADA · ${l.anulado.motivo}${l.anulado.por ? ` · ${l.anulado.por}` : ''}`}</Text>}
 
         <Text style={e.pie} fixed>

@@ -209,7 +209,15 @@ export class LiquidacionesService {
     const l = await tx.alqLiquidacion.findUnique({ where: { id }, include: { persona: { select: { id: true, nombre: true } } } });
     if (!l) throw new NotFoundException('La liquidación no existe.');
     const detalle = DetalleSchema.parse(l.detalle);
-    const nombres = await nombresDeUsuarios(tx, [l.creadoPorId, l.anuladoPorId]);
+    const [nombres, cuenta] = await Promise.all([
+      nombresDeUsuarios(tx, [l.creadoPorId, l.anuladoPorId]),
+      // La cuenta a donde se le transfiere: la principal en esa moneda.
+      tx.alqCuentaBancaria.findFirst({
+        where: { personaId: l.personaId, moneda: l.moneda },
+        orderBy: [{ principal: 'desc' }, { createdAt: 'asc' }],
+        select: { banco: true, cbu: true, alias: true, titular: true },
+      }),
+    ]);
     return {
       id: l.id,
       numero: l.numero,
@@ -222,6 +230,7 @@ export class LiquidacionesService {
       neto: decToNum(l.neto),
       anulado: l.anuladoEn ? { en: l.anuladoEn.toISOString(), motivo: l.motivoAnulacion ?? '', por: l.anuladoPorId ? (nombres.get(l.anuladoPorId) ?? null) : null } : null,
       registradoPor: l.creadoPorId ? (nombres.get(l.creadoPorId) ?? null) : null,
+      cuentaDestino: cuenta,
     };
   }
 

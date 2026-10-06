@@ -80,6 +80,7 @@ describe('Liquidación en PDF (regla 23)', () => {
           neto: 1_027_406.26,
           anulado: null,
           registradoPor: 'Lucía Operadora',
+          cuentaDestino: { banco: 'Banco Nación', cbu: null, alias: 'casa.mar.sol', titular: 'Juan Propietario' },
         }}
         tenantNombre="Alteva Propiedades"
         logoUrl={null}

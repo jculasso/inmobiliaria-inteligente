@@ -6,7 +6,8 @@ import type { CandidatoDto, CobroDto, MedioCobro, MonedaAlquiler, PreparacionCob
 import { planificarCobro } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarRecibo, prepararCobro, registrarCobro } from '../../lib/alquileres-api';
+import { generarRecibo, prepararCobro, registrarCobro, enviarReciboPorMail } from '../../lib/alquileres-api';
+import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
@@ -53,6 +54,7 @@ export function CobroForm({
   const [cargando, setCargando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mandando, setMandando] = useState(false);
   const [hecho, setHecho] = useState<CobroDto | null>(null);
 
   // Cada vez que cambia a quién, en qué moneda o qué día, se vuelve a pedir lo
@@ -144,6 +146,9 @@ export function CobroForm({
           >
             📄 Descargar el recibo
           </Button>
+          <Button variant="secondary" onClick={() => setMandando(true)}>
+            ✉️ Mandar por mail
+          </Button>
           <Link href={`/alquileres/personas/${hecho.persona.id}`}>
             <Button variant="secondary">Ver la cuenta</Button>
           </Link>
@@ -152,6 +157,14 @@ export function CobroForm({
           </Button>
         </div>
         {error && <p role="alert" className="text-sm font-semibold text-brand-red">{error}</p>}
+        {mandando && (
+          <EnviarMailModal
+            titulo={`Mandar el recibo ${recibo(hecho.numero)}`}
+            personaId={hecho.persona.id}
+            enviar={async (para) => enviarReciboPorMail(await getAccessToken(), hecho.id, para)}
+            onClose={() => setMandando(false)}
+          />
+        )}
       </div>
     );
   }

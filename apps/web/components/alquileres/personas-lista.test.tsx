@@ -23,6 +23,14 @@ const persona = (nombre: string, documento: string | null, extra: Partial<Person
   telefono: null,
   domicilio: null,
   obs: null,
+  cuit: null,
+  condicionIva: null,
+  localidad: null,
+  provincia: null,
+  codigoPostal: null,
+  fechaNacimiento: null,
+  nacionalidad: null,
+  estadoCivil: null,
   ...extra,
 });
 
@@ -78,7 +86,7 @@ describe('PersonasLista — alta', () => {
     await userEvent.click(screen.getByRole('button', { name: '＋ Nueva persona' }));
     const dialogo = within(screen.getByRole('dialog'));
     await userEvent.type(dialogo.getByLabelText(/Nombre y apellido/), 'Carla Ruiz');
-    await userEvent.type(dialogo.getByLabelText(/DNI o CUIT/), '30.111.222');
+    await userEvent.type(dialogo.getByLabelText(/^DNI/), '30.111.222');
     await userEvent.click(dialogo.getByRole('button', { name: 'Guardar' }));
     expect(crearPersona).toHaveBeenCalledWith('token', expect.objectContaining({ nombre: 'Carla Ruiz', documento: '30.111.222' }));
     expect(refresh).toHaveBeenCalled();

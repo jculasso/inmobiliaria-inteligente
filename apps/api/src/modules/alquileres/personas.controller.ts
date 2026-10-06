@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PersonaInputSchema, ROLES_ADMINISTRACION_ALQUILERES, type Persona } from '@vacker/types';
+import { ContactosInputSchema, CuentasBancariasInputSchema, PersonaInputSchema, ROLES_ADMINISTRACION_ALQUILERES, type Persona } from '@vacker/types';
+import type { z } from 'zod';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ctxDe } from '../tablero/tablero.util';
@@ -52,5 +53,34 @@ export class PersonasController {
   @ApiOperation({ summary: 'Quién hizo qué y cuándo con esta persona: altas, cobros, liquidaciones' })
   historialDe(@Param('id', ParseUUIDPipe) id: string) {
     return this.historial.dePersona(id);
+  }
+
+  @Get(':id/ficha')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Ficha de la persona: datos, cuentas bancarias, contactos y contratos' })
+  ficha(@Param('id', ParseUUIDPipe) id: string) {
+    return this.personas.ficha(id);
+  }
+
+  @Put(':id/cuentas')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Guarda las cuentas bancarias de la persona (la lista completa); CBU y alias validados' })
+  guardarCuentas(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(CuentasBancariasInputSchema)) body: z.output<typeof CuentasBancariasInputSchema>,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.personas.guardarCuentas(ctxDe(user), id, body.cuentas);
+  }
+
+  @Put(':id/contactos')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Guarda los contactos adicionales de la persona (la lista completa)' })
+  guardarContactos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(ContactosInputSchema)) body: z.output<typeof ContactosInputSchema>,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.personas.guardarContactos(ctxDe(user), id, body.contactos);
   }
 }

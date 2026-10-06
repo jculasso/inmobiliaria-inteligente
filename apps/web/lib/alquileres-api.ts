@@ -22,6 +22,12 @@ import {
   type ConceptoSueltoInput,
   ContratoDtoSchema,
   CandidatoDtoSchema,
+  ContactoDtoSchema,
+  CuentaBancariaDtoSchema,
+  EnvioMailDtoSchema,
+  PersonaFichaDtoSchema,
+  type ContactoInput,
+  type CuentaBancariaInput,
   IndicesDtoSchema,
   type FiltroTipoContrato,
   type IndicesQuery,
@@ -256,4 +262,26 @@ export async function listCandidatos(accessToken: string, papel: 'inquilino' | '
 export async function getIndices(accessToken: string, q: Partial<IndicesQuery>) {
   const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]);
   return apiFetch(`/alquileres/indices?${p.toString()}`, IndicesDtoSchema, { accessToken });
+}
+
+// --- Entrega 13: la ficha de la persona y el envío por mail -------------------
+
+export async function getFichaPersona(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/personas/${id}/ficha`, PersonaFichaDtoSchema, { accessToken });
+}
+
+export async function guardarCuentasBancarias(accessToken: string, id: string, cuentas: CuentaBancariaInput[]) {
+  return apiFetch(`/alquileres/personas/${id}/cuentas`, z.array(CuentaBancariaDtoSchema), { accessToken, method: 'PUT', body: { cuentas } });
+}
+
+export async function guardarContactos(accessToken: string, id: string, contactos: ContactoInput[]) {
+  return apiFetch(`/alquileres/personas/${id}/contactos`, z.array(ContactoDtoSchema), { accessToken, method: 'PUT', body: { contactos } });
+}
+
+export async function enviarReciboPorMail(accessToken: string, cobroId: string, para: string[]) {
+  return apiFetch(`/alquileres/cobros/${cobroId}/enviar`, EnvioMailDtoSchema, { accessToken, method: 'POST', body: { para } });
+}
+
+export async function enviarLiquidacionPorMail(accessToken: string, id: string, para: string[]) {
+  return apiFetch(`/alquileres/liquidaciones/${id}/enviar`, EnvioMailDtoSchema, { accessToken, method: 'POST', body: { para } });
 }

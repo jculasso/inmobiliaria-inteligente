@@ -15,6 +15,8 @@ export const ResumenAlquileresSchema = z.object({
 });
 export type ResumenAlquileres = z.infer<typeof ResumenAlquileresSchema>;
 
+const FechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida, se espera AAAA-MM-DD.');
+
 // --- Personas -----------------------------------------------------------------
 
 export const TipoPersonaSchema = z.enum(['fisica', 'juridica']);
@@ -38,6 +40,64 @@ const textoOpcional = z
   .nullish()
   .transform((v) => (v ? v : null));
 
+/**
+ * Un CUIT/CUIL con su dígito verificador correcto (módulo 11, pesos
+ * 5-4-3-2-7-6-5-4-3-2). Atrapa el error de tipeo más común: un dígito cambiado.
+ */
+export function cuitValido(cuit: string): boolean {
+  if (!/^\d{11}$/.test(cuit)) return false;
+  const pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  const suma = pesos.reduce((s, p, i) => s + p * Number(cuit[i]), 0);
+  const resto = 11 - (suma % 11);
+  const dv = resto === 11 ? 0 : resto === 10 ? 9 : resto;
+  return dv === Number(cuit[10]);
+}
+
+/**
+ * Un CBU con sus dos dígitos verificadores (BCRA): el del bloque del banco y
+ * sucursal, y el de la cuenta. Un CBU mal copiado es plata transferida a otra
+ * persona: se rechaza antes de guardarlo.
+ */
+export function cbuValido(cbu: string): boolean {
+  if (!/^\d{22}$/.test(cbu)) return false;
+  const dv = (digitos: string, pesos: number[]) => (10 - (pesos.reduce((s, p, i) => s + p * Number(digitos[i]), 0) % 10)) % 10;
+  const bloque1 = cbu.slice(0, 8);
+  const bloque2 = cbu.slice(8);
+  return dv(bloque1, [7, 1, 3, 9, 7, 1, 3]) === Number(bloque1[7]) && dv(bloque2, [3, 9, 7, 1, 3, 9, 7, 1, 3, 9, 7, 1, 3]) === Number(bloque2[13]);
+}
+
+/** El alias de una cuenta: de 6 a 20 caracteres, letras, números, puntos y guiones. */
+export function aliasValido(alias: string): boolean {
+  return /^[a-z0-9.-]{6,20}$/i.test(alias);
+}
+
+export const CondicionIvaSchema = z.enum(['consumidor_final', 'responsable_inscripto', 'monotributista', 'exento', 'no_responsable']);
+export type CondicionIva = z.infer<typeof CondicionIvaSchema>;
+export const NOMBRE_CONDICION_IVA: Record<CondicionIva, string> = {
+  consumidor_final: 'Consumidor final',
+  responsable_inscripto: 'Responsable inscripto',
+  monotributista: 'Monotributista',
+  exento: 'Exento',
+  no_responsable: 'No responsable',
+};
+
+export const EstadoCivilSchema = z.enum(['soltero', 'casado', 'divorciado', 'viudo', 'union_convivencial']);
+export type EstadoCivil = z.infer<typeof EstadoCivilSchema>;
+export const NOMBRE_ESTADO_CIVIL: Record<EstadoCivil, string> = {
+  soltero: 'Soltero/a',
+  casado: 'Casado/a',
+  divorciado: 'Divorciado/a',
+  viudo: 'Viudo/a',
+  union_convivencial: 'Unión convivencial',
+};
+
+/** El CUIT/CUIL, normalizado y con su dígito verificador. */
+const CuitOpcional = z
+  .string()
+  .nullish()
+  .transform(normalizarDocumento)
+  .refine((d) => d === null || cuitValido(d), 'El CUIT/CUIL no es válido: revisá los 11 números.');
+
 export const PersonaInputSchema = z.object({
   tipo: TipoPersonaSchema.default('fisica'),
   nombre: z.string().trim().min(1, 'El nombre es obligatorio.'),
@@ -56,6 +116,16 @@ export const PersonaInputSchema = z.object({
   telefono: textoOpcional,
   domicilio: textoOpcional,
   obs: textoOpcional,
+  // Información básica completa, como la ficha de clientes de Gexion (punto 14).
+  cuit: CuitOpcional,
+  condicionIva: CondicionIvaSchema.nullish().transform((v) => v ?? null),
+  localidad: textoOpcional,
+  provincia: textoOpcional,
+  codigoPostal: textoOpcional,
+  // Datos personales (personas físicas).
+  fechaNacimiento: FechaIso.nullish().transform((v) => v ?? null),
+  nacionalidad: textoOpcional,
+  estadoCivil: EstadoCivilSchema.nullish().transform((v) => v ?? null),
 });
 export type PersonaInput = z.input<typeof PersonaInputSchema>;
 export type Persona = z.output<typeof PersonaInputSchema>;
@@ -69,8 +139,98 @@ export const PersonaDtoSchema = z.object({
   telefono: z.string().nullable(),
   domicilio: z.string().nullable(),
   obs: z.string().nullable(),
+  // Con `default` por el orden de despliegue: la web nueva puede hablar un rato con la API anterior.
+  cuit: z.string().nullable().default(null),
+  condicionIva: CondicionIvaSchema.nullable().default(null),
+  localidad: z.string().nullable().default(null),
+  provincia: z.string().nullable().default(null),
+  codigoPostal: z.string().nullable().default(null),
+  fechaNacimiento: FechaIso.nullable().default(null),
+  nacionalidad: z.string().nullable().default(null),
+  estadoCivil: EstadoCivilSchema.nullable().default(null),
 });
 export type PersonaDto = z.infer<typeof PersonaDtoSchema>;
+
+/**
+ * Una cuenta bancaria de la persona (Gexion, «Gestión administrativa»): a
+ * dónde se le transfiere al propietario. CBU y alias se validan.
+ */
+export const CuentaBancariaInputSchema = z
+  .object({
+    banco: z.string().trim().min(1, 'Falta el banco.').max(80),
+    tipo: z.enum(['caja_ahorro', 'cuenta_corriente']).default('caja_ahorro'),
+    moneda: z.enum(['ARS', 'USD']).default('ARS'),
+    numero: textoOpcional,
+    cbu: z
+      .string()
+      .nullish()
+      .transform(normalizarDocumento)
+      .refine((v) => v === null || cbuValido(v), 'El CBU no es válido: son 22 números y los dígitos verificadores no cierran.'),
+    alias: z
+      .string()
+      .trim()
+      .nullish()
+      .transform((v) => (v ? v.toLowerCase() : null))
+      .refine((v) => v === null || aliasValido(v), 'El alias tiene de 6 a 20 caracteres: letras, números, puntos o guiones.'),
+    titular: textoOpcional,
+    cuitTitular: CuitOpcional,
+    principal: z.boolean().default(false),
+  })
+  .refine((c) => c.cbu || c.alias, { message: 'Cargá el CBU o el alias.', path: ['cbu'] });
+export type CuentaBancariaInput = z.input<typeof CuentaBancariaInputSchema>;
+export type CuentaBancaria = z.output<typeof CuentaBancariaInputSchema>;
+export const CuentaBancariaDtoSchema = z.object({
+  id: z.string().uuid(),
+  banco: z.string(),
+  tipo: z.enum(['caja_ahorro', 'cuenta_corriente']),
+  moneda: z.enum(['ARS', 'USD']),
+  numero: z.string().nullable(),
+  cbu: z.string().nullable(),
+  alias: z.string().nullable(),
+  titular: z.string().nullable(),
+  cuitTitular: z.string().nullable(),
+  principal: z.boolean(),
+});
+export type CuentaBancariaDto = z.infer<typeof CuentaBancariaDtoSchema>;
+
+/** Un contacto adicional de la persona: el hijo que paga, el contador, el administrador. */
+export const ContactoInputSchema = z.object({
+  nombre: z.string().trim().min(1, 'Falta el nombre.').max(120),
+  relacion: textoOpcional,
+  email: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v ? v.toLowerCase() : null))
+    .refine((v) => v === null || z.string().email().safeParse(v).success, 'El email no es válido.'),
+  telefono: textoOpcional,
+  principal: z.boolean().default(false),
+});
+export type ContactoInput = z.input<typeof ContactoInputSchema>;
+export type Contacto = z.output<typeof ContactoInputSchema>;
+export const ContactoDtoSchema = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  relacion: z.string().nullable(),
+  email: z.string().nullable(),
+  telefono: z.string().nullable(),
+  principal: z.boolean(),
+});
+export type ContactoDto = z.infer<typeof ContactoDtoSchema>;
+
+export const CuentasBancariasInputSchema = z.object({ cuentas: z.array(CuentaBancariaInputSchema).max(10) });
+export const ContactosInputSchema = z.object({ contactos: z.array(ContactoInputSchema).max(20) });
+
+/** Mandar un recibo o una liquidación por mail (punto 14, con Resend). */
+export const EnviarPorMailSchema = z.object({
+  para: z
+    .array(z.string().trim().toLowerCase().email('Hay un email que no es válido.'))
+    .min(1, 'Elegí a quién mandarlo.')
+    .max(5),
+});
+export type EnviarPorMail = z.infer<typeof EnviarPorMailSchema>;
+export const EnvioMailDtoSchema = z.object({ enviado: z.boolean(), para: z.array(z.string()) });
+export type EnvioMailDto = z.infer<typeof EnvioMailDtoSchema>;
 
 // --- Propiedades --------------------------------------------------------------
 
@@ -165,7 +325,6 @@ export type IndiceAlquiler = z.infer<typeof IndiceAlquilerSchema>;
 export const PapelContratoSchema = z.enum(['propietario', 'inquilino', 'garante']);
 export type PapelContrato = z.infer<typeof PapelContratoSchema>;
 
-const FechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida, se espera AAAA-MM-DD.');
 const Monto = z.number().nonnegative().max(999_999_999_999.99);
 const Porcentaje = z.number().min(0).max(100);
 
@@ -344,7 +503,7 @@ export type ContratoDatos = z.infer<typeof ContratoDatosSchema>;
 export const EntidadEventoSchema = z.enum(['contrato', 'persona', 'propiedad', 'concepto', 'cobro', 'liquidacion', 'tramo', 'documento']);
 export type EntidadEvento = z.infer<typeof EntidadEventoSchema>;
 
-export const AccionEventoSchema = z.enum(['alta', 'edicion', 'estado', 'anulacion', 'borrado', 'indexacion', 'generacion', 'documento']);
+export const AccionEventoSchema = z.enum(['alta', 'edicion', 'estado', 'anulacion', 'borrado', 'indexacion', 'generacion', 'documento', 'envio']);
 export type AccionEvento = z.infer<typeof AccionEventoSchema>;
 
 export const EventoDtoSchema = z.object({
@@ -828,6 +987,11 @@ export const LiquidacionDtoSchema = z.object({
   neto: z.number(),
   anulado: AnulacionSchema.nullable(),
   registradoPor: z.string().nullable().default(null),
+  /** A dónde se le transfiere: su cuenta principal en esa moneda (punto 14). */
+  cuentaDestino: z
+    .object({ banco: z.string(), cbu: z.string().nullable(), alias: z.string().nullable(), titular: z.string().nullable() })
+    .nullable()
+    .default(null),
 });
 export type LiquidacionDto = z.infer<typeof LiquidacionDtoSchema>;
 
@@ -1061,3 +1225,27 @@ export const TableroAlquileresQuerySchema = z.object({
   tipo: FiltroTipoContratoSchema.default('todos'),
 });
 export type TableroAlquileresQuery = z.infer<typeof TableroAlquileresQuerySchema>;
+
+// --- Ficha de la persona (punto 14 de Javier, como «Clientes» de Gexion) ----------
+
+export const PersonaFichaDtoSchema = z.object({
+  persona: PersonaDtoSchema,
+  cuentas: z.array(CuentaBancariaDtoSchema),
+  contactos: z.array(ContactoDtoSchema),
+  /** Los contratos donde aparece, con su papel en cada uno. */
+  contratos: z.array(
+    z.object({
+      id: z.string().uuid(),
+      codigo: z.string(),
+      papel: PapelContratoSchema,
+      estado: EstadoContratoSchema,
+      tipo: TipoContratoSchema,
+      propiedad: z.string(),
+      inicio: FechaIso,
+      fin: FechaIso,
+      moneda: MonedaAlquilerSchema,
+      importeVigente: z.number().nullable(),
+    }),
+  ),
+});
+export type PersonaFichaDto = z.infer<typeof PersonaFichaDtoSchema>;

@@ -4,7 +4,9 @@ import {
   AnularLiquidacionSchema,
   LiquidacionInputSchema,
   PrepararLiquidacionSchema,
+  EnviarPorMailSchema,
   ROLES_ADMINISTRACION_ALQUILERES,
+  type EnviarPorMail,
   type AnularLiquidacion,
   type Liquidacion,
   type PrepararLiquidacion,
@@ -16,6 +18,7 @@ import { pdfResponse } from '../../common/pdf-response';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero/tablero.util';
 import { LiquidacionesService } from './liquidaciones.service';
+import { EnviosService } from './envios.service';
 import { ReciboService } from './recibo.service';
 
 const ListarSchema = z.object({ personaId: z.string().uuid().optional() });
@@ -27,6 +30,7 @@ const ListarSchema = z.object({ personaId: z.string().uuid().optional() });
 @Modulo('alquileres')
 export class LiquidacionesController {
   constructor(
+    private readonly envios: EnviosService,
     private readonly liquidaciones: LiquidacionesService,
     private readonly pdfs: ReciboService,
   ) {}
@@ -80,5 +84,13 @@ export class LiquidacionesController {
   async pdf(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
     const { buffer, nombreArchivo } = await this.pdfs.liquidacion(ctxDe(user), id);
     return pdfResponse(buffer, nombreArchivo);
+  }
+
+  @Post(':id/enviar')
+  @HttpCode(200)
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Manda el PDF de la liquidación por mail (Resend); queda en el historial' })
+  enviar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(EnviarPorMailSchema)) body: EnviarPorMail, @CurrentUser() user: AuthPrincipal) {
+    return this.envios.liquidacion(ctxDe(user), id, body.para);
   }
 }

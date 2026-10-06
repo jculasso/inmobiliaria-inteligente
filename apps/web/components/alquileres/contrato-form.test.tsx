@@ -23,6 +23,14 @@ const persona = (id: string, nombre: string): PersonaDto => ({
   telefono: null,
   domicilio: null,
   obs: null,
+  cuit: null,
+  condicionIva: null,
+  localidad: null,
+  provincia: null,
+  codigoPostal: null,
+  fechaNacimiento: null,
+  nacionalidad: null,
+  estadoCivil: null,
 });
 const DUENO = persona('22222222-2222-4222-8222-222222222222', 'Dueño Uno');
 const INQ = persona('33333333-3333-4333-8333-333333333333', 'Inquilina Dos');
