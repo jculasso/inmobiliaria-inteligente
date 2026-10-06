@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { LiquidacionResumenDto, PendienteLiquidarDto } from '@vacker/types';
+import type { ContratoDeLiquidacion, LiquidacionResumenDto, PendienteLiquidarDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarLiquidacionPdf } from '../../lib/alquileres-api';
@@ -13,6 +13,27 @@ import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-mo
 import { Bloque, BotonNuevo, CabezaTarjeta, CLASE_TD, CLASE_TD_FIJA, CLASE_TH, CLASE_TR_ABRIBLE, EncabezadoPagina, Insignia } from './piezas';
 
 const numero = (n: number) => String(n).padStart(6, '0');
+
+/** Cada propiedad en su renglón: «🏠 Córdoba 1452 3° B · Inquilino: Ana». */
+function Propiedades({ contratos }: { contratos: ContratoDeLiquidacion[] }) {
+  if (contratos.length === 0) return null;
+  return (
+    <ul className="mt-1 flex flex-col gap-0.5 text-xs text-muted">
+      {contratos.map((c) => (
+        <li key={c.id} className="min-w-0">
+          <span aria-hidden>🏠 </span>
+          <span className="font-semibold text-ink">{c.propiedad || c.codigo}</span>
+          {c.inquilinos.length > 0 && (
+            <>
+              {' · '}
+              {c.inquilinos.length > 1 ? 'Inquilinos' : 'Inquilino'}: {c.inquilinos.join(', ')}
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * A quién hay que liquidar hoy, y las últimas liquidaciones (reglas 20 a 23).
@@ -49,8 +70,12 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
             {listos.map((p) => (
               <li key={`${p.persona.id}-${p.moneda}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                 <span className="min-w-0">
-                  <span className="block font-semibold text-ink">{p.persona.nombre}</span>
-                  {p.enEspera > 0 && <span className="block text-xs text-muted">Además espera {fmtMoneda(p.enEspera, p.moneda)} de inquilinos que no pagaron</span>}
+                  <span className="block font-semibold text-ink">
+                    <span className="font-normal text-muted">Propietario: </span>
+                    {p.persona.nombre}
+                  </span>
+                  <Propiedades contratos={p.contratos} />
+                  {p.enEspera > 0 && <span className="mt-1 block text-xs text-muted">⏳ Además espera {fmtMoneda(p.enEspera, p.moneda)} de inquilinos que no pagaron</span>}
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="whitespace-nowrap font-bold tabular-nums text-ink">{fmtMoneda(p.neto, p.moneda)}</span>
@@ -82,6 +107,7 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                   <Tarjeta key={l.id}>
                     <button type="button" onClick={() => abrir(l)} className="block w-full text-left" title={`Abrir la cuenta de ${l.persona.nombre}`}>
                       <CabezaTarjeta titulo={l.persona.nombre} detalle={`N.º ${numero(l.numero)} · ${fmtFecha(l.fecha)}`} insignia={estado(l)} />
+                      <Propiedades contratos={l.contratos} />
                       <CamposTarjeta>
                         <CampoTarjeta etiqueta="Neto">{neto(l)}</CampoTarjeta>
                       </CamposTarjeta>
@@ -102,6 +128,7 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                     <th className={`${CLASE_TH} left-0 z-30 border-r`}>Número</th>
                     <th className={CLASE_TH}>Fecha</th>
                     <th className={CLASE_TH}>Propietario</th>
+                    <th className={CLASE_TH}>Propiedades e inquilinos</th>
                     <th className={`${CLASE_TH} text-right`}>Neto</th>
                     <th className={CLASE_TH}>Estado</th>
                     <th className={`${CLASE_TH} right-0 z-30 border-l`} />
@@ -113,6 +140,9 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                       <td className={CLASE_TD_FIJA}>{numero(l.numero)}</td>
                       <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(l.fecha)}</td>
                       <td className={`${CLASE_TD} text-ink`}>{l.persona.nombre}</td>
+                      <td className="px-3 py-1">
+                        {l.contratos.length === 0 ? <span className="text-muted">—</span> : <Propiedades contratos={l.contratos} />}
+                      </td>
                       <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{neto(l)}</td>
                       <td className={CLASE_TD}>{estado(l)}</td>
                       <td className="sticky right-0 border-l border-line bg-white px-2 py-2">

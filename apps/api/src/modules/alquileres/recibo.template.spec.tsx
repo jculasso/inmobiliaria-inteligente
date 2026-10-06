@@ -50,9 +50,10 @@ describe('Recibo (regla 23)', () => {
 describe('Liquidación en PDF (regla 23)', () => {
   it('lista lo cobrado, cada descuento y el neto, con la leyenda', async () => {
     const { LiquidacionDocument } = await import('./liquidacion.template');
+    const C5 = crypto.randomUUID();
     const linea = (descripcion: string, importe: number, tipo: 'alquiler' | 'honorarios') => ({
       conceptoId: crypto.randomUUID(),
-      contrato: { id: crypto.randomUUID(), codigo: '5' },
+      contrato: { id: C5, codigo: 'ALT-0005', propiedad: 'Córdoba 1452 3° B', inquilinos: ['Ana Inquilina'] },
       tipo,
       descripcion,
       importe,
@@ -79,6 +80,9 @@ describe('Liquidación en PDF (regla 23)', () => {
     const t = textoDePdf(buffer);
     expect(t).toContain('LIQUIDACIÓN N° 000003');
     expect(t).toContain('Honorarios noviembre 2026');
+    // Pedido de Javier del 6/10/2026: cada propiedad con su inquilino y su propietario.
+    expect(t).toContain('PROPIEDAD: Córdoba 1452 3° B');
+    expect(t).toMatch(/Inquilino: Ana Inquilina.*Propietario: Juan Propietario.*Contrato: ALT-0005/);
     expect(t).toContain('$ 1.027.406,26');
     expect(t).toContain(LEYENDA_NO_FACTURA);
   });

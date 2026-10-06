@@ -14,7 +14,16 @@ let n = 0;
 const uuid = () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
 
 const C5 = '55555555-5555-4555-8555-555555555555';
-const contrato = (pagoGarantizado = false) => ({ id: C5, codigo: '5', pagoGarantizado, partes: [{ personaId: DUENO }] });
+const contrato = (pagoGarantizado = false) => ({
+  id: C5,
+  codigo: '5',
+  pagoGarantizado,
+  propiedad: { direccion: 'Córdoba 1452', unidad: '3° B' },
+  partes: [
+    { personaId: DUENO, papel: 'propietario', persona: { nombre: 'Propietario' } },
+    { personaId: INQ, papel: 'inquilino', persona: { nombre: 'Inquilina' } },
+  ],
+});
 
 /* Noviembre de 2026 del contrato #5, del lado del propietario. */
 function delDueno(over: Record<string, unknown> = {}) {
@@ -141,7 +150,7 @@ describe('LiquidacionesService (reglas 20 a 22)', () => {
 
   // Quien es propietario de un contrato e inquilino de otro: su alquiler de inquilino no se descuenta.
   it('solo cuenta lo de los contratos donde la persona es propietaria', async () => {
-    const comoInquilino = delDueno({ tipo: 'reparacion', sentido: 'a_cobrar', importe: dec(5_000), claveGeneracion: null, contrato: { ...contrato(), id: 'c9', partes: [{ personaId: 'otro' }] } });
+    const comoInquilino = delDueno({ tipo: 'reparacion', sentido: 'a_cobrar', importe: dec(5_000), claveGeneracion: null, contrato: { ...contrato(), id: 'c9', partes: [{ personaId: 'otro', papel: 'propietario', persona: { nombre: 'Otro' } }] } });
     const prep = await new LiquidacionesService(makeDb(makeTx({ delDueno: [delDueno(), honorarios(), comoInquilino] }))).preparar(DUENO, 'ARS', '2026-11-12');
     expect(prep.aDescontar.map((x) => x.tipo)).toEqual(['honorarios']);
   });
@@ -156,7 +165,40 @@ describe('LiquidacionesService (reglas 20 a 22)', () => {
 
   it('la bandeja lista a quién hay que liquidar y lo que le espera', async () => {
     const r = await new LiquidacionesService(makeDb(makeTx())).pendientes();
-    expect(r).toEqual([{ persona: { id: DUENO, nombre: 'Propietario' }, moneda: 'ARS', neto: 1_027_406.26, enEspera: 0 }]);
+    expect(r).toEqual([
+      {
+        persona: { id: DUENO, nombre: 'Propietario' },
+        moneda: 'ARS',
+        neto: 1_027_406.26,
+        enEspera: 0,
+        contratos: [{ id: C5, codigo: '5', propiedad: 'Córdoba 1452 3° B', inquilinos: ['Inquilina'] }],
+      },
+    ]);
+  });
+
+  // Pedido de Javier del 6/10/2026: cada línea dice qué propiedad es y quién la alquila.
+  it('cada línea lleva la propiedad y los inquilinos de su contrato', async () => {
+    const r = await new LiquidacionesService(makeDb(makeTx())).liquidar(CTX, input());
+    expect(r.aPagar[0]!.contrato).toEqual({ id: C5, codigo: '5', propiedad: 'Córdoba 1452 3° B', inquilinos: ['Inquilina'] });
+  });
+
+  it('una liquidación guardada antes, sin propiedad ni inquilinos, se sigue leyendo', async () => {
+    const tx = makeTx();
+    const db = makeDb(tx);
+    tx.alqLiquidacion.findUnique.mockResolvedValueOnce({
+      id: 'vieja',
+      numero: 1,
+      persona: { id: DUENO, nombre: 'Propietario' },
+      fecha: new Date('2026-10-12T00:00:00Z'),
+      moneda: 'ARS',
+      medio: 'transferencia',
+      detalle: { aPagar: [{ conceptoId: uuid(), contrato: { id: C5, codigo: '5' }, tipo: 'alquiler', descripcion: 'Alquiler', importe: 100 }], aDescontar: [] },
+      neto: dec(100),
+      anuladoEn: null,
+      motivoAnulacion: null,
+    });
+    const r = await new LiquidacionesService(db).obtener('vieja');
+    expect(r.aPagar[0]!.contrato).toEqual({ id: C5, codigo: '5', propiedad: '', inquilinos: [] });
   });
 
   // La trampa de performance.

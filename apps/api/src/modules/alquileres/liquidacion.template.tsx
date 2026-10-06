@@ -1,10 +1,11 @@
 import React from 'react';
 import { Document, Image, Page, Text, View } from '@react-pdf/renderer';
-import type { LineaLiquidacion, LiquidacionDto } from '@vacker/types';
+import { agruparPorContrato, type LineaLiquidacion, type LiquidacionDto } from '@vacker/types';
 import { crearEstilos, DANGER, fecha, LEYENDA_NO_FACTURA, MEDIO, pesos } from './recibo.template';
 
-// Liquidación al propietario (regla 23): lo cobrado a su favor, cada
-// descuento y el neto. Mismo encabezado y estilos que el recibo.
+// Liquidación al propietario (regla 23), una propiedad por bloque: qué
+// propiedad es, quién la alquila, lo cobrado a su favor, cada descuento y lo
+// que deja; al final, el neto. Mismo encabezado y estilos que el recibo.
 
 export function LiquidacionDocument({
   liquidacion: l,
@@ -19,35 +20,21 @@ export function LiquidacionDocument({
 }) {
   const e = crearEstilos(colorPrimario || DANGER);
   const numero = String(l.numero).padStart(6, '0');
-  const total = (xs: LineaLiquidacion[]) => xs.reduce((s, x) => s + x.importe, 0);
-  const Bloque = ({ titulo, lineas, signo }: { titulo: string; lineas: LineaLiquidacion[]; signo: string }) => (
-    <View style={{ marginBottom: 12 }}>
-      <View style={e.filaHead}>
-        <Text style={[e.th, e.colContrato]}>CONTRATO</Text>
-        <Text style={[e.th, e.colConcepto]}>{titulo}</Text>
-        <Text style={[e.th, e.colImporte]}>IMPORTE</Text>
-      </View>
-      {lineas.map((x) => (
-        <View key={x.conceptoId} style={e.fila} wrap={false}>
-          <Text style={e.colContrato}>{x.contrato?.codigo ?? '—'}</Text>
-          <Text style={e.colConcepto}>{x.descripcion}</Text>
-          <Text style={e.colImporte}>
-            {signo}
-            {pesos(x.importe, l.moneda)}
-          </Text>
-        </View>
-      ))}
-      <View style={e.fila}>
-        <Text style={e.colContrato} />
-        <Text style={[e.colConcepto, { fontWeight: 700 }]}>Subtotal</Text>
-        <Text style={[e.colImporte, { fontWeight: 700 }]}>
-          {signo}
-          {pesos(total(lineas), l.moneda)}
-        </Text>
-      </View>
+  const grupos = agruparPorContrato(l);
+  // Un solo texto por renglón: partido en pedazos, el PDF los guarda sueltos.
+  const detalleDe = (c: (typeof grupos)[number]['contrato']) => {
+    const xs = c?.inquilinos ?? [];
+    return `${xs.length > 1 ? 'Inquilinos' : 'Inquilino'}: ${xs.join(', ') || '—'}   ·   Propietario: ${l.persona.nombre}   ·   Contrato: ${c?.codigo ?? '—'}`;
+  };
+  const Linea = ({ x, signo }: { x: LineaLiquidacion; signo: string }) => (
+    <View style={e.fila} wrap={false}>
+      <Text style={[e.colConcepto, { width: '76%' }]}>{x.descripcion}</Text>
+      <Text style={e.colImporte}>
+        {signo}
+        {pesos(x.importe, l.moneda)}
+      </Text>
     </View>
   );
-
   return (
     <Document title={`Liquidación ${numero} — ${tenantNombre}`} author={tenantNombre}>
       <Page size="A4" style={e.page}>
@@ -66,14 +53,49 @@ export function LiquidacionDocument({
         <Text style={e.title}>{l.persona.nombre}</Text>
         <View style={e.divider} />
 
-        <Bloque titulo="COBRADO A SU FAVOR" lineas={l.aPagar} signo="" />
-        {l.aDescontar.length > 0 && <Bloque titulo="DESCUENTOS" lineas={l.aDescontar} signo="− " />}
+        <View style={e.datos}>
+          <View>
+            <Text style={e.datoLabel}>PROPIETARIO</Text>
+            <Text style={e.datoValor}>{l.persona.nombre}</Text>
+          </View>
+          <View>
+            <Text style={e.datoLabel}>PROPIEDADES</Text>
+            <Text style={e.datoValor}>{grupos.length}</Text>
+          </View>
+          <View>
+            <Text style={e.datoLabel}>MEDIO DE PAGO</Text>
+            <Text style={e.datoValor}>{MEDIO[l.medio]}</Text>
+          </View>
+        </View>
+
+        {/* Una propiedad por bloque: qué es, quién la alquila y lo suyo. */}
+        {grupos.map((g) => (
+          <View key={g.contrato?.id ?? 'otros'} style={{ marginBottom: 14 }} wrap={false}>
+            <View style={{ backgroundColor: '#F4F5F7', padding: 8, borderRadius: 4, marginBottom: 4 }}>
+              <Text style={{ fontSize: 10, fontWeight: 800 }}>{`PROPIEDAD: ${g.contrato?.propiedad || '—'}`}</Text>
+              <Text style={{ fontSize: 8.5, marginTop: 3 }}>{detalleDe(g.contrato)}</Text>
+            </View>
+            <View style={e.filaHead}>
+              <Text style={[e.th, { width: '76%' }]}>CONCEPTO</Text>
+              <Text style={[e.th, e.colImporte]}>IMPORTE</Text>
+            </View>
+            {g.aPagar.map((x) => (
+              <Linea key={x.conceptoId} x={x} signo="" />
+            ))}
+            {g.aDescontar.map((x) => (
+              <Linea key={x.conceptoId} x={x} signo="− " />
+            ))}
+            <View style={e.fila}>
+              <Text style={[e.colConcepto, { width: '76%', fontWeight: 700 }]}>Subtotal de la propiedad</Text>
+              <Text style={[e.colImporte, { fontWeight: 700 }]}>{pesos(g.subtotal, l.moneda)}</Text>
+            </View>
+          </View>
+        ))}
 
         <View style={e.total}>
           <Text style={e.totalLabel}>NETO A PAGAR</Text>
           <Text style={e.totalValor}>{pesos(l.neto, l.moneda)}</Text>
         </View>
-        <Text style={e.aFavor}>Medio de pago: {MEDIO[l.medio]}</Text>
         {l.anulado && <Text style={e.anulado}>LIQUIDACIÓN ANULADA · {l.anulado.motivo}</Text>}
 
         <Text style={e.pie} fixed>
