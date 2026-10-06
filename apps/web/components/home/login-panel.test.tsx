@@ -96,6 +96,55 @@ describe('LoginPanel', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it('el error va en el color de peligro, no en el de la marca', async () => {
+    // Con el estilo de la plataforma, `brand-red` es azul: el error no se leía como error.
+    signInWithPassword.mockResolvedValue({
+      error: { message: 'Invalid credentials', status: 400 },
+    });
+    render(<LoginPanel />);
+
+    await userEvent.type(screen.getByLabelText(/Email/), 'demo@vacker.com');
+    await userEvent.type(screen.getByLabelText(/Clave/), 'mal');
+    await userEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
+
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveClass('text-danger');
+    expect(alerta.className).not.toMatch(/brand-red/);
+  });
+
+  /**
+   * Sin señal, Supabase no llega al servidor y devuelve un
+   * `AuthRetryableFetchError` (status 0). Decía «Email o clave incorrectos»:
+   * la persona reescribía una clave que estaba bien.
+   */
+  it('sin conexión dice que no hay conexión, no que la clave está mal', async () => {
+    signInWithPassword.mockResolvedValue({
+      error: { name: 'AuthRetryableFetchError', message: 'Failed to fetch', status: 0 },
+    });
+    render(<LoginPanel />);
+
+    await userEvent.type(screen.getByLabelText(/Email/), 'demo@vacker.com');
+    await userEvent.type(screen.getByLabelText(/Clave/), 'secreta123');
+    await userEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
+
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent('No hay conexión. Revisá internet y probá de nuevo.');
+    expect(alerta).not.toHaveTextContent(/incorrectos/i);
+  });
+
+  it('si el pedido directamente revienta (fetch sin red), también es falta de conexión', async () => {
+    signInWithPassword.mockRejectedValue(new TypeError('Failed to fetch'));
+    render(<LoginPanel />);
+
+    await userEvent.type(screen.getByLabelText(/Email/), 'demo@vacker.com');
+    await userEvent.type(screen.getByLabelText(/Clave/), 'secreta123');
+    await userEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No hay conexión/);
+    // Y el botón vuelve a estar disponible para reintentar.
+    expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled();
+  });
+
   describe('recordar el usuario', () => {
     it('guarda el email después de un login exitoso', async () => {
       signInWithPassword.mockResolvedValue({ error: null });
