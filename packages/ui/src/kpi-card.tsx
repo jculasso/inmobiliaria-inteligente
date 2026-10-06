@@ -59,7 +59,9 @@ export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: 
       </div>
       {/* Un importe con centavos («$ 2.337.098,05») no se parte en dos líneas: el número se
           achica con el ancho de la tarjeta, así todas las de una fila quedan del mismo tamaño. */}
-      <p className="mt-1.5 whitespace-nowrap text-[clamp(1.05rem,8.5cqw,1.5rem)] font-extrabold tabular-nums text-ink">{value}</p>
+      <p className="mt-1.5 whitespace-nowrap text-[clamp(1.05rem,8.5cqw,1.5rem)] font-extrabold tabular-nums text-ink">
+        {value}
+      </p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
     </>
   );

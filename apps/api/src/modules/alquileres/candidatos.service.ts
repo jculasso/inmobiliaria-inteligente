@@ -29,7 +29,14 @@ export class CandidatosService {
           where: { papel, contrato: { estado: { notIn: ['borrador', 'anulado'] } } },
           select: {
             persona: { select: { id: true, nombre: true } },
-            contrato: { select: { id: true, codigo: true, codigoNum: true, propiedad: { select: { direccion: true, unidad: true } } } },
+            contrato: {
+              select: {
+                id: true,
+                codigo: true,
+                codigoNum: true,
+                propiedad: { select: { direccion: true, unidad: true } },
+              },
+            },
           },
         }),
         papel === 'inquilino'
@@ -55,10 +62,14 @@ export class CandidatosService {
     const pendiente = new Map<string, { moneda: MonedaAlquiler; importe: number }[]>();
     const sumar = (personaId: string, moneda: MonedaAlquiler, importe: number) => {
       if (importe <= 0) return;
-      pendiente.set(personaId, [...(pendiente.get(personaId) ?? []), { moneda, importe: Math.round(importe * 100) / 100 }]);
+      pendiente.set(personaId, [
+        ...(pendiente.get(personaId) ?? []),
+        { moneda, importe: Math.round(importe * 100) / 100 },
+      ]);
     };
     if (papel === 'inquilino') {
-      for (const d of deudas) sumar(d.persona_id, d.moneda as MonedaAlquiler, decToNum(d.pendiente));
+      for (const d of deudas)
+        sumar(d.persona_id, d.moneda as MonedaAlquiler, decToNum(d.pendiente));
     } else {
       for (const p of await this.liquidaciones.pendientes()) sumar(p.persona.id, p.moneda, p.neto);
     }
@@ -66,14 +77,35 @@ export class CandidatosService {
     const porPersona = new Map<string, CandidatoDto & { orden: number }>();
     for (const p of partes) {
       const c = p.contrato;
-      const actual = porPersona.get(p.persona.id) ?? { persona: p.persona, papel, contratos: [], pendiente: pendiente.get(p.persona.id) ?? [], orden: Infinity };
-      actual.contratos.push({ id: c.id, codigo: c.codigo, propiedad: [c.propiedad.direccion, c.propiedad.unidad].filter(Boolean).join(' ') });
+      const actual = porPersona.get(p.persona.id) ?? {
+        persona: p.persona,
+        papel,
+        contratos: [],
+        pendiente: pendiente.get(p.persona.id) ?? [],
+        orden: Infinity,
+      };
+      actual.contratos.push({
+        id: c.id,
+        codigo: c.codigo,
+        propiedad: [c.propiedad.direccion, c.propiedad.unidad].filter(Boolean).join(' '),
+      });
       actual.orden = Math.min(actual.orden, c.codigoNum ? decToNum(c.codigoNum) : Infinity);
       porPersona.set(p.persona.id, actual);
     }
-    const total = (x: CandidatoDto) => x.pendiente.reduce((s, p) => s + (p.moneda === 'ARS' ? p.importe : 0), 0);
+    const total = (x: CandidatoDto) =>
+      x.pendiente.reduce((s, p) => s + (p.moneda === 'ARS' ? p.importe : 0), 0);
     return [...porPersona.values()]
-      .sort((a, b) => Number(b.pendiente.length > 0) - Number(a.pendiente.length > 0) || total(b) - total(a) || a.persona.nombre.localeCompare(b.persona.nombre, 'es'))
-      .map(({ orden: _orden, ...x }) => ({ ...x, contratos: x.contratos.sort((a, b) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true })) }));
+      .sort(
+        (a, b) =>
+          Number(b.pendiente.length > 0) - Number(a.pendiente.length > 0) ||
+          total(b) - total(a) ||
+          a.persona.nombre.localeCompare(b.persona.nombre, 'es'),
+      )
+      .map(({ orden: _orden, ...x }) => ({
+        ...x,
+        contratos: x.contratos.sort((a, b) =>
+          a.codigo.localeCompare(b.codigo, 'es', { numeric: true }),
+        ),
+      }));
   }
 }

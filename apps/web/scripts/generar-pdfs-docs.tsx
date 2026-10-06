@@ -4,7 +4,6 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { chromium } from '@playwright/test';
 
-
 /**
  * Genera los PDF de las páginas de documentación del panel.
  *
@@ -35,8 +34,16 @@ async function docs() {
     import('../app/admin/inversion/page'),
   ]);
   return [
-    { archivo: 'guia-del-implementador.pdf', titulo: 'Guía del implementador', Componente: guia.default },
-    { archivo: 'onboarding-del-equipo.pdf', titulo: 'Onboarding del equipo', Componente: onboarding.default },
+    {
+      archivo: 'guia-del-implementador.pdf',
+      titulo: 'Guía del implementador',
+      Componente: guia.default,
+    },
+    {
+      archivo: 'onboarding-del-equipo.pdf',
+      titulo: 'Onboarding del equipo',
+      Componente: onboarding.default,
+    },
     {
       archivo: 'inversion-en-infraestructura.pdf',
       titulo: 'Inversión en infraestructura',

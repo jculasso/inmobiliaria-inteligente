@@ -15,14 +15,21 @@ import { VendedoresController } from './vendedores.controller';
  */
 function rolesDe(metodo: keyof VendedoresController): Rol[] {
   const roles = Reflect.getMetadata(ROLES_KEY, VendedoresController.prototype[metodo]) as
-    | Rol[]
-    | undefined;
+    Rol[] | undefined;
   if (!roles) throw new Error(`El handler ${String(metodo)} no declara @Roles.`);
   return roles;
 }
 
 describe('RBAC de vendedores', () => {
-  const TODOS = ['list', 'create', 'update', 'desactivar', 'setObjetivo', 'subirFoto', 'eliminarFoto'] as const;
+  const TODOS = [
+    'list',
+    'create',
+    'update',
+    'desactivar',
+    'setObjetivo',
+    'subirFoto',
+    'eliminarFoto',
+  ] as const;
 
   it.each(TODOS)('%s es solo de dirección y admin del tenant', (metodo) => {
     expect([...rolesDe(metodo)].sort()).toEqual(['admin_tenant', 'direccion']);

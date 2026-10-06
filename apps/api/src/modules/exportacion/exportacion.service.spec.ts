@@ -28,20 +28,38 @@ describe('ExportacionService', () => {
     const tx = makeTx();
     await new ExportacionService(makeDb(tx) as never).exportar(CTX);
 
-    for (const tabla of ['usuario', 'objetivo', 'operacion', 'tasacion', 'protocolo', 'protocoloAccion'] as const) {
+    for (const tabla of [
+      'usuario',
+      'objetivo',
+      'operacion',
+      'tasacion',
+      'protocolo',
+      'protocoloAccion',
+    ] as const) {
       const args = tx[tabla].findMany.mock.calls[0]?.[0];
-      expect(args?.where, `${tabla} no filtra por inquilino`).toMatchObject({ tenantId: 'inquilino-a' });
+      expect(args?.where, `${tabla} no filtra por inquilino`).toMatchObject({
+        tenantId: 'inquilino-a',
+      });
     }
   });
 
   it('devuelve un ZIP con las siete planillas y el LEEME', async () => {
-    const { buffer, nombreArchivo } = await new ExportacionService(makeDb(makeTx()) as never).exportar(CTX);
+    const { buffer, nombreArchivo } = await new ExportacionService(
+      makeDb(makeTx()) as never,
+    ).exportar(CTX);
 
     expect(buffer.subarray(0, 2).toString()).toBe('PK'); // firma de ZIP
     const crudo = buffer.toString('latin1');
-    for (const n of ['LEEME.txt', 'operaciones.csv', 'operaciones-puntas.csv', 'tasaciones.csv',
-                     'tasaciones-comparables.csv', 'protocolos.csv', 'protocolos-acciones.csv',
-                     'vendedores.csv']) {
+    for (const n of [
+      'LEEME.txt',
+      'operaciones.csv',
+      'operaciones-puntas.csv',
+      'tasaciones.csv',
+      'tasaciones-comparables.csv',
+      'protocolos.csv',
+      'protocolos-acciones.csv',
+      'vendedores.csv',
+    ]) {
       expect(crudo, `falta ${n}`).toContain(n);
     }
     expect(nombreArchivo).toMatch(/^alteva-propiedades-datos-\d{4}-\d{2}-\d{2}$/);

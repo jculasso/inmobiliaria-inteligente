@@ -124,7 +124,9 @@ function FichaPropiedad({ propiedad }: { propiedad: PropiedadEnReporte }) {
                 {' · '}
                 {/* El precio da la escala de lo que está en juego: no es lo
                     mismo que se trabe una de 80 mil que una de 400 mil. */}
-                <strong className="font-bold text-ink">{fmtPrecio(propiedad.precio, propiedad.moneda)}</strong>
+                <strong className="font-bold text-ink">
+                  {fmtPrecio(propiedad.precio, propiedad.moneda)}
+                </strong>
               </>
             )}
           </p>
@@ -159,7 +161,10 @@ function FichaPropiedad({ propiedad }: { propiedad: PropiedadEnReporte }) {
       {alertas.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {alertas.map((a, i) => (
-            <Link key={`${propiedad.protocoloId}-${i}`} href={linkDeAlerta(propiedad.protocoloId, a)}>
+            <Link
+              key={`${propiedad.protocoloId}-${i}`}
+              href={linkDeAlerta(propiedad.protocoloId, a)}
+            >
               <AlertaItem alerta={a} />
             </Link>
           ))}
@@ -265,7 +270,10 @@ export function ReporteSemanalVista({ reporte }: { reporte: ReporteSemanal }) {
           </h2>
           <div className="flex flex-col gap-2">
             {reporte.urgencias.map((item) => (
-              <div key={item.protocoloId} className="rounded-brand border border-danger/30 bg-white p-3">
+              <div
+                key={item.protocoloId}
+                className="rounded-brand border border-danger/30 bg-white p-3"
+              >
                 <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
                   <Link
                     href={`/protocolo/${item.protocoloId}`}
@@ -277,7 +285,10 @@ export function ReporteSemanalVista({ reporte }: { reporte: ReporteSemanal }) {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {item.alertas.map((a, i) => (
-                    <Link key={`${item.protocoloId}-r${i}`} href={linkDeAlerta(item.protocoloId, a)}>
+                    <Link
+                      key={`${item.protocoloId}-r${i}`}
+                      href={linkDeAlerta(item.protocoloId, a)}
+                    >
                       <AlertaItem alerta={a} />
                     </Link>
                   ))}

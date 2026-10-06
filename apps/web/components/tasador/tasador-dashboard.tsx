@@ -2,10 +2,19 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { AuthPrincipal, RankingCaptacionItem, ResumenTasadorKpi, TasacionResumenDto } from '@vacker/types';
+import type {
+  AuthPrincipal,
+  RankingCaptacionItem,
+  ResumenTasadorKpi,
+  TasacionResumenDto,
+} from '@vacker/types';
 import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarInforme, getKpisResumenTasador, getRankingCaptaciones } from '../../lib/tasador-api';
+import {
+  generarInforme,
+  getKpisResumenTasador,
+  getRankingCaptaciones,
+} from '../../lib/tasador-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { ETIQUETA_ROL, puedeVerTodo, rolPrincipal } from '../../lib/rbac';
 import { ToggleVerTodo } from '../tablero/toggle-ver-todo';
@@ -16,7 +25,20 @@ import { TasacionFila } from './tasacion-fila';
 import { TasacionesDrillModal } from './tasaciones-drill-modal';
 import { TendenciaBars, type TendenciaBar } from './tendencia-bars';
 
-const MESES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const MESES_ABBR = [
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic',
+];
 
 const DESCRIPCION_ALCANCE: Partial<Record<string, string>> = {
   direccion: 've todas las tasaciones de la inmobiliaria',
@@ -130,7 +152,11 @@ export function TasadorDashboard({
   const buckets: TendenciaBar[] = useMemo(() => {
     if (!kpisMensual) return [];
     if (vista === 'mensual') {
-      return kpisMensual.map((k, i) => ({ label: MESES_ABBR[i]!, full: `${MESES_ABBR[i]} ${anio}`, total: k.total }));
+      return kpisMensual.map((k, i) => ({
+        label: MESES_ABBR[i]!,
+        full: `${MESES_ABBR[i]} ${anio}`,
+        total: k.total,
+      }));
     }
     if (vista === 'trimestral') {
       return [0, 1, 2, 3].map((q) => {
@@ -165,8 +191,8 @@ export function TasadorDashboard({
         <div>
           <h2 className="text-lg font-bold text-ink">Dashboard de tasaciones</h2>
           <p className="mt-1 max-w-xl text-sm text-muted">
-            Resumen de la actividad de tasación y seguimiento de captación. Hacé clic en un período para ver sus
-            tasaciones.
+            Resumen de la actividad de tasación y seguimiento de captación. Hacé clic en un período
+            para ver sus tasaciones.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -203,10 +229,14 @@ export function TasadorDashboard({
           <div className="text-3xl">🏷️</div>
           <h3 className="mt-3 text-base font-bold text-ink">Todavía no hay tasaciones</h3>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-            Al generar tu primer informe, acá vas a ver el resumen mensual y trimestral, los estados y las últimas
-            tasaciones.
+            Al generar tu primer informe, acá vas a ver el resumen mensual y trimestral, los estados
+            y las últimas tasaciones.
           </p>
-          <Button variant="primary" className="mt-4" onClick={() => router.push('/tasador/tasaciones/nueva')}>
+          <Button
+            variant="primary"
+            className="mt-4"
+            onClick={() => router.push('/tasador/tasaciones/nueva')}
+          >
             Crear primera tasación
           </Button>
         </div>
@@ -219,7 +249,9 @@ export function TasadorDashboard({
               onClick={() =>
                 setDrill({
                   titulo: `Tasaciones de ${MESES_ABBR[curMonth]} ${anio}`,
-                  tasaciones: (tasaciones ?? []).filter((t) => claveMes(t.fecha) === curMonth + anio * 12),
+                  tasaciones: (tasaciones ?? []).filter(
+                    (t) => claveMes(t.fecha) === curMonth + anio * 12,
+                  ),
                 })
               }
             />
@@ -238,7 +270,9 @@ export function TasadorDashboard({
             <KpiCard
               label={`Total tasaciones · ${anio}`}
               value={String(total)}
-              onClick={() => setDrill({ titulo: `Tasaciones · ${anio}`, tasaciones: tasaciones ?? [] })}
+              onClick={() =>
+                setDrill({ titulo: `Tasaciones · ${anio}`, tasaciones: tasaciones ?? [] })
+              }
             />
             <KpiCard
               label="Tasa de captación"
@@ -266,7 +300,9 @@ export function TasadorDashboard({
                 type="button"
                 onClick={() => setVista(v)}
                 className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
-                  vista === v ? 'bg-white text-brand-red shadow-sm' : 'text-muted hover:text-brand-red'
+                  vista === v
+                    ? 'bg-white text-brand-red shadow-sm'
+                    : 'text-muted hover:text-brand-red'
                 }`}
               >
                 {label}
@@ -287,19 +323,26 @@ export function TasadorDashboard({
                 seleccionado={null}
                 onSelect={(b) => {
                   if (b.total === 0) return;
-                  setDrill({ titulo: `Tasaciones de ${b.full}`, tasaciones: bucketTasaciones(b.full) });
+                  setDrill({
+                    titulo: `Tasaciones de ${b.full}`,
+                    tasaciones: bucketTasaciones(b.full),
+                  });
                 }}
               />
             </Card>
             <Card className="min-w-0">
-              <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">Ranking de captaciones por vendedor</p>
+              <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">
+                Ranking de captaciones por vendedor
+              </p>
               <RankingCaptacionesCards
                 ranking={rankingAnual ?? []}
                 seleccionado={null}
                 onSelect={(r) =>
                   setDrill({
                     titulo: `Captaciones de ${r.nombre}`,
-                    tasaciones: (tasaciones ?? []).filter((t) => t.estado === 'Captada' && t.agenteId === r.usuarioId),
+                    tasaciones: (tasaciones ?? []).filter(
+                      (t) => t.estado === 'Captada' && t.agenteId === r.usuarioId,
+                    ),
                   })
                 }
               />
@@ -322,7 +365,9 @@ export function TasadorDashboard({
 
           <Card className="px-5 py-4">
             <div className="flex items-center justify-between pb-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted">Últimas tasaciones</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">
+                Últimas tasaciones
+              </p>
               <button
                 type="button"
                 onClick={() => router.push('/tasador/tasaciones')}
@@ -366,7 +411,9 @@ export function TasadorDashboard({
           onSaved={(patch) => {
             const id = modalEstado.id;
             setModalEstado(null);
-            setTasaciones((prev) => prev?.map((t) => (t.id === id ? { ...t, ...patch } : t)) ?? prev);
+            setTasaciones(
+              (prev) => prev?.map((t) => (t.id === id ? { ...t, ...patch } : t)) ?? prev,
+            );
             refrescarResumenYRanking();
           }}
         />

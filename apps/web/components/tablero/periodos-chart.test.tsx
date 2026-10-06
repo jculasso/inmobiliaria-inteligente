@@ -66,12 +66,14 @@ describe('PeriodosChart — los ejes dicen la verdad', () => {
    */
   it('las marcas de la comisión son valores exactos', () => {
     const grafico = within(dibujar());
-    for (const etiqueta of ['$0', '$2k', '$4k', '$6k']) expect(grafico.getByText(etiqueta)).toBeInTheDocument();
+    for (const etiqueta of ['$0', '$2k', '$4k', '$6k'])
+      expect(grafico.getByText(etiqueta)).toBeInTheDocument();
   });
 
   it('el eje de los alquileres marca enteros', () => {
     const grafico = within(dibujar());
-    for (const etiqueta of ['1', '2', '3', '4', '5']) expect(grafico.getByText(etiqueta)).toBeInTheDocument();
+    for (const etiqueta of ['1', '2', '3', '4', '5'])
+      expect(grafico.getByText(etiqueta)).toBeInTheDocument();
   });
 });
 

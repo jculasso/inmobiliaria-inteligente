@@ -23,7 +23,11 @@ export async function createTenant(accessToken: string, dto: CreateTenant) {
 }
 
 export async function updateTenant(accessToken: string, id: string, dto: UpdateTenant) {
-  return apiFetch(`/admin/tenants/${id}`, TenantDtoSchema, { accessToken, method: 'PATCH', body: dto });
+  return apiFetch(`/admin/tenants/${id}`, TenantDtoSchema, {
+    accessToken,
+    method: 'PATCH',
+    body: dto,
+  });
 }
 
 export async function subirLogoTenant(accessToken: string, id: string, file: File) {
@@ -82,14 +86,23 @@ export async function activarAccesoUsuario(
   id: string,
   dto: ResetPassword,
 ) {
-  return apiFetch(`/admin/tenants/${tenantId}/usuarios/${id}/activar-acceso`, UsuarioAdminDtoSchema, {
-    accessToken,
-    method: 'POST',
-    body: dto,
-  });
+  return apiFetch(
+    `/admin/tenants/${tenantId}/usuarios/${id}/activar-acceso`,
+    UsuarioAdminDtoSchema,
+    {
+      accessToken,
+      method: 'POST',
+      body: dto,
+    },
+  );
 }
 
-export async function subirFotoUsuario(accessToken: string, tenantId: string, id: string, file: File) {
+export async function subirFotoUsuario(
+  accessToken: string,
+  tenantId: string,
+  id: string,
+  file: File,
+) {
   return apiFetchForm(`/admin/tenants/${tenantId}/usuarios/${id}/foto`, UsuarioAdminDtoSchema, {
     accessToken,
     file,
@@ -112,7 +125,11 @@ export async function getCredencialTenant(accessToken: string, tenantId: string)
   return apiFetch(`/admin/tenants/${tenantId}/credencial`, CredencialEstadoSchema, { accessToken });
 }
 
-export async function guardarCredencialTenant(accessToken: string, tenantId: string, secreto: string) {
+export async function guardarCredencialTenant(
+  accessToken: string,
+  tenantId: string,
+  secreto: string,
+) {
   return apiFetch(`/admin/tenants/${tenantId}/credencial`, CredencialEstadoSchema, {
     accessToken,
     method: 'PUT',

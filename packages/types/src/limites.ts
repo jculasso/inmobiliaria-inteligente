@@ -32,7 +32,10 @@ export const LIMITE_CONCEPTOS_MES = 5000;
  *
  * @param filas lo que devolvió la API, que puede traer una fila de sonda.
  */
-export function recortarAlLimite<T>(filas: T[], limite = LIMITE_LISTA): { visibles: T[]; hayMas: boolean } {
+export function recortarAlLimite<T>(
+  filas: T[],
+  limite = LIMITE_LISTA,
+): { visibles: T[]; hayMas: boolean } {
   const hayMas = filas.length > limite;
   return { visibles: hayMas ? filas.slice(0, limite) : filas, hayMas };
 }

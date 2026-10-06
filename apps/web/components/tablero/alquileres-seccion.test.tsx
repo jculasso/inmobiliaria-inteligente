@@ -19,7 +19,10 @@ vi.mock('./detalle-drill-modal', () => ({
 const getAlquileresMensual = vi.fn();
 vi.mock('../../lib/tablero-api', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../lib/tablero-api')>();
-  return { ...original, getAlquileresMensual: (...args: unknown[]) => getAlquileresMensual(...args) };
+  return {
+    ...original,
+    getAlquileresMensual: (...args: unknown[]) => getAlquileresMensual(...args),
+  };
 });
 
 import { AlquileresSeccion } from './alquileres-seccion';
@@ -34,7 +37,12 @@ import { AlquileresSeccion } from './alquileres-seccion';
  * Q2 = 24 / 11.079 / 379. Si da otra cosa, el tablero y la planilla se
  * contradicen, que es lo que no puede pasar.
  */
-const mes = (m: number, firmados: number, comision: number, valorMensualSuma: number): AlquileresMes => ({
+const mes = (
+  m: number,
+  firmados: number,
+  comision: number,
+  valorMensualSuma: number,
+): AlquileresMes => ({
   mes: m,
   firmados,
   comision,
@@ -53,7 +61,9 @@ const VACKER_2026: AlquileresMes[] = [
 /** Los valores de una fila del cuadro, por su etiqueta: los períodos y el Total. */
 function fila(label: string) {
   const tabla = screen.getByRole('table', { name: 'Alquileres por período' });
-  const celdas = within(within(tabla).getByRole('row', { name: new RegExp(`^${label}`) })).getAllByRole('cell');
+  const celdas = within(
+    within(tabla).getByRole('row', { name: new RegExp(`^${label}`) }),
+  ).getAllByRole('cell');
   return celdas.slice(1).map((c) => c.textContent ?? '');
 }
 
@@ -93,7 +103,22 @@ describe('Alquileres — la planilla de Vacker', () => {
     const encabezados = within(screen.getByRole('table', { name: 'Alquileres por período' }))
       .getAllByRole('columnheader')
       .map((h) => h.textContent);
-    expect(encabezados).toEqual(['Métrica', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic', 'Total']);
+    expect(encabezados).toEqual([
+      'Métrica',
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+      'Total',
+    ]);
     // Enero a junio, mes por mes, como en su gráfico «Alquileres firmados por mes».
     expect(fila('Alquileres firmados').slice(0, 6)).toEqual(['5', '5', '1', '9', '7', '8']);
   });
@@ -110,7 +135,9 @@ describe('Alquileres — la planilla de Vacker', () => {
     render(<AlquileresSeccion anio={2026} mesSeleccionado={9} />);
     await userEvent.click(await screen.findByRole('button', { name: /Acumulado del Mes/ }));
     await userEvent.click(
-      within(screen.getByRole('table', { name: 'Alquileres por período' })).getByRole('button', { name: 'Abr' }),
+      within(screen.getByRole('table', { name: 'Alquileres por período' })).getByRole('button', {
+        name: 'Abr',
+      }),
     );
     expect(screen.getByText('Abril 2026')).toBeInTheDocument();
   });
@@ -128,9 +155,13 @@ describe('Alquileres — lo que no puede romper el tablero', () => {
   });
 
   it('sin alquileres en el año lo dice, en vez de dibujar un gráfico en cero', async () => {
-    getAlquileresMensual.mockResolvedValue(VACKER_2026.map((m) => ({ ...m, firmados: 0, comision: 0, valorMensualSuma: 0 })));
+    getAlquileresMensual.mockResolvedValue(
+      VACKER_2026.map((m) => ({ ...m, firmados: 0, comision: 0, valorMensualSuma: 0 })),
+    );
     render(<AlquileresSeccion anio={2025} mesSeleccionado={9} />);
-    expect(await screen.findByText('Todavía no hay alquileres firmados en 2025.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Todavía no hay alquileres firmados en 2025.'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -151,7 +182,9 @@ describe('Alquileres — ver cuáles son', () => {
     render(<AlquileresSeccion anio={2026} mesSeleccionado={9} />);
     await userEvent.click(await screen.findByRole('button', { name: /Acumulado del Mes/ }));
     await userEvent.click(
-      within(screen.getByRole('table', { name: 'Alquileres por período' })).getByRole('button', { name: 'Abr' }),
+      within(screen.getByRole('table', { name: 'Alquileres por período' })).getByRole('button', {
+        name: 'Abr',
+      }),
     );
 
     await userEvent.click(tarjeta());
@@ -187,7 +220,12 @@ describe('Alquileres — ver cuáles son', () => {
     await screen.findByText('Año 2026');
 
     await userEvent.click(tarjeta());
-    expect(filtrosDeLaLista.at(-1)).toEqual({ anio: 2026, tipo: 'alquiler', estado: 'firmado', verTodo: true });
+    expect(filtrosDeLaLista.at(-1)).toEqual({
+      anio: 2026,
+      tipo: 'alquiler',
+      estado: 'firmado',
+      verTodo: true,
+    });
   });
 
   /*

@@ -15,7 +15,13 @@ const TASACION = {
   id: '11111111-1111-1111-1111-111111111111',
   codigo: null,
   agenteId: '22222222-2222-2222-2222-222222222222',
-  agente: { id: '22222222-2222-2222-2222-222222222222', nombre: 'Ana', email: 'ana@vacker.com', fotoUrl: null, telefono: null },
+  agente: {
+    id: '22222222-2222-2222-2222-222222222222',
+    nombre: 'Ana',
+    email: 'ana@vacker.com',
+    fotoUrl: null,
+    telefono: null,
+  },
   cliente: 'Cliente Uno',
   fecha: '2026-03-10',
   direccion: 'Calle Falsa 123',
@@ -89,7 +95,9 @@ describe('tasador-api', () => {
     const result = await listTasaciones('token', { anio: 2026, estado: 'En proceso' });
 
     const [url] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe('http://localhost:3001/tasador/tasaciones?anio=2026&estado=En+proceso');
+    expect(String(url)).toBe(
+      'http://localhost:3001/tasador/tasaciones?anio=2026&estado=En+proceso',
+    );
     expect(result).toEqual([TASACION]);
   });
 
@@ -140,7 +148,9 @@ describe('tasador-api', () => {
   });
 
   it('deleteTasacion hace DELETE a /tasador/tasaciones/:id', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: TASACION.id }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ id: TASACION.id }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await deleteTasacion('token', TASACION.id);

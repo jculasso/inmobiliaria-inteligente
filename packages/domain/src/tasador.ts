@@ -53,7 +53,11 @@ export function superficieTotal(
 export function formulaEnPalabras(coef: Coeficientes): string {
   const parte = (nombre: string, c: number) =>
     c === 1 ? nombre : c === 0 ? null : `${Math.round(c * 100)}% ${nombre}`;
-  return ['cubierta', parte('semicubierta', coef.semicubierta), parte('descubierta', coef.descubierta)]
+  return [
+    'cubierta',
+    parte('semicubierta', coef.semicubierta),
+    parte('descubierta', coef.descubierta),
+  ]
     .filter(Boolean)
     .join(' + ');
 }
@@ -86,7 +90,10 @@ export interface ValoresSugeridos {
  * promedio de comparables; recomendado = −6%; mínimo = −10%. Editables por el
  * usuario una vez calculados (no se recalculan solos si el usuario los toca).
  */
-export function valoresSugeridos(superficieTotalM2: number, promedioUsdM2Comparables: number): ValoresSugeridos {
+export function valoresSugeridos(
+  superficieTotalM2: number,
+  promedioUsdM2Comparables: number,
+): ValoresSugeridos {
   const aspiracional = superficieTotalM2 * promedioUsdM2Comparables;
   return {
     aspiracional,

@@ -30,7 +30,9 @@ export function Seccion({
   children: ReactNode;
 }) {
   return (
-    <div className={`rounded-brand border border-line bg-white px-3 py-2.5 ${full ? 'sm:col-span-2' : ''}`}>
+    <div
+      className={`rounded-brand border border-line bg-white px-3 py-2.5 ${full ? 'sm:col-span-2' : ''}`}
+    >
       <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-red">
         <span aria-hidden>{icono}</span>
         {titulo}
@@ -91,7 +93,9 @@ export function CheckCard({
       />
       <span className="min-w-0">
         <span className="block text-sm font-medium text-ink">{titulo}</span>
-        {descripcion && <span className="block text-xs leading-snug text-muted">{descripcion}</span>}
+        {descripcion && (
+          <span className="block text-xs leading-snug text-muted">{descripcion}</span>
+        )}
       </span>
     </label>
   );

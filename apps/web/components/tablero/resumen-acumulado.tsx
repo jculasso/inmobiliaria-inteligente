@@ -50,7 +50,12 @@ type Abrir = (titulo: string, foco: FocoDrill, lado?: LadoPunta) => () => void;
 function metricas(agg: AgregadoKpi, abrir: Abrir) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <KpiCard label="Volumen operado" value={fmtUSD(agg.volumen)} tone="brand" onClick={abrir('Volumen', 'volumen')} />
+      <KpiCard
+        label="Volumen operado"
+        value={fmtUSD(agg.volumen)}
+        tone="brand"
+        onClick={abrir('Volumen', 'volumen')}
+      />
       <KpiCard
         label="Ticket promedio"
         value={fmtUSD(agg.ticketPromedio)}
@@ -63,7 +68,11 @@ function metricas(agg: AgregadoKpi, abrir: Abrir) {
         sub={`${fmtNum(agg.puntas)} puntas`}
         onClick={abrir('Operaciones', 'operaciones')}
       />
-      <KpiCard label="Puntas totales" value={fmtNum(agg.puntas)} onClick={abrir('Puntas', 'puntas')} />
+      <KpiCard
+        label="Puntas totales"
+        value={fmtNum(agg.puntas)}
+        onClick={abrir('Puntas', 'puntas')}
+      />
       <KpiCard
         label="Puntas compradoras"
         value={fmtNum(agg.puntasCompradoras)}
@@ -108,7 +117,9 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
   const [tab, setTab] = useState<PeriodoResumen>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
   const [mes, setMes] = useState(mesSeleccionado);
-  const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(inicial ?? null);
+  const [datos, setDatos] = useState<{ agregado: AgregadoKpi; ranking: RankingItem[] } | null>(
+    inicial ?? null,
+  );
   const [loading, setLoading] = useState(!inicial);
   const [porTrimestre, setPorTrimestre] = useState<AgregadoKpi[] | null>(null);
   const [porMes, setPorMes] = useState<AgregadoKpi[] | null>(null);
@@ -176,7 +187,11 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
   }, [anio, tab, verTodo]);
 
   const nombrePeriodo =
-    tab === 'trimestral' ? `Q${trimestre} ${anio}` : tab === 'mensual' ? `${NOMBRES_MES[mes - 1]} ${anio}` : `Año ${anio}`;
+    tab === 'trimestral'
+      ? `Q${trimestre} ${anio}`
+      : tab === 'mensual'
+        ? `${NOMBRES_MES[mes - 1]} ${anio}`
+        : `Año ${anio}`;
   const abrir: Abrir = (titulo, foco, lado) => () =>
     setDetalle({
       periodo: tab === 'trimestral' ? { trimestre } : tab === 'mensual' ? { mes } : {},
@@ -251,7 +266,14 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
       */}
       {tab === 'mensual' && porMes && (
         <div className="flex flex-col gap-4 border-b border-line p-4">
-          <VentasChart anio={anio} datos={porMes} etiquetas={ABREV_MES} unidad="mes" seleccionado={mes} onSelect={setMes} />
+          <VentasChart
+            anio={anio}
+            datos={porMes}
+            etiquetas={ABREV_MES}
+            unidad="mes"
+            seleccionado={mes}
+            onSelect={setMes}
+          />
           <VentasTabla datos={porMes} etiquetas={ABREV_MES} seleccionado={mes} onSelect={setMes} />
         </div>
       )}

@@ -53,26 +53,46 @@ interface Fila {
   [k: string]: unknown;
 }
 
-function makeTx(over: { contratos?: unknown[]; contrato?: unknown; existentes?: number; concepto?: unknown; anulados?: number } = {}) {
+function makeTx(
+  over: {
+    contratos?: unknown[];
+    contrato?: unknown;
+    existentes?: number;
+    concepto?: unknown;
+    anulados?: number;
+  } = {},
+) {
   return {
     ...mocksDeHistorial(),
     tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: { ivaHonorariosPct: 21 } }) },
     alqContrato: {
       findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]),
-      findUnique: vi.fn().mockResolvedValue(over.contrato === undefined ? contrato() : over.contrato),
+      findUnique: vi
+        .fn()
+        .mockResolvedValue(over.contrato === undefined ? contrato() : over.contrato),
     },
     alqConcepto: {
       // `skipDuplicates`: lo que ya existe no cuenta como creado.
-      createMany: vi.fn(async ({ data }: { data: Fila[] }) => ({ count: data.length - (over.existentes ?? 0) })),
+      createMany: vi.fn(async ({ data }: { data: Fila[] }) => ({
+        count: data.length - (over.existentes ?? 0),
+      })),
       findMany: vi.fn().mockResolvedValue([]),
-      findUnique: vi.fn().mockResolvedValue(over.concepto === undefined ? { anuladoEn: null, liquidacionId: null, _count: { imputaciones: 0 } } : over.concepto),
+      findUnique: vi
+        .fn()
+        .mockResolvedValue(
+          over.concepto === undefined
+            ? { anuladoEn: null, liquidacionId: null, _count: { imputaciones: 0 } }
+            : over.concepto,
+        ),
       updateMany: vi.fn().mockResolvedValue({ count: over.anulados ?? 1 }),
     },
   };
 }
 
 function makeDb(tx: unknown): TenantPrismaService {
-  return { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
+  return {
+    withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+  } as unknown as TenantPrismaService;
 }
 
 const datos = (tx: ReturnType<typeof makeTx>) => tx.alqConcepto.createMany.mock.calls[0]![0].data;
@@ -81,14 +101,25 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
   it('noviembre de 2026 del contrato #5, como en Gexion, con el tenant y la clave', async () => {
     const tx = makeTx();
     const r = await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');
-    expect(r).toEqual({ periodo: '2026-11', contratos: 1, creados: 4, existentes: 0, sinIndexar: [] });
+    expect(r).toEqual({
+      periodo: '2026-11',
+      contratos: 1,
+      creados: 4,
+      existentes: 0,
+      sinIndexar: [],
+    });
     expect(datos(tx).map((x) => [x.tipo, x.sentido, x.personaId, x.importe])).toEqual([
       ['alquiler', 'a_cobrar', INQ, 1_137_518],
       ['gastos_adm', 'a_cobrar', INQ, 27_527.94],
       ['alquiler', 'a_pagar', DUENO, 1_137_518],
       ['honorarios', 'a_cobrar', DUENO, 110_111.74],
     ]);
-    expect(datos(tx)[0]).toMatchObject({ tenantId: 't1', contratoId: 'c5', periodo: '2026-11', vencimiento: d('2026-11-05') });
+    expect(datos(tx)[0]).toMatchObject({
+      tenantId: 't1',
+      contratoId: 'c5',
+      periodo: '2026-11',
+      vencimiento: d('2026-11-05'),
+    });
     expect(datos(tx)[0]!.claveGeneracion).toMatch(/^alq\|c5\|2026-11\|/);
   });
 
@@ -103,7 +134,16 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
   // Regla 11.
   it('la parte sin indexar no se genera y vuelve con el contrato', async () => {
     const r = await new ConceptosService(makeDb(makeTx())).generar(CTX, '2026-12');
-    expect(r.sinIndexar).toEqual([{ contratoId: 'c5', codigo: '5', direccion: 'Calle 1', tramo: 5, desde: '2026-12-15', hasta: '2026-12-31' }]);
+    expect(r.sinIndexar).toEqual([
+      {
+        contratoId: 'c5',
+        codigo: '5',
+        direccion: 'Calle 1',
+        tramo: 5,
+        desde: '2026-12-15',
+        hasta: '2026-12-31',
+      },
+    ]);
     expect(r.creados).toBe(4);
   });
 
@@ -127,10 +167,16 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
   // La trampa de performance: las consultas no crecen con los contratos.
   it('tres consultas con 5 contratos y con 25', async () => {
     for (const n of [5, 25]) {
-      const tx = makeTx({ contratos: Array.from({ length: n }, (_, i) => contrato({ id: `c${i}`, codigo: String(i) })) });
+      const tx = makeTx({
+        contratos: Array.from({ length: n }, (_, i) =>
+          contrato({ id: `c${i}`, codigo: String(i) }),
+        ),
+      });
       await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');
       const consultas =
-        tx.tenant.findUniqueOrThrow.mock.calls.length + tx.alqContrato.findMany.mock.calls.length + tx.alqConcepto.createMany.mock.calls.length;
+        tx.tenant.findUniqueOrThrow.mock.calls.length +
+        tx.alqContrato.findMany.mock.calls.length +
+        tx.alqConcepto.createMany.mock.calls.length;
       expect(consultas).toBe(3);
       expect(datos(tx)).toHaveLength(4 * n);
     }
@@ -152,7 +198,15 @@ describe('ConceptosService.crearSuelto (regla 14)', () => {
   it('un gasto del propietario adelantado por la inmobiliaria queda marcado', async () => {
     const tx = makeTx();
     await new ConceptosService(makeDb(tx)).crearSuelto(CTX, suelto({ pagadoPor: 'inmobiliaria' }));
-    expect(datos(tx)).toMatchObject([{ personaId: DUENO, sentido: 'a_cobrar', importe: 140_699, adelantadoPorInmobiliaria: true, tenantId: 't1' }]);
+    expect(datos(tx)).toMatchObject([
+      {
+        personaId: DUENO,
+        sentido: 'a_cobrar',
+        importe: 140_699,
+        adelantadoPorInmobiliaria: true,
+        tenantId: 't1',
+      },
+    ]);
   });
 
   // Como lo registra Gexion: la reparación a pagar a uno y a cobrar al otro.
@@ -160,8 +214,17 @@ describe('ConceptosService.crearSuelto (regla 14)', () => {
     const tx = makeTx();
     await new ConceptosService(makeDb(tx)).crearSuelto(CTX, suelto({ pagadoPor: 'inquilino' }));
     const [cargo, reconocimiento] = datos(tx);
-    expect(cargo).toMatchObject({ personaId: DUENO, sentido: 'a_cobrar', adelantadoPorInmobiliaria: false });
-    expect(reconocimiento).toMatchObject({ personaId: INQ, sentido: 'a_pagar', importe: 140_699, origenId: cargo!.id });
+    expect(cargo).toMatchObject({
+      personaId: DUENO,
+      sentido: 'a_cobrar',
+      adelantadoPorInmobiliaria: false,
+    });
+    expect(reconocimiento).toMatchObject({
+      personaId: INQ,
+      sentido: 'a_pagar',
+      importe: 140_699,
+      origenId: cargo!.id,
+    });
   });
 
   it('dos propietarios: se reparte por porcentaje sin perder centavos', async () => {
@@ -176,9 +239,11 @@ describe('ConceptosService.crearSuelto (regla 14)', () => {
   });
 
   it('un contrato en borrador todavía no tiene cuenta', async () => {
-    await expect(new ConceptosService(makeDb(makeTx({ contrato: contrato({ estado: 'borrador' }) }))).crearSuelto(CTX, suelto())).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      new ConceptosService(
+        makeDb(makeTx({ contrato: contrato({ estado: 'borrador' }) })),
+      ).crearSuelto(CTX, suelto()),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('el schema rechaza que lo haya pagado quien lo debe, y un «otro» sin descripción', () => {
@@ -192,22 +257,41 @@ describe('ConceptosService.anular (regla 19)', () => {
     const tx = makeTx();
     await new ConceptosService(makeDb(tx)).anular(CTX, 'k1', 'Cargado dos veces');
     expect(tx.alqConcepto.updateMany).toHaveBeenCalledWith({
-      where: { OR: [{ id: 'k1' }, { origenId: 'k1' }], anuladoEn: null, liquidacionId: null, imputaciones: { none: { cobro: { anuladoEn: null }, registradaEnCobro: { anuladoEn: null } } } },
+      where: {
+        OR: [{ id: 'k1' }, { origenId: 'k1' }],
+        anuladoEn: null,
+        liquidacionId: null,
+        imputaciones: {
+          none: { cobro: { anuladoEn: null }, registradaEnCobro: { anuladoEn: null } },
+        },
+      },
       data: expect.objectContaining({ anuladoPorId: 'u1', motivoAnulacion: 'Cargado dos veces' }),
     });
   });
 
   it('con cobros aplicados o ya liquidado, no', async () => {
-    const conCobro = makeTx({ concepto: { anuladoEn: null, liquidacionId: null, _count: { imputaciones: 1 } } });
-    await expect(new ConceptosService(makeDb(conCobro)).anular(CTX, 'k1', 'x x x')).rejects.toThrow(/cobros o pagos aplicados/);
-    const liquidado = makeTx({ concepto: { anuladoEn: null, liquidacionId: 'l1', _count: { imputaciones: 0 } } });
-    await expect(new ConceptosService(makeDb(liquidado)).anular(CTX, 'k1', 'x x x')).rejects.toThrow(BadRequestException);
+    const conCobro = makeTx({
+      concepto: { anuladoEn: null, liquidacionId: null, _count: { imputaciones: 1 } },
+    });
+    await expect(new ConceptosService(makeDb(conCobro)).anular(CTX, 'k1', 'x x x')).rejects.toThrow(
+      /cobros o pagos aplicados/,
+    );
+    const liquidado = makeTx({
+      concepto: { anuladoEn: null, liquidacionId: 'l1', _count: { imputaciones: 0 } },
+    });
+    await expect(
+      new ConceptosService(makeDb(liquidado)).anular(CTX, 'k1', 'x x x'),
+    ).rejects.toThrow(BadRequestException);
     expect(conCobro.alqConcepto.updateMany).not.toHaveBeenCalled();
   });
 
   it('dos veces, no', async () => {
-    const tx = makeTx({ concepto: { anuladoEn: new Date(), liquidacionId: null, _count: { imputaciones: 0 } } });
-    await expect(new ConceptosService(makeDb(tx)).anular(CTX, 'k1', 'x x x')).rejects.toThrow(ConflictException);
+    const tx = makeTx({
+      concepto: { anuladoEn: new Date(), liquidacionId: null, _count: { imputaciones: 0 } },
+    });
+    await expect(new ConceptosService(makeDb(tx)).anular(CTX, 'k1', 'x x x')).rejects.toThrow(
+      ConflictException,
+    );
   });
 });
 
@@ -216,7 +300,15 @@ describe('ConceptosService.listar · estado y papel (punto 4 de Javier)', () => 
   const INQ = '22222222-2222-4222-8222-222222222222';
   const k = (over: Record<string, unknown>) => ({
     id: crypto.randomUUID(),
-    contrato: { id: 'c5', codigo: 'ALT-0005', propiedad: { direccion: 'Calle 1' }, partes: [{ personaId: DUENO, papel: 'propietario' }, { personaId: INQ, papel: 'inquilino' }] },
+    contrato: {
+      id: 'c5',
+      codigo: 'ALT-0005',
+      propiedad: { direccion: 'Calle 1' },
+      partes: [
+        { personaId: DUENO, papel: 'propietario' },
+        { personaId: INQ, papel: 'inquilino' },
+      ],
+    },
     persona: { id: INQ, nombre: 'Inquilina' },
     personaId: INQ,
     tipo: 'alquiler',
@@ -244,7 +336,12 @@ describe('ConceptosService.listar · estado y papel (punto 4 de Javier)', () => 
       k({}),
       k({ imputaciones: [{ importe: new Prisma.Decimal(400) }] }),
       k({ imputaciones: [{ importe: new Prisma.Decimal(1000) }] }),
-      k({ sentido: 'a_pagar', personaId: DUENO, persona: { id: DUENO, nombre: 'Dueño' }, liquidacionId: 'l1' }),
+      k({
+        sentido: 'a_pagar',
+        personaId: DUENO,
+        persona: { id: DUENO, nombre: 'Dueño' },
+        liquidacionId: 'l1',
+      }),
       k({ anuladoEn: new Date(), anuladoPorId: 'u1', motivoAnulacion: 'Error' }),
     ]);
     const r = await new ConceptosService(makeDb(tx)).listar('2026-11');
@@ -255,7 +352,13 @@ describe('ConceptosService.listar · estado y papel (punto 4 de Javier)', () => 
       ['liquidado', 0],
       ['anulado', 0],
     ]);
-    expect(r.map((c) => c.papel)).toEqual(['inquilino', 'inquilino', 'inquilino', 'propietario', 'inquilino']);
+    expect(r.map((c) => c.papel)).toEqual([
+      'inquilino',
+      'inquilino',
+      'inquilino',
+      'propietario',
+      'inquilino',
+    ]);
     expect(r[4]!.anulado).toMatchObject({ motivo: 'Error', por: 'Lucía Operadora' });
   });
 });

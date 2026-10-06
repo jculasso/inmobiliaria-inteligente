@@ -1,7 +1,11 @@
 import { redirect } from 'next/navigation';
 import { puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../../../../lib/server-principal';
-import { getContrato, listPersonas, listPropiedadesAlquiler } from '../../../../../lib/alquileres-api';
+import {
+  getContrato,
+  listPersonas,
+  listPropiedadesAlquiler,
+} from '../../../../../lib/alquileres-api';
 import { ContratoForm } from '../../../../../components/alquileres/contrato-form';
 
 export const metadata = { title: 'Editar contrato · Alquileres' };

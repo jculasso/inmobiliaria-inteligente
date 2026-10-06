@@ -26,7 +26,10 @@ export function rangoDeFiltro(filtro: TasadorKpiFiltro): Prisma.DateTimeFilter {
   if (periodo === 'mensual') return rangoMes(anio, filtro.mes ?? 1);
   if (periodo === 'trimestral') {
     const mesInicio = ((filtro.trimestre ?? 1) - 1) * 3;
-    return { gte: new Date(Date.UTC(anio, mesInicio, 1)), lt: new Date(Date.UTC(anio, mesInicio + 3, 1)) };
+    return {
+      gte: new Date(Date.UTC(anio, mesInicio, 1)),
+      lt: new Date(Date.UTC(anio, mesInicio + 3, 1)),
+    };
   }
   return rangoAnio(anio);
 }
@@ -54,7 +57,10 @@ export function rangoDeAnioMesTrimestre(
   if (mes != null) return rangoMes(anio, mes);
   if (trimestre != null) {
     const mesInicio = (trimestre - 1) * 3;
-    return { gte: new Date(Date.UTC(anio, mesInicio, 1)), lt: new Date(Date.UTC(anio, mesInicio + 3, 1)) };
+    return {
+      gte: new Date(Date.UTC(anio, mesInicio, 1)),
+      lt: new Date(Date.UTC(anio, mesInicio + 3, 1)),
+    };
   }
   return rangoAnio(anio);
 }

@@ -28,13 +28,20 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const [error, setError] = useState<string | null>(null);
   const [accion, setAccion] = useState<null | 'datos' | 'anular' | 'borrar' | 'extender'>(null);
   // Punto 3 de Javier: con qué valores del índice se calculó cada tramo.
-  const conIndice = contrato.ajuste === 'indexado' && contrato.tramos.some((t) => t.indiceBase != null);
+  const conIndice =
+    contrato.ajuste === 'indexado' && contrato.tramos.some((t) => t.indiceBase != null);
   const unidad = `${contrato.propiedad.direccion}${contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}`;
-  const nombresDe = (papel: string) => contrato.partes.filter((p) => p.papel === papel).map((p) => p.nombre).join(', ') || '—';
+  const nombresDe = (papel: string) =>
+    contrato.partes
+      .filter((p) => p.papel === papel)
+      .map((p) => p.nombre)
+      .join(', ') || '—';
   const [enviando, setEnviando] = useState(false);
   const m = (n: number | null) => (n == null ? '—' : fmtMoneda(n, contrato.moneda));
   // Las columnas de los tramos en la computadora; en el teléfono, número y fechas a la izquierda e importe a la derecha.
-  const columnas = conIndice ? 'sm:grid-cols-[3rem_6rem_6rem_1fr_9rem]' : 'sm:grid-cols-[3rem_6rem_6rem_1fr]';
+  const columnas = conIndice
+    ? 'sm:grid-cols-[3rem_6rem_6rem_1fr_9rem]'
+    : 'sm:grid-cols-[3rem_6rem_6rem_1fr]';
 
   async function cambiar(cambio: CambiarEstadoContrato) {
     setError(null);
@@ -53,7 +60,8 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const textos = {
     vigente: {
       titulo: 'Activar el contrato',
-      detalle: 'Desde ahora el contrato genera sus alquileres cada mes y ya no se edita completo: cambia por indexación o rescisión.',
+      detalle:
+        'Desde ahora el contrato genera sus alquileres cada mes y ya no se edita completo: cambia por indexación o rescisión.',
       boton: 'Activar',
     },
     finalizado: {
@@ -63,7 +71,8 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
     },
     rescindido: {
       titulo: 'Rescindir el contrato',
-      detalle: 'Desde el mes siguiente a la fecha no se generan alquileres, y los ya generados de esos meses que no se cobraron se anulan. Lo cobrado no se toca.',
+      detalle:
+        'Desde el mes siguiente a la fecha no se generan alquileres, y los ya generados de esos meses que no se cobraron se anulan. Lo cobrado no se toca.',
       boton: 'Rescindir',
     },
   } as const;
@@ -91,9 +100,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         {contrato.estado === 'borrador' && (
           <>
             <Button asChild variant="secondary" size="sm">
-              <Link href={`/alquileres/contratos/${contrato.id}/editar`}>
-                ✏️ Editar
-              </Link>
+              <Link href={`/alquileres/contratos/${contrato.id}/editar`}>✏️ Editar</Link>
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setAccion('borrar')}>
               🗑️ Borrar
@@ -127,7 +134,10 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
       </EncabezadoPagina>
 
       {contrato.anulado && (
-        <p role="status" className="rounded-brand border border-line bg-ink/5 px-4 py-3 text-sm text-ink">
+        <p
+          role="status"
+          className="rounded-brand border border-line bg-ink/5 px-4 py-3 text-sm text-ink"
+        >
           <span className="font-bold">Contrato anulado</span> el {fmtFechaDe(contrato.anulado.en)}
           {contrato.anulado.por ? ` por ${contrato.anulado.por}` : ''}: {contrato.anulado.motivo}
         </p>
@@ -136,10 +146,17 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
       <Panel icono="👥" titulo="Partes">
         <ul className="flex flex-col gap-1.5">
           {contrato.partes.map((p) => (
-            <li key={`${p.papel}-${p.personaId}`} className="flex flex-wrap items-baseline gap-2 text-sm">
-              <span className="w-24 text-[11px] font-bold uppercase tracking-wide text-muted">{NOMBRE_PAPEL[p.papel]}</span>
+            <li
+              key={`${p.papel}-${p.personaId}`}
+              className="flex flex-wrap items-baseline gap-2 text-sm"
+            >
+              <span className="w-24 text-[11px] font-bold uppercase tracking-wide text-muted">
+                {NOMBRE_PAPEL[p.papel]}
+              </span>
               <span className="font-semibold text-ink">{p.nombre}</span>
-              {p.papel === 'propietario' && p.porcentaje != null && p.porcentaje !== 100 && <span className="text-muted">{fmtPct(p.porcentaje)}</span>}
+              {p.papel === 'propietario' && p.porcentaje != null && p.porcentaje !== 100 && (
+                <span className="text-muted">{fmtPct(p.porcentaje)}</span>
+              )}
             </li>
           ))}
         </ul>
@@ -163,18 +180,31 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           <Dato etiqueta="Gastos adm.">{fmtPct(contrato.gastosAdmPct)} + IVA</Dato>
           <Dato etiqueta="Punitorio diario">{fmtPct(contrato.punitorioDiarioPct)}</Dato>
           <Dato etiqueta="Pago garantizado">{contrato.pagoGarantizado ? 'Sí' : 'No'}</Dato>
-          {contrato.depositoImporte != null && <Dato etiqueta="Depósito">{fmtMoneda(contrato.depositoImporte, contrato.depositoMoneda ?? contrato.moneda)}</Dato>}
-          {contrato.depositoDevolucion && <Dato etiqueta="Devolución del depósito">{fmtFecha(contrato.depositoDevolucion)}</Dato>}
-          {contrato.rescindidoEl && <Dato etiqueta="Rescindido el">{fmtFecha(contrato.rescindidoEl)}</Dato>}
+          {contrato.depositoImporte != null && (
+            <Dato etiqueta="Depósito">
+              {fmtMoneda(contrato.depositoImporte, contrato.depositoMoneda ?? contrato.moneda)}
+            </Dato>
+          )}
+          {contrato.depositoDevolucion && (
+            <Dato etiqueta="Devolución del depósito">{fmtFecha(contrato.depositoDevolucion)}</Dato>
+          )}
+          {contrato.rescindidoEl && (
+            <Dato etiqueta="Rescindido el">{fmtFecha(contrato.rescindidoEl)}</Dato>
+          )}
         </dl>
-        {contrato.obs && <p className="mt-3 whitespace-pre-line text-sm text-muted">{contrato.obs}</p>}
+        {contrato.obs && (
+          <p className="mt-3 whitespace-pre-line text-sm text-muted">{contrato.obs}</p>
+        )}
       </Panel>
 
       <Panel icono="📈" titulo="Tramos">
         {/* Una sola lista: en la computadora se lee como tabla; en el teléfono,
             cada tramo es un renglón con su importe a la derecha, sin desplazar
             de costado (antes era una tabla de 30rem en una pantalla de 22). */}
-        <div className={`hidden gap-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted sm:grid ${columnas}`} aria-hidden>
+        <div
+          className={`hidden gap-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted sm:grid ${columnas}`}
+          aria-hidden
+        >
           <span>N.º</span>
           <span>Desde</span>
           <span>Hasta</span>
@@ -183,7 +213,10 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         </div>
         <ol className="text-sm">
           {contrato.tramos.map((t) => (
-            <li key={t.numero} className={`grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-t border-line py-2 sm:items-baseline ${columnas}`}>
+            <li
+              key={t.numero}
+              className={`grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-t border-line py-2 sm:items-baseline ${columnas}`}
+            >
               <span className="tabular-nums text-muted">
                 <span className="sm:hidden">Tramo </span>
                 {t.numero}
@@ -200,10 +233,16 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
                     <>
                       <span className="sm:hidden">Índice </span>
                       {fmtIndice(t.indiceBase)} → {fmtIndice(t.indiceRequerido)}{' '}
-                      <span className="font-semibold text-ink">({variacionEntre(t.indiceBase, t.indiceRequerido)})</span>
-                      {t.importePropuesto != null && t.importe != null && Math.abs(t.importePropuesto - t.importe) > 0.5 && (
-                        <span className="block">Propuesto {m(t.importePropuesto)}, se confirmó otro importe</span>
-                      )}
+                      <span className="font-semibold text-ink">
+                        ({variacionEntre(t.indiceBase, t.indiceRequerido)})
+                      </span>
+                      {t.importePropuesto != null &&
+                        t.importe != null &&
+                        Math.abs(t.importePropuesto - t.importe) > 0.5 && (
+                          <span className="block">
+                            Propuesto {m(t.importePropuesto)}, se confirmó otro importe
+                          </span>
+                        )}
                     </>
                   ) : (
                     <span className="hidden sm:inline">—</span>
@@ -211,7 +250,11 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
                 </span>
               )}
               <span className="col-start-2 row-start-1 text-right font-semibold tabular-nums text-ink sm:col-start-auto sm:row-start-auto">
-                {t.importe == null ? <span className="text-xs font-bold text-warning">A indexar</span> : m(t.importe)}
+                {t.importe == null ? (
+                  <span className="text-xs font-bold text-warning">A indexar</span>
+                ) : (
+                  m(t.importe)
+                )}
               </span>
             </li>
           ))}
@@ -282,7 +325,14 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             <p className="text-sm leading-relaxed text-ink">{textos[confirmar].detalle}</p>
             {confirmar === 'rescindido' && (
               <Campo label="Fecha de rescisión" requerido>
-                <input type="date" className={inputClass} value={fecha} min={contrato.inicio} max={contrato.fin} onChange={(e) => setFecha(e.target.value)} />
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={fecha}
+                  min={contrato.inicio}
+                  max={contrato.fin}
+                  onChange={(e) => setFecha(e.target.value)}
+                />
               </Campo>
             )}
             {error && (
@@ -298,7 +348,13 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
                 type="button"
                 variant="primary"
                 disabled={enviando || (confirmar === 'rescindido' && !fecha)}
-                onClick={() => cambiar(confirmar === 'rescindido' ? { estado: 'rescindido', fecha } : { estado: confirmar })}
+                onClick={() =>
+                  cambiar(
+                    confirmar === 'rescindido'
+                      ? { estado: 'rescindido', fecha }
+                      : { estado: confirmar },
+                  )
+                }
               >
                 {enviando ? 'Guardando…' : textos[confirmar].boton}
               </Button>

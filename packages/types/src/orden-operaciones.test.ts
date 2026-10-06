@@ -48,10 +48,7 @@ describe('compararOperaciones — por código', () => {
   });
 
   it('ascendente da exactamente la vuelta', () => {
-    expect(ordenar([op('OP-999'), op('OP-1001')], 'codigo', 'asc')).toEqual([
-      'OP-999',
-      'OP-1001',
-    ]);
+    expect(ordenar([op('OP-999'), op('OP-1001')], 'codigo', 'asc')).toEqual(['OP-999', 'OP-1001']);
   });
 
   it('los códigos sin número quedan al final en los DOS sentidos', () => {

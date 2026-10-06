@@ -101,7 +101,9 @@ export function LoginPanel() {
             className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-brand-red"
           />
           <p className="text-sm font-semibold text-ink">Cargando tu cuenta…</p>
-          <p className="text-xs text-muted">Puede tardar unos segundos si el servidor estaba inactivo.</p>
+          <p className="text-xs text-muted">
+            Puede tardar unos segundos si el servidor estaba inactivo.
+          </p>
         </div>
       </div>
     );
@@ -115,7 +117,9 @@ export function LoginPanel() {
       />
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red">Acceso</p>
       <h2 className="mt-1 text-xl font-extrabold text-ink">Iniciar sesión</h2>
-      <p className="mt-1 text-sm text-muted">Accedé con tu cuenta para desbloquear los módulos de tu inmobiliaria.</p>
+      <p className="mt-1 text-sm text-muted">
+        Accedé con tu cuenta para desbloquear los módulos de tu inmobiliaria.
+      </p>
 
       <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-1.5">

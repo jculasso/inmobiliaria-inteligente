@@ -5,7 +5,15 @@ import type { IndiceAlquiler, PapelContrato } from '@vacker/types';
 // copia acá en vez de una por pantalla.
 
 /** «CCP» no lo entiende nadie: es Casa Propia. */
-export const NOMBRE_INDICE: Record<IndiceAlquiler, string> = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' };
+export const NOMBRE_INDICE: Record<IndiceAlquiler, string> = {
+  ICL: 'ICL',
+  IPC: 'IPC',
+  CCP: 'Casa Propia',
+};
 
 /** El papel de cada parte en un contrato, como se dice. */
-export const NOMBRE_PAPEL: Record<PapelContrato, string> = { propietario: 'Propietario', inquilino: 'Inquilino', garante: 'Garante' };
+export const NOMBRE_PAPEL: Record<PapelContrato, string> = {
+  propietario: 'Propietario',
+  inquilino: 'Inquilino',
+  garante: 'Garante',
+};

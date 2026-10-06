@@ -159,7 +159,8 @@ export class OperacionesService {
       assertEnScope(actual, await scopeDePermiso(ctx, tx));
       this.assertUpdateCoherente(actual.tipo, dto);
 
-      const fechaFirma = dto.fechaFirma !== undefined ? dto.fechaFirma : fromDate(actual.fechaFirma);
+      const fechaFirma =
+        dto.fechaFirma !== undefined ? dto.fechaFirma : fromDate(actual.fechaFirma);
       const fechaReserva =
         dto.fechaReserva !== undefined ? dto.fechaReserva : fromDate(actual.fechaReserva);
       const { anio, mes } = derivarPeriodo(fechaFirma, fechaReserva);
@@ -261,10 +262,7 @@ function sumaComision(puntas: PuntaInput[]): number {
 }
 
 /** Rechaza el acceso si la operación no cae en el alcance del rol. */
-function assertEnScope(
-  row: OperacionConPuntas,
-  scope: { usuarioIds: string[] | null },
-): void {
+function assertEnScope(row: OperacionConPuntas, scope: { usuarioIds: string[] | null }): void {
   if (scope.usuarioIds === null) return;
   const set = new Set(scope.usuarioIds);
   const visible = row.puntas.some((p) => set.has(p.usuarioId));

@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { IndicesDto } from '@vacker/types';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => '/alquileres/indices' }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/alquileres/indices',
+}));
 
 import { IndicesVista } from './indices-vista';
 

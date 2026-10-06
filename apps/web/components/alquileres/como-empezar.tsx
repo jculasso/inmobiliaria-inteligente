@@ -10,7 +10,8 @@ export function ComoEmpezar({ resumen }: { resumen: ResumenAlquileres }) {
   const pasos = [
     {
       titulo: 'Cargá a los propietarios e inquilinos',
-      detalle: 'Con su documento y un contacto. La misma persona puede ser propietaria de un contrato e inquilina de otro.',
+      detalle:
+        'Con su documento y un contacto. La misma persona puede ser propietaria de un contrato e inquilina de otro.',
       hecho: resumen.personas > 0,
       href: '/alquileres/personas',
     },

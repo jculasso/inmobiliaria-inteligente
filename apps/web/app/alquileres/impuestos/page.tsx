@@ -1,13 +1,23 @@
 import { PeriodoSchema, puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../../lib/server-principal';
-import { getPlanillaBoletas, listBoletas, listContratos, listPolizas, listPropiedadesAlquiler, listServicios } from '../../../lib/alquileres-api';
+import {
+  getPlanillaBoletas,
+  listBoletas,
+  listContratos,
+  listPolizas,
+  listPropiedadesAlquiler,
+  listServicios,
+} from '../../../lib/alquileres-api';
 import { ImpuestosVista } from '../../../components/alquileres/impuestos-vista';
 import { hoyIso } from '../../../lib/format';
 
 export const metadata = { title: 'Impuestos y servicios · Alquileres' };
 
-
-export default async function ImpuestosPage({ searchParams }: { searchParams: Promise<{ periodo?: string; ver?: string }> }) {
+export default async function ImpuestosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string; ver?: string }>;
+}) {
   const ctx = await requireServerPrincipal();
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
   const q = await searchParams;
@@ -15,15 +25,16 @@ export default async function ImpuestosPage({ searchParams }: { searchParams: Pr
   const periodo = pedido.success ? pedido.data : hoyIso().slice(0, 7);
   const ver = q.ver === 'control' ? 'control' : 'mes';
   const t = ctx.accessToken;
-  const [planilla, boletas, control, servicios, propiedades, polizas, contratos] = await Promise.all([
-    getPlanillaBoletas(t, periodo),
-    listBoletas(t, { periodo, ver: 'mes' }),
-    listBoletas(t, { ver: 'control' }),
-    listServicios(t),
-    listPropiedadesAlquiler(t),
-    listPolizas(t),
-    listContratos(t),
-  ]);
+  const [planilla, boletas, control, servicios, propiedades, polizas, contratos] =
+    await Promise.all([
+      getPlanillaBoletas(t, periodo),
+      listBoletas(t, { periodo, ver: 'mes' }),
+      listBoletas(t, { ver: 'control' }),
+      listServicios(t),
+      listPropiedadesAlquiler(t),
+      listPolizas(t),
+      listContratos(t),
+    ]);
   return (
     <ImpuestosVista
       key={periodo}

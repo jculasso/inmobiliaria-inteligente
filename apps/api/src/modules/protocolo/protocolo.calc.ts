@@ -183,7 +183,9 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
     alertas.push({
       nivel: 'ambar',
       titulo: una ? '1 acción vence hoy' : `${vencenHoy.length} acciones vencen hoy`,
-      detalle: una ? 'Si no se cierra hoy, mañana queda atrasada.' : 'Si no se cierran hoy, mañana quedan atrasadas.',
+      detalle: una
+        ? 'Si no se cierra hoy, mañana queda atrasada.'
+        : 'Si no se cierran hoy, mañana quedan atrasadas.',
       semana: Math.min(...vencenHoy.map((a) => a.semana)),
     });
   }
@@ -242,7 +244,8 @@ export function calcularAlertas(d: DatosAlertas, hoy = hoyArgentina()): AlertaPr
     alertas.push({
       nivel: 'verde',
       titulo: 'Protocolo listo para cierre',
-      detalle: 'Se completaron las cinco semanas. Corresponde emitir el informe final y acordar con el propietario cómo sigue.',
+      detalle:
+        'Se completaron las cinco semanas. Corresponde emitir el informe final y acordar con el propietario cómo sigue.',
       semana: TOTAL_SEMANAS,
     });
   }

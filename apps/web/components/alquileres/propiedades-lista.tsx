@@ -36,7 +36,9 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
   const filtradas = useMemo(() => {
     const q = paraBuscar(busqueda.trim());
     if (!q) return visibles;
-    return visibles.filter((p) => [p.direccion, p.unidad, p.ciudad].some((c) => paraBuscar(c).includes(q)));
+    return visibles.filter((p) =>
+      [p.direccion, p.unidad, p.ciudad].some((c) => paraBuscar(c).includes(q)),
+    );
   }, [visibles, busqueda]);
 
   const guardado = () => {
@@ -75,13 +77,28 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
             <ListaTarjetas etiqueta="Propiedades">
               {filtradas.map((p) => (
                 <Tarjeta key={p.id}>
-                  <button type="button" onClick={() => setModal(p)} title={`Editar ${p.direccion}`} className={`block w-full rounded text-left ${CLASE_FOCO}`}>
-                    <CabezaTarjeta titulo={`${p.direccion}${p.unidad ? ` ${p.unidad}` : ''}`} detalle={p.ciudad ?? undefined} />
+                  <button
+                    type="button"
+                    onClick={() => setModal(p)}
+                    title={`Editar ${p.direccion}`}
+                    className={`block w-full rounded text-left ${CLASE_FOCO}`}
+                  >
+                    <CabezaTarjeta
+                      titulo={`${p.direccion}${p.unidad ? ` ${p.unidad}` : ''}`}
+                      detalle={p.ciudad ?? undefined}
+                    />
                     <CamposTarjeta>
-                      <CampoTarjeta etiqueta="Tipo">{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Tipo">
+                        {p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}
+                      </CampoTarjeta>
                     </CamposTarjeta>
                   </button>
-                  <AccionesFila tarjeta nombre={p.direccion} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
+                  <AccionesFila
+                    tarjeta
+                    nombre={p.direccion}
+                    onEditar={() => setModal(p)}
+                    onBorrar={() => setABorrar(p)}
+                  />
                 </Tarjeta>
               ))}
             </ListaTarjetas>
@@ -103,9 +120,15 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
                     <td className={`${CLASE_TD} font-semibold text-ink`}>{p.direccion}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.unidad ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.ciudad ?? '—'}</td>
-                    <td className={`${CLASE_TD} text-muted`}>{p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}</td>
+                    <td className={`${CLASE_TD} text-muted`}>
+                      {p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}
+                    </td>
                     <td className={CLASE_TD_ACCIONES}>
-                      <AccionesFila nombre={p.direccion} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
+                      <AccionesFila
+                        nombre={p.direccion}
+                        onEditar={() => setModal(p)}
+                        onBorrar={() => setABorrar(p)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -116,7 +139,11 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
       )}
 
       {modal && (
-        <PropiedadFormModal propiedad={modal === 'nueva' ? undefined : modal} onClose={() => setModal(null)} onSaved={guardado} />
+        <PropiedadFormModal
+          propiedad={modal === 'nueva' ? undefined : modal}
+          onClose={() => setModal(null)}
+          onSaved={guardado}
+        />
       )}
       {aBorrar && (
         <ConfirmarBorradoModal
@@ -125,7 +152,9 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
           detalle={
             <>
               <DatoBorrado etiqueta="Ciudad">{aBorrar.ciudad ?? '—'}</DatoBorrado>
-              <DatoBorrado etiqueta="Tipo">{aBorrar.tipo ? NOMBRE_TIPO_PROPIEDAD[aBorrar.tipo] : '—'}</DatoBorrado>
+              <DatoBorrado etiqueta="Tipo">
+                {aBorrar.tipo ? NOMBRE_TIPO_PROPIEDAD[aBorrar.tipo] : '—'}
+              </DatoBorrado>
             </>
           }
           onConfirm={async () => {

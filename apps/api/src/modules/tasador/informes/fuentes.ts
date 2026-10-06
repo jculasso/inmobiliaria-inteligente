@@ -14,7 +14,11 @@ Font.register({
   family: FUENTE_MARCA,
   fonts: [
     { src: path.join(__dirname, 'fonts', 'Montserrat-Regular.ttf'), fontWeight: 400 },
-    { src: path.join(__dirname, 'fonts', 'Montserrat-Italic.ttf'), fontWeight: 400, fontStyle: 'italic' },
+    {
+      src: path.join(__dirname, 'fonts', 'Montserrat-Italic.ttf'),
+      fontWeight: 400,
+      fontStyle: 'italic',
+    },
     { src: path.join(__dirname, 'fonts', 'Montserrat-Bold.ttf'), fontWeight: 700 },
     { src: path.join(__dirname, 'fonts', 'Montserrat-ExtraBold.ttf'), fontWeight: 800 },
   ],

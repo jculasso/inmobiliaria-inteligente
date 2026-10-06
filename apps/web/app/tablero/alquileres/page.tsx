@@ -9,7 +9,14 @@ import { OperacionesTable } from '../../../components/tablero/operaciones-table'
 export default async function AlquileresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string; trimestre?: string; verTodo?: string; orden?: string; dir?: string }>;
+  searchParams: Promise<{
+    anio?: string;
+    mes?: string;
+    trimestre?: string;
+    verTodo?: string;
+    orden?: string;
+    dir?: string;
+  }>;
 }) {
   const ctx = await requireServerPrincipal();
   if (!ctx) return null;
@@ -25,7 +32,15 @@ export default async function AlquileresPage({
   const dir = params.dir as OperacionFiltro['dir'];
 
   const [operaciones, vendedores] = await Promise.all([
-    listOperaciones(ctx.accessToken, { anio, mes, trimestre, verTodo, orden, dir, tipo: 'alquiler' }),
+    listOperaciones(ctx.accessToken, {
+      anio,
+      mes,
+      trimestre,
+      verTodo,
+      orden,
+      dir,
+      tipo: 'alquiler',
+    }),
     listVendedores(ctx.accessToken).catch(() => []),
   ]);
 

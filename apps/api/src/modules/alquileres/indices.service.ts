@@ -56,7 +56,9 @@ export class FuentesIndices {
     const d = desde > hoy ? hoy : desde;
     const url = `https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=${d}&hasta=${sumarDiasIso(hoy, 60)}&limit=3000`;
     const json = await this.pedir(url, 'BCRA');
-    return RespuestaBcra.parse(json).results.flatMap((r) => r.detalle.map((x) => ({ fecha: x.fecha, valor: x.valor })));
+    return RespuestaBcra.parse(json).results.flatMap((r) =>
+      r.detalle.map((x) => ({ fecha: x.fecha, valor: x.valor })),
+    );
   }
 
   private async ipc(desde: string): Promise<ValorIndice[]> {
@@ -103,16 +105,33 @@ export class IndicesService {
     const resultados: ResultadoIndice[] = [];
     // Uno por vez y cada uno con su try: que el BCRA no responda no frena al IPC.
     for (const indice of ['ICL', 'IPC'] as const) {
-      const ultima = await this.prisma.indiceValor.aggregate({ where: { indice }, _max: { fecha: true } });
+      const ultima = await this.prisma.indiceValor.aggregate({
+        where: { indice },
+        _max: { fecha: true },
+      });
       const ultimaFecha = fromDate(ultima._max.fecha);
       try {
-        const desde = ultimaFecha ? (indice === 'IPC' ? ultimaFecha : sumarDiasIso(ultimaFecha, 1)) : INICIO[indice];
-        const valores = (await this.fuentes.traer(indice, desde, hoy)).filter((v) => !ultimaFecha || v.fecha > ultimaFecha);
+        const desde = ultimaFecha
+          ? indice === 'IPC'
+            ? ultimaFecha
+            : sumarDiasIso(ultimaFecha, 1)
+          : INICIO[indice];
+        const valores = (await this.fuentes.traer(indice, desde, hoy)).filter(
+          (v) => !ultimaFecha || v.fecha > ultimaFecha,
+        );
         const { count } = await this.prisma.indiceValor.createMany({
-          data: valores.map((v) => ({ indice, fecha: toDate(v.fecha)!, valor: v.valor, fuente: FUENTE[indice] })),
+          data: valores.map((v) => ({
+            indice,
+            fecha: toDate(v.fecha)!,
+            valor: v.valor,
+            fuente: FUENTE[indice],
+          })),
           skipDuplicates: true,
         });
-        const nueva = valores.reduce<string | null>((m, v) => (m === null || v.fecha > m ? v.fecha : m), ultimaFecha);
+        const nueva = valores.reduce<string | null>(
+          (m, v) => (m === null || v.fecha > m ? v.fecha : m),
+          ultimaFecha,
+        );
         resultados.push({ indice, nuevos: count, ultimaFecha: nueva });
       } catch (e) {
         const error = e instanceof Error ? e.message : String(e);

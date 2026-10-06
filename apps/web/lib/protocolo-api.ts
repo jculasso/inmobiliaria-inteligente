@@ -52,7 +52,11 @@ export async function iniciarProtocolo(accessToken: string, dto: IniciarProtocol
 }
 
 export async function updateProtocolo(accessToken: string, id: string, dto: UpdateProtocolo) {
-  return apiFetch(`/protocolo/${id}`, ProtocoloDtoSchema, { accessToken, method: 'PATCH', body: dto });
+  return apiFetch(`/protocolo/${id}`, ProtocoloDtoSchema, {
+    accessToken,
+    method: 'PATCH',
+    body: dto,
+  });
 }
 
 export async function updateAccion(
@@ -102,7 +106,10 @@ export async function generarInformeProtocolo(accessToken: string, id: string) {
 }
 
 export async function desarchivarProtocolo(accessToken: string, id: string) {
-  return apiFetch(`/protocolo/${id}/desarchivar`, ProtocoloDtoSchema, { accessToken, method: 'POST' });
+  return apiFetch(`/protocolo/${id}/desarchivar`, ProtocoloDtoSchema, {
+    accessToken,
+    method: 'POST',
+  });
 }
 
 /**

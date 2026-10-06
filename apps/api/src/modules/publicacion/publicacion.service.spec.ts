@@ -22,7 +22,9 @@ function makeTx(over: Record<string, unknown> = {}) {
 }
 
 function makeDb(tx: unknown): TenantPrismaService {
-  return { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
+  return {
+    withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+  } as unknown as TenantPrismaService;
 }
 
 /** Sin valor por defecto a propósito: pasar `undefined` a un parámetro con
@@ -34,7 +36,9 @@ describe('PublicacionService — la credencial no sale nunca', () => {
   it('el estado dice si está configurada y los últimos 4, no el secreto', async () => {
     const tx = makeTx({
       integracionCredencial: {
-        findFirst: vi.fn().mockResolvedValue({ ultimos4: '18bc', updatedAt: new Date('2026-07-30') }),
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ ultimos4: '18bc', updatedAt: new Date('2026-07-30') }),
       },
     });
     const svc = new PublicacionService(makeDb(tx), makeConfig(ENC_KEY));

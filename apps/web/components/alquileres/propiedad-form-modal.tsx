@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import type { PropiedadAlquilerDto, PropiedadAlquilerInput, TipoPropiedadAlquiler } from '@vacker/types';
+import type {
+  PropiedadAlquilerDto,
+  PropiedadAlquilerInput,
+  TipoPropiedadAlquiler,
+} from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarPropiedadAlquiler, crearPropiedadAlquiler } from '../../lib/alquileres-api';
@@ -55,18 +59,38 @@ export function PropiedadFormModal({
       <form onSubmit={guardar} className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
           <Campo label="Dirección" requerido>
-            <input className={inputClass} value={direccion} onChange={(e) => setDireccion(e.target.value)} required autoFocus />
+            <input
+              className={inputClass}
+              value={direccion}
+              onChange={(e) => setDireccion(e.target.value)}
+              required
+              autoFocus
+            />
           </Campo>
           <Campo label="Piso / depto">
-            <input className={inputClass} value={unidad} onChange={(e) => setUnidad(e.target.value)} placeholder="3° B" />
+            <input
+              className={inputClass}
+              value={unidad}
+              onChange={(e) => setUnidad(e.target.value)}
+              placeholder="3° B"
+            />
           </Campo>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Ciudad">
-            <input className={inputClass} value={ciudad} onChange={(e) => setCiudad(e.target.value)} placeholder="Rosario" />
+            <input
+              className={inputClass}
+              value={ciudad}
+              onChange={(e) => setCiudad(e.target.value)}
+              placeholder="Rosario"
+            />
           </Campo>
           <Campo label="Tipo">
-            <select className={inputClass} value={tipo} onChange={(e) => setTipo(e.target.value as TipoPropiedadAlquiler | '')}>
+            <select
+              className={inputClass}
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as TipoPropiedadAlquiler | '')}
+            >
               <option value="">—</option>
               {Object.entries(NOMBRE_TIPO_PROPIEDAD).map(([v, l]) => (
                 <option key={v} value={v}>
@@ -77,7 +101,11 @@ export function PropiedadFormModal({
           </Campo>
         </div>
         <Campo label="Observaciones">
-          <textarea className={textareaClass} value={obs} onChange={(e) => setObs(e.target.value)} />
+          <textarea
+            className={textareaClass}
+            value={obs}
+            onChange={(e) => setObs(e.target.value)}
+          />
         </Campo>
         {error && (
           <p role="alert" className="text-sm font-medium text-danger">

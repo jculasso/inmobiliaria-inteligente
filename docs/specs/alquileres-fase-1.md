@@ -17,17 +17,17 @@ plataforma, y la dirección gana un tablero que le dice cómo está la cartera
 
 ## 2. Decisiones cerradas (5/10/2026)
 
-| Tema | Decisión |
-|---|---|
-| Alcance | **Módulo propio que reemplaza a Gexion**, no un complemento. Vacker es el primer cliente. |
-| Licencia | Módulo nuevo `alquileres` en `MODULO_KEYS`, **apagado por defecto**. Se prende para Vacker y para Alteva (demo, datos inventados). |
-| Operador | **Rol funcional nuevo `administracion`**, como `publicador`: opera el módulo y no ve nada del Tablero Comercial. |
-| Facturación electrónica | **Fase 2**, a través de un facturador homologado con ARCA, por API. En la fase 1 se emiten recibos y liquidaciones **no fiscales**; Vacker sigue facturando como hoy. |
-| Migración | **Corte en una fecha**: se cargan los contratos vigentes con los saldos de cada persona a ese día, y desde ese mes se opera solo acá. |
-| Propietarios e inquilinos | Reciben **PDF** (liquidación, estado de cuenta, recibo) por WhatsApp o mail. El portal con usuario propio queda para después. |
-| Celular | La dirección **consulta** (tablero, alertas, cuenta de una persona). La **operación** (cargar, cobrar, liquidar) se diseña para escritorio y no se bloquea en el teléfono. |
-| Tablero Comercial | Separado en la fase 1. Más adelante, un alquiler firmado ahí ofrece crear el contrato administrado. |
-| Firma del contrato | **Prevista desde la fase 1, integrada en la fase 2.** El contrato lleva su documento y un estado de firma; la conexión con un proveedor pasa por una capa propia (un adaptador por proveedor), como la autenticación. Qué proveedor, y si firma **digital** (Ley 25.506, certificador licenciado) o **electrónica**, lo define Vacker con su abogado. |
+| Tema                      | Decisión                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Alcance                   | **Módulo propio que reemplaza a Gexion**, no un complemento. Vacker es el primer cliente.                                                                                                                                                                                                                                                             |
+| Licencia                  | Módulo nuevo `alquileres` en `MODULO_KEYS`, **apagado por defecto**. Se prende para Vacker y para Alteva (demo, datos inventados).                                                                                                                                                                                                                    |
+| Operador                  | **Rol funcional nuevo `administracion`**, como `publicador`: opera el módulo y no ve nada del Tablero Comercial.                                                                                                                                                                                                                                      |
+| Facturación electrónica   | **Fase 2**, a través de un facturador homologado con ARCA, por API. En la fase 1 se emiten recibos y liquidaciones **no fiscales**; Vacker sigue facturando como hoy.                                                                                                                                                                                 |
+| Migración                 | **Corte en una fecha**: se cargan los contratos vigentes con los saldos de cada persona a ese día, y desde ese mes se opera solo acá.                                                                                                                                                                                                                 |
+| Propietarios e inquilinos | Reciben **PDF** (liquidación, estado de cuenta, recibo) por WhatsApp o mail. El portal con usuario propio queda para después.                                                                                                                                                                                                                         |
+| Celular                   | La dirección **consulta** (tablero, alertas, cuenta de una persona). La **operación** (cargar, cobrar, liquidar) se diseña para escritorio y no se bloquea en el teléfono.                                                                                                                                                                            |
+| Tablero Comercial         | Separado en la fase 1. Más adelante, un alquiler firmado ahí ofrece crear el contrato administrado.                                                                                                                                                                                                                                                   |
+| Firma del contrato        | **Prevista desde la fase 1, integrada en la fase 2.** El contrato lleva su documento y un estado de firma; la conexión con un proveedor pasa por una capa propia (un adaptador por proveedor), como la autenticación. Qué proveedor, y si firma **digital** (Ley 25.506, certificador licenciado) o **electrónica**, lo define Vacker con su abogado. |
 
 ## 3. Matriz de roles
 
@@ -36,15 +36,15 @@ Los alquileres administrados no tienen puntas: son de la inmobiliaria. No hay
 quien no entra no ve nada. **Ver y poder coinciden** en este módulo, a
 diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 
-| Rol | Qué VE | Qué PUEDE HACER |
-|---|---|---|
-| `vendedor` | Nada. El módulo no aparece en su Home. | Nada (403 en toda la API del módulo). |
-| `team_leader` | Nada. | Nada (403). |
-| `publicador` | Nada (salvo que además tenga `administracion`). | Nada (403). |
-| `administracion` | Todo el módulo y su tablero. | Todo: personas, propiedades, contratos, indexar, cargar conceptos, cobrar, liquidar, anular con motivo. |
-| `direccion` | Todo el módulo y su tablero. | Todo, igual que `administracion`. |
-| `admin_tenant` | Todo el módulo y su tablero. | Todo, y además prender o apagar el módulo y dar el rol `administracion`. |
-| `admin_plataforma` | Nada de los datos (está fuera del tenant). | Prender o apagar el módulo por inmobiliaria, desde la consola de plataforma. |
+| Rol                | Qué VE                                          | Qué PUEDE HACER                                                                                         |
+| ------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `vendedor`         | Nada. El módulo no aparece en su Home.          | Nada (403 en toda la API del módulo).                                                                   |
+| `team_leader`      | Nada.                                           | Nada (403).                                                                                             |
+| `publicador`       | Nada (salvo que además tenga `administracion`). | Nada (403).                                                                                             |
+| `administracion`   | Todo el módulo y su tablero.                    | Todo: personas, propiedades, contratos, indexar, cargar conceptos, cobrar, liquidar, anular con motivo. |
+| `direccion`        | Todo el módulo y su tablero.                    | Todo, igual que `administracion`.                                                                       |
+| `admin_tenant`     | Todo el módulo y su tablero.                    | Todo, y además prender o apagar el módulo y dar el rol `administracion`.                                |
+| `admin_plataforma` | Nada de los datos (está fuera del tenant).      | Prender o apagar el módulo por inmobiliaria, desde la consola de plataforma.                            |
 
 ## 4. Modelo, en palabras
 
@@ -114,6 +114,7 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
    Calcularlo desde el importe inicial con la variación acumulada da peor: 41
    de 109 en ICL y 16 de 25 en IPC. Es la regla que esta spec decía antes, y
    salía de leer los porcentajes que Gexion muestra redondeados.
+
 6. El sistema **propone** el importe; queda aplicado solo cuando una persona
    lo **confirma**. Ningún importe cambia sin confirmación, aunque el índice
    esté cargado.
@@ -210,11 +211,11 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 20. El neto de una liquidación = alquileres cobrados del propietario −
     honorarios de esos alquileres − lo que el propietario debe por fuera
     (gastos adelantados por la inmobiliaria, o que pagó el inquilino por él)
-    + reintegros a su favor. Cada concepto se liquida **una sola vez**. Solo
-    cuenta lo de contratos donde la persona es propietaria. Un concepto se
-    puede dejar para la próxima liquidación; si es un alquiler, sus
-    honorarios esperan con él. Si los descuentos superan lo que se le paga,
-    no se liquida hasta dejar algún descuento para después.
+    - reintegros a su favor. Cada concepto se liquida **una sola vez**. Solo
+      cuenta lo de contratos donde la persona es propietaria. Un concepto se
+      puede dejar para la próxima liquidación; si es un alquiler, sus
+      honorarios esperan con él. Si los descuentos superan lo que se le paga,
+      no se liquida hasta dejar algún descuento para después.
 21. Con **pago garantizado**, el alquiler del propietario se liquida aunque el
     inquilino todavía no haya pagado; la deuda del inquilino sigue siendo con
     la inmobiliaria.
@@ -350,13 +351,13 @@ Con los datos reales de Vacker migrados al día de corte:
 2. Se cotejan **cinco contratos reales** de Vacker, elegidos el 5/10/2026
    recorriendo los 78 vigentes (código de Gexion entre paréntesis):
 
-   | Caso | Contrato | Por qué |
-   |---|---|---|
-   | ICL con historia | #25, comercial | Seis tramos, todos indexados; honorarios 2,48% |
-   | IPC que arranca el 15 | #5, vivienda | Tramos que cambian a mitad de mes: prorrateo |
-   | Casa Propia | #26, vivienda | El único con CCP; contrato desde 2023 |
-   | Sin indexación | #93, vivienda | Importe fijo; honorarios 5% |
-   | Comercial sin honorarios | #72, comercial | IPC, arranca el 15, honorarios 0% |
+   | Caso                     | Contrato       | Por qué                                        |
+   | ------------------------ | -------------- | ---------------------------------------------- |
+   | ICL con historia         | #25, comercial | Seis tramos, todos indexados; honorarios 2,48% |
+   | IPC que arranca el 15    | #5, vivienda   | Tramos que cambian a mitad de mes: prorrateo   |
+   | Casa Propia              | #26, vivienda  | El único con CCP; contrato desde 2023          |
+   | Sin indexación           | #93, vivienda  | Importe fijo; honorarios 5%                    |
+   | Comercial sin honorarios | #72, comercial | IPC, arranca el 15, honorarios 0%              |
 
    En la cartera de Vacker **no hay** contratos en dólares, con IVA del
    alquiler ni con pago garantizado: esas reglas se prueban con casos
@@ -374,6 +375,7 @@ Con los datos reales de Vacker migrados al día de corte:
    oficial del BCRA, que tiene dos decimales, y puede dar unos pesos distinto
    de lo que habría calculado Gexion (regla 5). Se acepta; la diferencia se
    anota en el cotejo y no frena el corte.
+
 3. El tablero muestra la misma cantidad de contratos vigentes que Gexion (78
    al 5/10/2026, o los que haya al corte) y el mismo porcentaje de alquileres
    cobrados del mes.
@@ -382,24 +384,24 @@ Con los datos reales de Vacker migrados al día de corte:
 
 ## 9. Cada regla con su test
 
-| Reglas | Cómo se protegen |
-|---|---|
-| 1, 4 | Unit del validador de contrato: mes sin tramo, tramos superpuestos, porcentajes que no suman 100 |
-| 2, 3 | Unit de generación: contrato `borrador`/`finalizado` no genera; rescisión anula lo impago posterior |
-| 5, 6, 7 | Unit de indexación con valores del ICL e IPC conocidos; un tramo sin confirmar no cambia de importe; índice no publicado → alerta correcta |
-| 8 | Unit del importador de índices con la fuente simulada: no pisa, reintenta, avisa a los 3 días |
+| Reglas            | Cómo se protegen                                                                                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1, 4              | Unit del validador de contrato: mes sin tramo, tramos superpuestos, porcentajes que no suman 100                                                                                                    |
+| 2, 3              | Unit de generación: contrato `borrador`/`finalizado` no genera; rescisión anula lo impago posterior                                                                                                 |
+| 5, 6, 7           | Unit de indexación con valores del ICL e IPC conocidos; un tramo sin confirmar no cambia de importe; índice no publicado → alerta correcta                                                          |
+| 8                 | Unit del importador de índices con la fuente simulada: no pisa, reintenta, avisa a los 3 días                                                                                                       |
 | 9, 10, 11, 12, 13 | Unit de generación del período: conceptos esperados por contrato; idempotencia; bloqueo por indexación; montos con IVA de la inmobiliaria; prorrateo por cambio de tramo con los importes de Gexion |
-| 37 | Unit de vencimientos: sábado y domingo se corren al lunes, un feriado no |
-| 14, 20, 21, 22 | Unit de liquidación: neto con gastos adelantados, con y sin pago garantizado, sin doble liquidación |
-| 15, 16, 17 | Unit de cobro: imputación por antigüedad, parcial, punitorio propuesto y condonado, saldo a favor |
-| 18 | Unit de cuenta corriente: saldos separados por moneda |
-| 19 | API: un DELETE no existe; anular revierte y deja rastro |
-| 23, 24 | Unit de los PDFs: totales iguales a la cuenta corriente; leyenda presente |
-| 25 | Unit de migración: saldo inicial por moneda igual al importado |
-| 33, 34 | Unit de estados de firma: transiciones válidas, registro de cada cambio, aviso ajeno rechazado |
-| 35 | Unit con un adaptador de prueba: el módulo funciona entero contra un proveedor simulado |
-| 36 | Unit del tablero: contrato vigente sin documento firmado aparece en «a completar» |
-| 26 – 32 | Unit de los cálculos del tablero + test de que cada drill-down suma su tarjeta |
-| §3 (roles) | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant` |
-| Aislamiento | Cada tabla nueva en `isolation.e2e-spec.ts` |
-| Licencia | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion` |
+| 37                | Unit de vencimientos: sábado y domingo se corren al lunes, un feriado no                                                                                                                            |
+| 14, 20, 21, 22    | Unit de liquidación: neto con gastos adelantados, con y sin pago garantizado, sin doble liquidación                                                                                                 |
+| 15, 16, 17        | Unit de cobro: imputación por antigüedad, parcial, punitorio propuesto y condonado, saldo a favor                                                                                                   |
+| 18                | Unit de cuenta corriente: saldos separados por moneda                                                                                                                                               |
+| 19                | API: un DELETE no existe; anular revierte y deja rastro                                                                                                                                             |
+| 23, 24            | Unit de los PDFs: totales iguales a la cuenta corriente; leyenda presente                                                                                                                           |
+| 25                | Unit de migración: saldo inicial por moneda igual al importado                                                                                                                                      |
+| 33, 34            | Unit de estados de firma: transiciones válidas, registro de cada cambio, aviso ajeno rechazado                                                                                                      |
+| 35                | Unit con un adaptador de prueba: el módulo funciona entero contra un proveedor simulado                                                                                                             |
+| 36                | Unit del tablero: contrato vigente sin documento firmado aparece en «a completar»                                                                                                                   |
+| 26 – 32           | Unit de los cálculos del tablero + test de que cada drill-down suma su tarjeta                                                                                                                      |
+| §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                       |
+| Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                         |
+| Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                 |

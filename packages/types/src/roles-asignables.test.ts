@@ -16,9 +16,7 @@ describe('roles asignables', () => {
    */
   it('todo rol del sistema es asignable, salvo admin_plataforma', () => {
     const asignables = new Set<string>(RolAsignableSchema.options);
-    const faltan = RolSchema.options.filter(
-      (r) => r !== 'admin_plataforma' && !asignables.has(r),
-    );
+    const faltan = RolSchema.options.filter((r) => r !== 'admin_plataforma' && !asignables.has(r));
     expect(faltan).toEqual([]);
   });
 
@@ -68,9 +66,12 @@ describe('quién entra al módulo Alquileres', () => {
     expect(puedeAdministrarAlquileres([rol])).toBe(true);
   });
 
-  it.each(['vendedor', 'team_leader', 'publicador', 'admin_plataforma'] as const)('%s no entra', (rol) => {
-    expect(puedeAdministrarAlquileres([rol])).toBe(false);
-  });
+  it.each(['vendedor', 'team_leader', 'publicador', 'admin_plataforma'] as const)(
+    '%s no entra',
+    (rol) => {
+      expect(puedeAdministrarAlquileres([rol])).toBe(false);
+    },
+  );
 
   /*
    * Son dos listas distintas a propósito. `ROLES_ALQUILERES` es la sección de

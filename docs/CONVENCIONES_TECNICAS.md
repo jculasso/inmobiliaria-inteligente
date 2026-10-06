@@ -55,12 +55,12 @@ separación es deliberada:
 
 Cómo se traduce eso a lo que ve cada uno (confirmado con el usuario el 29/07/2026):
 
-| Rol | Al entrar ve | Con "Ver todo" | ¿Le aparece el check? |
-|---|---|---|---|
-| **Vendedor** | solo lo suyo | — | No: ya está en su alcance máximo |
-| **Team leader** | solo lo suyo | él + sus vendedores | Sí |
-| **Dirección (CEO)** | **solo lo suyo** | toda la inmobiliaria | Sí |
-| **Admin** (tenant o plataforma) | **toda la inmobiliaria** | — | No: ya ve todo |
+| Rol                             | Al entrar ve             | Con "Ver todo"       | ¿Le aparece el check?            |
+| ------------------------------- | ------------------------ | -------------------- | -------------------------------- |
+| **Vendedor**                    | solo lo suyo             | —                    | No: ya está en su alcance máximo |
+| **Team leader**                 | solo lo suyo             | él + sus vendedores  | Sí                               |
+| **Dirección (CEO)**             | **solo lo suyo**         | toda la inmobiliaria | Sí                               |
+| **Admin** (tenant o plataforma) | **toda la inmobiliaria** | —                    | No: ya ve todo                   |
 
 La asimetría entre dirección y admin es deliberada. El admin no tiene puntas
 propias, así que abrirle en "lo mío" sería una pantalla vacía. El CEO sí las
@@ -227,11 +227,11 @@ Acordado con el usuario el 29/07/2026. Las tres están agendadas como tareas
 automáticas; esto documenta **el criterio**, que es lo que hay que revisar si
 alguna deja de aportar.
 
-| Auditoría | Frecuencia | Disparador que vale más que la fecha |
-|---|---|---|
-| **Seguridad** | Mensual (día 5) | **Antes de dar de alta cada inmobiliaria nueva** |
-| **Código** | Bimestral (día 12) | **Al cerrar cada módulo** |
-| **Performance** | Trimestral (día 19) | **Cuando una lista pase las 300 filas** |
+| Auditoría       | Frecuencia          | Disparador que vale más que la fecha             |
+| --------------- | ------------------- | ------------------------------------------------ |
+| **Seguridad**   | Mensual (día 5)     | **Antes de dar de alta cada inmobiliaria nueva** |
+| **Código**      | Bimestral (día 12)  | **Al cerrar cada módulo**                        |
+| **Performance** | Trimestral (día 19) | **Cuando una lista pase las 300 filas**          |
 
 **Seguridad va mensual porque el aislamiento entre inmobiliarias es la promesa
 central del producto.** Un bug ahí no es un error, es existencial. CI lo
@@ -300,12 +300,12 @@ marca verde, una alerta crítica se vería verde.
 
 Por eso existe **`--color-danger`**, que ninguna inmobiliaria pisa. La regla:
 
-| Para qué | Token |
-|---|---|
-| Botón primario, pestaña activa, link | `brand-red` |
-| Alerta urgente, vencido, atrasado | **`danger`** |
-| Advertencia, en curso | `warning` |
-| Completo, al día | `success` |
+| Para qué                             | Token        |
+| ------------------------------------ | ------------ |
+| Botón primario, pestaña activa, link | `brand-red`  |
+| Alerta urgente, vencido, atrasado    | **`danger`** |
+| Advertencia, en curso                | `warning`    |
+| Completo, al día                     | `success`    |
 
 Antes de usar `brand-red` en algo, preguntarse: **¿esto sería igual de correcto
 si la inmobiliaria fuera verde?** Si la respuesta es no, va `danger`.
@@ -404,7 +404,7 @@ curl -s localhost:3300/ | grep -oE '/_next/static/css/[^"?]*' | head -1
 variable:
 
 ```ts
-distDir: process.env.NEXT_DIST_DIR ?? '.next'
+distDir: process.env.NEXT_DIST_DIR ?? '.next';
 ```
 
 `test:e2e` compila con `NEXT_DIST_DIR=.next-e2e`, así que los tests de
@@ -532,7 +532,7 @@ ninguna lista de nombres. Y como el tipo viaja con la variable, `const db =
 this.prisma` y `function f(p: PrismaService)` caen igual: **la indirección no lo
 esquiva.** Eso es exactamente lo que un grep no puede hacer.
 
-Se descartó una regla de ESLint porque la config compartida no es *type-aware*
+Se descartó una regla de ESLint porque la config compartida no es _type-aware_
 (`packages/config/eslint.config.mjs` usa `tseslint.configs.recommended`, sin
 `project`). Habría que encender linting con tipos en todo el monorepo para
 resolver un problema de un paquete.
@@ -587,28 +587,28 @@ La primera versión de este test daba el contexto forjado por incerrable. No lo
 es del todo, y sobre todo **no es el mismo problema** que resuelve `FORCE ROW
 LEVEL SECURITY`. Vale distinguirlos porque es fácil creer que uno tapa al otro:
 
-- **Consulta que no declara tenant** — un `PrismaService` directo. Ve *todas*
+- **Consulta que no declara tenant** — un `PrismaService` directo. Ve _todas_
   las inmobiliarias. `FORCE` la frena: sin `app.tenant_id`, la policy no deja
   pasar nada.
-- **Contexto forjado** — `withTenant(fn, { tenantId: elDeOtro })`. Ve *una*: la
+- **Contexto forjado** — `withTenant(fn, { tenantId: elDeOtro })`. Ve _una_: la
   equivocada. **`FORCE` no la frena ni podría**, porque el contexto es el valor
   por el que RLS filtra. La base hace exactamente lo que se le pide.
 
 Contra el segundo no hay defensa en la base. La defensa es arquitectónica: que
 el contexto se derive del token verificado y no se arme a mano. La **regla D**
-del test marca la *construcción* de un `TenantContext` o un `AuthPrincipal`, no
+del test marca la _construcción_ de un `TenantContext` o un `AuthPrincipal`, no
 su uso — si mirara solo las llamadas a `withTenant`, un contexto forjado en un
 servicio y pasado a otro llegaría como parámetro y se vería inocente. Es
 exactamente la forma que tiene el cron del reporte semanal, que sí es legítimo.
 
 Hoy solo cuatro lugares de la API pueden fabricar una identidad:
 
-| dónde | de dónde sale |
-|---|---|
-| `auth.guard.ts` (`canActivate`, `resolvePrincipal`) | del token verificado — es el origen de todos |
-| `tablero.util.ts` (`ctxDe`) | proyección del `AuthPrincipal` que dejó el guard |
-| `todo.service.ts` (`handleCallback`) | del `state` que el propio servicio firmó |
-| `tareas.service.ts` (el cron) | de un tenant recién leído y un usuario de dirección de ESE tenant |
+| dónde                                               | de dónde sale                                                     |
+| --------------------------------------------------- | ----------------------------------------------------------------- |
+| `auth.guard.ts` (`canActivate`, `resolvePrincipal`) | del token verificado — es el origen de todos                      |
+| `tablero.util.ts` (`ctxDe`)                         | proyección del `AuthPrincipal` que dejó el guard                  |
+| `todo.service.ts` (`handleCallback`)                | del `state` que el propio servicio firmó                          |
+| `tareas.service.ts` (el cron)                       | de un tenant recién leído y un usuario de dirección de ESE tenant |
 
 **Los dos últimos son indistinguibles de un forjado** — los cuatro son un objeto
 literal. Lo que los hace legítimos es de dónde salen los valores, y eso no se

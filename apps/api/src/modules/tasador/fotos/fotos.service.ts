@@ -34,7 +34,10 @@ export class FotosService {
     }
 
     const { tenantId, ordenSiguiente } = await this.db.withTenant(async (tx) => {
-      const tasacion = await tx.tasacion.findUnique({ where: { id: tasacionId }, include: tasacionInclude });
+      const tasacion = await tx.tasacion.findUnique({
+        where: { id: tasacionId },
+        include: tasacionInclude,
+      });
       if (!tasacion) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(tasacion, await scopeDePermiso(ctx, tx));
 
@@ -63,7 +66,10 @@ export class FotosService {
 
   async eliminar(tasacionId: string, fotoId: string, ctx: TenantContext): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
-      const tasacion = await tx.tasacion.findUnique({ where: { id: tasacionId }, include: tasacionInclude });
+      const tasacion = await tx.tasacion.findUnique({
+        where: { id: tasacionId },
+        include: tasacionInclude,
+      });
       if (!tasacion) throw new NotFoundException('Tasación no encontrada.');
       assertEnScope(tasacion, await scopeDePermiso(ctx, tx));
 
@@ -81,7 +87,9 @@ export class FotosService {
 }
 
 function extensionDe(mimetype: string, originalname: string): string {
-  const fromName = originalname.includes('.') ? originalname.slice(originalname.lastIndexOf('.')) : '';
+  const fromName = originalname.includes('.')
+    ? originalname.slice(originalname.lastIndexOf('.'))
+    : '';
   if (fromName) return fromName;
   const sub = mimetype.split('/')[1];
   return sub ? `.${sub}` : '';

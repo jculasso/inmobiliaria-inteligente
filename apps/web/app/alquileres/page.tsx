@@ -7,7 +7,11 @@ import { TableroAlquileres } from '../../components/alquileres/tablero-alquilere
 export const metadata = { title: 'Alquileres' };
 
 /** Entrada del módulo. El acceso por rol lo resuelve el layout. */
-export default async function AlquileresPage({ searchParams }: { searchParams: Promise<{ anio?: string; tipo?: string }> }) {
+export default async function AlquileresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ anio?: string; tipo?: string }>;
+}) {
   const ctx = await requireServerPrincipal();
   // El layout ya muestra «no tenés acceso». Esto evita además pedirle datos a
   // la API, que respondería 403: Next renderiza layout y página en paralelo.
@@ -17,7 +21,10 @@ export default async function AlquileresPage({ searchParams }: { searchParams: P
   const anio = Number(params.anio) || undefined;
   const tipo = FiltroTipoContratoSchema.catch('todos').parse(params.tipo);
   // En paralelo: antes el tablero esperaba al resumen y eran dos esperas seguidas.
-  const [resumen, tableros] = await Promise.all([getResumenAlquileres(ctx.accessToken), getTablerosAlquileres(ctx.accessToken, anio)]);
+  const [resumen, tableros] = await Promise.all([
+    getResumenAlquileres(ctx.accessToken),
+    getTablerosAlquileres(ctx.accessToken, anio),
+  ]);
 
   // Regla 32: una inmobiliaria que recién prende el módulo no ve tarjetas en
   // cero, que se leen como un error. Ve cómo empezar.

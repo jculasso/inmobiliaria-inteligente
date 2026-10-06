@@ -18,7 +18,10 @@ function clamp(v: number, min: number, max: number): number {
 }
 
 export function median(values: number[]): number {
-  const a = values.filter(Number.isFinite).slice().sort((x, y) => x - y);
+  const a = values
+    .filter(Number.isFinite)
+    .slice()
+    .sort((x, y) => x - y);
   if (!a.length) return 0;
   const m = Math.floor(a.length / 2);
   return a.length % 2 ? a[m]! : (a[m - 1]! + a[m]!) / 2;
@@ -36,7 +39,14 @@ export function standardDeviation(values: number[]): number {
 
 /** Ranking de estado del inmueble para medir similitud (Excelente=5 … A reciclar=1). */
 function stateRank(value: string | null | undefined): number {
-  return ({ Excelente: 5, 'Muy bueno': 4, Bueno: 3, Regular: 2, 'A reciclar': 1 } as Record<string, number>)[value ?? ''] ?? 3;
+  return (
+    (
+      { Excelente: 5, 'Muy bueno': 4, Bueno: 3, Regular: 2, 'A reciclar': 1 } as Record<
+        string,
+        number
+      >
+    )[value ?? ''] ?? 3
+  );
 }
 
 /** Meses transcurridos desde una fecha ISO (o null si no hay/está mal). */
@@ -69,7 +79,9 @@ export interface Superficies {
  */
 function constructedSurface(s: Superficies, coef: Coeficientes): number {
   const built =
-    num(s.supCubierta) + num(s.supSemi) * coef.semicubierta + num(s.supDescubierta) * coef.descubierta;
+    num(s.supCubierta) +
+    num(s.supSemi) * coef.semicubierta +
+    num(s.supDescubierta) * coef.descubierta;
   return round2(built > 0 ? built : num(s.superficie));
 }
 
@@ -114,12 +126,19 @@ export function comparableSimilarity(
   let score = 0;
   const cSurface = valuationSurface(c, c.tipoComp, coef);
   if ((c.tipoComp || '') === (data.tipoPropiedad || '')) score += 30;
-  else if (['Casa', 'PH'].includes(c.tipoComp) && ['Casa', 'PH'].includes(data.tipoPropiedad)) score += 18;
-  if (targetSurface > 0 && cSurface > 0) score += Math.max(0, 30 - (Math.abs(cSurface - targetSurface) / targetSurface) * 60);
-  if (data.dormitorios != null && c.dormitorios != null) score += Math.max(0, 10 - Math.abs(data.dormitorios - c.dormitorios) * 5);
-  if (data.banos != null && c.banos != null) score += Math.max(0, 8 - Math.abs(data.banos - c.banos) * 4);
+  else if (['Casa', 'PH'].includes(c.tipoComp) && ['Casa', 'PH'].includes(data.tipoPropiedad))
+    score += 18;
+  if (targetSurface > 0 && cSurface > 0)
+    score += Math.max(0, 30 - (Math.abs(cSurface - targetSurface) / targetSurface) * 60);
+  if (data.dormitorios != null && c.dormitorios != null)
+    score += Math.max(0, 10 - Math.abs(data.dormitorios - c.dormitorios) * 5);
+  if (data.banos != null && c.banos != null)
+    score += Math.max(0, 8 - Math.abs(data.banos - c.banos) * 4);
   score += Math.max(0, 10 - Math.abs(stateRank(data.estado) - stateRank(c.estado)) * 3);
-  const targetGarage = num(typeof data.cochera === 'boolean' ? (data.cochera ? 1 : 0) : data.cochera) > 0 ? 'Sí' : 'No';
+  const targetGarage =
+    num(typeof data.cochera === 'boolean' ? (data.cochera ? 1 : 0) : data.cochera) > 0
+      ? 'Sí'
+      : 'No';
   if ((c.cocheraComp || 'No') === targetGarage) score += 5;
   const age = monthsOld(c.fechaReferencia);
   score += age === null ? 2 : age <= 3 ? 7 : age <= 6 ? 5 : age <= 12 ? 3 : 0;
@@ -171,9 +190,24 @@ export function analizarComparables(
       const surface = valuationSurface(c, c.tipoComp, coef);
       const price = num(c.precio);
       const usdM2 = surface > 0 && price > 0 ? price / surface : 0;
-      const sourceWeight = c.fuente === 'Cierre real' || c.tipoPrecio === 'Cierre' ? 1.25 : c.fuente === 'Colega' ? 1.08 : 1;
+      const sourceWeight =
+        c.fuente === 'Cierre real' || c.tipoPrecio === 'Cierre'
+          ? 1.25
+          : c.fuente === 'Colega'
+            ? 1.08
+            : 1;
       const similarity = comparableSimilarity(c, propiedad, targetSurface, coef);
-      return { c, index, surface, price, usdM2, similarity, sourceWeight, outlier: false, weight: 0 };
+      return {
+        c,
+        index,
+        surface,
+        price,
+        usdM2,
+        similarity,
+        sourceWeight,
+        outlier: false,
+        weight: 0,
+      };
     })
     .filter((e) => e.price > 0 && e.surface > 0 && e.usdM2 > 0);
 
@@ -182,26 +216,40 @@ export function analizarComparables(
   const mad = median(rawM2.map((v) => Math.abs(v - med)));
 
   for (const e of entries) {
-    e.outlier = entries.length >= 4 && (mad > 0 ? Math.abs(e.usdM2 - med) / mad > 3.5 : Math.abs(e.usdM2 - med) / med > 0.35);
+    e.outlier =
+      entries.length >= 4 &&
+      (mad > 0 ? Math.abs(e.usdM2 - med) / mad > 3.5 : Math.abs(e.usdM2 - med) / med > 0.35);
     e.weight = Math.max(0.15, e.similarity / 100) * e.sourceWeight * (e.outlier ? 0.15 : 1);
   }
 
   const usable = entries.filter((e) => !e.outlier);
   const base = usable.length ? usable : entries;
   const weightedDen = base.reduce((s, e) => s + e.weight, 0);
-  const weightedM2 = weightedDen ? base.reduce((s, e) => s + e.usdM2 * e.weight, 0) / weightedDen : 0;
+  const weightedM2 = weightedDen
+    ? base.reduce((s, e) => s + e.usdM2 * e.weight, 0) / weightedDen
+    : 0;
 
   const spread = med ? (standardDeviation(rawM2) / med) * 100 : 0;
   const avgSimilarity = average(entries.map((e) => e.similarity));
 
-  let confidenceScore = Math.min(40, entries.length * 8) + Math.min(35, avgSimilarity * 0.35) + Math.max(0, 25 - spread * 0.8);
-  if (entries.some((e) => e.c.fuente === 'Cierre real' || e.c.tipoPrecio === 'Cierre')) confidenceScore += 8;
+  let confidenceScore =
+    Math.min(40, entries.length * 8) +
+    Math.min(35, avgSimilarity * 0.35) +
+    Math.max(0, 25 - spread * 0.8);
+  if (entries.some((e) => e.c.fuente === 'Cierre real' || e.c.tipoPrecio === 'Cierre'))
+    confidenceScore += 8;
   confidenceScore = clamp(Math.round(confidenceScore), 0, 100);
-  const confidence: NivelConfianza = confidenceScore >= 75 ? 'Alta' : confidenceScore >= 50 ? 'Media' : 'Baja';
+  const confidence: NivelConfianza =
+    confidenceScore >= 75 ? 'Alta' : confidenceScore >= 50 ? 'Media' : 'Baja';
 
   const prices = entries.map((e) => e.price);
   return {
-    entries: entries.map((e) => ({ index: e.index, usdM2: e.usdM2, similarity: e.similarity, outlier: e.outlier })),
+    entries: entries.map((e) => ({
+      index: e.index,
+      usdM2: e.usdM2,
+      similarity: e.similarity,
+      outlier: e.outlier,
+    })),
     count: entries.length,
     minPrice: prices.length ? Math.min(...prices) : 0,
     maxPrice: prices.length ? Math.max(...prices) : 0,

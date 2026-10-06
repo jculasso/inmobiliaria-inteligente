@@ -64,14 +64,28 @@ function totales(conceptos: ConceptoDto[]) {
     return [...m];
   };
   return [
-    { titulo: 'A cobrar', icono: '📥', tono: 'brand' as const, detalle: 'todo lo que deben inquilinos y propietarios', valores: porMoneda((c) => c.sentido === 'a_cobrar') },
-    { titulo: 'A pagar', icono: '📤', tono: 'default' as const, detalle: 'alquileres y reintegros a propietarios', valores: porMoneda((c) => c.sentido === 'a_pagar') },
+    {
+      titulo: 'A cobrar',
+      icono: '📥',
+      tono: 'brand' as const,
+      detalle: 'todo lo que deben inquilinos y propietarios',
+      valores: porMoneda((c) => c.sentido === 'a_cobrar'),
+    },
+    {
+      titulo: 'A pagar',
+      icono: '📤',
+      tono: 'default' as const,
+      detalle: 'alquileres y reintegros a propietarios',
+      valores: porMoneda((c) => c.sentido === 'a_pagar'),
+    },
     {
       titulo: 'Para la inmobiliaria',
       icono: '🏢',
       tono: 'success' as const,
       detalle: 'honorarios, gastos, comisiones e informes',
-      valores: porMoneda((c) => ['honorarios', 'gastos_adm', 'comision', 'informe'].includes(c.tipo)),
+      valores: porMoneda((c) =>
+        ['honorarios', 'gastos_adm', 'comision', 'informe'].includes(c.tipo),
+      ),
     },
   ];
 }
@@ -108,10 +122,12 @@ interface Grupo {
 /** Un grupo por contrato, en orden de número; los sueltos sin contrato, al final. */
 function agrupar(conceptos: ConceptoDto[]): Grupo[] {
   const mapa = new Map<string, ConceptoDto[]>();
-  for (const c of conceptos) mapa.set(c.contrato?.id ?? '', [...(mapa.get(c.contrato?.id ?? '') ?? []), c]);
+  for (const c of conceptos)
+    mapa.set(c.contrato?.id ?? '', [...(mapa.get(c.contrato?.id ?? '') ?? []), c]);
   const suma = (xs: ConceptoDto[], f: (c: ConceptoDto) => number): [MonedaAlquiler, number][] => {
     const m = new Map<MonedaAlquiler, number>();
-    for (const c of xs.filter((x) => !x.anulado)) m.set(c.moneda, Math.round(((m.get(c.moneda) ?? 0) + f(c)) * 100) / 100);
+    for (const c of xs.filter((x) => !x.anulado))
+      m.set(c.moneda, Math.round(((m.get(c.moneda) ?? 0) + f(c)) * 100) / 100);
     return [...m].filter(([, v]) => v !== 0);
   };
   return [...mapa]
@@ -119,23 +135,48 @@ function agrupar(conceptos: ConceptoDto[]): Grupo[] {
       clave,
       contrato: xs[0]!.contrato,
       conceptos: xs,
-      inquilino: suma(xs, (c) => (c.sentido === 'a_cobrar' && c.papel !== 'propietario' ? c.importe : 0)),
-      propietario: suma(xs, (c) => (c.papel === 'propietario' ? (c.sentido === 'a_pagar' ? c.importe : -c.importe) : 0)),
-      inmobiliaria: suma(xs, (c) => (['honorarios', 'gastos_adm', 'comision', 'informe'].includes(c.tipo) ? c.importe : 0)),
+      inquilino: suma(xs, (c) =>
+        c.sentido === 'a_cobrar' && c.papel !== 'propietario' ? c.importe : 0,
+      ),
+      propietario: suma(xs, (c) =>
+        c.papel === 'propietario' ? (c.sentido === 'a_pagar' ? c.importe : -c.importe) : 0,
+      ),
+      inmobiliaria: suma(xs, (c) =>
+        ['honorarios', 'gastos_adm', 'comision', 'informe'].includes(c.tipo) ? c.importe : 0,
+      ),
     }))
-    .sort((a, b) => (!a.contrato ? 1 : !b.contrato ? -1 : a.contrato.codigo.localeCompare(b.contrato.codigo, 'es', { numeric: true })));
+    .sort((a, b) =>
+      !a.contrato
+        ? 1
+        : !b.contrato
+          ? -1
+          : a.contrato.codigo.localeCompare(b.contrato.codigo, 'es', { numeric: true }),
+    );
 }
 
-const montos = (xs: [MonedaAlquiler, number][]) => (xs.length ? xs.map(([m, v]) => fmtMoneda(v, m)).join(' · ') : '—');
+const montos = (xs: [MonedaAlquiler, number][]) =>
+  xs.length ? xs.map(([m, v]) => fmtMoneda(v, m)).join(' · ') : '—';
 
 /** Un contrato del mes: su cabecera con lo que deja, y sus conceptos con estado. */
-function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: ConceptoDto) => void }) {
+function GrupoContrato({
+  grupo: g,
+  onAnular,
+}: {
+  grupo: Grupo;
+  onAnular: (c: ConceptoDto) => void;
+}) {
   const anulable = (c: ConceptoDto) => !c.anulado && !c.aplicado;
   return (
-    <section className="overflow-hidden rounded-brand border border-line bg-white shadow-sm" aria-label={g.contrato ? `Contrato ${g.contrato.codigo}` : 'Sin contrato'}>
+    <section
+      className="overflow-hidden rounded-brand border border-line bg-white shadow-sm"
+      aria-label={g.contrato ? `Contrato ${g.contrato.codigo}` : 'Sin contrato'}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line bg-surface/40 px-4 py-3">
         {g.contrato ? (
-          <Link href={`/alquileres/contratos/${g.contrato.id}`} className={`rounded text-sm font-bold text-ink hover:text-brand-red hover:underline ${CLASE_FOCO}`}>
+          <Link
+            href={`/alquileres/contratos/${g.contrato.id}`}
+            className={`rounded text-sm font-bold text-ink hover:text-brand-red hover:underline ${CLASE_FOCO}`}
+          >
             <span aria-hidden>🏠 </span>
             {g.contrato.codigo} · {g.contrato.direccion}
           </Link>
@@ -145,15 +186,21 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
         <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
           <div className="flex gap-1">
             <dt className="text-muted">Paga el inquilino</dt>
-            <dd className="whitespace-nowrap font-semibold tabular-nums text-ink">{montos(g.inquilino)}</dd>
+            <dd className="whitespace-nowrap font-semibold tabular-nums text-ink">
+              {montos(g.inquilino)}
+            </dd>
           </div>
           <div className="flex gap-1">
             <dt className="text-muted">Recibe el propietario</dt>
-            <dd className="whitespace-nowrap font-semibold tabular-nums text-ink">{montos(g.propietario)}</dd>
+            <dd className="whitespace-nowrap font-semibold tabular-nums text-ink">
+              {montos(g.propietario)}
+            </dd>
           </div>
           <div className="flex gap-1">
             <dt className="text-muted">Para la inmobiliaria</dt>
-            <dd className="whitespace-nowrap font-semibold tabular-nums text-success">{montos(g.inmobiliaria)}</dd>
+            <dd className="whitespace-nowrap font-semibold tabular-nums text-success">
+              {montos(g.inmobiliaria)}
+            </dd>
           </div>
         </dl>
       </div>
@@ -164,26 +211,49 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
           <li key={c.id} className="px-4 py-2.5">
             <div className="flex items-start justify-between gap-2">
               <span className="min-w-0">
-                <span className={`block font-semibold ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>{lo(c)}</span>
+                <span
+                  className={`block font-semibold ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}
+                >
+                  {lo(c)}
+                </span>
                 <span className="block text-xs text-muted">
                   {aQuien(c)} {c.persona.nombre} · vence {fmtFecha(c.vencimiento)}
                 </span>
-                {c.registrado?.por && !c.anulado && <span className="block text-xs text-muted">Cargó {c.registrado.por}</span>}
+                {c.registrado?.por && !c.anulado && (
+                  <span className="block text-xs text-muted">Cargó {c.registrado.por}</span>
+                )}
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1 text-right">
-                <span className={`block whitespace-nowrap font-semibold tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                <span
+                  className={`block whitespace-nowrap font-semibold tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}
+                >
                   {c.sentido === 'a_pagar' ? 'A pagar ' : 'A cobrar '}
                   {fmtMoneda(c.importe, c.moneda)}
                 </span>
                 <Insignia tono={ESTADO[c.estado].tono}>{ESTADO[c.estado].texto}</Insignia>
-                {c.adelantadoPorInmobiliaria && !c.anulado && <Insignia tono="aviso">Adelantado</Insignia>}
-                {c.estado === 'parcial' && <span className="text-xs text-muted">falta {fmtMoneda(c.saldo, c.moneda)}</span>}
+                {c.adelantadoPorInmobiliaria && !c.anulado && (
+                  <Insignia tono="aviso">Adelantado</Insignia>
+                )}
+                {c.estado === 'parcial' && (
+                  <span className="text-xs text-muted">falta {fmtMoneda(c.saldo, c.moneda)}</span>
+                )}
               </span>
             </div>
-            {c.anulado && <p className="mt-1 text-xs text-muted">Anulado{c.anulado.por ? ` por ${c.anulado.por}` : ''}: {c.anulado.motivo}</p>}
+            {c.anulado && (
+              <p className="mt-1 text-xs text-muted">
+                Anulado{c.anulado.por ? ` por ${c.anulado.por}` : ''}: {c.anulado.motivo}
+              </p>
+            )}
             {anulable(c) && (
               <div className="mt-1 flex justify-end">
-                <AccionFila icono="🚫" texto="Anular" etiqueta={`Anular ${lo(c)}`} onClick={() => onAnular(c)} tarjeta peligro />
+                <AccionFila
+                  icono="🚫"
+                  texto="Anular"
+                  etiqueta={`Anular ${lo(c)}`}
+                  onClick={() => onAnular(c)}
+                  tarjeta
+                  peligro
+                />
               </div>
             )}
           </li>
@@ -208,7 +278,9 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
             {g.conceptos.map((c) => (
               <tr key={c.id} className="border-b border-line last:border-0">
                 <td className="px-3 py-2">
-                  <span className={c.anulado ? 'text-muted line-through' : 'text-ink'}>{lo(c)}</span>
+                  <span className={c.anulado ? 'text-muted line-through' : 'text-ink'}>
+                    {lo(c)}
+                  </span>
                   {c.adelantadoPorInmobiliaria && !c.anulado && (
                     <span className="ml-2">
                       <Insignia tono="aviso">Adelantado</Insignia>
@@ -219,25 +291,43 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
                       Anulado{c.anulado.por ? ` por ${c.anulado.por}` : ''}: {c.anulado.motivo}
                     </span>
                   )}
-                  {c.registrado?.por && !c.anulado && <span className="block text-xs text-muted">Cargó {c.registrado.por}</span>}
+                  {c.registrado?.por && !c.anulado && (
+                    <span className="block text-xs text-muted">Cargó {c.registrado.por}</span>
+                  )}
                 </td>
                 <td className={`${CLASE_TD} text-muted`}>
-                  <span className="text-[10px] font-bold uppercase tracking-wide">{aQuien(c)}</span> {c.persona.nombre}
+                  <span className="text-[10px] font-bold uppercase tracking-wide">{aQuien(c)}</span>{' '}
+                  {c.persona.nombre}
                 </td>
                 <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(c.vencimiento)}</td>
-                <td className={`${CLASE_TD} text-right font-semibold tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                <td
+                  className={`${CLASE_TD} text-right font-semibold tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}
+                >
                   {c.sentido === 'a_cobrar' ? fmtMoneda(c.importe, c.moneda) : ''}
                 </td>
-                <td className={`${CLASE_TD} text-right tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                <td
+                  className={`${CLASE_TD} text-right tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}
+                >
                   {c.sentido === 'a_pagar' ? fmtMoneda(c.importe, c.moneda) : ''}
                 </td>
                 <td className={CLASE_TD}>
                   <Insignia tono={ESTADO[c.estado].tono}>{ESTADO[c.estado].texto}</Insignia>
-                  {c.estado === 'parcial' && <span className="ml-1 text-xs text-muted">falta {fmtMoneda(c.saldo, c.moneda)}</span>}
+                  {c.estado === 'parcial' && (
+                    <span className="ml-1 text-xs text-muted">
+                      falta {fmtMoneda(c.saldo, c.moneda)}
+                    </span>
+                  )}
                 </td>
                 <td className={CLASE_TD_ACCIONES}>
                   {anulable(c) && (
-                    <AccionFila icono="🚫" texto="Anular" etiqueta={`Anular ${lo(c)} de ${c.persona.nombre}`} title="Anular este concepto" onClick={() => onAnular(c)} peligro />
+                    <AccionFila
+                      icono="🚫"
+                      texto="Anular"
+                      etiqueta={`Anular ${lo(c)} de ${c.persona.nombre}`}
+                      title="Anular este concepto"
+                      onClick={() => onAnular(c)}
+                      peligro
+                    />
                   )}
                 </td>
               </tr>
@@ -254,7 +344,15 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
  * «Generar» se puede apretar las veces que haga falta: la segunda vez solo
  * crea lo que falte (regla 10), por ejemplo un contrato cargado después.
  */
-export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: string; conceptos: ConceptoDto[]; contratos: ContratoResumenDto[] }) {
+export function ConceptosMes({
+  periodo,
+  conceptos,
+  contratos,
+}: {
+  periodo: string;
+  conceptos: ConceptoDto[];
+  contratos: ContratoResumenDto[];
+}) {
   const router = useRouter();
   const [resultado, setResultado] = useState<ResultadoGeneracionDto | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -297,18 +395,32 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
         </p>
       )}
       {resultado && (
-        <div role="status" className="flex flex-col gap-1 rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink">
+        <div
+          role="status"
+          className="flex flex-col gap-1 rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink"
+        >
           <p>
             {resultado.creados === 0
               ? `No había nada nuevo para generar en ${resultado.contratos} contratos.`
               : `Se generaron ${resultado.creados} conceptos de ${resultado.contratos} contratos.`}
-            {resultado.creados > 0 && resultado.existentes > 0 ? ` ${resultado.existentes} ya estaban.` : ''}
+            {resultado.creados > 0 && resultado.existentes > 0
+              ? ` ${resultado.existentes} ya estaban.`
+              : ''}
           </p>
           {resultado.sinIndexar.length > 0 && (
             <p>
               Sin generar, porque el tramo no está indexado:{' '}
-              {resultado.sinIndexar.map((s) => `${s.codigo} (${fmtFecha(s.desde).slice(0, 5)} al ${fmtFecha(s.hasta).slice(0, 5)})`).join(', ')}.{' '}
-              <Link href="/alquileres/indexaciones" className="font-semibold text-brand-red hover:underline">
+              {resultado.sinIndexar
+                .map(
+                  (s) =>
+                    `${s.codigo} (${fmtFecha(s.desde).slice(0, 5)} al ${fmtFecha(s.hasta).slice(0, 5)})`,
+                )
+                .join(', ')}
+              .{' '}
+              <Link
+                href="/alquileres/indexaciones"
+                className="font-semibold text-brand-red hover:underline"
+              >
                 Ir a indexar
               </Link>
             </p>
@@ -316,7 +428,10 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
         </div>
       )}
       {aviso && (
-        <p role="status" className="rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink">
+        <p
+          role="status"
+          className="rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink"
+        >
           {aviso}
         </p>
       )}
@@ -324,7 +439,10 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
       {conceptos.length === 0 ? (
         <div className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted shadow-sm">
           <p className="font-semibold text-ink">Todavía no hay conceptos de {mesDe(periodo)}.</p>
-          <p className="mt-1">«Generar» crea el alquiler, los gastos administrativos y los honorarios de cada contrato del mes.</p>
+          <p className="mt-1">
+            «Generar» crea el alquiler, los gastos administrativos y los honorarios de cada contrato
+            del mes.
+          </p>
         </div>
       ) : (
         <>
@@ -335,7 +453,11 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
                 <KpiCard
                   key={t.titulo}
                   label={t.titulo}
-                  value={t.valores.length === 0 ? '—' : t.valores.map(([m, v]) => fmtMoneda(v, m)).join(' · ')}
+                  value={
+                    t.valores.length === 0
+                      ? '—'
+                      : t.valores.map(([m, v]) => fmtMoneda(v, m)).join(' · ')
+                  }
                   sub={t.detalle}
                   icon={t.icono}
                   tone={t.tono}
@@ -350,7 +472,10 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
             </p>
           )}
 
-          <TituloSeccion icono="🧾" detalle={`${grupos.length} ${grupos.length === 1 ? 'contrato' : 'contratos'} · ${visibles.length} conceptos`}>
+          <TituloSeccion
+            icono="🧾"
+            detalle={`${grupos.length} ${grupos.length === 1 ? 'contrato' : 'contratos'} · ${visibles.length} conceptos`}
+          >
             Conceptos de {mesDe(periodo)}, por contrato
           </TituloSeccion>
           {grupos.map((g) => (
@@ -367,7 +492,11 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
           onSaved={(n) => {
             setSuelto(false);
             setResultado(null);
-            setAviso(n > 1 ? `Se cargaron ${n} conceptos: el cargo y el reintegro a quien lo pagó.` : 'Se cargó el gasto.');
+            setAviso(
+              n > 1
+                ? `Se cargaron ${n} conceptos: el cargo y el reintegro a quien lo pagó.`
+                : 'Se cargó el gasto.',
+            );
             router.refresh();
           }}
         />
@@ -378,7 +507,8 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
           detalle={
             <>
               <p className="text-ink">
-                {lo(anulando)} · {anulando.persona.nombre} · {fmtMoneda(anulando.importe, anulando.moneda)}
+                {lo(anulando)} · {anulando.persona.nombre} ·{' '}
+                {fmtMoneda(anulando.importe, anulando.moneda)}
               </p>
               <p>
                 No se borra: queda tachado, con el motivo, quién y cuándo.
@@ -386,11 +516,17 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
               </p>
             </>
           }
-          anular={async (motivo) => (await anularConcepto(await getAccessToken(), anulando.id, motivo)).anulados}
+          anular={async (motivo) =>
+            (await anularConcepto(await getAccessToken(), anulando.id, motivo)).anulados
+          }
           onClose={() => setAnulando(null)}
           onDone={(n) => {
             setAnulando(null);
-            setAviso(n > 1 ? `Se anularon ${n} conceptos: el cargo y lo que tenía enlazado.` : 'Se anuló el concepto.');
+            setAviso(
+              n > 1
+                ? `Se anularon ${n} conceptos: el cargo y lo que tenía enlazado.`
+                : 'Se anuló el concepto.',
+            );
             router.refresh();
           }}
         />

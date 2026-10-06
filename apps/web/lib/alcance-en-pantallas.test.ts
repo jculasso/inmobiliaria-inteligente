@@ -105,9 +105,7 @@ describe('las pantallas que piden datos con alcance lo respetan', () => {
         const fuente = readFileSync(ruta, 'utf8');
         const rel = relative(RAIZ, ruta).replace(/\\/g, '/');
 
-        const usadas = [...conAlcance].filter((fn) =>
-          new RegExp(`\\b${fn}\\s*\\(`).test(fuente),
-        );
+        const usadas = [...conAlcance].filter((fn) => new RegExp(`\\b${fn}\\s*\\(`).test(fuente));
         if (usadas.length === 0) continue;
         if (fuente.includes('verTodo')) continue;
         if (rel in EXCEPCIONES) continue;

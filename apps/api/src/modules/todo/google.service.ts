@@ -91,7 +91,9 @@ export class GoogleService {
     });
     if (!res.ok) {
       const detalle = await res.text().catch(() => '');
-      throw new ServiceUnavailableException(`Google rechazó el intercambio de token (${res.status}). ${detalle}`);
+      throw new ServiceUnavailableException(
+        `Google rechazó el intercambio de token (${res.status}). ${detalle}`,
+      );
     }
     return (await res.json()) as Record<string, unknown>;
   }
@@ -110,7 +112,11 @@ export class GoogleService {
   }
 
   /** Lista los eventos del calendario principal entre timeMin y timeMax (ISO). */
-  async listEvents(accessToken: string, timeMinIso: string, timeMaxIso: string): Promise<GoogleEvento[]> {
+  async listEvents(
+    accessToken: string,
+    timeMinIso: string,
+    timeMaxIso: string,
+  ): Promise<GoogleEvento[]> {
     const params = new URLSearchParams({
       timeMin: timeMinIso,
       timeMax: timeMaxIso,
@@ -123,7 +129,9 @@ export class GoogleService {
     });
     if (!res.ok) {
       const detalle = await res.text().catch(() => '');
-      throw new ServiceUnavailableException(`No se pudo leer el calendario (${res.status}). ${detalle}`);
+      throw new ServiceUnavailableException(
+        `No se pudo leer el calendario (${res.status}). ${detalle}`,
+      );
     }
     const data = (await res.json()) as { items?: GoogleEvento[] };
     return (data.items ?? []).filter((e) => e.status !== 'cancelled');

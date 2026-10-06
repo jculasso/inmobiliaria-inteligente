@@ -70,7 +70,12 @@ export function ContratoForm({
   const [codigo, setCodigo] = useState(contrato?.codigo ?? '');
   const [propiedadId, setPropiedadId] = useState(contrato?.propiedad.id ?? '');
   const [partes, setPartes] = useState<Parte[]>(
-    contrato?.partes.map((p) => ({ clave: nuevaClave(), personaId: p.personaId, papel: p.papel, porcentaje: p.porcentaje == null ? '' : String(p.porcentaje) })) ?? [
+    contrato?.partes.map((p) => ({
+      clave: nuevaClave(),
+      personaId: p.personaId,
+      papel: p.papel,
+      porcentaje: p.porcentaje == null ? '' : String(p.porcentaje),
+    })) ?? [
       { clave: nuevaClave(), personaId: '', papel: 'propietario', porcentaje: '' },
       { clave: nuevaClave(), personaId: '', papel: 'inquilino', porcentaje: '' },
     ],
@@ -82,21 +87,32 @@ export function ContratoForm({
   const [fin, setFin] = useState(contrato?.fin ?? '');
   const [fechaFirma, setFechaFirma] = useState(contrato?.fechaFirma ?? '');
   const [diaVencimiento, setDiaVencimiento] = useState(String(contrato?.diaVencimiento ?? 5));
-  const [diaPagoPropietario, setDiaPagoPropietario] = useState(String(contrato?.diaPagoPropietario ?? 10));
+  const [diaPagoPropietario, setDiaPagoPropietario] = useState(
+    String(contrato?.diaPagoPropietario ?? 10),
+  );
   const [ajuste, setAjuste] = useState<AjusteContrato>(contrato?.ajuste ?? 'indexado');
   const [indice, setIndice] = useState<IndiceAlquiler | ''>(contrato?.indice ?? 'ICL');
   const [periodicidad, setPeriodicidad] = useState(String(contrato?.periodicidadMeses ?? 4));
   const [honorariosPct, setHonorariosPct] = useState(String(contrato?.honorariosPct ?? 8));
   const [gastosAdmPct, setGastosAdmPct] = useState(String(contrato?.gastosAdmPct ?? 2));
   const [ivaPct, setIvaPct] = useState(String(contrato?.ivaPct ?? 0));
-  const [punitorioDiarioPct, setPunitorioDiarioPct] = useState(String(contrato?.punitorioDiarioPct ?? 0));
+  const [punitorioDiarioPct, setPunitorioDiarioPct] = useState(
+    String(contrato?.punitorioDiarioPct ?? 0),
+  );
   const [pagoGarantizado, setPagoGarantizado] = useState(contrato?.pagoGarantizado ?? false);
-  const [depositoImporte, setDepositoImporte] = useState(escribirImporte(contrato?.depositoImporte));
+  const [depositoImporte, setDepositoImporte] = useState(
+    escribirImporte(contrato?.depositoImporte),
+  );
   const [depositoDevolucion, setDepositoDevolucion] = useState(contrato?.depositoDevolucion ?? '');
   const [obs, setObs] = useState(contrato?.obs ?? '');
 
   const [tramos, setTramos] = useState<Tramo[]>(
-    contrato?.tramos.map((t) => ({ numero: t.numero, desde: t.desde, hasta: t.hasta, importe: escribirImporte(t.importe) })) ?? [],
+    contrato?.tramos.map((t) => ({
+      numero: t.numero,
+      desde: t.desde,
+      hasta: t.hasta,
+      importe: escribirImporte(t.importe),
+    })) ?? [],
   );
 
   const [error, setError] = useState<string | null>(null);
@@ -126,22 +142,75 @@ export function ContratoForm({
       depositoMoneda: leerImporte(depositoImporte) != null ? moneda : null,
       depositoDevolucion: depositoDevolucion || null,
       obs: obs || null,
-      partes: partes.filter((p) => p.personaId).map((p) => ({ personaId: p.personaId, papel: p.papel, porcentaje: p.papel === 'propietario' ? num(p.porcentaje) : null })),
-      tramos: tramos.map((t) => ({ numero: t.numero, desde: t.desde, hasta: t.hasta, importe: leerImporte(t.importe) })),
+      partes: partes
+        .filter((p) => p.personaId)
+        .map((p) => ({
+          personaId: p.personaId,
+          papel: p.papel,
+          porcentaje: p.papel === 'propietario' ? num(p.porcentaje) : null,
+        })),
+      tramos: tramos.map((t) => ({
+        numero: t.numero,
+        desde: t.desde,
+        hasta: t.hasta,
+        importe: leerImporte(t.importe),
+      })),
     }),
-    [codigo, propiedadId, tipo, moneda, inicio, fin, fechaFirma, diaVencimiento, diaPagoPropietario, ajuste, indice, periodicidad, honorariosPct, gastosAdmPct, ivaPct, punitorioDiarioPct, pagoGarantizado, depositoImporte, depositoDevolucion, obs, partes, tramos],
+    [
+      codigo,
+      propiedadId,
+      tipo,
+      moneda,
+      inicio,
+      fin,
+      fechaFirma,
+      diaVencimiento,
+      diaPagoPropietario,
+      ajuste,
+      indice,
+      periodicidad,
+      honorariosPct,
+      gastosAdmPct,
+      ivaPct,
+      punitorioDiarioPct,
+      pagoGarantizado,
+      depositoImporte,
+      depositoDevolucion,
+      obs,
+      partes,
+      tramos,
+    ],
   );
 
   /** Los problemas de cada paso, para avisar antes de guardar. */
   const problemas = useMemo(() => {
     const deSchema = ContratoInputSchema.safeParse(dto);
-    const mensajes = deSchema.success ? [] : deSchema.error.issues.map((i) => ({ campo: String(i.path[0] ?? ''), mensaje: i.message }));
-    const enPaso = (campos: string[]) => mensajes.filter((m) => campos.includes(m.campo)).map((m) => m.mensaje);
+    const mensajes = deSchema.success
+      ? []
+      : deSchema.error.issues.map((i) => ({ campo: String(i.path[0] ?? ''), mensaje: i.message }));
+    const enPaso = (campos: string[]) =>
+      mensajes.filter((m) => campos.includes(m.campo)).map((m) => m.mensaje);
     return [
       [...(propiedadId ? [] : ['Elegí la propiedad.']), ...validarPartes(dto.partes)],
-      [...(inicio && fin ? [] : ['Completá el inicio y el fin.']), ...enPaso(['fin', 'indice', 'periodicidadMeses', 'depositoImporte', 'diaVencimiento', 'diaPagoPropietario', 'honorariosPct', 'gastosAdmPct', 'ivaPct', 'punitorioDiarioPct'])],
+      [
+        ...(inicio && fin ? [] : ['Completá el inicio y el fin.']),
+        ...enPaso([
+          'fin',
+          'indice',
+          'periodicidadMeses',
+          'depositoImporte',
+          'diaVencimiento',
+          'diaPagoPropietario',
+          'honorariosPct',
+          'gastosAdmPct',
+          'ivaPct',
+          'punitorioDiarioPct',
+        ]),
+      ],
       // Sin fechas no hay tramos que validar, pero el paso tampoco está completo.
-      inicio && fin ? [...validarTramos(inicio, fin, dto.tramos), ...enPaso(['tramos'])] : ['Completá el inicio y el fin en Condiciones.'],
+      inicio && fin
+        ? [...validarTramos(inicio, fin, dto.tramos), ...enPaso(['tramos'])]
+        : ['Completá el inicio y el fin en Condiciones.'],
     ];
   }, [dto, propiedadId, inicio, fin]);
 
@@ -151,7 +220,13 @@ export function ContratoForm({
     const meses = num(periodicidad);
     if (!inicio || !fin || !meses || meses < 1) return;
     const importeInicial = tramos[0]?.importe ?? '';
-    setTramos(generarTramos(inicio, fin, meses).map((t, i) => ({ ...t, importe: i === 0 ? importeInicial : ajuste === 'escalonado' ? (tramos[i]?.importe ?? '') : '' })));
+    setTramos(
+      generarTramos(inicio, fin, meses).map((t, i) => ({
+        ...t,
+        importe:
+          i === 0 ? importeInicial : ajuste === 'escalonado' ? (tramos[i]?.importe ?? '') : '',
+      })),
+    );
   }
 
   async function guardar() {
@@ -159,7 +234,9 @@ export function ContratoForm({
     setGuardando(true);
     try {
       const accessToken = await getAccessToken();
-      const guardado = contrato ? await actualizarContrato(accessToken, contrato.id, dto) : await crearContrato(accessToken, dto);
+      const guardado = contrato
+        ? await actualizarContrato(accessToken, contrato.id, dto)
+        : await crearContrato(accessToken, dto);
       router.push(`/alquileres/contratos/${guardado.id}`);
       router.refresh();
     } catch (err) {
@@ -168,14 +245,20 @@ export function ContratoForm({
     }
   }
 
-  const setParte = (clave: string, cambio: Partial<Parte>) => setPartes((ps) => ps.map((p) => (p.clave === clave ? { ...p, ...cambio } : p)));
-  const setTramo = (i: number, cambio: Partial<Tramo>) => setTramos((ts) => ts.map((t, j) => (j === i ? { ...t, ...cambio } : t)));
+  const setParte = (clave: string, cambio: Partial<Parte>) =>
+    setPartes((ps) => ps.map((p) => (p.clave === clave ? { ...p, ...cambio } : p)));
+  const setTramo = (i: number, cambio: Partial<Tramo>) =>
+    setTramos((ts) => ts.map((t, j) => (j === i ? { ...t, ...cambio } : t)));
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
       <EncabezadoPagina
         titulo={contrato ? `Editar el contrato ${contrato.codigo}` : 'Nuevo contrato'}
-        volver={contrato ? { href: `/alquileres/contratos/${contrato.id}`, texto: `Contrato ${contrato.codigo}` } : { href: '/alquileres/contratos', texto: 'Contratos' }}
+        volver={
+          contrato
+            ? { href: `/alquileres/contratos/${contrato.id}`, texto: `Contrato ${contrato.codigo}` }
+            : { href: '/alquileres/contratos', texto: 'Contratos' }
+        }
       />
       <ol className="flex gap-2" aria-label="Pasos del alta">
         {PASOS.map((nombre, i) => (
@@ -186,7 +269,9 @@ export function ContratoForm({
               onClick={() => setPaso(i)}
               aria-current={paso === i ? 'step' : undefined}
               className={`w-full truncate rounded-brand border px-2 py-2 text-left text-xs font-semibold sm:px-3 sm:text-sm ${CLASE_FOCO} ${
-                paso === i ? 'border-brand-red bg-brand-red text-white' : 'border-line bg-white text-muted hover:text-ink'
+                paso === i
+                  ? 'border-brand-red bg-brand-red text-white'
+                  : 'border-line bg-white text-muted hover:text-ink'
               }`}
             >
               <span className="mr-1.5 tabular-nums">{i + 1}.</span>
@@ -208,7 +293,11 @@ export function ContratoForm({
           <div className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
               <Campo label="Propiedad" requerido>
-                <select className={inputClass} value={propiedadId} onChange={(e) => setPropiedadId(e.target.value)}>
+                <select
+                  className={inputClass}
+                  value={propiedadId}
+                  onChange={(e) => setPropiedadId(e.target.value)}
+                >
                   <option value="">Elegí la propiedad…</option>
                   {propiedades.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -220,7 +309,11 @@ export function ContratoForm({
                 </select>
               </Campo>
               <Campo label="Código" hint="Vacío: el siguiente número.">
-                <input className={inputClass} value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value)}
+                />
               </Campo>
             </div>
 
@@ -287,7 +380,12 @@ export function ContratoForm({
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => setPartes((ps) => [...ps, { clave: nuevaClave(), personaId: '', papel, porcentaje: '' }])}
+                    onClick={() =>
+                      setPartes((ps) => [
+                        ...ps,
+                        { clave: nuevaClave(), personaId: '', papel, porcentaje: '' },
+                      ])
+                    }
                   >
                     ＋ {NOMBRE_PAPEL[papel]}
                   </Button>
@@ -295,7 +393,10 @@ export function ContratoForm({
               </div>
               <p className="text-xs text-muted">
                 ¿No está la persona? Cargala en{' '}
-                <Link href="/alquileres/personas" className="font-semibold text-brand-red hover:underline">
+                <Link
+                  href="/alquileres/personas"
+                  className="font-semibold text-brand-red hover:underline"
+                >
                   Personas
                 </Link>
                 . Con un solo propietario no hace falta el porcentaje: es dueño del 100%.
@@ -307,36 +408,73 @@ export function ContratoForm({
         {paso === 1 && (
           <div className="grid gap-3 sm:grid-cols-2">
             <Campo label="Tipo">
-              <select className={inputClass} value={tipo} onChange={(e) => setTipo(e.target.value as TipoContrato)}>
+              <select
+                className={inputClass}
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value as TipoContrato)}
+              >
                 <option value="vivienda">{NOMBRE_TIPO_CONTRATO.vivienda}</option>
                 <option value="comercial">{NOMBRE_TIPO_CONTRATO.comercial}</option>
               </select>
             </Campo>
             <Campo label="Moneda">
-              <select className={inputClass} value={moneda} onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}>
+              <select
+                className={inputClass}
+                value={moneda}
+                onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}
+              >
                 <option value="ARS">Pesos</option>
                 <option value="USD">Dólares</option>
               </select>
             </Campo>
             <Campo label="Inicio" requerido>
-              <input type="date" className={inputClass} value={inicio} onChange={(e) => setInicio(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={inicio}
+                onChange={(e) => setInicio(e.target.value)}
+              />
             </Campo>
             <Campo label="Fin" requerido>
-              <input type="date" className={inputClass} value={fin} onChange={(e) => setFin(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={fin}
+                onChange={(e) => setFin(e.target.value)}
+              />
             </Campo>
             <Campo label="Fecha de firma">
-              <input type="date" className={inputClass} value={fechaFirma} onChange={(e) => setFechaFirma(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={fechaFirma}
+                onChange={(e) => setFechaFirma(e.target.value)}
+              />
             </Campo>
             <div className="grid grid-cols-2 gap-3">
               <Campo label="Vence el día" hint="Inquilino.">
-                <input className={inputClass} inputMode="numeric" value={diaVencimiento} onChange={(e) => setDiaVencimiento(e.target.value)} />
+                <input
+                  className={inputClass}
+                  inputMode="numeric"
+                  value={diaVencimiento}
+                  onChange={(e) => setDiaVencimiento(e.target.value)}
+                />
               </Campo>
               <Campo label="Se paga el día" hint="Propietario.">
-                <input className={inputClass} inputMode="numeric" value={diaPagoPropietario} onChange={(e) => setDiaPagoPropietario(e.target.value)} />
+                <input
+                  className={inputClass}
+                  inputMode="numeric"
+                  value={diaPagoPropietario}
+                  onChange={(e) => setDiaPagoPropietario(e.target.value)}
+                />
               </Campo>
             </div>
             <Campo label="Ajuste">
-              <select className={inputClass} value={ajuste} onChange={(e) => setAjuste(e.target.value as AjusteContrato)}>
+              <select
+                className={inputClass}
+                value={ajuste}
+                onChange={(e) => setAjuste(e.target.value as AjusteContrato)}
+              >
                 <option value="indexado">Por índice</option>
                 <option value="escalonado">Escalonado (montos fijos)</option>
               </select>
@@ -344,7 +482,11 @@ export function ContratoForm({
             {ajuste === 'indexado' ? (
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Índice">
-                  <select className={inputClass} value={indice} onChange={(e) => setIndice(e.target.value as IndiceAlquiler)}>
+                  <select
+                    className={inputClass}
+                    value={indice}
+                    onChange={(e) => setIndice(e.target.value as IndiceAlquiler)}
+                  >
                     {(['ICL', 'IPC', 'CCP'] as const).map((v) => (
                       <option key={v} value={v}>
                         {NOMBRE_INDICE[v]}
@@ -353,7 +495,12 @@ export function ContratoForm({
                   </select>
                 </Campo>
                 <Campo label="Cada (meses)">
-                  <input className={inputClass} inputMode="numeric" value={periodicidad} onChange={(e) => setPeriodicidad(e.target.value)} />
+                  <input
+                    className={inputClass}
+                    inputMode="numeric"
+                    value={periodicidad}
+                    onChange={(e) => setPeriodicidad(e.target.value)}
+                  />
                 </Campo>
               </div>
             ) : (
@@ -374,18 +521,32 @@ export function ContratoForm({
               </Campo>
             </div>
             <label className="flex min-h-11 items-center gap-2 text-sm text-ink sm:col-span-2">
-              <input type="checkbox" checked={pagoGarantizado} onChange={(e) => setPagoGarantizado(e.target.checked)} className="h-5 w-5" />
+              <input
+                type="checkbox"
+                checked={pagoGarantizado}
+                onChange={(e) => setPagoGarantizado(e.target.checked)}
+                className="h-5 w-5"
+              />
               Pago garantizado: al propietario se le paga aunque el inquilino no haya pagado.
             </label>
             <Campo label="Depósito en garantía">
               <InputImporte moneda={moneda} value={depositoImporte} onChange={setDepositoImporte} />
             </Campo>
             <Campo label="Devolución del depósito">
-              <input type="date" className={inputClass} value={depositoDevolucion} onChange={(e) => setDepositoDevolucion(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={depositoDevolucion}
+                onChange={(e) => setDepositoDevolucion(e.target.value)}
+              />
             </Campo>
             <div className="sm:col-span-2">
               <Campo label="Observaciones">
-                <textarea className={textareaClass} value={obs} onChange={(e) => setObs(e.target.value)} />
+                <textarea
+                  className={textareaClass}
+                  value={obs}
+                  onChange={(e) => setObs(e.target.value)}
+                />
               </Campo>
             </div>
           </div>
@@ -396,10 +557,21 @@ export function ContratoForm({
             <div className="flex flex-wrap items-end gap-3">
               {ajuste === 'escalonado' && (
                 <Campo label="Tramos de (meses)">
-                  <input className={`${inputClass} w-24`} inputMode="numeric" value={periodicidad} onChange={(e) => setPeriodicidad(e.target.value)} />
+                  <input
+                    className={`${inputClass} w-24`}
+                    inputMode="numeric"
+                    value={periodicidad}
+                    onChange={(e) => setPeriodicidad(e.target.value)}
+                  />
                 </Campo>
               )}
-              <Button type="button" variant="secondary" size="sm" onClick={generar} disabled={!inicio || !fin}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={generar}
+                disabled={!inicio || !fin}
+              >
                 {tramos.length ? 'Volver a generar los tramos' : 'Generar los tramos'}
               </Button>
               <p className="text-xs text-muted">
@@ -413,7 +585,10 @@ export function ContratoForm({
               // columnas; en el teléfono, cada tramo es una tarjetita con las
               // fechas lado a lado y el importe abajo, sin desplazar de costado.
               <div>
-                <div className="hidden grid-cols-[3rem_1fr_1fr_1fr] gap-2 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted sm:grid" aria-hidden>
+                <div
+                  className="hidden grid-cols-[3rem_1fr_1fr_1fr] gap-2 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted sm:grid"
+                  aria-hidden
+                >
                   <span>N.º</span>
                   <span>Desde</span>
                   <span>Hasta</span>
@@ -430,16 +605,34 @@ export function ContratoForm({
                         {t.numero}
                       </span>
                       <span className="flex flex-col gap-1">
-                        <span aria-hidden className="text-[10px] font-bold uppercase tracking-wider text-muted sm:hidden">
+                        <span
+                          aria-hidden
+                          className="text-[10px] font-bold uppercase tracking-wider text-muted sm:hidden"
+                        >
                           Desde
                         </span>
-                        <input type="date" aria-label={`Desde, tramo ${t.numero}`} className={inputClass} value={t.desde} onChange={(e) => setTramo(i, { desde: e.target.value })} />
+                        <input
+                          type="date"
+                          aria-label={`Desde, tramo ${t.numero}`}
+                          className={inputClass}
+                          value={t.desde}
+                          onChange={(e) => setTramo(i, { desde: e.target.value })}
+                        />
                       </span>
                       <span className="flex flex-col gap-1">
-                        <span aria-hidden className="text-[10px] font-bold uppercase tracking-wider text-muted sm:hidden">
+                        <span
+                          aria-hidden
+                          className="text-[10px] font-bold uppercase tracking-wider text-muted sm:hidden"
+                        >
                           Hasta
                         </span>
-                        <input type="date" aria-label={`Hasta, tramo ${t.numero}`} className={inputClass} value={t.hasta} onChange={(e) => setTramo(i, { hasta: e.target.value })} />
+                        <input
+                          type="date"
+                          aria-label={`Hasta, tramo ${t.numero}`}
+                          className={inputClass}
+                          value={t.hasta}
+                          onChange={(e) => setTramo(i, { hasta: e.target.value })}
+                        />
                       </span>
                       <InputImporte
                         className="col-span-2 sm:col-span-1"
@@ -458,7 +651,10 @@ export function ContratoForm({
         )}
 
         {problemas[paso]!.length > 0 && (
-          <ul className="mt-4 flex flex-col gap-1 rounded-brand border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-ink" aria-label="Lo que falta">
+          <ul
+            className="mt-4 flex flex-col gap-1 rounded-brand border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-ink"
+            aria-label="Lo que falta"
+          >
             {problemas[paso]!.map((p) => (
               <li key={p}>• {p}</li>
             ))}
@@ -473,7 +669,11 @@ export function ContratoForm({
       )}
 
       <div className="flex flex-wrap justify-between gap-2">
-        <Button type="button" variant="secondary" onClick={() => (paso === 0 ? router.back() : setPaso(paso - 1))}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => (paso === 0 ? router.back() : setPaso(paso - 1))}
+        >
           {paso === 0 ? 'Cancelar' : '← Anterior'}
         </Button>
         {paso < PASOS.length - 1 ? (

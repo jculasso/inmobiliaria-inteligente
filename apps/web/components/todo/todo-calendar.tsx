@@ -13,7 +13,15 @@ const TZ = 'America/Argentina/Buenos_Aires';
 const HOUR_H = 48; // px por hora en las vistas día/semana
 const SCROLL_TO_HOUR = 7; // al abrir, arranca ~7:00
 
-export function CalendarioTodo({ vista, fecha, data }: { vista: TodoVista; fecha: string; data: TodoEventosDto | null }) {
+export function CalendarioTodo({
+  vista,
+  fecha,
+  data,
+}: {
+  vista: TodoVista;
+  fecha: string;
+  data: TodoEventosDto | null;
+}) {
   const eventos = data?.eventos ?? [];
   // El detalle se muestra dentro de la app (no se abre Google Calendar): el
   // espejo es de solo lectura y, además, el enlace de Google abriría la cuenta
@@ -41,7 +49,15 @@ export function CalendarioTodo({ vista, fecha, data }: { vista: TodoVista; fecha
 // Día / Semana: eje horario a la izquierda + una columna por día con bloques.
 // ---------------------------------------------------------------------------
 
-function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: TodoEventoDto[]; onSelect: OnSelect }) {
+function GrillaHoraria({
+  dias,
+  eventos,
+  onSelect,
+}: {
+  dias: string[];
+  eventos: TodoEventoDto[];
+  onSelect: OnSelect;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Dibujar las 24 horas obliga a scrollear un montón para llegar a cualquier
@@ -89,7 +105,9 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
         {/* Fila de "todo el día" (solo si hay) */}
         {hayAllDay && (
           <div className="flex shrink-0 border-b border-line bg-surface/40">
-            <div className="flex w-14 shrink-0 items-center justify-end pr-2 text-[10px] uppercase text-muted">Todo el día</div>
+            <div className="flex w-14 shrink-0 items-center justify-end pr-2 text-[10px] uppercase text-muted">
+              Todo el día
+            </div>
             {dias.map((d) => (
               <div key={d} className="flex-1 space-y-1 border-l border-line p-1">
                 {eventos
@@ -109,7 +127,9 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
             <div className="w-14 shrink-0">
               {horas.map((h) => (
                 <div key={h} className="relative border-b border-line" style={{ height: HOUR_H }}>
-                  <span className="absolute -top-2 right-2 text-[10px] text-muted">{h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}</span>
+                  <span className="absolute -top-2 right-2 text-[10px] text-muted">
+                    {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
+                  </span>
                 </div>
               ))}
             </div>
@@ -119,9 +139,11 @@ function GrillaHoraria({ dias, eventos, onSelect }: { dias: string[]; eventos: T
                 {horas.map((h) => (
                   <div key={h} className="border-b border-line" style={{ height: HOUR_H }} />
                 ))}
-                {empaquetar(eventos.filter((e) => !e.todoElDia && diaKeyArg(e.inicio) === d)).map((c) => (
-                  <BloqueEvento key={c.ev.id} c={c} desde={desde} onSelect={onSelect} />
-                ))}
+                {empaquetar(eventos.filter((e) => !e.todoElDia && diaKeyArg(e.inicio) === d)).map(
+                  (c) => (
+                    <BloqueEvento key={c.ev.id} c={c} desde={desde} onSelect={onSelect} />
+                  ),
+                )}
               </div>
             ))}
           </div>
@@ -146,7 +168,9 @@ function BloqueEvento({ c, desde, onSelect }: { c: Colocado; desde: number; onSe
       }}
     >
       <p className="truncate text-[11px] font-semibold leading-tight">{c.ev.titulo}</p>
-      {alto > 26 && <p className="truncate text-[10px] leading-tight opacity-90">{fmtHora(c.ev.inicio)}</p>}
+      {alto > 26 && (
+        <p className="truncate text-[10px] leading-tight opacity-90">{fmtHora(c.ev.inicio)}</p>
+      )}
     </button>
   );
 }
@@ -167,7 +191,15 @@ function BloqueChip({ ev, onSelect }: { ev: TodoEventoDto; onSelect: OnSelect })
 // Mes: grilla clásica (semanas x 7 días) con chips de eventos por celda.
 // ---------------------------------------------------------------------------
 
-function VistaMes({ fecha, eventos, onSelect }: { fecha: string; eventos: TodoEventoDto[]; onSelect: OnSelect }) {
+function VistaMes({
+  fecha,
+  eventos,
+  onSelect,
+}: {
+  fecha: string;
+  eventos: TodoEventoDto[];
+  onSelect: OnSelect;
+}) {
   const primero = `${fecha.slice(0, 7)}-01`;
   const mesNum = fecha.slice(5, 7);
   const inicioGrilla = lunesDeLaSemana(primero);
@@ -198,7 +230,10 @@ function VistaMes({ fecha, eventos, onSelect }: { fecha: string; eventos: TodoEv
           const delMes = d.slice(5, 7) === mesNum;
           const evs = porDia.get(d) ?? [];
           return (
-            <div key={d} className={`min-h-[92px] border-b border-r border-line p-1 ${delMes ? '' : 'bg-surface/40'}`}>
+            <div
+              key={d}
+              className={`min-h-[92px] border-b border-r border-line p-1 ${delMes ? '' : 'bg-surface/40'}`}
+            >
               <div
                 className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
                   d === hoy ? 'bg-brand-red text-white' : delMes ? 'text-ink' : 'text-muted'
@@ -210,7 +245,11 @@ function VistaMes({ fecha, eventos, onSelect }: { fecha: string; eventos: TodoEv
                 {evs.slice(0, 3).map((e) => (
                   <ChipMes key={e.id} ev={e} onSelect={onSelect} />
                 ))}
-                {evs.length > 3 && <div className="px-1 text-[10px] font-semibold text-muted">+{evs.length - 3} más</div>}
+                {evs.length > 3 && (
+                  <div className="px-1 text-[10px] font-semibold text-muted">
+                    +{evs.length - 3} más
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -284,7 +323,9 @@ function DetalleEvento({ ev, onClose }: { ev: TodoEventoDto; onClose: () => void
         )}
 
         {ev.descripcion && (
-          <p className="mt-3 whitespace-pre-wrap border-t border-line pt-3 text-sm text-ink">{ev.descripcion}</p>
+          <p className="mt-3 whitespace-pre-wrap border-t border-line pt-3 text-sm text-ink">
+            {ev.descripcion}
+          </p>
         )}
       </div>
     </div>
@@ -300,14 +341,18 @@ function rangoFecha(ev: TodoEventoDto): string {
   const desde = fmtHora(ev.inicio);
   const finMin = minutosDelDia(ev.fin);
   const iniMin = minutosDelDia(ev.inicio);
-  const hasta = finMin > iniMin && diaKeyArg(ev.fin) === diaKeyArg(ev.inicio) ? ` – ${fmtHora(ev.fin)}` : '';
+  const hasta =
+    finMin > iniMin && diaKeyArg(ev.fin) === diaKeyArg(ev.inicio) ? ` – ${fmtHora(ev.fin)}` : '';
   return `${dia} · ${desde}${hasta}`;
 }
 
 function fmtFechaLarga(dia: string): string {
-  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(
-    new Date(`${dia}T12:00:00-03:00`),
-  );
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: TZ,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(`${dia}T12:00:00-03:00`));
 }
 
 function capFirst(s: string): string {
@@ -444,9 +489,16 @@ function cubreDia(ev: TodoEventoDto, dia: string): boolean {
 }
 
 function fmtDiaCorto(dia: string): string {
-  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, weekday: 'short' }).format(new Date(`${dia}T12:00:00-03:00`));
+  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, weekday: 'short' }).format(
+    new Date(`${dia}T12:00:00-03:00`),
+  );
 }
 
 function fmtHora(iso: string): string {
-  return new Intl.DateTimeFormat('es-AR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso));
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso));
 }

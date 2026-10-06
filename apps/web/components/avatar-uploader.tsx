@@ -46,10 +46,20 @@ export function AvatarUploader({ nombre, fotoUrl, onUpload, onRemove, size = 'sm
         <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-[10px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
           {subiendo ? '…' : 'Cambiar'}
         </span>
-        <input type="file" accept="image/*" className="hidden" disabled={subiendo} onChange={handleSeleccionar} />
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          disabled={subiendo}
+          onChange={handleSeleccionar}
+        />
       </label>
       {onRemove && fotoUrl && (
-        <button type="button" onClick={() => onRemove()} className="text-[10px] text-brand-red hover:underline">
+        <button
+          type="button"
+          onClick={() => onRemove()}
+          className="text-[10px] text-brand-red hover:underline"
+        >
           Quitar
         </button>
       )}

@@ -41,7 +41,10 @@ export default async function TasacionesPage({
           <FiltroEstado estado={estado} />
         </div>
       </div>
-      <TasacionesTable tasaciones={tasaciones} puedeBorrar={puedeBorrarTasaciones(ctx.principal.roles)} />
+      <TasacionesTable
+        tasaciones={tasaciones}
+        puedeBorrar={puedeBorrarTasaciones(ctx.principal.roles)}
+      />
     </div>
   );
 }

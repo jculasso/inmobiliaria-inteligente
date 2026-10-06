@@ -32,39 +32,90 @@ function armar(r = fila()) {
       findUnique: vi.fn().mockResolvedValue(r),
       findMany: vi.fn().mockResolvedValue([r]),
       aggregate: vi.fn().mockResolvedValue({ _max: { numero: 6 } }),
-      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ ...r, ...data, id: R })),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        ...r,
+        ...data,
+        id: R,
+      })),
       update: vi.fn(),
     },
     alqReclamoNota: { create: vi.fn() },
-    alqContrato: { count: vi.fn().mockResolvedValue(1), findMany: vi.fn().mockResolvedValue([{ id: 'c5', codigo: 'ALT-0005', propiedad: { direccion: 'Mendoza 3340', unidad: '2° C' } }]) },
-    alqPersona: { count: vi.fn().mockResolvedValue(1), findMany: vi.fn().mockResolvedValue([{ id: 'p1', nombre: 'Ana Inquilina' }]) },
+    alqContrato: {
+      count: vi.fn().mockResolvedValue(1),
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: 'c5',
+          codigo: 'ALT-0005',
+          propiedad: { direccion: 'Mendoza 3340', unidad: '2° C' },
+        },
+      ]),
+    },
+    alqPersona: {
+      count: vi.fn().mockResolvedValue(1),
+      findMany: vi.fn().mockResolvedValue([{ id: 'p1', nombre: 'Ana Inquilina' }]),
+    },
     alqContratoParte: { findFirst: vi.fn().mockResolvedValue({ personaId: 'p1' }) },
   };
-  const db = { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
+  const db = {
+    withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+  } as unknown as TenantPrismaService;
   return { tx, servicio: new ReclamosService(db) };
 }
 
 describe('ReclamosService (entrega 15)', () => {
   it('abre con el número siguiente, la persona del contrato, una nota y el historial', async () => {
     const { tx, servicio } = armar();
-    const r = await servicio.crear(CTX, { asunto: 'Pérdida de agua en el baño', descripcion: null, tipo: 'mantenimiento', prioridad: 'alta', contratoId: 'c5', personaId: null, asignadoAId: null });
-    expect(tx.alqReclamo.create.mock.calls[0]![0].data).toMatchObject({ numero: 7, personaId: 'p1', creadoPorId: 'u1', tenantId: 't1' });
-    expect(tx.alqReclamoNota.create.mock.calls[0]![0].data).toMatchObject({ texto: 'Abrió el reclamo (alta prioridad).', usuarioNombre: 'Lucía Operadora' });
+    const r = await servicio.crear(CTX, {
+      asunto: 'Pérdida de agua en el baño',
+      descripcion: null,
+      tipo: 'mantenimiento',
+      prioridad: 'alta',
+      contratoId: 'c5',
+      personaId: null,
+      asignadoAId: null,
+    });
+    expect(tx.alqReclamo.create.mock.calls[0]![0].data).toMatchObject({
+      numero: 7,
+      personaId: 'p1',
+      creadoPorId: 'u1',
+      tenantId: 't1',
+    });
+    expect(tx.alqReclamoNota.create.mock.calls[0]![0].data).toMatchObject({
+      texto: 'Abrió el reclamo (alta prioridad).',
+      usuarioNombre: 'Lucía Operadora',
+    });
     expect(r.contrato).toEqual({ id: 'c5', codigo: 'ALT-0005', propiedad: 'Mendoza 3340 2° C' });
   });
 
   it('cada cambio deja su nota: estado, asignado y lo que se hizo', async () => {
     const { tx, servicio } = armar();
-    await servicio.cambiar(CTX, R, { estado: 'en_curso', asignadoAId: '44444444-4444-4444-8444-444444444444', nota: 'Va el plomero el jueves.' });
-    expect(tx.alqReclamo.update.mock.calls[0]![0].data).toMatchObject({ estado: 'en_curso', asignadoAId: '44444444-4444-4444-8444-444444444444' });
-    expect(tx.alqReclamoNota.create.mock.calls[0]![0].data.texto).toBe('Estado: Abierto → En curso. Asignado a Lucía Operadora. Va el plomero el jueves.');
+    await servicio.cambiar(CTX, R, {
+      estado: 'en_curso',
+      asignadoAId: '44444444-4444-4444-8444-444444444444',
+      nota: 'Va el plomero el jueves.',
+    });
+    expect(tx.alqReclamo.update.mock.calls[0]![0].data).toMatchObject({
+      estado: 'en_curso',
+      asignadoAId: '44444444-4444-4444-8444-444444444444',
+    });
+    expect(tx.alqReclamoNota.create.mock.calls[0]![0].data.texto).toBe(
+      'Estado: Abierto → En curso. Asignado a Lucía Operadora. Va el plomero el jueves.',
+    );
   });
 
   it('los abiertos primero por prioridad', async () => {
     const { tx, servicio } = armar();
-    tx.alqReclamo.findMany.mockResolvedValueOnce([fila({ id: 'a', prioridad: 'baja' }), fila({ id: 'b', prioridad: 'urgente' })]);
-    expect((await servicio.listar({ estado: 'abiertos' })).map((r) => r.prioridad)).toEqual(['urgente', 'baja']);
-    expect(tx.alqReclamo.findMany.mock.calls[0]![0].where).toEqual({ estado: { in: ['abierto', 'en_curso'] } });
+    tx.alqReclamo.findMany.mockResolvedValueOnce([
+      fila({ id: 'a', prioridad: 'baja' }),
+      fila({ id: 'b', prioridad: 'urgente' }),
+    ]);
+    expect((await servicio.listar({ estado: 'abiertos' })).map((r) => r.prioridad)).toEqual([
+      'urgente',
+      'baja',
+    ]);
+    expect(tx.alqReclamo.findMany.mock.calls[0]![0].where).toEqual({
+      estado: { in: ['abierto', 'en_curso'] },
+    });
   });
 
   // Auditoría del 6/10/2026: el reclamo no tiene claves foráneas; un id de otra inmobiliaria se guardaba igual.
@@ -72,10 +123,19 @@ describe('ReclamosService (entrega 15)', () => {
     const { tx, servicio } = armar();
     tx.alqContrato.count.mockResolvedValueOnce(0);
     await expect(
-      servicio.crear(CTX, { asunto: 'Pérdida', descripcion: null, tipo: 'mantenimiento', prioridad: 'alta', contratoId: 'otro', personaId: null, asignadoAId: null }),
+      servicio.crear(CTX, {
+        asunto: 'Pérdida',
+        descripcion: null,
+        tipo: 'mantenimiento',
+        prioridad: 'alta',
+        contratoId: 'otro',
+        personaId: null,
+        asignadoAId: null,
+      }),
     ).rejects.toThrow('El contrato no existe.');
     tx.usuario.count.mockResolvedValueOnce(0);
-    await expect(servicio.cambiar(CTX, 'r1', { asignadoAId: 'ajeno', nota: null })).rejects.toThrow('El usuario asignado no existe.');
+    await expect(servicio.cambiar(CTX, 'r1', { asignadoAId: 'ajeno', nota: null })).rejects.toThrow(
+      'El usuario asignado no existe.',
+    );
   });
 });
-

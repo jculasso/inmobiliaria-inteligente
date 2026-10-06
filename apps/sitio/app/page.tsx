@@ -148,8 +148,8 @@ export default function Home() {
 
           <p className="mt-7 max-w-2xl text-lg leading-relaxed text-muted">
             Inmobiliaria Inteligente es la capa de conducción que se apoya sobre el sistema que ya
-            usa. No lo reemplaza: le agrega lo que le falta — el número que dice cómo viene el
-            año, y el informe con el que se gana una captación.
+            usa. No lo reemplaza: le agrega lo que le falta — el número que dice cómo viene el año,
+            y el informe con el que se gana una captación.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -229,12 +229,12 @@ export default function Home() {
               sale="Informe para el propietario"
             >
               <p>
-                El vendedor carga la propiedad, elige comparables del mercado y el sistema calcula un
-                rango de valores fundamentado.
+                El vendedor carga la propiedad, elige comparables del mercado y el sistema calcula
+                un rango de valores fundamentado.
               </p>
               <p>
-                La diferencia no es el número: es llegar con un documento profesional cuando el de al
-                lado llega con una estimación de memoria. Y cuando la captación se concreta, la
+                La diferencia no es el número: es llegar con un documento profesional cuando el de
+                al lado llega con una estimación de memoria. Y cuando la captación se concreta, la
                 propiedad queda cargada: los datos, las fotos y el valor ya están, y la operación
                 entra al tablero sin escribir nada dos veces.
               </p>
@@ -331,8 +331,8 @@ export default function Home() {
               <p className="mt-3 text-[15px] leading-relaxed text-muted">
                 Se instala en el teléfono como una aplicación más, con su ícono en la pantalla de
                 inicio y sin pasar por App Store ni por Google Play. Y deja de haber una planilla
-                con la facturación dando vueltas por WhatsApp: cada uno ve lo suyo y la dirección
-                ve todo.
+                con la facturación dando vueltas por WhatsApp: cada uno ve lo suyo y la dirección ve
+                todo.
               </p>
             </div>
           </div>
@@ -346,67 +346,78 @@ export default function Home() {
             </p>
           </div>
 
-            {/*
+          {/*
               Los tres a escala: el ancho de cada marco es proporcional al ancho
               real de la pantalla que representa (1280 · 820 · 375). Dibujarlos
               todos del mismo tamaño se leería como tres capturas sueltas; así
               se lee como un solo sistema en tres tamaños.
             */}
-            <div className="mt-12 grid gap-6 sm:flex sm:items-end sm:justify-center sm:gap-6">
-              <div className="overflow-hidden rounded-brand border border-line bg-white shadow-[0_20px_50px_-30px_rgba(29,29,31,0.5)] sm:w-[62%]">
-                <Image
-                  src="/capturas/tasador-wizard.png"
-                  alt="El Tasador en una computadora, en el paso de comparables, con el resumen automático de confianza."
-                  width={2560}
-                  height={1600}
-                  className="h-auto w-full"
-                  sizes="(max-width: 640px) 100vw, 650px"
-                />
-              </div>
-
-              {/* `sm:contents` disuelve esta fila en pantallas grandes y deja a
-                  los dos teléfonos como hermanos del monitor. */}
-              <div className="flex items-end justify-center gap-5 sm:contents">
-                <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[14%]">
-                  <Image
-                    src="/capturas/tablero-telefono.png"
-                    alt="El Tablero Comercial en un teléfono: la dirección mira los números desde donde esté."
-                    width={750}
-                    height={1624}
-                    className="h-auto w-full"
-                    sizes="(max-width: 640px) 34vw, 150px"
-                  />
-                </div>
-                <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[14%]">
-                  <Image
-                    src="/capturas/tasador-telefono.png"
-                    alt="El Tasador en un teléfono, en el paso de comparables: el vendedor carga la tasación en la misma visita."
-                    width={750}
-                    height={1624}
-                    className="h-auto w-full"
-                    sizes="(max-width: 640px) 34vw, 150px"
-                  />
-                </div>
-              </div>
+          <div className="mt-12 grid gap-6 sm:flex sm:items-end sm:justify-center sm:gap-6">
+            <div className="overflow-hidden rounded-brand border border-line bg-white shadow-[0_20px_50px_-30px_rgba(29,29,31,0.5)] sm:w-[62%]">
+              <Image
+                src="/capturas/tasador-wizard.png"
+                alt="El Tasador en una computadora, en el paso de comparables, con el resumen automático de confianza."
+                width={2560}
+                height={1600}
+                className="h-auto w-full"
+                sizes="(max-width: 640px) 100vw, 650px"
+              />
             </div>
 
-            <dl className="mt-12 grid gap-8 border-t border-line pt-8 sm:grid-cols-3">
-              {[
-                ['Computadora', 'La dirección y la administración: cargar operaciones, revisar la cartera, sacar informes.'],
-                ['Tablet', 'La reunión con el propietario, con el informe de tasación en pantalla en vez de en papel.'],
-                ['Teléfono', 'El vendedor en la calle: tasar en la visita y ver cómo viene contra su objetivo.'],
-              ].map(([donde, para]) => (
-                <div key={donde}>
-                  <dt className="text-[15px] font-extrabold text-ink">{donde}</dt>
-                  <dd className="mt-1.5 text-[15px] leading-relaxed text-muted">{para}</dd>
-                </div>
-              ))}
-            </dl>
+            {/* `sm:contents` disuelve esta fila en pantallas grandes y deja a
+                  los dos teléfonos como hermanos del monitor. */}
+            <div className="flex items-end justify-center gap-5 sm:contents">
+              <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[14%]">
+                <Image
+                  src="/capturas/tablero-telefono.png"
+                  alt="El Tablero Comercial en un teléfono: la dirección mira los números desde donde esté."
+                  width={750}
+                  height={1624}
+                  className="h-auto w-full"
+                  sizes="(max-width: 640px) 34vw, 150px"
+                />
+              </div>
+              <div className="overflow-hidden rounded-[18px] border-[5px] border-ink bg-white shadow-[0_20px_50px_-26px_rgba(29,29,31,0.6)] sm:w-[14%]">
+                <Image
+                  src="/capturas/tasador-telefono.png"
+                  alt="El Tasador en un teléfono, en el paso de comparables: el vendedor carga la tasación en la misma visita."
+                  width={750}
+                  height={1624}
+                  className="h-auto w-full"
+                  sizes="(max-width: 640px) 34vw, 150px"
+                />
+              </div>
+            </div>
+          </div>
+
+          <dl className="mt-12 grid gap-8 border-t border-line pt-8 sm:grid-cols-3">
+            {[
+              [
+                'Computadora',
+                'La dirección y la administración: cargar operaciones, revisar la cartera, sacar informes.',
+              ],
+              [
+                'Tablet',
+                'La reunión con el propietario, con el informe de tasación en pantalla en vez de en papel.',
+              ],
+              [
+                'Teléfono',
+                'El vendedor en la calle: tasar en la visita y ver cómo viene contra su objetivo.',
+              ],
+            ].map(([donde, para]) => (
+              <div key={donde}>
+                <dt className="text-[15px] font-extrabold text-ink">{donde}</dt>
+                <dd className="mt-1.5 text-[15px] leading-relaxed text-muted">{para}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         {/* ─────────── el informe de tasación ─────────── */}
         <section className="bg-plataforma py-16 text-white sm:py-24">
-          <div className={`${ANCHO} grid gap-12 lg:grid-cols-[1fr_minmax(0,380px)] lg:items-center lg:gap-16`}>
+          <div
+            className={`${ANCHO} grid gap-12 lg:grid-cols-[1fr_minmax(0,380px)] lg:items-center lg:gap-16`}
+          >
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70 sm:text-xs">
                 Lo que se lleva el propietario
@@ -523,71 +534,73 @@ export default function Home() {
         {/* ─────────── 05 · ¿Quiénes somos? ─────────── */}
         <section className="border-t border-line bg-surface py-16 sm:py-24">
           <div className={ANCHO}>
-          <Pregunta numero="05">¿Quiénes somos?</Pregunta>
-          <p className="mt-5 max-w-3xl text-lg font-bold leading-snug text-ink sm:text-xl">
-            Dos directores de sistemas que trabajan juntos desde hace treinta años.
-          </p>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted sm:text-base">
-            Se conocieron en Minetti y Cía. a principios de los noventa. Los dos pasaron por Cargill.
-            Después cada uno siguió su camino — uno hacia el comercio electrónico en México, el otro
-            hacia la dirección de sistemas de una operación industrial de miles de clientes. Vuelven
-            a trabajar juntos en este producto.
-          </p>
+            <Pregunta numero="05">¿Quiénes somos?</Pregunta>
+            <p className="mt-5 max-w-3xl text-lg font-bold leading-snug text-ink sm:text-xl">
+              Dos directores de sistemas que trabajan juntos desde hace treinta años.
+            </p>
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted sm:text-base">
+              Se conocieron en Minetti y Cía. a principios de los noventa. Los dos pasaron por
+              Cargill. Después cada uno siguió su camino — uno hacia el comercio electrónico en
+              México, el otro hacia la dirección de sistemas de una operación industrial de miles de
+              clientes. Vuelven a trabajar juntos en este producto.
+            </p>
 
-          <div className="mt-12 grid gap-10 sm:grid-cols-2 sm:gap-12">
-            <div className="border-t-2 border-plataforma pt-6">
-              <h3 className="text-xl font-extrabold">Javier Culasso</h3>
-              <p className="mt-2 text-[15px] font-bold leading-snug text-ink">
-                CIO del Año de Argentina, 1999
-              </p>
-              <p className="text-sm text-muted">
-                Distinción de la revista Information Technology y PriceWaterhouseCoopers Argentina.
-              </p>
-              <ul className="mt-5 space-y-2.5 text-[15px] leading-relaxed text-muted">
-                <li>
-                  Cofundador de Entrepids, donde lideró más de 150 implementaciones de comercio
-                  electrónico, CRM y administración de fuerza de ventas.
-                </li>
-                <li>
-                  Proyectos para El Palacio de Hierro, Best Buy México, Chedraui, HEB, Arcor, Henkel
-                  y BIC, entre otros.
-                </li>
-                <li>
-                  Antes, director de sistemas en Minetti y Cía., Cargill – Granja del Sol y Colorín.
-                </li>
-              </ul>
+            <div className="mt-12 grid gap-10 sm:grid-cols-2 sm:gap-12">
+              <div className="border-t-2 border-plataforma pt-6">
+                <h3 className="text-xl font-extrabold">Javier Culasso</h3>
+                <p className="mt-2 text-[15px] font-bold leading-snug text-ink">
+                  CIO del Año de Argentina, 1999
+                </p>
+                <p className="text-sm text-muted">
+                  Distinción de la revista Information Technology y PriceWaterhouseCoopers
+                  Argentina.
+                </p>
+                <ul className="mt-5 space-y-2.5 text-[15px] leading-relaxed text-muted">
+                  <li>
+                    Cofundador de Entrepids, donde lideró más de 150 implementaciones de comercio
+                    electrónico, CRM y administración de fuerza de ventas.
+                  </li>
+                  <li>
+                    Proyectos para El Palacio de Hierro, Best Buy México, Chedraui, HEB, Arcor,
+                    Henkel y BIC, entre otros.
+                  </li>
+                  <li>
+                    Antes, director de sistemas en Minetti y Cía., Cargill – Granja del Sol y
+                    Colorín.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border-t-2 border-plataforma pt-6">
+                <h3 className="text-xl font-extrabold">Bernardo Falconi</h3>
+                <p className="mt-2 text-[15px] font-bold leading-snug text-ink">
+                  Veintiún años en Cargill
+                </p>
+                <p className="text-sm text-muted">Gerente de sistemas del negocio de harinas.</p>
+                <ul className="mt-5 space-y-2.5 text-[15px] leading-relaxed text-muted">
+                  <li>
+                    Siete plantas, tres mil clientes, quinientos usuarios y un presupuesto anual de
+                    dos millones de dólares.
+                  </li>
+                  <li>
+                    Lideró la integración de sistemas de la unión con Molinos Río de la Plata, y el
+                    proyecto Año 2000 de todo el negocio.
+                  </li>
+                  <li>
+                    Responsable de control interno, auditorías y planes de continuidad y
+                    recuperación ante desastres.
+                  </li>
+                </ul>
+              </div>
             </div>
 
-            <div className="border-t-2 border-plataforma pt-6">
-              <h3 className="text-xl font-extrabold">Bernardo Falconi</h3>
-              <p className="mt-2 text-[15px] font-bold leading-snug text-ink">
-                Veintiún años en Cargill
-              </p>
-              <p className="text-sm text-muted">Gerente de sistemas del negocio de harinas.</p>
-              <ul className="mt-5 space-y-2.5 text-[15px] leading-relaxed text-muted">
-                <li>
-                  Siete plantas, tres mil clientes, quinientos usuarios y un presupuesto anual de dos
-                  millones de dólares.
-                </li>
-                <li>
-                  Lideró la integración de sistemas de la unión con Molinos Río de la Plata, y el
-                  proyecto Año 2000 de todo el negocio.
-                </li>
-                <li>
-                  Responsable de control interno, auditorías y planes de continuidad y recuperación
-                  ante desastres.
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <p className="mt-12 max-w-3xl border-l-2 border-line pl-5 text-[15px] leading-relaxed text-muted sm:text-base">
-            Uno viene del lado comercial: vender, medir, convertir. El otro, del lado de la operación
-            que no se puede caer: continuidad, control, datos que no se pierden.{' '}
-            <strong className="font-semibold text-ink">
-              Un sistema para una inmobiliaria necesita las dos cosas.
-            </strong>
-          </p>
+            <p className="mt-12 max-w-3xl border-l-2 border-line pl-5 text-[15px] leading-relaxed text-muted sm:text-base">
+              Uno viene del lado comercial: vender, medir, convertir. El otro, del lado de la
+              operación que no se puede caer: continuidad, control, datos que no se pierden.{' '}
+              <strong className="font-semibold text-ink">
+                Un sistema para una inmobiliaria necesita las dos cosas.
+              </strong>
+            </p>
           </div>
         </section>
 
@@ -601,8 +614,8 @@ export default function Home() {
             <div className="mt-7 max-w-2xl space-y-4 text-[15px] leading-relaxed text-muted sm:text-base">
               <p>
                 Cada inmobiliaria trabaja aislada de las demás: el aislamiento no depende de la
-                aplicación, está garantizado en la base de datos y verificado automáticamente en cada
-                cambio del sistema.
+                aplicación, está garantizado en la base de datos y verificado automáticamente en
+                cada cambio del sistema.
               </p>
               <p className="font-semibold text-ink">
                 Y sus datos se exportan en planillas cuando lo pida, con un botón y sin trámite. Si
@@ -628,7 +641,6 @@ export default function Home() {
             <FormularioContacto />
           </div>
         </section>
-
       </main>
       <Pie />
     </>

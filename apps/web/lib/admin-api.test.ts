@@ -16,9 +16,26 @@ const TENANT = {
   nombre: 'Vacker',
   slug: 'vacker',
   plan: 'basico',
-  modulos: { tablero: true, tasador: false, todo: false, protocolo: false, publicacion: false, alquileres: false },
+  modulos: {
+    tablero: true,
+    tasador: false,
+    todo: false,
+    protocolo: false,
+    publicacion: false,
+    alquileres: false,
+  },
   estado: 'activo',
-  config: { coefSemicubierta: 1, coefDescubierta: 0.3, ivaHonorariosPct: 21, comisionInicialPct: 5, comisionInicialCuotas: 2, comisionInicialConIva: true, selladoPct: 0, selladoInquilinoPct: 50, depositoGestion: 'entrega_propietario' },
+  config: {
+    coefSemicubierta: 1,
+    coefDescubierta: 0.3,
+    ivaHonorariosPct: 21,
+    comisionInicialPct: 5,
+    comisionInicialCuotas: 2,
+    comisionInicialConIva: true,
+    selladoPct: 0,
+    selladoInquilinoPct: 50,
+    depositoGestion: 'entrega_propietario',
+  },
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
@@ -95,7 +112,9 @@ describe('admin-api', () => {
   });
 
   it('resetPasswordUsuario pega a /reset-password', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: USUARIO.id, ok: true }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ id: USUARIO.id, ok: true }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await resetPasswordUsuario('token', TENANT.id, USUARIO.id, { password: 'nuevaClave123' });
@@ -120,27 +139,35 @@ describe('admin-api', () => {
 
   it('subirFotoUsuario hace POST multipart a .../foto', async () => {
     const fotoUrl = 'https://storage.test/usuarios-avatares/foto.jpg';
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...USUARIO, fotoUrl }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ ...USUARIO, fotoUrl }) });
     vi.stubGlobal('fetch', fetchMock);
 
     const file = new File(['contenido'], 'foto.jpg', { type: 'image/jpeg' });
     const result = await subirFotoUsuario('token', TENANT.id, USUARIO.id, file);
 
     const [url, options] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe(`http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/foto`);
+    expect(String(url)).toBe(
+      `http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/foto`,
+    );
     expect(options.method).toBe('POST');
     expect(options.body).toBeInstanceOf(FormData);
     expect(result.fotoUrl).toBe(fotoUrl);
   });
 
   it('eliminarFotoUsuario hace DELETE a .../foto', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...USUARIO, fotoUrl: null }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ ...USUARIO, fotoUrl: null }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await eliminarFotoUsuario('token', TENANT.id, USUARIO.id);
 
     const [url, options] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe(`http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/foto`);
+    expect(String(url)).toBe(
+      `http://localhost:3001/admin/tenants/${TENANT.id}/usuarios/${USUARIO.id}/foto`,
+    );
     expect(options.method).toBe('DELETE');
   });
 

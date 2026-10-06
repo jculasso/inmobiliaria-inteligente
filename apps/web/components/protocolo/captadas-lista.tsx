@@ -22,8 +22,8 @@ export function CaptadasLista({ captadas }: { captadas: CandidataDto[] }) {
         </p>
         <h3 className="mt-2 text-base font-bold text-ink">No hay captaciones pendientes</h3>
         <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-          Todas las tasaciones captadas ya tienen su protocolo iniciado. Las nuevas captaciones aparecen acá
-          automáticamente.
+          Todas las tasaciones captadas ya tienen su protocolo iniciado. Las nuevas captaciones
+          aparecen acá automáticamente.
         </p>
       </div>
     );
@@ -46,12 +46,15 @@ export function CaptadasLista({ captadas }: { captadas: CandidataDto[] }) {
             <div className="min-w-0 flex-1">
               <h3 className="text-sm font-bold leading-snug text-ink">{c.direccion}</h3>
               <p className="text-xs text-muted">
-                {c.tipoPropiedad} · {[c.barrio, c.ciudad].filter(Boolean).join(', ') || 'Sin ubicación'}
+                {c.tipoPropiedad} ·{' '}
+                {[c.barrio, c.ciudad].filter(Boolean).join(', ') || 'Sin ubicación'}
               </p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <Pill>{c.cliente}</Pill>
                 <Pill>{c.agente.nombre}</Pill>
-                {c.diasExclusividad != null && <Pill tono="ambar">Exclusiva {c.diasExclusividad} días</Pill>}
+                {c.diasExclusividad != null && (
+                  <Pill tono="ambar">Exclusiva {c.diasExclusividad} días</Pill>
+                )}
                 {c.codigo && <Pill>{c.codigo}</Pill>}
               </div>
             </div>

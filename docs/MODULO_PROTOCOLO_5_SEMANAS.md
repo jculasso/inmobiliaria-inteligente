@@ -15,12 +15,12 @@ protocolo" crea la ficha y la propiedad pasa a estar **Activa**.
 
 ## 2. Decisiones cerradas (25/07/2026)
 
-| Tema | Decisión |
-|---|---|
+| Tema            | Decisión                                                                                                                                                                                                                                                                    |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Estado "Activa" | Ficha **`Protocolo` aparte** (estado propio: `activa` \| `archivada`), 1:1 con la tasación. La tasación **queda en Captada** → no se tocan los KPIs del Tasador (tasa de captación, ranking) ni el historial de estados. En pantalla la propiedad se muestra como "Activa". |
-| Checklist | **Fijo en código**, igual para todos los tenants (las 29 acciones del HTML). Configurable por tenant queda para más adelante. |
-| Datos faltantes | Se piden en el **modal "Iniciar protocolo"**, con sugeridos: precio = `valorRecomendado` de la tasación; vencimiento = calculado según `exclusividad`; propietario = `tasacion.cliente`. No se toca el formulario del Tasador. |
-| Licenciamiento | **4 checks independientes** por tenant (tablero, tasador, todo, protocolo). `plan` queda como etiqueta comercial informativa, sin efecto en permisos. |
+| Checklist       | **Fijo en código**, igual para todos los tenants (las 29 acciones del HTML). Configurable por tenant queda para más adelante.                                                                                                                                               |
+| Datos faltantes | Se piden en el **modal "Iniciar protocolo"**, con sugeridos: precio = `valorRecomendado` de la tasación; vencimiento = calculado según `exclusividad`; propietario = `tasacion.cliente`. No se toca el formulario del Tasador.                                              |
+| Licenciamiento  | **4 checks independientes** por tenant (tablero, tasador, todo, protocolo). `plan` queda como etiqueta comercial informativa, sin efecto en permisos.                                                                                                                       |
 
 ## 3. Modelo de datos
 
@@ -67,7 +67,7 @@ grants, accedidas vía `TenantPrismaService.withTenant` (ver memoria
 - **Semana actual** = `min(5, floor(díasDesdeInicio / 7) + 1)`.
 - **Fecha prevista** de cada acción = `inicio + semana*7 - 1`.
 - **Avance** = realizadas / (total − no_corresponde).
-- Al marcar una acción como *realizada* sin fecha, se completa con hoy.
+- Al marcar una acción como _realizada_ sin fecha, se completa con hoy.
 - **Alertas** (calculadas al vuelo, sin tabla):
   - 🔴 acciones atrasadas (fecha prevista pasada y no cerradas)
   - 🔴 autorización vencida
@@ -89,18 +89,18 @@ dashboard y drill-downs.
 
 ## 6. API (`/protocolo`)
 
-| Método | Ruta | Uso |
-|---|---|---|
-| GET | `/protocolo/captadas` | tasaciones Captada **sin** protocolo (listado con botón Iniciar) |
-| POST | `/protocolo` | iniciar protocolo (tasacionId + datos del modal) |
-| GET | `/protocolo` | listar fichas (filtros: estado, soloMio, año) |
-| GET | `/protocolo/:id` | detalle + acciones |
-| PATCH | `/protocolo/:id` | métricas, análisis, datos de cabecera |
-| PATCH | `/protocolo/:id/acciones/:accionId` | estado/fechas/notas de una acción |
-| POST | `/protocolo/:id/archivar` | fecha + motivo (`vendida` \| `retirada` \| `vencida` \| `otro`) |
-| GET | `/protocolo/kpis` | dashboard (activas, alertas críticas, avance promedio) |
-| GET | `/protocolo/:id/informe` | PDF para el propietario |
-| GET | `/protocolo/reporte` | reporte general (captadas / activas / archivadas) |
+| Método | Ruta                                | Uso                                                              |
+| ------ | ----------------------------------- | ---------------------------------------------------------------- |
+| GET    | `/protocolo/captadas`               | tasaciones Captada **sin** protocolo (listado con botón Iniciar) |
+| POST   | `/protocolo`                        | iniciar protocolo (tasacionId + datos del modal)                 |
+| GET    | `/protocolo`                        | listar fichas (filtros: estado, soloMio, año)                    |
+| GET    | `/protocolo/:id`                    | detalle + acciones                                               |
+| PATCH  | `/protocolo/:id`                    | métricas, análisis, datos de cabecera                            |
+| PATCH  | `/protocolo/:id/acciones/:accionId` | estado/fechas/notas de una acción                                |
+| POST   | `/protocolo/:id/archivar`           | fecha + motivo (`vendida` \| `retirada` \| `vencida` \| `otro`)  |
+| GET    | `/protocolo/kpis`                   | dashboard (activas, alertas críticas, avance promedio)           |
+| GET    | `/protocolo/:id/informe`            | PDF para el propietario                                          |
+| GET    | `/protocolo/reporte`                | reporte general (captadas / activas / archivadas)                |
 
 Cada endpoint valida con Zod y verifica rol + tenant (CLAUDE.md §8), y queda
 detrás del guard de módulo habilitado (§7).
@@ -137,14 +137,14 @@ observación). Respeta scope por rol y "ver solo lo mío".
 
 ## 10. Estado de entrega — COMPLETO (2026-07-25)
 
-| # | Alcance | PR |
-|---|---|---|
-| 1 | Licenciamiento por módulos (4 checks por tenant + guard `@Modulo`) | #44 ✅ |
-| 2 | Rediseño del admin (edición de tenant y de usuarios) | #45 ✅ |
-| 3 | Datos + API del protocolo, RLS y test de aislamiento | #46 ✅ |
-| 4 | Web: dashboard, captadas + iniciar, detalle de 5 semanas | #47 ✅ |
-| 5 | Informe PDF del propietario (4 secciones) | #48 ✅ |
-| 6 | Reporte general de propiedades + archivar | #49 ✅ |
+| #   | Alcance                                                            | PR     |
+| --- | ------------------------------------------------------------------ | ------ |
+| 1   | Licenciamiento por módulos (4 checks por tenant + guard `@Modulo`) | #44 ✅ |
+| 2   | Rediseño del admin (edición de tenant y de usuarios)               | #45 ✅ |
+| 3   | Datos + API del protocolo, RLS y test de aislamiento               | #46 ✅ |
+| 4   | Web: dashboard, captadas + iniciar, detalle de 5 semanas           | #47 ✅ |
+| 5   | Informe PDF del propietario (4 secciones)                          | #48 ✅ |
+| 6   | Reporte general de propiedades + archivar                          | #49 ✅ |
 
 **Pendiente del humano:** habilitar el módulo `protocolo` en cada inmobiliaria
 desde /admin — nace apagado para todas.

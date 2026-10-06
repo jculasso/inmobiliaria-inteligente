@@ -64,7 +64,10 @@ function pestanaFalsa({
       // La pestaña cerrada se lleva sus timers puestos.
       if (!win.closed) timers.forEach((fn) => fn());
     },
-    html: () => (win.document.write as unknown as { mock: { calls: string[][] } }).mock.calls.map((c) => c[0]).join(''),
+    html: () =>
+      (win.document.write as unknown as { mock: { calls: string[][] } }).mock.calls
+        .map((c) => c[0])
+        .join(''),
   };
 }
 

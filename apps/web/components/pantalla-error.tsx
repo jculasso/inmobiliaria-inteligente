@@ -14,7 +14,15 @@ import { Button, Card, CardDescription, CardHeader, CardTitle } from '@vacker/ui
  * no hay barra del navegador ni botón de recargar, así que sin esto quedaba
  * encerrado (revisión PWA del 6/10/2026).
  */
-export function PantallaError({ titulo, descripcion, reset }: { titulo: string; descripcion: string; reset: () => void }) {
+export function PantallaError({
+  titulo,
+  descripcion,
+  reset,
+}: {
+  titulo: string;
+  descripcion: string;
+  reset: () => void;
+}) {
   const router = useRouter();
   const [reintentando, startTransition] = useTransition();
   return (

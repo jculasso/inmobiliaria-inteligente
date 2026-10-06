@@ -62,11 +62,7 @@ describe('DetalleDrillModal — la comisión de una venta compartida', () => {
 
   it('sin vendedor en el filtro, muestra la comisión completa', async () => {
     render(
-      <DetalleDrillModal
-        titulo="Todas"
-        filtro={{ anio: 2026 } as never}
-        onClose={() => {}}
-      />,
+      <DetalleDrillModal titulo="Todas" filtro={{ anio: 2026 } as never} onClose={() => {}} />,
     );
 
     expect(await screen.findAllByText('$10.000')).not.toHaveLength(0);

@@ -27,10 +27,17 @@ describe('marcasDelEje', () => {
    * valor exacto de su marca. Si `fmtK` tiene que redondear, la etiqueta miente.
    */
   it('ninguna etiqueta redondea su marca', () => {
-    for (const max of [7, 45, 380, 999, 1_200, 2_400, 4_900, 12_345, 87_130, 250_000, 1_100_000, 3_576_000, 18_000_000]) {
+    for (const max of [
+      7, 45, 380, 999, 1_200, 2_400, 4_900, 12_345, 87_130, 250_000, 1_100_000, 3_576_000,
+      18_000_000,
+    ]) {
       for (const m of marcasDelEje(max).marcas) {
         const texto = fmtK(m);
-        const leido = texto.endsWith('M') ? Number(texto.slice(0, -1)) * 1e6 : texto.endsWith('k') ? Number(texto.slice(0, -1)) * 1e3 : Number(texto);
+        const leido = texto.endsWith('M')
+          ? Number(texto.slice(0, -1)) * 1e6
+          : texto.endsWith('k')
+            ? Number(texto.slice(0, -1)) * 1e3
+            : Number(texto);
         expect(leido, `max ${max}, marca ${m} se lee «${texto}»`).toBe(m);
       }
     }

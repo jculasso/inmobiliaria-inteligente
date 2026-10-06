@@ -27,7 +27,10 @@ export interface EstadoPatch {
 
 interface Props {
   /** Alcanza con los campos de estado — acepta tanto `TasacionDto` completo como `TasacionResumenDto`. */
-  tasacion: Pick<TasacionDto, 'id' | 'direccion' | 'cliente' | 'estado' | 'exclusividad' | 'motivoNoCaptada'>;
+  tasacion: Pick<
+    TasacionDto,
+    'id' | 'direccion' | 'cliente' | 'estado' | 'exclusividad' | 'motivoNoCaptada'
+  >;
   onClose: () => void;
   onSaved: (patch: EstadoPatch) => void;
 }
@@ -88,7 +91,11 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
   // varias del mismo cliente, o el mismo agente en todas. El cliente pasa a la
   // bajada, que para eso está.
   return (
-    <Modal title={`Cambiar estado — ${tasacion.direccion}`} subtitle={tasacion.cliente} onClose={onClose}>
+    <Modal
+      title={`Cambiar estado — ${tasacion.direccion}`}
+      subtitle={tasacion.cliente}
+      onClose={onClose}
+    >
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <Campo label="Estado">
           <select
@@ -106,7 +113,9 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
 
         {estado === 'Captada' && (
           <div className="flex flex-col gap-2 rounded-brand border border-line p-3">
-            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Exclusividad</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">
+              Exclusividad
+            </span>
             <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="radio"
@@ -125,7 +134,11 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
               días
             </label>
             <label className="flex items-center gap-2 text-sm text-ink">
-              <input type="radio" checked={tipoExclusividad === 'no'} onChange={() => setTipoExclusividad('no')} />
+              <input
+                type="radio"
+                checked={tipoExclusividad === 'no'}
+                onChange={() => setTipoExclusividad('no')}
+              />
               No exclusiva
             </label>
           </div>

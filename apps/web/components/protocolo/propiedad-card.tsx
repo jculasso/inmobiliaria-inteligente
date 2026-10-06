@@ -38,7 +38,8 @@ export function PropiedadCard({ p }: { p: ProtocoloResumenDto }) {
         <div>
           <h3 className="text-base font-bold leading-snug text-ink">{p.propiedad.direccion}</h3>
           <p className="text-xs text-muted">
-            {[p.propiedad.barrio, p.propiedad.ciudad].filter(Boolean).join(' · ') || p.propiedad.tipoPropiedad}
+            {[p.propiedad.barrio, p.propiedad.ciudad].filter(Boolean).join(' · ') ||
+              p.propiedad.tipoPropiedad}
           </p>
         </div>
 

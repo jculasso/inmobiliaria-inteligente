@@ -54,7 +54,9 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
   const [comisionAlquiler, setComisionAlquiler] = useState(
     String(tipo === 'alquiler' ? (operacion?.comTotal ?? '') : ''),
   );
-  const [estado, setEstado] = useState(operacion?.estado ?? (tipo === 'venta' ? 'escriturada' : 'firmado'));
+  const [estado, setEstado] = useState(
+    operacion?.estado ?? (tipo === 'venta' ? 'escriturada' : 'firmado'),
+  );
   const [fechaReserva, setFechaReserva] = useState(operacion?.fechaReserva ?? '');
   const [fechaFirma, setFechaFirma] = useState(operacion?.fechaFirma ?? '');
   const [obs, setObs] = useState(operacion?.obs ?? '');
@@ -72,10 +74,18 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
 
     const puntas: PuntaInput[] = [];
     if (usuarioIdVend) {
-      puntas.push({ lado: 'vendedora', usuarioId: usuarioIdVend, comision: Number(comisionVend) || 0 });
+      puntas.push({
+        lado: 'vendedora',
+        usuarioId: usuarioIdVend,
+        comision: Number(comisionVend) || 0,
+      });
     }
     if (usuarioIdComp) {
-      puntas.push({ lado: 'compradora', usuarioId: usuarioIdComp, comision: Number(comisionComp) || 0 });
+      puntas.push({
+        lado: 'compradora',
+        usuarioId: usuarioIdComp,
+        comision: Number(comisionComp) || 0,
+      });
     }
 
     if (tipo === 'venta' && puntas.length === 0) {
@@ -134,16 +144,26 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
   const esVenta = tipo === 'venta';
   const estados = esVenta ? ESTADOS_VENTA : ESTADOS_ALQUILER;
   const comisionTotal = esVenta
-    ? (usuarioIdVend ? Number(comisionVend) || 0 : 0) + (usuarioIdComp ? Number(comisionComp) || 0 : 0)
+    ? (usuarioIdVend ? Number(comisionVend) || 0 : 0) +
+      (usuarioIdComp ? Number(comisionComp) || 0 : 0)
     : Number(comisionAlquiler) || 0;
 
   return (
-    <Modal title={`${operacion ? 'Editar' : 'Nueva'} ${esVenta ? 'venta' : 'alquiler'}`} onClose={onClose} size="xl">
+    <Modal
+      title={`${operacion ? 'Editar' : 'Nueva'} ${esVenta ? 'venta' : 'alquiler'}`}
+      onClose={onClose}
+      size="xl"
+    >
       <form className="grid gap-2.5 sm:grid-cols-2" onSubmit={handleSubmit}>
         <Seccion titulo="Datos de la operación" icono={esVenta ? '🏠' : '🔑'} full>
           <div className="grid gap-2.5 sm:grid-cols-[140px_1fr]">
             <Campo label="Código">
-              <input value={codigo} onChange={(e) => setCodigo(e.target.value)} required className={inputClass} />
+              <input
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                required
+                className={inputClass}
+              />
             </Campo>
             <Campo label="Dirección">
               <input
@@ -185,10 +205,20 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         <Seccion titulo="Fechas" icono="📅">
           <div className="grid gap-2.5 sm:grid-cols-2">
             <Campo label="Fecha de reserva">
-              <input type="date" value={fechaReserva} onChange={(e) => setFechaReserva(e.target.value)} className={inputClass} />
+              <input
+                type="date"
+                value={fechaReserva}
+                onChange={(e) => setFechaReserva(e.target.value)}
+                className={inputClass}
+              />
             </Campo>
             <Campo label="Fecha de firma">
-              <input type="date" value={fechaFirma} onChange={(e) => setFechaFirma(e.target.value)} className={inputClass} />
+              <input
+                type="date"
+                value={fechaFirma}
+                onChange={(e) => setFechaFirma(e.target.value)}
+                className={inputClass}
+              />
             </Campo>
           </div>
         </Seccion>
@@ -227,7 +257,10 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
         </Seccion>
 
         {error && (
-          <p role="alert" className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red sm:col-span-2">
+          <p
+            role="alert"
+            className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red sm:col-span-2"
+          >
             {error}
           </p>
         )}
@@ -251,10 +284,21 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
   );
 }
 
-
-function Seccion({ titulo, icono, full, children }: { titulo: string; icono: string; full?: boolean; children: ReactNode }) {
+function Seccion({
+  titulo,
+  icono,
+  full,
+  children,
+}: {
+  titulo: string;
+  icono: string;
+  full?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className={`rounded-brand border border-line bg-white px-3 py-2.5 ${full ? 'sm:col-span-2' : ''}`}>
+    <div
+      className={`rounded-brand border border-line bg-white px-3 py-2.5 ${full ? 'sm:col-span-2' : ''}`}
+    >
       <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-red">
         <span aria-hidden>{icono}</span>
         {titulo}
@@ -306,7 +350,11 @@ function EstadoSelect({
   onChange: (v: EstadoVenta | EstadoAlquiler) => void;
 }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value as EstadoVenta | EstadoAlquiler)} className={inputClass}>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as EstadoVenta | EstadoAlquiler)}
+      className={inputClass}
+    >
       {estados.map((s) => (
         <option key={s} value={s}>
           {ESTADO_LABEL[s] ?? s}
@@ -335,7 +383,11 @@ function PuntaCard({
   return (
     <div className="flex flex-col gap-1.5 rounded-brand border border-line bg-surface/40 p-2.5">
       <p className="text-xs font-semibold text-muted">{label}</p>
-      <select value={usuarioId} onChange={(e) => onUsuarioId(e.target.value)} className={inputClass}>
+      <select
+        value={usuarioId}
+        onChange={(e) => onUsuarioId(e.target.value)}
+        className={inputClass}
+      >
         <option value="">Sin asignar</option>
         {vendedores.map((v) => (
           <option key={v.id} value={v.id}>

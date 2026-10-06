@@ -437,7 +437,12 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoEditable: 'nombre',
     // `documento` es único por inmobiliaria: sale de `n` para que la fila
     // intrusa no choque con la de la víctima antes de llegar a RLS.
-    fila: (t, i) => ({ id: i.alqPersona, tenantId: t, nombre: `Persona ${i.n}`, documento: `${30000000 + i.n}` }),
+    fila: (t, i) => ({
+      id: i.alqPersona,
+      tenantId: t,
+      nombre: `Persona ${i.n}`,
+      documento: `${30000000 + i.n}`,
+    }),
   },
   {
     tabla: 'alq_propiedad',
@@ -493,7 +498,14 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'numero',
     // (contrato, número) es único: el número sale de `n`.
-    fila: (t, i) => ({ id: i.alqTramo, tenantId: t, contratoId: i.alqContrato, numero: i.n, desde: HOY, hasta: HOY }),
+    fila: (t, i) => ({
+      id: i.alqTramo,
+      tenantId: t,
+      contratoId: i.alqContrato,
+      numero: i.n,
+      desde: HOY,
+      hasta: HOY,
+    }),
   },
   {
     tabla: 'alq_liquidacion',
@@ -502,7 +514,16 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'periodo',
     // El número es único por inmobiliaria: sale de `n`.
-    fila: (t, i) => ({ id: i.alqLiquidacion, tenantId: t, numero: i.n, personaId: i.alqPersona, periodo: '2026-01', neto: 1, fecha: HOY, detalle: {} }),
+    fila: (t, i) => ({
+      id: i.alqLiquidacion,
+      tenantId: t,
+      numero: i.n,
+      personaId: i.alqPersona,
+      periodo: '2026-01',
+      neto: 1,
+      fecha: HOY,
+      detalle: {},
+    }),
   },
   {
     tabla: 'alq_concepto',
@@ -530,7 +551,15 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'obs',
     // El número del recibo es único por inmobiliaria: sale de `n`.
-    fila: (t, i) => ({ id: i.alqCobro, tenantId: t, numero: i.n, personaId: i.alqPersona, fecha: HOY, importe: 1, medio: 'efectivo' }),
+    fila: (t, i) => ({
+      id: i.alqCobro,
+      tenantId: t,
+      numero: i.n,
+      personaId: i.alqPersona,
+      fecha: HOY,
+      importe: 1,
+      medio: 'efectivo',
+    }),
   },
   {
     tabla: 'alq_imputacion',
@@ -538,7 +567,14 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqImputacion',
     campoTenant: 'tenantId',
     campoEditable: 'importe',
-    fila: (t, i) => ({ id: i.alqImputacion, tenantId: t, cobroId: i.alqCobro, conceptoId: i.alqConcepto, importe: 1, registradaEnCobroId: i.alqCobro }),
+    fila: (t, i) => ({
+      id: i.alqImputacion,
+      tenantId: t,
+      cobroId: i.alqCobro,
+      conceptoId: i.alqConcepto,
+      importe: 1,
+      registradaEnCobroId: i.alqCobro,
+    }),
   },
   {
     tabla: 'alq_documento',
@@ -556,9 +592,19 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqFirmante',
     campoTenant: 'tenantId',
     campoEditable: 'estado',
-    fila: (t, i) => ({ id: i.alqFirmante, tenantId: t, documentoId: i.alqDocumento, personaId: i.alqPersona }),
+    fila: (t, i) => ({
+      id: i.alqFirmante,
+      tenantId: t,
+      documentoId: i.alqDocumento,
+      personaId: i.alqPersona,
+    }),
     // Una firma por persona en cada documento: la intrusa es de la persona de repuesto.
-    filaIntrusa: (t, i) => ({ id: randomUUID(), tenantId: t, documentoId: i.alqDocumento, personaId: i.personaSecundaria }),
+    filaIntrusa: (t, i) => ({
+      id: randomUUID(),
+      tenantId: t,
+      documentoId: i.alqDocumento,
+      personaId: i.personaSecundaria,
+    }),
   },
   {
     tabla: 'alq_firma_evento',
@@ -566,7 +612,13 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqFirmaEvento',
     campoTenant: 'tenantId',
     campoEditable: 'origen',
-    fila: (t, i) => ({ id: i.alqFirmaEvento, tenantId: t, documentoId: i.alqDocumento, estadoNuevo: 'firmado', origen: 'manual' }),
+    fila: (t, i) => ({
+      id: i.alqFirmaEvento,
+      tenantId: t,
+      documentoId: i.alqDocumento,
+      estadoNuevo: 'firmado',
+      origen: 'manual',
+    }),
   },
   {
     tabla: 'alq_evento',
@@ -574,7 +626,15 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqEvento',
     campoTenant: 'tenantId',
     campoEditable: 'resumen',
-    fila: (t, i) => ({ id: i.alqEvento, tenantId: t, entidad: 'contrato', entidadId: i.alqContrato, contratoId: i.alqContrato, accion: 'alta', resumen: `Alta ${i.n}` }),
+    fila: (t, i) => ({
+      id: i.alqEvento,
+      tenantId: t,
+      entidad: 'contrato',
+      entidadId: i.alqContrato,
+      contratoId: i.alqContrato,
+      accion: 'alta',
+      resumen: `Alta ${i.n}`,
+    }),
   },
   {
     tabla: 'alq_cuenta_bancaria',
@@ -582,7 +642,13 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqCuentaBancaria',
     campoTenant: 'tenantId',
     campoEditable: 'banco',
-    fila: (t, i) => ({ id: i.alqCuentaBancaria, tenantId: t, personaId: i.alqPersona, banco: `Banco ${i.n}`, alias: `cuenta.${i.n}` }),
+    fila: (t, i) => ({
+      id: i.alqCuentaBancaria,
+      tenantId: t,
+      personaId: i.alqPersona,
+      banco: `Banco ${i.n}`,
+      alias: `cuenta.${i.n}`,
+    }),
   },
   {
     tabla: 'alq_contacto',
@@ -590,7 +656,12 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqContacto',
     campoTenant: 'tenantId',
     campoEditable: 'nombre',
-    fila: (t, i) => ({ id: i.alqContacto, tenantId: t, personaId: i.alqPersona, nombre: `Contacto ${i.n}` }),
+    fila: (t, i) => ({
+      id: i.alqContacto,
+      tenantId: t,
+      personaId: i.alqPersona,
+      nombre: `Contacto ${i.n}`,
+    }),
   },
   {
     tabla: 'alq_garantia',
@@ -598,7 +669,13 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqGarantia',
     campoTenant: 'tenantId',
     campoEditable: 'obs',
-    fila: (t, i) => ({ id: i.alqGarantia, tenantId: t, contratoId: i.alqContrato, tipo: 'propietaria', garante: `Garante ${i.n}` }),
+    fila: (t, i) => ({
+      id: i.alqGarantia,
+      tenantId: t,
+      contratoId: i.alqContrato,
+      tipo: 'propietaria',
+      garante: `Garante ${i.n}`,
+    }),
   },
   {
     tabla: 'alq_plantilla',
@@ -606,7 +683,12 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqPlantilla',
     campoTenant: 'tenantId',
     campoEditable: 'nombre',
-    fila: (t, i) => ({ id: i.alqPlantilla, tenantId: t, nombre: `Plantilla ${i.n}`, cuerpo: 'Contrato de locación entre {{propietarios}} y {{inquilinos}}.' }),
+    fila: (t, i) => ({
+      id: i.alqPlantilla,
+      tenantId: t,
+      nombre: `Plantilla ${i.n}`,
+      cuerpo: 'Contrato de locación entre {{propietarios}} y {{inquilinos}}.',
+    }),
   },
   {
     tabla: 'alq_reclamo',
@@ -615,7 +697,13 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'asunto',
     // `numero` es único por inmobiliaria: sale de `n`, que la fila intrusa cambia.
-    fila: (t, i) => ({ id: i.alqReclamo, tenantId: t, numero: i.n, asunto: `Pérdida de agua ${i.n}`, contratoId: i.alqContrato }),
+    fila: (t, i) => ({
+      id: i.alqReclamo,
+      tenantId: t,
+      numero: i.n,
+      asunto: `Pérdida de agua ${i.n}`,
+      contratoId: i.alqContrato,
+    }),
   },
   {
     tabla: 'alq_reclamo_nota',
@@ -623,7 +711,12 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqReclamoNota',
     campoTenant: 'tenantId',
     campoEditable: 'texto',
-    fila: (t, i) => ({ id: i.alqReclamoNota, tenantId: t, reclamoId: i.alqReclamo, texto: `Nota ${i.n}` }),
+    fila: (t, i) => ({
+      id: i.alqReclamoNota,
+      tenantId: t,
+      reclamoId: i.alqReclamo,
+      texto: `Nota ${i.n}`,
+    }),
   },
   {
     tabla: 'alq_proveedor',
@@ -631,7 +724,12 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqProveedor',
     campoTenant: 'tenantId',
     campoEditable: 'nombre',
-    fila: (t, i) => ({ id: i.alqProveedor, tenantId: t, nombre: `Plomero ${i.n}`, rubro: 'plomero' }),
+    fila: (t, i) => ({
+      id: i.alqProveedor,
+      tenantId: t,
+      nombre: `Plomero ${i.n}`,
+      rubro: 'plomero',
+    }),
   },
   {
     tabla: 'alq_comprobante',
@@ -639,7 +737,14 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqComprobante',
     campoTenant: 'tenantId',
     campoEditable: 'descripcion',
-    fila: (t, i) => ({ id: i.alqComprobante, tenantId: t, proveedorId: i.alqProveedor, fecha: HOY, descripcion: `Arreglo ${i.n}`, importe: 1000 }),
+    fila: (t, i) => ({
+      id: i.alqComprobante,
+      tenantId: t,
+      proveedorId: i.alqProveedor,
+      fecha: HOY,
+      descripcion: `Arreglo ${i.n}`,
+      importe: 1000,
+    }),
   },
   {
     tabla: 'alq_servicio',
@@ -656,7 +761,13 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqCuentaServicio',
     campoTenant: 'tenantId',
     campoEditable: 'numeroCuenta',
-    fila: (t, i) => ({ id: i.alqCuentaServicio, tenantId: t, propiedadId: i.alqPropiedad, servicioId: i.alqServicio, numeroCuenta: `${i.n}` }),
+    fila: (t, i) => ({
+      id: i.alqCuentaServicio,
+      tenantId: t,
+      propiedadId: i.alqPropiedad,
+      servicioId: i.alqServicio,
+      numeroCuenta: `${i.n}`,
+    }),
   },
   {
     tabla: 'alq_poliza',
@@ -664,7 +775,15 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqPoliza',
     campoTenant: 'tenantId',
     campoEditable: 'aseguradora',
-    fila: (t, i) => ({ id: i.alqPoliza, tenantId: t, contratoId: i.alqContrato, aseguradora: `Aseguradora ${i.n}`, desde: HOY, hasta: HOY, premio: 1000 }),
+    fila: (t, i) => ({
+      id: i.alqPoliza,
+      tenantId: t,
+      contratoId: i.alqContrato,
+      aseguradora: `Aseguradora ${i.n}`,
+      desde: HOY,
+      hasta: HOY,
+      premio: 1000,
+    }),
   },
   {
     tabla: 'alq_boleta',
@@ -673,7 +792,17 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'cuota',
     // `clave` es única por inmobiliaria: sale de `n`, que la fila intrusa cambia.
-    fila: (t, i) => ({ id: i.alqBoleta, tenantId: t, cuentaId: i.alqCuentaServicio, clave: `cuenta|${i.n}`, periodo: '2026-10', vencimiento: HOY, importe: 1000, aCargoDe: 'inquilino', paga: 'inquilino' }),
+    fila: (t, i) => ({
+      id: i.alqBoleta,
+      tenantId: t,
+      cuentaId: i.alqCuentaServicio,
+      clave: `cuenta|${i.n}`,
+      periodo: '2026-10',
+      vencimiento: HOY,
+      importe: 1000,
+      aCargoDe: 'inquilino',
+      paga: 'inquilino',
+    }),
   },
 ];
 
@@ -751,10 +880,22 @@ export async function sembrar(db: PrismaClient, ids: IdsDeTenant): Promise<void>
     },
   });
   await db.alqPersona.create({
-    data: { id: ids.personaSecundaria, tenantId: ids.tenant, nombre: `Persona secundaria ${ids.n}`, documento: `${40000000 + ids.n}` },
+    data: {
+      id: ids.personaSecundaria,
+      tenantId: ids.tenant,
+      nombre: `Persona secundaria ${ids.n}`,
+      documento: `${40000000 + ids.n}`,
+    },
   });
   await db.alqContrato.create({
-    data: { id: ids.contratoSecundario, tenantId: ids.tenant, codigo: `ALQ-AISL-B-${ids.n}`, propiedadId: ids.alqPropiedad, inicio: HOY, fin: HOY },
+    data: {
+      id: ids.contratoSecundario,
+      tenantId: ids.tenant,
+      codigo: `ALQ-AISL-B-${ids.n}`,
+      propiedadId: ids.alqPropiedad,
+      inicio: HOY,
+      fin: HOY,
+    },
   });
 }
 

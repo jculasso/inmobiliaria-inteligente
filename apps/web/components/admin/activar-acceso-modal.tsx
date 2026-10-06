@@ -43,8 +43,9 @@ export function ActivarAccesoModal({ tenantId, usuario, onClose, onSaved }: Prop
     <Modal title={`Activar acceso de ${usuario.nombre}`} onClose={onClose}>
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <p className="text-sm text-muted">
-          Se va a crear una cuenta de acceso para <span className="font-medium text-ink">{usuario.email}</span>.
-          Cuando entre, va a ver sus operaciones y tasaciones ya cargadas.
+          Se va a crear una cuenta de acceso para{' '}
+          <span className="font-medium text-ink">{usuario.email}</span>. Cuando entre, va a ver sus
+          operaciones y tasaciones ya cargadas.
         </p>
 
         <label className="flex flex-col gap-1 text-sm">

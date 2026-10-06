@@ -22,13 +22,13 @@ jefatura administrativa, sin ayuda técnica.
 Esto es lo primero que conviene tener claro, porque el trámite **no lo podemos
 hacer nosotros**.
 
-| Tarea | Quién |
-|---|---|
-| Crear la cuenta de Meta Business | **Vacker** |
-| Subir la documentación de la empresa | **Vacker** |
-| Conseguir y dar de alta el número | **Vacker** |
-| Conectar el sistema a la cuenta ya verificada | Nosotros |
-| Escribir y enviar a aprobar los mensajes automáticos | Nosotros |
+| Tarea                                                | Quién      |
+| ---------------------------------------------------- | ---------- |
+| Crear la cuenta de Meta Business                     | **Vacker** |
+| Subir la documentación de la empresa                 | **Vacker** |
+| Conseguir y dar de alta el número                    | **Vacker** |
+| Conectar el sistema a la cuenta ya verificada        | Nosotros   |
+| Escribir y enviar a aprobar los mensajes automáticos | Nosotros   |
 
 Meta verifica la identidad de **la empresa que va a mandar los mensajes**. Pide
 documentación de Vacker y que quien la carga tenga facultades para representarla.

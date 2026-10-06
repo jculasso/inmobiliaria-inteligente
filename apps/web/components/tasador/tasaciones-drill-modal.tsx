@@ -39,7 +39,9 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
                       <span className="mt-0.5 block text-[11px] text-muted">{t.cliente}</span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}>
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}
+                      >
                         {t.estado}
                       </span>
                       {det && <span className="mt-0.5 block text-[10px] text-muted">{det}</span>}
@@ -48,7 +50,9 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
                   <CamposTarjeta>
                     <CampoTarjeta etiqueta="Tipo">{t.tipoPropiedad}</CampoTarjeta>
                     <CampoTarjeta etiqueta="Agente">{t.agente.nombre}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Valor recomendado">{fmtUSD(t.valorRecomendado)}</CampoTarjeta>
+                    <CampoTarjeta etiqueta="Valor recomendado">
+                      {fmtUSD(t.valorRecomendado)}
+                    </CampoTarjeta>
                   </CamposTarjeta>
                 </Tarjeta>
               );
@@ -86,7 +90,10 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
               tasaciones.map((t) => {
                 const det = detalleEstado(t);
                 return (
-                  <tr key={t.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                  <tr
+                    key={t.id}
+                    className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                  >
                     <td className="px-3 py-2.5 font-semibold text-ink">{t.direccion}</td>
                     <td className="px-3 py-2.5 text-muted">{t.cliente}</td>
                     <td className="px-3 py-2.5">{t.tipoPropiedad}</td>
@@ -95,7 +102,9 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
                       {fmtUSD(t.valorRecomendado)}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}>
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${estadoClass(t.estado)}`}
+                      >
                         {t.estado}
                       </span>
                       {det && <div className="mt-0.5 text-[11px] text-muted">{det}</div>}
@@ -108,10 +117,15 @@ export function TasacionesDrillModal({ titulo, subtitulo, tasaciones, onClose }:
           {tasaciones.length > 0 && (
             <tfoot className="sticky bottom-0 bg-surface">
               <tr className="border-t-2 border-line text-ink">
-                <td className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider" colSpan={4}>
+                <td
+                  className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider"
+                  colSpan={4}
+                >
                   Total ({tasaciones.length})
                 </td>
-                <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(total)}</td>
+                <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">
+                  {fmtUSD(total)}
+                </td>
                 <td className="px-3 py-3" />
               </tr>
             </tfoot>

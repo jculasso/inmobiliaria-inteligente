@@ -24,13 +24,13 @@ ambiente de prueba y por el riesgo del importador (§12 de
 
 Con los datos que la importación ya trae a la tabla `propiedad`:
 
-| Dato | De dónde | Para qué sirve |
-|---|---|---|
-| Está publicada | existe en Tokko con ese `reference_code` | Confirma la acción de la semana 1 |
-| Cuántas fotos | `fotos` | La semana 1 también tiene "producción fotográfica": publicar con 3 fotos es un problema que hoy nadie ve |
-| A qué precio | `precio` vs `protocolo.precioPublicado` | **El más valioso**: si el propietario acordó bajar el precio y el portal sigue con el viejo, hoy no lo detecta nadie |
-| Hace cuánto no se toca | `deleted_at` (sí, ese campo — ver §12) | Las semanas 3-4 son de ajuste |
-| El link a la ficha | `publicUrl` | El CEO verifica en un clic en vez de pedir una captura |
+| Dato                   | De dónde                                 | Para qué sirve                                                                                                       |
+| ---------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Está publicada         | existe en Tokko con ese `reference_code` | Confirma la acción de la semana 1                                                                                    |
+| Cuántas fotos          | `fotos`                                  | La semana 1 también tiene "producción fotográfica": publicar con 3 fotos es un problema que hoy nadie ve             |
+| A qué precio           | `precio` vs `protocolo.precioPublicado`  | **El más valioso**: si el propietario acordó bajar el precio y el portal sigue con el viejo, hoy no lo detecta nadie |
+| Hace cuánto no se toca | `deleted_at` (sí, ese campo — ver §12)   | Las semanas 3-4 son de ajuste                                                                                        |
+| El link a la ficha     | `publicUrl`                              | El CEO verifica en un clic en vez de pedir una captura                                                               |
 
 ## Reglas de negocio
 

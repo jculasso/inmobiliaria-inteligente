@@ -16,7 +16,10 @@ export class InformeProtocoloService {
     private readonly protocolos: ProtocolosService,
   ) {}
 
-  async generar(id: string, ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+  async generar(
+    id: string,
+    ctx: TenantContext,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     // `getOne` ya valida alcance por rol y devuelve la foto firmada, que es lo
     // que react-pdf necesita para poder bajarla al armar el PDF (bucket privado).
     const [protocolo, marca] = await Promise.all([

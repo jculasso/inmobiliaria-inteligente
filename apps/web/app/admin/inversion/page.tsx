@@ -88,31 +88,33 @@ export default function InversionPage() {
       <Seccion titulo="Los tres problemas, medidos">
         <Tarjeta titulo="1 · No hay forma de recuperar los datos">
           <p>
-            El plan gratis de Supabase <strong>no incluye backups automáticos ni restauración</strong>. La
-            documentación oficial recomienda exportar a mano con la línea de comandos.
+            El plan gratis de Supabase{' '}
+            <strong>no incluye backups automáticos ni restauración</strong>. La documentación
+            oficial recomienda exportar a mano con la línea de comandos.
           </p>
           <p>
-            Es el único problema de esta lista que es <strong>irreversible</strong>. Un borrado accidental
-            o una migración mal hecha no tienen vuelta atrás.
+            Es el único problema de esta lista que es <strong>irreversible</strong>. Un borrado
+            accidental o una migración mal hecha no tienen vuelta atrás.
           </p>
         </Tarjeta>
 
         <Tarjeta titulo="2 · La API se duerme y tarda en despertar">
           <p>
-            Render apaga el servicio tras <Cifra valor="15" unidad="min" /> sin uso, y el primer pedido
-            después tarda entre <Cifra valor="30" unidad="s" /> y <Cifra valor="60" unidad="s" />.
+            Render apaga el servicio tras <Cifra valor="15" unidad="min" /> sin uso, y el primer
+            pedido después tarda entre <Cifra valor="30" unidad="s" /> y{' '}
+            <Cifra valor="60" unidad="s" />.
           </p>
           <p>
-            Hay un ping automático para evitarlo, pero <strong>no funciona como se esperaba</strong>: los
-            cron de GitHub se postergan, y medido corre 4 o 5 veces por día en vez de cada 5 minutos. En
-            la práctica, la primera persona de cada mañana espera.
+            Hay un ping automático para evitarlo, pero <strong>no funciona como se esperaba</strong>
+            : los cron de GitHub se postergan, y medido corre 4 o 5 veces por día en vez de cada 5
+            minutos. En la práctica, la primera persona de cada mañana espera.
           </p>
         </Tarjeta>
 
         <Tarjeta titulo="3 · La API y la base están en continentes distintos">
           <p>
-            Cada consulta paga el viaje de ida y vuelta. Con varias consultas por pantalla, se acumula en
-            todas las operaciones del día.
+            Cada consulta paga el viaje de ida y vuelta. Con varias consultas por pantalla, se
+            acumula en todas las operaciones del día.
           </p>
           <p>Ninguna optimización de código compensa la distancia física.</p>
         </Tarjeta>
@@ -168,11 +170,20 @@ export default function InversionPage() {
               {ITEMS.map((it) => {
                 const pendiente = it.prioridad === '—';
                 return (
-                  <tr key={it.que} className={`border-b border-line ${pendiente ? '' : 'bg-brand-red/5'}`}>
-                    <td className={`px-3 py-3 font-extrabold ${pendiente ? 'text-muted' : 'text-brand-red'}`}>
+                  <tr
+                    key={it.que}
+                    className={`border-b border-line ${pendiente ? '' : 'bg-brand-red/5'}`}
+                  >
+                    <td
+                      className={`px-3 py-3 font-extrabold ${pendiente ? 'text-muted' : 'text-brand-red'}`}
+                    >
                       {it.prioridad}
                     </td>
-                    <td className={`px-3 py-3 font-semibold ${pendiente ? 'text-muted' : 'text-ink'}`}>{it.que}</td>
+                    <td
+                      className={`px-3 py-3 font-semibold ${pendiente ? 'text-muted' : 'text-ink'}`}
+                    >
+                      {it.que}
+                    </td>
                     <td className="px-3 py-3 text-muted">{it.resuelve}</td>
                     <td className="px-3 py-3 text-right">
                       <Cifra valor={it.precio} />
@@ -184,7 +195,10 @@ export default function InversionPage() {
             </tbody>
             <tfoot className="bg-surface">
               <tr className="border-t-2 border-line">
-                <td className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider text-ink" colSpan={3}>
+                <td
+                  className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider text-ink"
+                  colSpan={3}
+                >
                   Las tres primeras
                 </td>
                 <td className="px-3 py-3 text-right">
@@ -197,17 +211,17 @@ export default function InversionPage() {
 
         <Aviso tono="ok" titulo="En perspectiva">
           <p>
-            Cobrando <strong>US$ 150 por inmobiliaria</strong>, el primer cliente que pague cubre toda la
-            infraestructura y los siguientes son margen. El salto siguiente —máquina más grande, más
-            cómputo en la base— recién aparece pasadas varias decenas de inmobiliarias.
+            Cobrando <strong>US$ 150 por inmobiliaria</strong>, el primer cliente que pague cubre
+            toda la infraestructura y los siguientes son margen. El salto siguiente —máquina más
+            grande, más cómputo en la base— recién aparece pasadas varias decenas de inmobiliarias.
           </p>
         </Aviso>
       </Seccion>
 
       <Seccion titulo="Lo que no se arregla con dinero">
         <p className="max-w-3xl text-sm leading-relaxed text-muted">
-          Dos cosas que no dependen de qué plan se pague, sino de horas de trabajo. Ninguna de las dos
-          urge hoy.
+          Dos cosas que no dependen de qué plan se pague, sino de horas de trabajo. Ninguna de las
+          dos urge hoy.
         </p>
 
         <Aviso tono="ok" titulo="Paginación · lo grave ya está resuelto">
@@ -217,21 +231,24 @@ export default function InversionPage() {
           </p>
           <p>
             Ahora la pantalla lo dice y explica cómo filtrar para ver el resto, así que{' '}
-            <strong>dejó de ser un problema de datos incompletos</strong>. Falta poder recorrer todo sin
-            filtrar — eso ya es comodidad, no integridad.
+            <strong>dejó de ser un problema de datos incompletos</strong>. Falta poder recorrer todo
+            sin filtrar — eso ya es comodidad, no integridad.
           </p>
         </Aviso>
 
-        <Aviso tono="atencion" titulo="KPIs calculados en la base · pendiente, medio día de trabajo">
+        <Aviso
+          tono="atencion"
+          titulo="KPIs calculados en la base · pendiente, medio día de trabajo"
+        >
           <p>
-            Hoy el tablero trae todas las operaciones del año y las suma en memoria, y varias pantallas
-            repiten esa consulta.
+            Hoy el tablero trae todas las operaciones del año y las suma en memoria, y varias
+            pantallas repiten esa consulta.
           </p>
           <p>
-            Con la base al lado duele menos, pero sigue siendo lo que más va a costar cuando crezca el
-            volumen. <strong>No conviene tocarlo cerca de una salida a producción</strong>: es el cálculo
-            del ranking, los objetivos y las comisiones, y si un número sale distinto nadie va a pensar
-            que hubo un cambio técnico.
+            Con la base al lado duele menos, pero sigue siendo lo que más va a costar cuando crezca
+            el volumen. <strong>No conviene tocarlo cerca de una salida a producción</strong>: es el
+            cálculo del ranking, los objetivos y las comisiones, y si un número sale distinto nadie
+            va a pensar que hubo un cambio técnico.
           </p>
         </Aviso>
       </Seccion>
@@ -239,21 +256,22 @@ export default function InversionPage() {
       <Seccion titulo="Riesgo de no hacer nada">
         <Tarjeta>
           <p>
-            <strong>El más grave no es la lentitud, es la ausencia de backups.</strong> Todo lo demás se
-            resuelve pagando el mes que viene; los datos perdidos no vuelven.
+            <strong>El más grave no es la lentitud, es la ausencia de backups.</strong> Todo lo
+            demás se resuelve pagando el mes que viene; los datos perdidos no vuelven.
           </p>
           <p>
-            Además, el plan gratis de Render da 750 horas por mes para todo el espacio de trabajo. Si se
-            agotan, <strong>suspende todos los servicios gratuitos hasta el mes siguiente</strong> — no los
+            Además, el plan gratis de Render da 750 horas por mes para todo el espacio de trabajo.
+            Si se agotan,{' '}
+            <strong>suspende todos los servicios gratuitos hasta el mes siguiente</strong> — no los
             ralentiza, los apaga.
           </p>
         </Tarjeta>
       </Seccion>
 
       <p className="mt-8 text-xs text-muted">
-        Precios de lista de Supabase, Render, Vercel y AWS Lightsail al {HOY}. Las mediciones de arranque
-        en frío y de frecuencia del ping se tomaron en producción. Lightsail en San Pablo incluye la mitad
-        del tráfico que en otras regiones, holgado igual para este volumen.
+        Precios de lista de Supabase, Render, Vercel y AWS Lightsail al {HOY}. Las mediciones de
+        arranque en frío y de frecuencia del ping se tomaron en producción. Lightsail en San Pablo
+        incluye la mitad del tráfico que en otras regiones, holgado igual para este volumen.
       </p>
     </>
   );

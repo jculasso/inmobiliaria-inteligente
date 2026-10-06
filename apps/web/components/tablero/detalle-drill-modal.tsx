@@ -47,7 +47,8 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
         if (!cancelado) setOperaciones(res);
       })
       .catch((err) => {
-        if (!cancelado) setError(err instanceof Error ? err.message : 'No se pudo cargar el detalle.');
+        if (!cancelado)
+          setError(err instanceof Error ? err.message : 'No se pudo cargar el detalle.');
       })
       .finally(() => {
         if (!cancelado) setLoading(false);
@@ -71,7 +72,8 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
   let resumen: { clave: FocoDrill | 'valor'; label: string; valor: string }[] = [];
   if (operaciones && esVenta) {
     const r = resumirVentas(filas);
-    const delLado = lado === 'compradora' ? ' compradoras' : lado === 'vendedora' ? ' vendedoras' : '';
+    const delLado =
+      lado === 'compradora' ? ' compradoras' : lado === 'vendedora' ? ' vendedoras' : '';
     resumen = [
       { clave: 'operaciones', label: 'Operaciones', valor: fmtNum(r.operaciones) },
       { clave: 'puntas', label: `Puntas${delLado}`, valor: fmtNum(r.puntas) },
@@ -85,7 +87,11 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
     resumen = [
       { clave: 'operaciones', label: 'Alquileres', valor: fmtNum(filas.length) },
       { clave: 'comision', label: 'Comisión', valor: fmtUSD(comision) },
-      { clave: 'valor', label: 'Valor prom./mes', valor: fmtUSD(filas.length ? valores / filas.length : 0) },
+      {
+        clave: 'valor',
+        label: 'Valor prom./mes',
+        valor: fmtUSD(filas.length ? valores / filas.length : 0),
+      },
     ];
   }
   const totalComision = filas.reduce((s, f) => s + f.comision, 0);
@@ -113,11 +119,17 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
             <div
               key={r.clave}
               className={`rounded-lg border px-3 py-2 ${
-                foco === r.clave ? 'border-brand-red/40 bg-brand-red/5' : 'border-line bg-surface/50'
+                foco === r.clave
+                  ? 'border-brand-red/40 bg-brand-red/5'
+                  : 'border-line bg-surface/50'
               }`}
             >
-              <dt className="text-[10px] font-bold uppercase tracking-wider text-muted">{r.label}</dt>
-              <dd className={`text-base font-extrabold tabular-nums ${foco === r.clave ? 'text-brand-red' : 'text-ink'}`}>
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                {r.label}
+              </dt>
+              <dd
+                className={`text-base font-extrabold tabular-nums ${foco === r.clave ? 'text-brand-red' : 'text-ink'}`}
+              >
                 {r.valor}
               </dd>
             </div>
@@ -140,15 +152,23 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
                         {fila.op.codigo} · Firma {fila.op.fechaFirma ?? '—'}
                       </span>
                     </span>
-                    <span className={`shrink-0 ${estadoBadgeClass(fila.op.estado)}`}>{estadoLabel(fila.op.estado)}</span>
+                    <span className={`shrink-0 ${estadoBadgeClass(fila.op.estado)}`}>
+                      {estadoLabel(fila.op.estado)}
+                    </span>
                   </div>
                   <CamposTarjeta>
                     <CampoTarjeta etiqueta={esVenta ? 'Precio' : 'Valor/mes'}>
                       {fmtUSD(fila.op.precio ?? fila.op.valorMensual ?? 0)}
                     </CampoTarjeta>
                     <CampoTarjeta etiqueta="Comisión">{fmtUSD(fila.comision)}</CampoTarjeta>
-                    {esVenta && <CampoTarjeta etiqueta="Vendedora">{nombre(fila, 'vendedora')}</CampoTarjeta>}
-                    {esVenta && <CampoTarjeta etiqueta="Compradora">{nombre(fila, 'compradora')}</CampoTarjeta>}
+                    {esVenta && (
+                      <CampoTarjeta etiqueta="Vendedora">{nombre(fila, 'vendedora')}</CampoTarjeta>
+                    )}
+                    {esVenta && (
+                      <CampoTarjeta etiqueta="Compradora">
+                        {nombre(fila, 'compradora')}
+                      </CampoTarjeta>
+                    )}
                   </CamposTarjeta>
                 </Tarjeta>
               ))}
@@ -182,19 +202,32 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
                 </tr>
               ) : (
                 filas.map((fila) => (
-                  <tr key={fila.op.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                  <tr
+                    key={fila.op.id}
+                    className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                  >
                     <td className="px-3 py-2.5 text-xs text-muted">{fila.op.codigo}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-muted">{fila.op.fechaFirma ?? '—'}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-muted">
+                      {fila.op.fechaFirma ?? '—'}
+                    </td>
                     <td className="px-3 py-2.5 font-semibold text-ink">{fila.op.direccion}</td>
                     <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">
                       {fmtUSD(fila.op.precio ?? fila.op.valorMensual ?? 0)}
                     </td>
-                    {esVenta && <td className="px-3 py-2.5 text-right tabular-nums text-muted">{fila.puntas.length}</td>}
+                    {esVenta && (
+                      <td className="px-3 py-2.5 text-right tabular-nums text-muted">
+                        {fila.puntas.length}
+                      </td>
+                    )}
                     {esVenta && <td className="px-3 py-2.5">{nombre(fila, 'vendedora')}</td>}
                     {esVenta && <td className="px-3 py-2.5">{nombre(fila, 'compradora')}</td>}
-                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">{fmtUSD(fila.comision)}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink">
+                      {fmtUSD(fila.comision)}
+                    </td>
                     <td className="px-3 py-2.5">
-                      <span className={estadoBadgeClass(fila.op.estado)}>{estadoLabel(fila.op.estado)}</span>
+                      <span className={estadoBadgeClass(fila.op.estado)}>
+                        {estadoLabel(fila.op.estado)}
+                      </span>
                     </td>
                   </tr>
                 ))
@@ -203,10 +236,15 @@ export function DetalleDrillModal({ titulo, subtitulo, filtro, foco, lado, onClo
             {filas.length > 0 && (
               <tfoot className="sticky bottom-0 bg-surface">
                 <tr className="border-t-2 border-line text-ink">
-                  <td className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider" colSpan={esVenta ? 7 : 4}>
+                  <td
+                    className="px-3 py-3 text-[11px] font-extrabold uppercase tracking-wider"
+                    colSpan={esVenta ? 7 : 4}
+                  >
                     Total ({filas.length})
                   </td>
-                  <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">{fmtUSD(totalComision)}</td>
+                  <td className="px-3 py-3 text-right text-base font-extrabold tabular-nums">
+                    {fmtUSD(totalComision)}
+                  </td>
                   <td className="px-3 py-3" />
                 </tr>
               </tfoot>

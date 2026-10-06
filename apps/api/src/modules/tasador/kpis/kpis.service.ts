@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { EstadoTasacion, RankingCaptacionItem, ResumenTasadorKpi, TasadorKpiFiltro } from '@vacker/types';
+import type {
+  EstadoTasacion,
+  RankingCaptacionItem,
+  ResumenTasadorKpi,
+  TasadorKpiFiltro,
+} from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
 import { TenantPrismaService } from '../../../prisma/tenant-prisma.service';
 import { scopeDeVista, type Scope } from '../../tablero/scope.util';
@@ -53,10 +58,7 @@ export class KpisService {
       const rows = await tx.tasacion.findMany({ where, select: tasacionKpiSelect });
       const scopeSet = toScopeSet(scope);
       return Array.from({ length: 12 }, (_, i) =>
-        agregar(
-          aplanar(rows.filter((r) => r.fecha.getUTCMonth() === i)),
-          scopeSet,
-        ),
+        agregar(aplanar(rows.filter((r) => r.fecha.getUTCMonth() === i)), scopeSet),
       );
     });
   }

@@ -28,9 +28,7 @@ interface ApiError {
 
 /** Error de Multer al superarse `UPLOAD_MAX_BYTES`. */
 function esArchivoDemasiadoGrande(e: unknown): boolean {
-  return (
-    typeof e === 'object' && e !== null && (e as { code?: string }).code === 'LIMIT_FILE_SIZE'
-  );
+  return typeof e === 'object' && e !== null && (e as { code?: string }).code === 'LIMIT_FILE_SIZE';
 }
 
 @Catch()
@@ -64,7 +62,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // violación de índice único bajo carrera). Se loguean siempre con su
       // código y meta — el mensaje que ve el cliente es genérico, pero sin
       // este log la causa real (qué constraint, qué tabla) queda invisible.
-      this.logger.error(`Prisma ${exception.code}: ${exception.message}`, JSON.stringify(exception.meta));
+      this.logger.error(
+        `Prisma ${exception.code}: ${exception.message}`,
+        JSON.stringify(exception.meta),
+      );
       if (exception.code === 'P2002') {
         status = HttpStatus.CONFLICT;
         message = 'Ya existe un registro con esos datos únicos.';

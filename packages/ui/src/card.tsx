@@ -23,9 +23,7 @@ export const CardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(function CardTitle({ className, ...props }, ref) {
-  return (
-    <h3 ref={ref} className={cn('text-lg font-bold text-ink', className)} {...props} />
-  );
+  return <h3 ref={ref} className={cn('text-lg font-bold text-ink', className)} {...props} />;
 });
 
 export const CardDescription = React.forwardRef<

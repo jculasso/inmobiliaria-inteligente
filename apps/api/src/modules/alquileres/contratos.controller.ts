@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AnularConMotivoSchema,
@@ -57,7 +68,10 @@ export class ContratosController {
   @Post()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Da de alta un contrato, en borrador' })
-  crear(@Body(new ZodValidationPipe(ContratoInputSchema)) dto: Contrato, @CurrentUser() user: AuthPrincipal) {
+  crear(
+    @Body(new ZodValidationPipe(ContratoInputSchema)) dto: Contrato,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.contratos.crear(ctxDe(user), dto);
   }
 
@@ -97,8 +111,14 @@ export class ContratosController {
   @Post(':id/anular')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Anula un contrato cargado por error, con motivo; anula también sus conceptos' })
-  anular(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(AnularConMotivoSchema)) body: AnularConMotivo, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary: 'Anula un contrato cargado por error, con motivo; anula también sus conceptos',
+  })
+  anular(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(AnularConMotivoSchema)) body: AnularConMotivo,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.contratos.anular(ctxDe(user), id, body.motivo);
   }
 
@@ -111,7 +131,9 @@ export class ContratosController {
 
   @Get(':id/historial')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Quién hizo qué y cuándo con este contrato, sus cobros y liquidaciones' })
+  @ApiOperation({
+    summary: 'Quién hizo qué y cuándo con este contrato, sus cobros y liquidaciones',
+  })
   historialDe(@Param('id', ParseUUIDPipe) id: string) {
     return this.historial.delContrato(id);
   }
@@ -128,10 +150,14 @@ export class ContratosController {
   @Post(':id/cargos-ingreso')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Carga los cargos de ingreso (comisión, informes, depósito, sellado), una vez por contrato' })
+  @ApiOperation({
+    summary:
+      'Carga los cargos de ingreso (comisión, informes, depósito, sellado), una vez por contrato',
+  })
   cargarCargos(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(CargarCargosIngresoSchema)) body: z.output<typeof CargarCargosIngresoSchema>,
+    @Body(new ZodValidationPipe(CargarCargosIngresoSchema))
+    body: z.output<typeof CargarCargosIngresoSchema>,
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.completo.cargarCargos(ctxDe(user), id, body.cargos);
@@ -151,7 +177,8 @@ export class ContratosController {
   @ApiOperation({ summary: 'Registra la devolución del depósito al inquilino' })
   devolverDeposito(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(DevolverDepositoSchema)) body: z.output<typeof DevolverDepositoSchema>,
+    @Body(new ZodValidationPipe(DevolverDepositoSchema))
+    body: z.output<typeof DevolverDepositoSchema>,
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.completo.devolverDeposito(ctxDe(user), id, body.fecha);
@@ -171,18 +198,28 @@ export class ContratosController {
   @Post(':id/extender')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Extiende un contrato vigente: suma tramos desde el día siguiente al fin' })
-  extender(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(ExtenderContratoSchema)) dto: ExtenderContrato, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary: 'Extiende un contrato vigente: suma tramos desde el día siguiente al fin',
+  })
+  extender(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(ExtenderContratoSchema)) dto: ExtenderContrato,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.contratos.extender(ctxDe(user), id, dto);
   }
 
   @Post(':id/generar-desde-plantilla')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Genera el PDF del contrato desde una plantilla y lo deja como su documento, para firmar' })
+  @ApiOperation({
+    summary:
+      'Genera el PDF del contrato desde una plantilla y lo deja como su documento, para firmar',
+  })
   generarDesdePlantilla(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(GenerarDesdePlantillaSchema)) body: z.output<typeof GenerarDesdePlantillaSchema>,
+    @Body(new ZodValidationPipe(GenerarDesdePlantillaSchema))
+    body: z.output<typeof GenerarDesdePlantillaSchema>,
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.plantillas.generar(ctxDe(user), id, body.plantillaId);

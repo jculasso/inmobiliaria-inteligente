@@ -10,11 +10,18 @@ import {
 
 describe('superficieTotal', () => {
   it('suma cubierta + semicubierta + 30% de descubierta', () => {
-    expect(superficieTotal({ cubierta: 80, semicubierta: 10, descubierta: 20 }, COEFICIENTES_POR_DEFECTO)).toBeCloseTo(96);
+    expect(
+      superficieTotal(
+        { cubierta: 80, semicubierta: 10, descubierta: 20 },
+        COEFICIENTES_POR_DEFECTO,
+      ),
+    ).toBeCloseTo(96);
   });
 
   it('es 0 si todas las superficies son 0', () => {
-    expect(superficieTotal({ cubierta: 0, semicubierta: 0, descubierta: 0 }, COEFICIENTES_POR_DEFECTO)).toBe(0);
+    expect(
+      superficieTotal({ cubierta: 0, semicubierta: 0, descubierta: 0 }, COEFICIENTES_POR_DEFECTO),
+    ).toBe(0);
   });
 });
 
@@ -77,7 +84,12 @@ describe('los coeficientes son de cada inmobiliaria', () => {
   it('la cubierta siempre cuenta entera, no se configura', () => {
     // Es la definición de superficie cubierta; hacerla configurable sería
     // permitir decir que un metro construido vale medio metro.
-    expect(superficieTotal({ cubierta: 80, semicubierta: 0, descubierta: 0 }, { semicubierta: 0, descubierta: 0 })).toBe(80);
+    expect(
+      superficieTotal(
+        { cubierta: 80, semicubierta: 0, descubierta: 0 },
+        { semicubierta: 0, descubierta: 0 },
+      ),
+    ).toBe(80);
   });
 });
 
@@ -88,7 +100,9 @@ describe('formulaEnPalabras', () => {
    * pasaría a mentirle a cualquiera que no use el criterio de Vacker.
    */
   it('con el criterio de Vacker dice lo que decía el texto escrito a mano', () => {
-    expect(formulaEnPalabras(COEFICIENTES_POR_DEFECTO)).toBe('cubierta + semicubierta + 30% descubierta');
+    expect(formulaEnPalabras(COEFICIENTES_POR_DEFECTO)).toBe(
+      'cubierta + semicubierta + 30% descubierta',
+    );
   });
 
   it('muestra los porcentajes de cada una cuando no son enteros', () => {

@@ -4,11 +4,20 @@ import type { ContratoResumenDto } from '@vacker/types';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn() }));
-vi.mock('../../lib/alquileres-api', () => ({ borrarContrato: vi.fn(), anularContrato: vi.fn(), getContrato: vi.fn(), actualizarDatosContrato: vi.fn() }));
+vi.mock('../../lib/alquileres-api', () => ({
+  borrarContrato: vi.fn(),
+  anularContrato: vi.fn(),
+  getContrato: vi.fn(),
+  actualizarDatosContrato: vi.fn(),
+}));
 
 import { ContratosLista } from './contratos-lista';
 
-const c = (codigo: string, proximaIndexacion: string | null, importeVigente: number | null = 300_000): ContratoResumenDto => ({
+const c = (
+  codigo: string,
+  proximaIndexacion: string | null,
+  importeVigente: number | null = 300_000,
+): ContratoResumenDto => ({
   id: crypto.randomUUID(),
   codigo,
   estado: 'vigente',
@@ -29,7 +38,12 @@ describe('ContratosLista', () => {
    * Vacker: es lo primero que hay que resolver cada mes.
    */
   it('marca la indexación vencida', () => {
-    render(<ContratosLista contratos={[c('42', '2026-10-01'), c('43', '2027-01-01')]} hoy="2026-10-05" />);
+    render(
+      <ContratosLista
+        contratos={[c('42', '2026-10-01'), c('43', '2027-01-01')]}
+        hoy="2026-10-05"
+      />,
+    );
     const tabla = within(screen.getByRole('table'));
     expect(tabla.getByText(/01\/10\/2026 · vencida/)).toBeInTheDocument();
     expect(tabla.queryByText(/01\/01\/2027 · vencida/)).not.toBeInTheDocument();
@@ -55,13 +69,22 @@ describe('ContratosLista', () => {
 
   it('la papelera de un vigente pide el motivo', () => {
     render(<ContratosLista contratos={[c('ALT-0002', null)]} hoy="2026-10-05" />);
-    fireEvent.click(within(screen.getByRole('table')).getByRole('button', { name: 'Anular el contrato ALT-0002' }));
+    fireEvent.click(
+      within(screen.getByRole('table')).getByRole('button', {
+        name: 'Anular el contrato ALT-0002',
+      }),
+    );
     expect(within(screen.getByRole('dialog')).getByText('Motivo')).toBeInTheDocument();
   });
 
   // Un botón dentro de otro es HTML inválido: React no hidrata y la tarjeta del teléfono se rompe.
   it('en el teléfono, las acciones no quedan dentro del botón de la tarjeta', () => {
-    const { container } = render(<ContratosLista contratos={[c('ALT-0002', null), { ...c('ALT-0001', null), estado: 'borrador' as const }]} hoy="2026-10-05" />);
+    const { container } = render(
+      <ContratosLista
+        contratos={[c('ALT-0002', null), { ...c('ALT-0001', null), estado: 'borrador' as const }]}
+        hoy="2026-10-05"
+      />,
+    );
     expect(container.querySelectorAll('button button')).toHaveLength(0);
   });
 });

@@ -36,15 +36,12 @@ describe('matcher del middleware', () => {
     expect(exigeSesion(ruta)).toBe(false);
   });
 
-  it.each([
-    ['/tablero'],
-    ['/tablero/ventas'],
-    ['/tasador/tasaciones'],
-    ['/protocolo'],
-    ['/todo'],
-  ])('%s sí pasa por el middleware', (ruta) => {
-    expect(exigeSesion(ruta)).toBe(true);
-  });
+  it.each([['/tablero'], ['/tablero/ventas'], ['/tasador/tasaciones'], ['/protocolo'], ['/todo']])(
+    '%s sí pasa por el middleware',
+    (ruta) => {
+      expect(exigeSesion(ruta)).toBe(true);
+    },
+  );
 });
 
 // `/offline` pasa por el matcher pero no exige sesión: está en PUBLIC_PATHS.
@@ -54,4 +51,3 @@ describe('rutas públicas', () => {
     expect(PUBLIC_PATHS).toEqual(expect.arrayContaining(['/', '/offline']));
   });
 });
-

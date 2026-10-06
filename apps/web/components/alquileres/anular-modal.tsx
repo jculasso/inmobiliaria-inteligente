@@ -41,8 +41,17 @@ export function AnularModal<T = unknown>({
     <Modal title={titulo} onClose={onClose}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1 text-sm text-muted">{detalle}</div>
-        <Campo label="Motivo" requerido hint="Queda en el historial, con quién lo anuló. Al menos 3 letras.">
-          <input className={inputClass} value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus />
+        <Campo
+          label="Motivo"
+          requerido
+          hint="Queda en el historial, con quién lo anuló. Al menos 3 letras."
+        >
+          <input
+            className={inputClass}
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            autoFocus
+          />
         </Campo>
         {error && (
           <p role="alert" className="text-sm font-medium text-danger">
@@ -53,7 +62,11 @@ export function AnularModal<T = unknown>({
           <Button variant="secondary" onClick={onClose} disabled={enviando}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={anular} disabled={enviando || motivo.trim().length < 3}>
+          <Button
+            variant="primary"
+            onClick={anular}
+            disabled={enviando || motivo.trim().length < 3}
+          >
             {enviando ? 'Anulando…' : 'Anular'}
           </Button>
         </div>

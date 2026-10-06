@@ -12,14 +12,31 @@ const base = {
   tenant: {
     nombre: 'Vacker',
     plan: 'basico',
-    modulos: { tablero: true, tasador: false, todo: false, protocolo: false, publicacion: false, alquileres: false },
+    modulos: {
+      tablero: true,
+      tasador: false,
+      todo: false,
+      protocolo: false,
+      publicacion: false,
+      alquileres: false,
+    },
     /*
      * `config: {}` entra vacía y sale con el criterio de tasación por defecto:
      * el schema le pone los coeficientes. Que este test lo diga es a propósito
      * — es la garantía de que una inmobiliaria que nunca los configuró calcula
      * como Vacker y no con `undefined`.
      */
-    config: { coefSemicubierta: 1, coefDescubierta: 0.3, ivaHonorariosPct: 21, comisionInicialPct: 5, comisionInicialCuotas: 2, comisionInicialConIva: true, selladoPct: 0, selladoInquilinoPct: 50, depositoGestion: 'entrega_propietario' },
+    config: {
+      coefSemicubierta: 1,
+      coefDescubierta: 0.3,
+      ivaHonorariosPct: 21,
+      comisionInicialPct: 5,
+      comisionInicialCuotas: 2,
+      comisionInicialConIva: true,
+      selladoPct: 0,
+      selladoInquilinoPct: 50,
+      depositoGestion: 'entrega_propietario',
+    },
   },
 };
 
@@ -35,12 +52,17 @@ describe('AuthPrincipalSchema', () => {
    */
   it('un principal sin la clave alquileres entra con el módulo apagado', () => {
     const { alquileres: _, ...sinAlquileres } = base.tenant.modulos;
-    const parsed = AuthPrincipalSchema.parse({ ...base, tenant: { ...base.tenant, modulos: sinAlquileres } });
+    const parsed = AuthPrincipalSchema.parse({
+      ...base,
+      tenant: { ...base.tenant, modulos: sinAlquileres },
+    });
     expect(parsed.tenant.modulos.alquileres).toBe(false);
   });
 
   it('acepta el rol administracion', () => {
-    expect(AuthPrincipalSchema.safeParse({ ...base, roles: ['administracion'] }).success).toBe(true);
+    expect(AuthPrincipalSchema.safeParse({ ...base, roles: ['administracion'] }).success).toBe(
+      true,
+    );
   });
 
   it('rechaza un rol desconocido', () => {

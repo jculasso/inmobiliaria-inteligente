@@ -43,8 +43,7 @@ export class KpisService {
 
       const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
       const puntasAnio = aplanarPuntas(escrituradas);
-      const puntasMes =
-        filtro.mes != null ? puntasDeMes(escrituradas, filtro.mes) : [];
+      const puntasMes = filtro.mes != null ? puntasDeMes(escrituradas, filtro.mes) : [];
 
       // Pendiente de cobro = comisión de puntas de operaciones señadas del año.
       const senadas = await this.ventas(tx, filtro.anio, 'senada', scope.usuarioIds);
@@ -84,7 +83,9 @@ export class KpisService {
       const scope = await scopeDeVista(ctx, tx, verTodo);
       const escrituradas = await this.ventas(tx, anio, 'escriturada', scope.usuarioIds);
       const scopeSet = toScopeSet(scope);
-      return Array.from({ length: 12 }, (_, i) => agregar(puntasDeMes(escrituradas, i + 1), scopeSet));
+      return Array.from({ length: 12 }, (_, i) =>
+        agregar(puntasDeMes(escrituradas, i + 1), scopeSet),
+      );
     });
   }
 
@@ -101,7 +102,11 @@ export class KpisService {
         select: { mes: true, comTotal: true, valorMensual: true },
       });
       return alquileresPorMes(
-        rows.map((r) => ({ mes: r.mes, comision: decToNum(r.comTotal), valorMensual: decToNum(r.valorMensual) })),
+        rows.map((r) => ({
+          mes: r.mes,
+          comision: decToNum(r.comTotal),
+          valorMensual: decToNum(r.valorMensual),
+        })),
       );
     });
   }
@@ -112,9 +117,7 @@ export class KpisService {
       const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
       const escrituradas = await this.ventas(tx, filtro.anio, 'escriturada', scope.usuarioIds);
       const puntas =
-        filtro.mes != null
-          ? puntasDeMes(escrituradas, filtro.mes)
-          : aplanarPuntas(escrituradas);
+        filtro.mes != null ? puntasDeMes(escrituradas, filtro.mes) : aplanarPuntas(escrituradas);
       return ranking(puntas, toScopeSet(scope));
     });
   }
@@ -136,7 +139,9 @@ export class KpisService {
       const scope = await scopeDeVista(ctx, tx, verTodo);
       const scopeSet = toScopeSet(scope);
       const escrituradas = await this.ventas(tx, anio, 'escriturada', scope.usuarioIds);
-      const enRango = escrituradas.filter((v) => v.mes != null && v.mes >= mesInicio && v.mes <= mesFin);
+      const enRango = escrituradas.filter(
+        (v) => v.mes != null && v.mes >= mesInicio && v.mes <= mesFin,
+      );
       const puntas = aplanarPuntas(enRango);
       return { agregado: agregar(puntas, scopeSet), ranking: ranking(puntas, scopeSet) };
     });

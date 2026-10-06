@@ -1,6 +1,11 @@
 'use client';
 
-import { EscenarioSchema, PlazoEstimadoSchema, type Escenario, type PlazoEstimado } from '@vacker/types';
+import {
+  EscenarioSchema,
+  PlazoEstimadoSchema,
+  type Escenario,
+  type PlazoEstimado,
+} from '@vacker/types';
 import type { AnalisisComparables } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../../lib/format';
@@ -11,9 +16,12 @@ const ESCENARIOS = EscenarioSchema.options;
 const PLAZOS = PlazoEstimadoSchema.options;
 
 const ESTRATEGIA_ESCENARIO: Record<Escenario, string> = {
-  'Venta rápida': 'Estrategia orientada a maximizar la velocidad de cierre, priorizando un precio competitivo frente al mercado.',
-  'Venta equilibrada': 'Estrategia balanceada entre velocidad de cierre y maximización del valor de venta.',
-  'Venta aspiracional': 'Estrategia orientada a maximizar el valor obtenido, asumiendo plazos de comercialización más extensos.',
+  'Venta rápida':
+    'Estrategia orientada a maximizar la velocidad de cierre, priorizando un precio competitivo frente al mercado.',
+  'Venta equilibrada':
+    'Estrategia balanceada entre velocidad de cierre y maximización del valor de venta.',
+  'Venta aspiracional':
+    'Estrategia orientada a maximizar el valor obtenido, asumiendo plazos de comercialización más extensos.',
 };
 
 interface Props {
@@ -52,7 +60,8 @@ export function Seccion5Valores({
   superficieTotal,
 }: Props) {
   const basisM2 = analisis.weightedUsdPerM2 || analisis.medianUsdPerM2 || analisis.avgUsdPerM2;
-  const aspSugerido = superficieTotal > 0 && basisM2 > 0 ? Math.round(superficieTotal * basisM2) : 0;
+  const aspSugerido =
+    superficieTotal > 0 && basisM2 > 0 ? Math.round(superficieTotal * basisM2) : 0;
   const recSugerido = aspSugerido ? Math.round(aspSugerido * 0.94) : 0;
   const minSugerido = aspSugerido ? Math.round(aspSugerido * 0.9) : 0;
 
@@ -71,19 +80,27 @@ export function Seccion5Valores({
 
   return (
     <div className="flex flex-col gap-3">
-      <PasoHeader numero={5} titulo="Valores de tasación" bajada="Definí el rango de valores y el escenario de comercialización." />
+      <PasoHeader
+        numero={5}
+        titulo="Valores de tasación"
+        bajada="Definí el rango de valores y el escenario de comercialización."
+      />
 
       {/* Cálculo sugerido */}
       <div className="rounded-brand border border-line border-l-[3px] border-l-brand-red bg-brand-red/[0.03] p-4">
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-brand-red">Cálculo sugerido de valores</p>
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-brand-red">
+          Cálculo sugerido de valores
+        </p>
         {aspSugerido ? (
           <div className="text-[12.5px] leading-relaxed text-ink">
             <div>
-              Aspiracional = Sup. de valuación <strong>{fmtNum(superficieTotal)} m²</strong> × referencia ponderada{' '}
-              <strong>{fmtUSD(basisM2)}</strong> = <strong className="text-brand-red">{fmtUSD(aspSugerido)}</strong>
+              Aspiracional = Sup. de valuación <strong>{fmtNum(superficieTotal)} m²</strong> ×
+              referencia ponderada <strong>{fmtUSD(basisM2)}</strong> ={' '}
+              <strong className="text-brand-red">{fmtUSD(aspSugerido)}</strong>
             </div>
             <div>
-              Recomendado (−6%): <strong>{fmtUSD(recSugerido)}</strong> · Mínimo (−10%): <strong>{fmtUSD(minSugerido)}</strong>
+              Recomendado (−6%): <strong>{fmtUSD(recSugerido)}</strong> · Mínimo (−10%):{' '}
+              <strong>{fmtUSD(minSugerido)}</strong>
             </div>
             <div className="mt-2.5 flex flex-wrap items-center gap-3">
               <Button type="button" variant="primary" size="sm" onClick={aplicarSugeridos}>
@@ -94,34 +111,57 @@ export function Seccion5Valores({
           </div>
         ) : (
           <p className="text-[12.5px] text-muted">
-            Completá la superficie y al menos un comparable válido para obtener una referencia automática.
+            Completá la superficie y al menos un comparable válido para obtener una referencia
+            automática.
           </p>
         )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
         <Campo label="Valor mínimo competitivo (USD)">
-          <input type="number" min={0} value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} className={inputClass} />
+          <input
+            type="number"
+            min={0}
+            value={valorMinimo}
+            onChange={(e) => setValorMinimo(e.target.value)}
+            className={inputClass}
+          />
         </Campo>
         <Campo label="Valor recomendado (USD)" requerido>
-          <input type="number" min={0} value={valorRecomendado} onChange={(e) => setValorRecomendado(e.target.value)} className={inputClass} />
+          <input
+            type="number"
+            min={0}
+            value={valorRecomendado}
+            onChange={(e) => setValorRecomendado(e.target.value)}
+            className={inputClass}
+          />
         </Campo>
         <Campo label="Valor aspiracional (USD)">
-          <input type="number" min={0} value={valorAspiracional} onChange={(e) => setValorAspiracional(e.target.value)} className={inputClass} />
+          <input
+            type="number"
+            min={0}
+            value={valorAspiracional}
+            onChange={(e) => setValorAspiracional(e.target.value)}
+            className={inputClass}
+          />
         </Campo>
       </div>
 
       {/* Vista previa del rango */}
       {(min || rec || asp) > 0 && (
         <div className="rounded-brand bg-surface p-4 sm:p-5">
-          <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider text-muted">Vista previa del rango</p>
+          <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider text-muted">
+            Vista previa del rango
+          </p>
 
           {/* En el celular los tres valores no entran en una fila: sumaban casi
               600px de ancho mínimo y el panel terminaba arrastrándose de
               costado. Apilados se leen mejor y el recomendado sigue mandando. */}
           <div className="flex flex-col gap-3 sm:hidden">
             <div className="rounded-lg bg-white px-3 py-2.5 text-center">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-brand-red">Recomendado</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-brand-red">
+                Recomendado
+              </div>
               <div className="text-2xl font-extrabold text-brand-red">{fmtUSD(rec)}</div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -159,10 +199,20 @@ export function Seccion5Valores({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
         <Campo label="Margen de negociación estimado (%)">
-          <input type="number" min={0} value={margenNegociacion} onChange={(e) => setMargenNegociacion(e.target.value)} className={inputClass} />
+          <input
+            type="number"
+            min={0}
+            value={margenNegociacion}
+            onChange={(e) => setMargenNegociacion(e.target.value)}
+            className={inputClass}
+          />
         </Campo>
         <Campo label="Escenario recomendado">
-          <select value={escenarioRecomendado} onChange={(e) => setEscenarioRecomendado(e.target.value as Escenario | '')} className={inputClass}>
+          <select
+            value={escenarioRecomendado}
+            onChange={(e) => setEscenarioRecomendado(e.target.value as Escenario | '')}
+            className={inputClass}
+          >
             <option value="">—</option>
             {ESCENARIOS.map((e) => (
               <option key={e} value={e}>
@@ -172,7 +222,11 @@ export function Seccion5Valores({
           </select>
         </Campo>
         <Campo label="Plazo estimado de venta">
-          <select value={plazoEstimado} onChange={(e) => setPlazoEstimado(e.target.value as PlazoEstimado | '')} className={inputClass}>
+          <select
+            value={plazoEstimado}
+            onChange={(e) => setPlazoEstimado(e.target.value as PlazoEstimado | '')}
+            className={inputClass}
+          >
             <option value="">Seleccionar…</option>
             {PLAZOS.map((p) => (
               <option key={p} value={p}>
@@ -185,7 +239,8 @@ export function Seccion5Valores({
 
       {diffPct && (
         <p className="mt-1 text-center text-[12.5px] text-muted">
-          Diferencia entre valor mínimo y aspiracional: <strong className="text-ink">{diffPct}%</strong>
+          Diferencia entre valor mínimo y aspiracional:{' '}
+          <strong className="text-ink">{diffPct}%</strong>
         </p>
       )}
       {comentario && <p className="text-center text-[12.5px] italic text-ink">{comentario}</p>}

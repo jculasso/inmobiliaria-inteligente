@@ -2,7 +2,12 @@ import { ForbiddenException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
-import { MODULOS_DEFAULT, type ModuloKey, type ModulosTenant, configPorDefecto } from '@vacker/types';
+import {
+  MODULOS_DEFAULT,
+  type ModuloKey,
+  type ModulosTenant,
+  configPorDefecto,
+} from '@vacker/types';
 import { ModuloGuard } from './modulo.guard';
 import type { AuthPrincipal } from './auth-principal';
 

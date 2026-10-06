@@ -49,7 +49,9 @@ export class AdminUsuariosService {
     await this.assertTenantExiste(tenantId);
     const existe = await this.db.usuario.findFirst({ where: { tenantId, email: dto.email } });
     if (existe) {
-      throw new BadRequestException(`Ya existe un usuario con el email ${dto.email} en esta inmobiliaria.`);
+      throw new BadRequestException(
+        `Ya existe un usuario con el email ${dto.email} en esta inmobiliaria.`,
+      );
     }
 
     const authUser = await this.supabaseAdmin.createUser(dto.email, dto.password);
@@ -121,7 +123,10 @@ export class AdminUsuariosService {
       });
     }
 
-    const row = await this.db.usuario.findUniqueOrThrow({ where: { id }, include: usuarioAdminInclude });
+    const row = await this.db.usuario.findUniqueOrThrow({
+      where: { id },
+      include: usuarioAdminInclude,
+    });
     return toDto(row);
   }
 
@@ -161,7 +166,10 @@ export class AdminUsuariosService {
       throw err;
     }
 
-    const row = await this.db.usuario.findUniqueOrThrow({ where: { id }, include: usuarioAdminInclude });
+    const row = await this.db.usuario.findUniqueOrThrow({
+      where: { id },
+      include: usuarioAdminInclude,
+    });
     return toDto(row);
   }
 
@@ -179,7 +187,10 @@ export class AdminUsuariosService {
     const fotoUrl = await this.storage.upload(AVATAR_BUCKET, path, file.buffer, tipoDe(file));
 
     await this.db.usuario.update({ where: { id }, data: { fotoUrl } });
-    const row = await this.db.usuario.findUniqueOrThrow({ where: { id }, include: usuarioAdminInclude });
+    const row = await this.db.usuario.findUniqueOrThrow({
+      where: { id },
+      include: usuarioAdminInclude,
+    });
     return toDto(row);
   }
 
@@ -190,7 +201,10 @@ export class AdminUsuariosService {
       if (path) await this.storage.remove(AVATAR_BUCKET, path);
     }
     await this.db.usuario.update({ where: { id }, data: { fotoUrl: null } });
-    const row = await this.db.usuario.findUniqueOrThrow({ where: { id }, include: usuarioAdminInclude });
+    const row = await this.db.usuario.findUniqueOrThrow({
+      where: { id },
+      include: usuarioAdminInclude,
+    });
     return toDto(row);
   }
 
@@ -211,7 +225,6 @@ export class AdminUsuariosService {
     return u;
   }
 }
-
 
 function toDto(row: UsuarioAdminRow) {
   return {

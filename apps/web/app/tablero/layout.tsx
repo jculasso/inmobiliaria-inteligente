@@ -45,10 +45,17 @@ export default async function TableroLayout({ children }: { children: ReactNode 
   if (principal.debeCambiarPassword) redirect('/cambiar-clave');
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10" style={tenantBrandStyle(principal.tenant.config)}>
+    <main
+      className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10"
+      style={tenantBrandStyle(principal.tenant.config)}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Avatar nombre={principal.tenant.nombre} fotoUrl={principal.tenant.config.logoUrl} size="lg" />
+          <Avatar
+            nombre={principal.tenant.nombre}
+            fotoUrl={principal.tenant.config.logoUrl}
+            size="lg"
+          />
           <div>
             <MarcaPlataforma />
             <div className="mt-1 flex flex-wrap items-center gap-2.5">

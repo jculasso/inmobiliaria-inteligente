@@ -61,7 +61,12 @@ export function ConfirmarBorradoModal({
           <Button type="button" variant="secondary" onClick={onClose} disabled={borrando}>
             Cancelar
           </Button>
-          <Button type="button" variant="primary" onClick={() => void confirmar()} disabled={borrando}>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => void confirmar()}
+            disabled={borrando}
+          >
             {borrando ? 'Borrando…' : 'Sí, borrar'}
           </Button>
         </div>
@@ -74,7 +79,9 @@ export function ConfirmarBorradoModal({
 export function DatoBorrado({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-0.5">
-      <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-wide text-muted">{etiqueta}</span>
+      <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-wide text-muted">
+        {etiqueta}
+      </span>
       <span className="min-w-0 truncate text-sm font-semibold text-ink">{children}</span>
     </div>
   );

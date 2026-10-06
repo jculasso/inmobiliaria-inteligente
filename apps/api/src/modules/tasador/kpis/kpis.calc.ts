@@ -44,12 +44,20 @@ export function agregar(tasaciones: TasacionCalc[], scope: ScopeSet): ResumenTas
 
 /** Ranking de agentes por cantidad de captaciones (solo agentes dentro del alcance). */
 export function ranking(tasaciones: TasacionCalc[], scope: ScopeSet): RankingCaptacionItem[] {
-  const porAgente = new Map<string, { nombre: string; fotoUrl: string | null; captadas: number; total: number }>();
+  const porAgente = new Map<
+    string,
+    { nombre: string; fotoUrl: string | null; captadas: number; total: number }
+  >();
   let captadasTotal = 0;
 
   for (const t of tasaciones) {
     if (!enAlcance(t, scope)) continue;
-    const item = porAgente.get(t.agenteId) ?? { nombre: t.nombre, fotoUrl: t.fotoUrl, captadas: 0, total: 0 };
+    const item = porAgente.get(t.agenteId) ?? {
+      nombre: t.nombre,
+      fotoUrl: t.fotoUrl,
+      captadas: 0,
+      total: 0,
+    };
     item.total += 1;
     if (t.estado === 'Captada') {
       item.captadas += 1;
@@ -58,18 +66,20 @@ export function ranking(tasaciones: TasacionCalc[], scope: ScopeSet): RankingCap
     porAgente.set(t.agenteId, item);
   }
 
-  return [...porAgente.entries()]
-    // El ranking es "de captaciones" — un agente sin ninguna no aporta nada
-    // a esa clasificación, así que no tiene sentido listarlo con 0.
-    .filter(([, item]) => item.captadas > 0)
-    .map(([usuarioId, item]) => ({
-      usuarioId,
-      nombre: item.nombre,
-      fotoUrl: item.fotoUrl,
-      captadas: item.captadas,
-      total: item.total,
-      tasaCaptacion: item.total ? item.captadas / item.total : 0,
-      peso: captadasTotal ? item.captadas / captadasTotal : 0,
-    }))
-    .sort((a, b) => b.captadas - a.captadas);
+  return (
+    [...porAgente.entries()]
+      // El ranking es "de captaciones" — un agente sin ninguna no aporta nada
+      // a esa clasificación, así que no tiene sentido listarlo con 0.
+      .filter(([, item]) => item.captadas > 0)
+      .map(([usuarioId, item]) => ({
+        usuarioId,
+        nombre: item.nombre,
+        fotoUrl: item.fotoUrl,
+        captadas: item.captadas,
+        total: item.total,
+        tasaCaptacion: item.total ? item.captadas / item.total : 0,
+        peso: captadasTotal ? item.captadas / captadasTotal : 0,
+      }))
+      .sort((a, b) => b.captadas - a.captadas)
+  );
 }

@@ -83,8 +83,8 @@ export function CredencialTokko({
       <div>
         <h2 className="text-base font-bold text-ink">Conexión con Tokko Broker</h2>
         <p className="mt-1 text-sm leading-relaxed text-muted">
-          La clave la genera un administrador en Tokko, en <strong>MI EMPRESA → PERMISOS</strong>. Se
-          guarda cifrada y no se vuelve a mostrar.
+          La clave la genera un administrador en Tokko, en <strong>MI EMPRESA → PERMISOS</strong>.
+          Se guarda cifrada y no se vuelve a mostrar.
         </p>
       </div>
 
@@ -123,14 +123,28 @@ export function CredencialTokko({
       </Campo>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="primary" size="sm" onClick={guardar} disabled={guardando || secreto.trim().length < 20}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={guardar}
+          disabled={guardando || secreto.trim().length < 20}
+        >
           {guardando ? 'Guardando…' : estado.configurada ? 'Reemplazar' : 'Guardar'}
         </Button>
-        <Button variant="secondary" size="sm" onClick={probar} disabled={probando || !estado.configurada}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={probar}
+          disabled={probando || !estado.configurada}
+        >
           {probando ? 'Probando…' : 'Probar conexión'}
         </Button>
         {estado.configurada && (
-          <button type="button" onClick={quitar} className="text-xs font-semibold text-brand-red hover:underline">
+          <button
+            type="button"
+            onClick={quitar}
+            className="text-xs font-semibold text-brand-red hover:underline"
+          >
             Quitar
           </button>
         )}
@@ -146,7 +160,8 @@ export function CredencialTokko({
           {prueba.ok ? (
             <p className="text-ink">
               <strong>Conexión correcta.</strong> Tokko reporta{' '}
-              <strong>{prueba.propiedades?.toLocaleString('es-AR')} propiedades</strong> en esta cuenta.
+              <strong>{prueba.propiedades?.toLocaleString('es-AR')} propiedades</strong> en esta
+              cuenta.
             </p>
           ) : (
             <p className="text-ink">{prueba.error}</p>

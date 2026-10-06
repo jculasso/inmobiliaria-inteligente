@@ -26,7 +26,9 @@ export default async function ProtocoloDashboardPage({
   // Las alertas se muestran juntas y ordenadas por urgencia: es la pantalla
   // desde la que se decide qué atender primero.
   const alertas = activas
-    .flatMap((p) => p.alertas.map((a) => ({ ...a, protocoloId: p.id, direccion: p.propiedad.direccion })))
+    .flatMap((p) =>
+      p.alertas.map((a) => ({ ...a, protocoloId: p.id, direccion: p.propiedad.direccion })),
+    )
     .sort((a, b) => nivelOrden(a.nivel) - nivelOrden(b.nivel));
 
   return (
@@ -59,7 +61,10 @@ export default async function ProtocoloDashboardPage({
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-ink">Propiedades en comercialización</h3>
-          <Link href="/protocolo/captadas" className="text-sm font-semibold text-brand-red hover:underline">
+          <Link
+            href="/protocolo/captadas"
+            className="text-sm font-semibold text-brand-red hover:underline"
+          >
             Ver captadas sin iniciar →
           </Link>
         </div>
@@ -69,9 +74,12 @@ export default async function ProtocoloDashboardPage({
             <p className="text-3xl" aria-hidden>
               🏠
             </p>
-            <h4 className="mt-2 text-base font-bold text-ink">Todavía no hay propiedades en comercialización</h4>
+            <h4 className="mt-2 text-base font-bold text-ink">
+              Todavía no hay propiedades en comercialización
+            </h4>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-              Iniciá el protocolo desde una tasación captada para empezar el seguimiento de las 5 semanas.
+              Iniciá el protocolo desde una tasación captada para empezar el seguimiento de las 5
+              semanas.
             </p>
             <Link
               href="/protocolo/captadas"

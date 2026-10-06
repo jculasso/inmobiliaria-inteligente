@@ -34,7 +34,9 @@ test('/admin no rebota: tiene su propia pantalla de ingreso', async ({ page }) =
 });
 
 test.describe('archivos que el navegador pide sin sesión', () => {
-  test('el manifest y el service worker se sirven, o la app no se puede instalar', async ({ request }) => {
+  test('el manifest y el service worker se sirven, o la app no se puede instalar', async ({
+    request,
+  }) => {
     const manifest = await request.get('/manifest.webmanifest');
     expect(manifest.status()).toBe(200);
     expect((await manifest.json()).name).toBe('Inmobiliaria Inteligente');
@@ -44,7 +46,11 @@ test.describe('archivos que el navegador pide sin sesión', () => {
   });
 
   test('los íconos se sirven', async ({ request }) => {
-    for (const ruta of ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png']) {
+    for (const ruta of [
+      '/icons/icon-192.png',
+      '/icons/icon-512.png',
+      '/icons/apple-touch-icon.png',
+    ]) {
       const res = await request.get(ruta);
       expect(res.status(), `${ruta} debería servirse sin sesión`).toBe(200);
     }
@@ -58,7 +64,9 @@ test.describe('archivos que el navegador pide sin sesión', () => {
     await expect(page.getByRole('button', { name: 'Ingresar' })).toHaveCount(0);
   });
 
-  test('el flyer comercial se sirve sin sesión: se lo mandamos a gente sin cuenta', async ({ request }) => {
+  test('el flyer comercial se sirve sin sesión: se lo mandamos a gente sin cuenta', async ({
+    request,
+  }) => {
     const res = await request.get('/flyer-comercial.pdf');
     expect(res.status()).toBe(200);
     expect(res.headers()['content-type']).toContain('pdf');

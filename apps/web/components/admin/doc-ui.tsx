@@ -22,7 +22,9 @@ export function DocHeader({ titulo, bajada }: { titulo: string; bajada: string }
 export function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <section className="mt-8">
-      <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-wider text-brand-red">{titulo}</h3>
+      <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-wider text-brand-red">
+        {titulo}
+      </h3>
       <div className="flex flex-col gap-3">{children}</div>
     </section>
   );
@@ -37,7 +39,9 @@ export function Paso({ n, titulo, children }: { n: number; titulo: string; child
       </span>
       <div className="min-w-0">
         <p className="text-sm font-bold text-ink">{titulo}</p>
-        <div className="mt-1.5 flex flex-col gap-2 text-sm leading-relaxed text-muted">{children}</div>
+        <div className="mt-1.5 flex flex-col gap-2 text-sm leading-relaxed text-muted">
+          {children}
+        </div>
       </div>
     </div>
   );

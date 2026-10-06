@@ -27,7 +27,9 @@ function makeTx(over: Record<string, unknown> = {}) {
 
 /** withTenant corre el callback con el tx mockeado (sin transacción real). */
 function makeDb(tx: unknown): TenantPrismaService {
-  return { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
+  return {
+    withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+  } as unknown as TenantPrismaService;
 }
 
 const ventaDtoBase = {
@@ -73,7 +75,9 @@ describe('OperacionesService — scope', () => {
       anio: 2026,
       mes: 1,
       obs: null,
-      puntas: [{ id: 'p1', lado: 'vendedora', usuarioId: 'u1', comision: null, usuario: { nombre: 'Yo' } }],
+      puntas: [
+        { id: 'p1', lado: 'vendedora', usuarioId: 'u1', comision: null, usuario: { nombre: 'Yo' } },
+      ],
     });
     const svc = new OperacionesService(makeDb(tx));
 
@@ -94,7 +98,9 @@ describe('OperacionesService — scope', () => {
 describe('OperacionesService — coherencia y unicidad', () => {
   it('update: rechaza puntas en un alquiler', async () => {
     const tx = makeTx();
-    tx.operacion.findUnique = vi.fn().mockResolvedValue({ id: 'o1', tenantId: 't1', tipo: 'alquiler', puntas: [] });
+    tx.operacion.findUnique = vi
+      .fn()
+      .mockResolvedValue({ id: 'o1', tenantId: 't1', tipo: 'alquiler', puntas: [] });
     const svc = new OperacionesService(makeDb(tx));
 
     await expect(
@@ -104,7 +110,9 @@ describe('OperacionesService — coherencia y unicidad', () => {
 
   it('update: rechaza un estado de alquiler en una venta', async () => {
     const tx = makeTx();
-    tx.operacion.findUnique = vi.fn().mockResolvedValue({ id: 'o1', tenantId: 't1', tipo: 'venta', puntas: [] });
+    tx.operacion.findUnique = vi
+      .fn()
+      .mockResolvedValue({ id: 'o1', tenantId: 't1', tipo: 'venta', puntas: [] });
     const svc = new OperacionesService(makeDb(tx));
 
     await expect(
@@ -215,8 +223,20 @@ describe('OperacionesService — puntas fuera del alcance', () => {
     mes: 5,
     obs: null,
     puntas: [
-      { id: 'p1', lado: 'vendedora', usuarioId: 'vA', comision: 5000, usuario: { id: 'vA', nombre: 'Ana' } },
-      { id: 'p2', lado: 'compradora', usuarioId: 'vB', comision: 3000, usuario: { id: 'vB', nombre: 'Beto' } },
+      {
+        id: 'p1',
+        lado: 'vendedora',
+        usuarioId: 'vA',
+        comision: 5000,
+        usuario: { id: 'vA', nombre: 'Ana' },
+      },
+      {
+        id: 'p2',
+        lado: 'compradora',
+        usuarioId: 'vB',
+        comision: 3000,
+        usuario: { id: 'vB', nombre: 'Beto' },
+      },
     ],
   };
 
@@ -272,7 +292,11 @@ describe('OperacionesService — puntas fuera del alcance', () => {
    * se muestra tiene que sumar lo mismo que lo que se calculó.
    */
   it('dirección SIN "Ver todo" ve solo su punta y su comisión', async () => {
-    const ctxCeo: TenantContext = { tenantId: 't1', userId: 'vA', roles: ['vendedor', 'direccion'] };
+    const ctxCeo: TenantContext = {
+      tenantId: 't1',
+      userId: 'vA',
+      roles: ['vendedor', 'direccion'],
+    };
     const tx = makeTx();
     tx.operacion.findMany = vi.fn().mockResolvedValue([compartida]);
     const svc = new OperacionesService(makeDb(tx));
@@ -284,7 +308,11 @@ describe('OperacionesService — puntas fuera del alcance', () => {
   });
 
   it('y con "Ver todo" el mismo usuario ve la venta completa', async () => {
-    const ctxCeo: TenantContext = { tenantId: 't1', userId: 'vA', roles: ['vendedor', 'direccion'] };
+    const ctxCeo: TenantContext = {
+      tenantId: 't1',
+      userId: 'vA',
+      roles: ['vendedor', 'direccion'],
+    };
     const tx = makeTx();
     tx.operacion.findMany = vi.fn().mockResolvedValue([compartida]);
     const svc = new OperacionesService(makeDb(tx));

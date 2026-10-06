@@ -43,7 +43,9 @@ export function UsuariosAdminTable({
 
       <div className="rounded-brand border border-line bg-white sm:hidden">
         {usuarios.length === 0 ? (
-          <p className="px-4 py-6 text-center text-muted">Todavía no hay usuarios en esta inmobiliaria.</p>
+          <p className="px-4 py-6 text-center text-muted">
+            Todavía no hay usuarios en esta inmobiliaria.
+          </p>
         ) : (
           <ListaTarjetas etiqueta="Usuarios">
             {usuarios.map((u) => (
@@ -67,7 +69,9 @@ export function UsuariosAdminTable({
                   <CampoTarjeta etiqueta="Roles">
                     {u.roles.map((r) => ETIQUETA_ROL[r] ?? r).join(', ')}
                   </CampoTarjeta>
-                  <CampoTarjeta etiqueta="Acceso">{u.tieneAcceso ? 'Con acceso' : 'Sin acceso'}</CampoTarjeta>
+                  <CampoTarjeta etiqueta="Acceso">
+                    {u.tieneAcceso ? 'Con acceso' : 'Sin acceso'}
+                  </CampoTarjeta>
                 </CamposTarjeta>
 
                 <div className="mt-2 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-2">
@@ -143,7 +147,9 @@ export function UsuariosAdminTable({
                   <td className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        u.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-surface text-muted'
+                        u.estado === 'activo'
+                          ? 'bg-success/10 text-success'
+                          : 'bg-surface text-muted'
                       }`}
                     >
                       {u.estado === 'activo' ? 'Activo' : 'Inactivo'}

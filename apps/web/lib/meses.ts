@@ -36,7 +36,11 @@ export const ABREV_MES = NOMBRES_MES.map((m) => m.slice(0, 3));
  * La fecha es la de Argentina (UTC−3, sin horario de verano): a las 22 del 31
  * ya es el mes siguiente en UTC, y no en la inmobiliaria.
  */
-export function periodosTranscurridos(anio: number, unidad: 'mes' | 'trimestre', ahora: Date = new Date()): number {
+export function periodosTranscurridos(
+  anio: number,
+  unidad: 'mes' | 'trimestre',
+  ahora: Date = new Date(),
+): number {
   const hoy = new Date(ahora.getTime() - 3 * 3600 * 1000);
   const total = unidad === 'mes' ? 12 : 4;
   if (anio < hoy.getUTCFullYear()) return total;

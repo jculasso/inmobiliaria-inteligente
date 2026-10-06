@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { EstadoFirma, EstadoFirmante } from '@vacker/types';
 import { estadoDeFirma } from '@vacker/domain';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
@@ -30,7 +36,11 @@ export class FirmaAvisosService {
     @Inject(PROVEEDORES_FIRMA) private readonly proveedores: Map<string, ProveedorFirma>,
   ) {}
 
-  async procesar(nombre: string, cabeceras: Record<string, string | string[] | undefined>, cuerpo: unknown): Promise<{ estado: EstadoFirma }> {
+  async procesar(
+    nombre: string,
+    cabeceras: Record<string, string | string[] | undefined>,
+    cuerpo: unknown,
+  ): Promise<{ estado: EstadoFirma }> {
     const proveedor = this.proveedores.get(nombre);
     if (!proveedor) throw new NotFoundException('Proveedor de firma desconocido.');
     const aviso = proveedor.leerAviso(cabeceras, cuerpo);
@@ -38,20 +48,39 @@ export class FirmaAvisosService {
 
     const doc = await this.prisma.alqDocumento.findUnique({
       where: { proveedor_envioExternoId: { proveedor: nombre, envioExternoId: aviso.envioId } },
-      select: { id: true, tenantId: true, contratoId: true, estadoFirma: true, firmantes: { select: { personaId: true, estado: true } } },
+      select: {
+        id: true,
+        tenantId: true,
+        contratoId: true,
+        estadoFirma: true,
+        firmantes: { select: { personaId: true, estado: true } },
+      },
     });
     if (!doc) throw new NotFoundException('El aviso no corresponde a ningún envío.');
     const propios = new Set(doc.firmantes.map((f) => f.personaId));
-    if (aviso.firmantes.some((f) => !propios.has(f.personaId))) throw new BadRequestException('El aviso trae un firmante que no es de este documento.');
+    if (aviso.firmantes.some((f) => !propios.has(f.personaId)))
+      throw new BadRequestException('El aviso trae un firmante que no es de este documento.');
 
     let archivoFirmado: string | undefined;
     if (aviso.archivoFirmado) {
       archivoFirmado = `${doc.tenantId}/${doc.contratoId}/firmado-${randomUUID()}.pdf`;
-      await this.storage.uploadPrivado(BUCKET_CONTRATOS, archivoFirmado, aviso.archivoFirmado, 'application/pdf');
+      await this.storage.uploadPrivado(
+        BUCKET_CONTRATOS,
+        archivoFirmado,
+        aviso.archivoFirmado,
+        'application/pdf',
+      );
     }
 
-    const estados = doc.firmantes.map((f) => (aviso.firmantes.find((x) => x.personaId === f.personaId)?.estado ?? f.estado) as EstadoFirmante);
-    const nuevo = aviso.vencido && !estados.every((e) => e === 'firmado') ? 'vencido' : estadoDeFirma(doc.estadoFirma as EstadoFirma, estados);
+    const estados = doc.firmantes.map(
+      (f) =>
+        (aviso.firmantes.find((x) => x.personaId === f.personaId)?.estado ??
+          f.estado) as EstadoFirmante,
+    );
+    const nuevo =
+      aviso.vencido && !estados.every((e) => e === 'firmado')
+        ? 'vencido'
+        : estadoDeFirma(doc.estadoFirma as EstadoFirma, estados);
     const ahora = new Date();
     await this.prisma.$transaction(async (tx) => {
       for (const f of aviso.firmantes) {
@@ -60,8 +89,19 @@ export class FirmaAvisosService {
           data: { estado: f.estado, firmadoEl: f.estado === 'firmado' ? ahora : null },
         });
       }
-      await tx.alqDocumento.update({ where: { id: doc.id }, data: { estadoFirma: nuevo, ...(archivoFirmado ? { archivoFirmado } : {}) } });
-      await evento(tx, doc.tenantId, doc.id, doc.estadoFirma, nuevo, nombre, archivoFirmado ? 'Llegó el PDF firmado.' : null);
+      await tx.alqDocumento.update({
+        where: { id: doc.id },
+        data: { estadoFirma: nuevo, ...(archivoFirmado ? { archivoFirmado } : {}) },
+      });
+      await evento(
+        tx,
+        doc.tenantId,
+        doc.id,
+        doc.estadoFirma,
+        nuevo,
+        nombre,
+        archivoFirmado ? 'Llegó el PDF firmado.' : null,
+      );
     });
     return { estado: nuevo };
   }

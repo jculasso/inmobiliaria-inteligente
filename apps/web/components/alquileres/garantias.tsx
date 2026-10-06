@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GarantiaInputSchema, NOMBRE_TIPO_GARANTIA, type EstadoGarantia, type GarantiaDto, type TipoGarantia } from '@vacker/types';
+import {
+  GarantiaInputSchema,
+  NOMBRE_TIPO_GARANTIA,
+  type EstadoGarantia,
+  type GarantiaDto,
+  type TipoGarantia,
+} from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { guardarGarantias } from '../../lib/alquileres-api';
@@ -32,24 +38,43 @@ interface Fila {
   aprobadaEl: string;
   obs: string;
 }
-const deDto = (g: GarantiaDto): Fila => ({ ...g, garante: g.garante ?? '', detalle: g.detalle ?? '', aprobadaEl: g.aprobadaEl ?? '', obs: g.obs ?? '' });
+const deDto = (g: GarantiaDto): Fila => ({
+  ...g,
+  garante: g.garante ?? '',
+  detalle: g.detalle ?? '',
+  aprobadaEl: g.aprobadaEl ?? '',
+  obs: g.obs ?? '',
+});
 
 /**
  * Las garantías del contrato y su informe (punto 11 de Javier, como Gexion):
  * tipo, garante, lo que garantiza, y el estado de la verificación.
  */
-export function Garantias({ contratoId, garantias, garantes }: { contratoId: string; garantias: GarantiaDto[]; garantes: { personaId: string; nombre: string }[] }) {
+export function Garantias({
+  contratoId,
+  garantias,
+  garantes,
+}: {
+  contratoId: string;
+  garantias: GarantiaDto[];
+  garantes: { personaId: string; nombre: string }[];
+}) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
   const [filas, setFilas] = useState<Fila[]>(garantias.map(deDto));
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
-  const cambiar = (i: number, c: Partial<Fila>) => setFilas((xs) => xs.map((x, j) => (j === i ? { ...x, ...c } : x)));
-  const nombreDe = (g: GarantiaDto) => g.garante ?? garantes.find((x) => x.personaId === g.personaId)?.nombre ?? '—';
+  const cambiar = (i: number, c: Partial<Fila>) =>
+    setFilas((xs) => xs.map((x, j) => (j === i ? { ...x, ...c } : x)));
+  const nombreDe = (g: GarantiaDto) =>
+    g.garante ?? garantes.find((x) => x.personaId === g.personaId)?.nombre ?? '—';
 
   async function guardar() {
     setError(null);
-    const datos = filas.map((f) => ({ ...f, aprobadaEl: f.estado === 'aprobada' ? f.aprobadaEl || null : null }));
+    const datos = filas.map((f) => ({
+      ...f,
+      aprobadaEl: f.estado === 'aprobada' ? f.aprobadaEl || null : null,
+    }));
     for (const [i, f] of datos.entries()) {
       const r = GarantiaInputSchema.safeParse(f);
       if (!r.success) {
@@ -106,9 +131,16 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
       ) : (
         <div className="flex flex-col gap-3">
           {filas.map((f, i) => (
-            <fieldset key={i} className="grid gap-2 rounded-brand border border-line p-3 sm:grid-cols-3">
+            <fieldset
+              key={i}
+              className="grid gap-2 rounded-brand border border-line p-3 sm:grid-cols-3"
+            >
               <Campo label="Tipo">
-                <select className={inputClass} value={f.tipo} onChange={(e) => cambiar(i, { tipo: e.target.value as TipoGarantia })}>
+                <select
+                  className={inputClass}
+                  value={f.tipo}
+                  onChange={(e) => cambiar(i, { tipo: e.target.value as TipoGarantia })}
+                >
                   {Object.entries(NOMBRE_TIPO_GARANTIA).map(([v, l]) => (
                     <option key={v} value={v}>
                       {l}
@@ -121,7 +153,12 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
                   <select
                     className={inputClass}
                     value={f.personaId ?? ''}
-                    onChange={(e) => cambiar(i, { personaId: e.target.value || null, garante: e.target.value ? '' : f.garante })}
+                    onChange={(e) =>
+                      cambiar(i, {
+                        personaId: e.target.value || null,
+                        garante: e.target.value ? '' : f.garante,
+                      })
+                    }
                   >
                     <option value="">Otro (escribir)</option>
                     {garantes.map((g) => (
@@ -131,11 +168,19 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
                     ))}
                   </select>
                 ) : (
-                  <input className={inputClass} value={f.garante} onChange={(e) => cambiar(i, { garante: e.target.value })} />
+                  <input
+                    className={inputClass}
+                    value={f.garante}
+                    onChange={(e) => cambiar(i, { garante: e.target.value })}
+                  />
                 )}
               </Campo>
               <Campo label="Estado del informe">
-                <select className={inputClass} value={f.estado} onChange={(e) => cambiar(i, { estado: e.target.value as EstadoGarantia })}>
+                <select
+                  className={inputClass}
+                  value={f.estado}
+                  onChange={(e) => cambiar(i, { estado: e.target.value as EstadoGarantia })}
+                >
                   <option value="pendiente">Pendiente</option>
                   <option value="aprobada">Aprobada</option>
                   <option value="rechazada">Rechazada</option>
@@ -143,26 +188,47 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
               </Campo>
               {garantes.length > 0 && !f.personaId && (
                 <Campo label="Nombre del garante">
-                  <input className={inputClass} value={f.garante} onChange={(e) => cambiar(i, { garante: e.target.value })} />
+                  <input
+                    className={inputClass}
+                    value={f.garante}
+                    onChange={(e) => cambiar(i, { garante: e.target.value })}
+                  />
                 </Campo>
               )}
               <div className="sm:col-span-2">
                 <Campo label={DETALLE[f.tipo]}>
-                  <input className={inputClass} value={f.detalle} onChange={(e) => cambiar(i, { detalle: e.target.value })} />
+                  <input
+                    className={inputClass}
+                    value={f.detalle}
+                    onChange={(e) => cambiar(i, { detalle: e.target.value })}
+                  />
                 </Campo>
               </div>
               {f.estado === 'aprobada' && (
                 <Campo label="Aprobada el">
-                  <input type="date" className={inputClass} value={f.aprobadaEl} onChange={(e) => cambiar(i, { aprobadaEl: e.target.value })} />
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={f.aprobadaEl}
+                    onChange={(e) => cambiar(i, { aprobadaEl: e.target.value })}
+                  />
                 </Campo>
               )}
               <div className="sm:col-span-3">
                 <Campo label="Observaciones del informe">
-                  <input className={inputClass} value={f.obs} onChange={(e) => cambiar(i, { obs: e.target.value })} />
+                  <input
+                    className={inputClass}
+                    value={f.obs}
+                    onChange={(e) => cambiar(i, { obs: e.target.value })}
+                  />
                 </Campo>
               </div>
               <div className="flex justify-end sm:col-span-3">
-                <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}>
+                <button
+                  type="button"
+                  onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))}
+                  className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}
+                >
                   🗑️ Quitar
                 </button>
               </div>
@@ -172,7 +238,20 @@ export function Garantias({ contratoId, garantias, garantes }: { contratoId: str
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setFilas((xs) => [...xs, { tipo: 'propietaria', personaId: garantes[0]?.personaId ?? null, garante: '', detalle: '', estado: 'pendiente', aprobadaEl: '', obs: '' }])}
+              onClick={() =>
+                setFilas((xs) => [
+                  ...xs,
+                  {
+                    tipo: 'propietaria',
+                    personaId: garantes[0]?.personaId ?? null,
+                    garante: '',
+                    detalle: '',
+                    estado: 'pendiente',
+                    aprobadaEl: '',
+                    obs: '',
+                  },
+                ])
+              }
             >
               ＋ Agregar garantía
             </Button>

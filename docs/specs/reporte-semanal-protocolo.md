@@ -17,13 +17,13 @@ el reporte va hacia él.
 Este reporte **no se pide, se recibe**: no hay pantalla ni endpoint público.
 Aun así el alcance de lo que cada uno vería es el que ya existe.
 
-| Rol | Qué VE | Qué PUEDE HACER |
-|---|---|---|
-| `vendedor` | Lo suyo | Nada — no recibe (por ahora) |
-| `team_leader` | Lo suyo y lo de su equipo | Nada — no recibe (por ahora) |
-| `direccion` | Toda la inmobiliaria | Recibe **si está marcado** |
-| `admin_tenant` | Toda la inmobiliaria | Recibe si está marcado |
-| `admin_plataforma` | — | **No** recibe: no es de la inmobiliaria |
+| Rol                | Qué VE                    | Qué PUEDE HACER                         |
+| ------------------ | ------------------------- | --------------------------------------- |
+| `vendedor`         | Lo suyo                   | Nada — no recibe (por ahora)            |
+| `team_leader`      | Lo suyo y lo de su equipo | Nada — no recibe (por ahora)            |
+| `direccion`        | Toda la inmobiliaria      | Recibe **si está marcado**              |
+| `admin_tenant`     | Toda la inmobiliaria      | Recibe si está marcado                  |
+| `admin_plataforma` | —                         | **No** recibe: no es de la inmobiliaria |
 
 **Quién recibe no se deriva del rol.** En Vacker `direccion` son cuatro
 personas: los dos dueños (Ezequiel Olivera, Nahuel Vaccaro) y los dos
@@ -77,6 +77,7 @@ confusión que ya costó una vez entre vista y permiso
     Decidido por la dirección el 30/07/2026. Antes el verde aparecía pelado al
     lado de una alerta roja y parecía una contradicción; el estado era correcto
     y estaba mal comunicado.
+
 13. El reporte **se puede pedir a demanda** desde la aplicación
     (`GET /protocolo/reporte-semanal`), sin esperar al lunes. Lo pueden pedir
     `direccion` y `admin_tenant`, por la constante compartida
@@ -103,8 +104,8 @@ confusión que ya costó una vez entre vista y permiso
 Acordado con la dirección el 30/07/2026, para cuando el mail ya esté
 circulando. Es la mejora de más valor y la única que necesita datos nuevos.
 
-**El problema que resuelve:** hoy el reporte dice *cómo está*; no dice *si va
-mejorando*. "Belgrano tiene 6 acciones atrasadas" es un estado. "Hace una
+**El problema que resuelve:** hoy el reporte dice _cómo está_; no dice _si va
+mejorando_. "Belgrano tiene 6 acciones atrasadas" es un estado. "Hace una
 semana tenía 3, hoy tiene 6" es información de conducción — y es lo que
 justifica que el reporte sea semanal y no una pantalla que se mira cuando uno
 se acuerda.
@@ -112,12 +113,12 @@ se acuerda.
 **Lo que hace falta:** una foto semanal por protocolo, guardada al generar el
 reporte. Lo mínimo que alcanza:
 
-| Campo | Para qué |
-|---|---|
-| `protocolo_id`, `generado_el` | la clave |
-| `semana_actual`, `dias_transcurridos` | contexto |
-| `atrasadas`, `pendientes` | la comparación que importa |
-| `prioridad` | pasó de ámbar a roja, o al revés |
+| Campo                                 | Para qué                         |
+| ------------------------------------- | -------------------------------- |
+| `protocolo_id`, `generado_el`         | la clave                         |
+| `semana_actual`, `dias_transcurridos` | contexto                         |
+| `atrasadas`, `pendientes`             | la comparación que importa       |
+| `prioridad`                           | pasó de ámbar a roja, o al revés |
 
 Con eso el reporte puede decir, por propiedad, **empeoró / mejoró / igual**, y
 en la cabecera algo como "3 propiedades empeoraron respecto de la semana
@@ -148,18 +149,18 @@ Primero el hábito, después la historia.
 
 ## Estado
 
-| Parte | Estado |
-|---|---|
-| Generador (función pura) + tests | **hecho** — `reporte-semanal.ts` |
-| Contrato compartido en `@vacker/types` | **hecho** — `reporte-protocolo.ts` |
-| Cierre con tareas pendientes, explícito | **hecho** — regla 12 |
-| Endpoint a demanda | **hecho** — `GET /protocolo/reporte-semanal` |
-| Pantalla del reporte a demanda | **hecho** |
-| Foto, fecha de inicio y días transcurridos | **hecho** |
-| Precio publicado y frase de resumen | **hecho** |
-| Reporte en PDF | **hecho** — `reporte-semanal.template.tsx` |
-| Comparación contra la semana pasada | pendiente — ver arriba |
-| Marca "recibe el reporte" por usuario | **hecho** |
-| Render del mail (HTML) | **hecho** |
-| Proveedor de envío (Resend) + DNS | **DNS hecho** el 30/07/2026 — `avisos.inmobiliariainteligente.net` verificado, `RESEND_API_KEY` cargada en Render |
-| Disparo por cron (GitHub Actions) | **hecho** — lunes 8:00 AR |
+| Parte                                      | Estado                                                                                                            |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Generador (función pura) + tests           | **hecho** — `reporte-semanal.ts`                                                                                  |
+| Contrato compartido en `@vacker/types`     | **hecho** — `reporte-protocolo.ts`                                                                                |
+| Cierre con tareas pendientes, explícito    | **hecho** — regla 12                                                                                              |
+| Endpoint a demanda                         | **hecho** — `GET /protocolo/reporte-semanal`                                                                      |
+| Pantalla del reporte a demanda             | **hecho**                                                                                                         |
+| Foto, fecha de inicio y días transcurridos | **hecho**                                                                                                         |
+| Precio publicado y frase de resumen        | **hecho**                                                                                                         |
+| Reporte en PDF                             | **hecho** — `reporte-semanal.template.tsx`                                                                        |
+| Comparación contra la semana pasada        | pendiente — ver arriba                                                                                            |
+| Marca "recibe el reporte" por usuario      | **hecho**                                                                                                         |
+| Render del mail (HTML)                     | **hecho**                                                                                                         |
+| Proveedor de envío (Resend) + DNS          | **DNS hecho** el 30/07/2026 — `avisos.inmobiliariainteligente.net` verificado, `RESEND_API_KEY` cargada en Render |
+| Disparo por cron (GitHub Actions)          | **hecho** — lunes 8:00 AR                                                                                         |

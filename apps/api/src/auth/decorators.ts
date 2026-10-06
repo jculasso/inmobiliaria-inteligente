@@ -1,8 +1,4 @@
-import {
-  createParamDecorator,
-  SetMetadata,
-  type ExecutionContext,
-} from '@nestjs/common';
+import { createParamDecorator, SetMetadata, type ExecutionContext } from '@nestjs/common';
 import type { ModuloKey, Rol } from '@vacker/types';
 import type { AuthPrincipal } from './auth-principal';
 

@@ -44,7 +44,9 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
   const filtradas = useMemo(() => {
     const q = paraBuscar(busqueda.trim());
     if (!q) return visibles;
-    return visibles.filter((p) => [p.nombre, p.documento, p.email, p.telefono].some((c) => paraBuscar(c).includes(q)));
+    return visibles.filter((p) =>
+      [p.nombre, p.documento, p.email, p.telefono].some((c) => paraBuscar(c).includes(q)),
+    );
   }, [visibles, busqueda]);
 
   // La fila abre la cuenta corriente; los datos se editan desde ahí.
@@ -86,14 +88,24 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
             <ListaTarjetas etiqueta="Personas">
               {filtradas.map((p) => (
                 <Tarjeta key={p.id}>
-                  <button type="button" onClick={() => abrir(p)} title={`Abrir la cuenta de ${p.nombre}`} className={`block w-full rounded text-left ${CLASE_FOCO}`}>
+                  <button
+                    type="button"
+                    onClick={() => abrir(p)}
+                    title={`Abrir la cuenta de ${p.nombre}`}
+                    className={`block w-full rounded text-left ${CLASE_FOCO}`}
+                  >
                     <CabezaTarjeta titulo={p.nombre} detalle={documentoLegible(p.documento)} />
                     <CamposTarjeta>
                       <CampoTarjeta etiqueta="Teléfono">{p.telefono ?? '—'}</CampoTarjeta>
                       <CampoTarjeta etiqueta="Email">{p.email ?? '—'}</CampoTarjeta>
                     </CamposTarjeta>
                   </button>
-                  <AccionesFila tarjeta nombre={p.nombre} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
+                  <AccionesFila
+                    tarjeta
+                    nombre={p.nombre}
+                    onEditar={() => setModal(p)}
+                    onBorrar={() => setABorrar(p)}
+                  />
                 </Tarjeta>
               ))}
             </ListaTarjetas>
@@ -115,11 +127,17 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
                     <td className={`${CLASE_TD} font-semibold text-ink`}>
                       <LinkFila href={`/alquileres/personas/${p.id}`}>{p.nombre}</LinkFila>
                     </td>
-                    <td className={`${CLASE_TD} tabular-nums text-muted`}>{documentoLegible(p.documento)}</td>
+                    <td className={`${CLASE_TD} tabular-nums text-muted`}>
+                      {documentoLegible(p.documento)}
+                    </td>
                     <td className={`${CLASE_TD} text-muted`}>{p.email ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>{p.telefono ?? '—'}</td>
                     <td className={CLASE_TD_ACCIONES}>
-                      <AccionesFila nombre={p.nombre} onEditar={() => setModal(p)} onBorrar={() => setABorrar(p)} />
+                      <AccionesFila
+                        nombre={p.nombre}
+                        onEditar={() => setModal(p)}
+                        onBorrar={() => setABorrar(p)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -130,7 +148,11 @@ export function PersonasLista({ personas }: { personas: PersonaDto[] }) {
       )}
 
       {modal && (
-        <PersonaFormModal persona={modal === 'nueva' ? undefined : modal} onClose={() => setModal(null)} onSaved={guardado} />
+        <PersonaFormModal
+          persona={modal === 'nueva' ? undefined : modal}
+          onClose={() => setModal(null)}
+          onSaved={guardado}
+        />
       )}
       {aBorrar && (
         <ConfirmarBorradoModal

@@ -52,7 +52,12 @@ export function Tarjeta({
   if (!onClick) return <li className={clases}>{children}</li>;
   return (
     <li>
-      <button type="button" onClick={onClick} title={titulo} className={`${clases} w-full active:bg-surface`}>
+      <button
+        type="button"
+        onClick={onClick}
+        title={titulo}
+        className={`${clases} w-full active:bg-surface`}
+      >
         {children}
       </button>
     </li>

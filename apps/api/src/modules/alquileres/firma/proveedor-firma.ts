@@ -30,12 +30,18 @@ export interface ProveedorFirma {
    * PDF se pide con `obtenerPdf`, recién cuando el adaptador lo necesita: el
    * manual no lo baja nunca.
    */
-  enviar(documento: { nombre: string; obtenerPdf: () => Promise<Buffer> }, firmantes: FirmanteAEnviar[]): Promise<{ envioId: string }>;
+  enviar(
+    documento: { nombre: string; obtenerPdf: () => Promise<Buffer> },
+    firmantes: FirmanteAEnviar[],
+  ): Promise<{ envioId: string }>;
   /**
    * Valida y traduce un aviso del proveedor. `null` si no es auténtico (firma
    * o token que no cierran): la API lo rechaza sin mirar qué dice.
    */
-  leerAviso(cabeceras: Record<string, string | string[] | undefined>, cuerpo: unknown): AvisoFirma | null;
+  leerAviso(
+    cabeceras: Record<string, string | string[] | undefined>,
+    cuerpo: unknown,
+  ): AvisoFirma | null;
 }
 
 /** Los adaptadores disponibles, por nombre. Lo inyecta el módulo. */

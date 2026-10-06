@@ -47,7 +47,9 @@ for (const { ruta, titular } of PAGINAS) {
             }
             return true;
           })
-          .map((el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().slice(0, 40)}`);
+          .map(
+            (el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().slice(0, 40)}`,
+          );
       });
 
     await expect.poll(culpables, { message: `elementos que se salen en ${ruta}` }).toEqual([]);
@@ -116,15 +118,16 @@ for (const { ruta } of PAGINAS) {
     await expect
       .poll(
         () =>
-          page.locator('img:visible').evaluateAll((imgs) =>
-            imgs
-              .filter(
-                (i) =>
-                  !(i as HTMLImageElement).complete ||
-                  (i as HTMLImageElement).naturalWidth === 0,
-              )
-              .map((i) => (i as HTMLImageElement).getAttribute('src') ?? '(sin src)'),
-          ),
+          page
+            .locator('img:visible')
+            .evaluateAll((imgs) =>
+              imgs
+                .filter(
+                  (i) =>
+                    !(i as HTMLImageElement).complete || (i as HTMLImageElement).naturalWidth === 0,
+                )
+                .map((i) => (i as HTMLImageElement).getAttribute('src') ?? '(sin src)'),
+            ),
         { message: `imágenes que no cargaron en ${ruta}`, timeout: 45_000 },
       )
       .toEqual([]);
@@ -138,9 +141,7 @@ test('el encabezado fijo tapa lo que pasa por debajo', async ({ page }) => {
   // bajar. Un fondo translúcido en un encabezado fijo es un error, no un
   // efecto — y sin este test se vuelve a colar en cualquier retoque de estilo.
   await page.goto('/');
-  const fondo = await page
-    .locator('header')
-    .evaluate((h) => getComputedStyle(h).backgroundColor);
+  const fondo = await page.locator('header').evaluate((h) => getComputedStyle(h).backgroundColor);
 
   const canales = fondo.match(/[\d.]+/g)?.map(Number) ?? [];
   const opacidad = canales.length === 4 ? canales[3]! : 1;

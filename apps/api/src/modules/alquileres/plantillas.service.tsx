@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
-import { NOMBRE_TIPO_CONTRATO, type DocumentoContratoDto, type Plantilla, type PlantillaDto } from '@vacker/types';
+import {
+  NOMBRE_TIPO_CONTRATO,
+  type DocumentoContratoDto,
+  type Plantilla,
+  type PlantillaDto,
+} from '@vacker/types';
 import { completarPlantilla, fechaCorta, importeEnLetras } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -16,9 +21,19 @@ import { PlantillaDocument } from './plantilla.template';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
-const NOMBRE_INDICE: Record<string, string> = { ICL: 'el Índice para Contratos de Locación (ICL) del BCRA', IPC: 'el Índice de Precios al Consumidor (IPC) del INDEC', CCP: 'el índice Casa Propia' };
+const NOMBRE_INDICE: Record<string, string> = {
+  ICL: 'el Índice para Contratos de Locación (ICL) del BCRA',
+  IPC: 'el Índice de Precios al Consumidor (IPC) del INDEC',
+  CCP: 'el índice Casa Propia',
+};
 
-const aDto = (p: { id: string; nombre: string; tipoContrato: string | null; cuerpo: string; updatedAt: Date }): PlantillaDto => ({
+const aDto = (p: {
+  id: string;
+  nombre: string;
+  tipoContrato: string | null;
+  cuerpo: string;
+  updatedAt: Date;
+}): PlantillaDto => ({
   id: p.id,
   nombre: p.nombre,
   tipoContrato: p.tipoContrato as PlantillaDto['tipoContrato'],
@@ -27,7 +42,12 @@ const aDto = (p: { id: string; nombre: string; tipoContrato: string | null; cuer
 });
 
 /** «20.123.456» o «20-12345678-6». */
-const documento = (d: string | null) => (!d ? null : d.length === 11 ? `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}` : d.replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
+const documento = (d: string | null) =>
+  !d
+    ? null
+    : d.length === 11
+      ? `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`
+      : d.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
 /**
  * El contrato desde una plantilla (entrega 15): plantillas por inmobiliaria
@@ -42,7 +62,9 @@ export class PlantillasService {
   ) {}
 
   async listar(): Promise<PlantillaDto[]> {
-    return this.db.withTenant(async (tx) => (await tx.alqPlantilla.findMany({ orderBy: { nombre: 'asc' } })).map(aDto));
+    return this.db.withTenant(async (tx) =>
+      (await tx.alqPlantilla.findMany({ orderBy: { nombre: 'asc' } })).map(aDto),
+    );
   }
 
   /** El modelo para empezar, si la inmobiliaria todavía no cargó el suyo. */
@@ -51,7 +73,13 @@ export class PlantillasService {
   }
 
   async crear(ctx: TenantContext, dto: Plantilla): Promise<PlantillaDto> {
-    return this.db.withTenant(async (tx) => aDto(await tx.alqPlantilla.create({ data: { ...dto, tenantId: ctx.tenantId, creadoPorId: ctx.userId } })));
+    return this.db.withTenant(async (tx) =>
+      aDto(
+        await tx.alqPlantilla.create({
+          data: { ...dto, tenantId: ctx.tenantId, creadoPorId: ctx.userId },
+        }),
+      ),
+    );
   }
 
   async actualizar(id: string, dto: Plantilla): Promise<PlantillaDto> {
@@ -77,24 +105,66 @@ export class PlantillasService {
 
   /** El PDF de un texto con los datos de un contrato, para ver cómo queda antes de guardar. */
   async vistaPrevia(ctx: TenantContext, contratoId: string, cuerpo: string): Promise<Buffer> {
-    const [texto, marca] = await Promise.all([this.db.withTenant((tx) => this.completar(tx, contratoId, cuerpo)), marcaDe(this.db, ctx)]);
-    return renderToBuffer(<PlantillaDocument texto={texto} tenantNombre={marca.nombre} logoUrl={marca.logoUrl} colorPrimario={marca.colorPrimario} />);
+    const [texto, marca] = await Promise.all([
+      this.db.withTenant((tx) => this.completar(tx, contratoId, cuerpo)),
+      marcaDe(this.db, ctx),
+    ]);
+    return renderToBuffer(
+      <PlantillaDocument
+        texto={texto}
+        tenantNombre={marca.nombre}
+        logoUrl={marca.logoUrl}
+        colorPrimario={marca.colorPrimario}
+      />,
+    );
   }
 
   /** Genera el contrato y lo deja como su documento, para mandar a firmar (reglas 33 a 36). */
-  async generar(ctx: TenantContext, contratoId: string, plantillaId: string): Promise<DocumentoContratoDto> {
+  async generar(
+    ctx: TenantContext,
+    contratoId: string,
+    plantillaId: string,
+  ): Promise<DocumentoContratoDto> {
     const { texto, codigo, nombre } = await this.db.withTenant(async (tx) => {
-      const p = await tx.alqPlantilla.findUnique({ where: { id: plantillaId }, select: { nombre: true, cuerpo: true } });
+      const p = await tx.alqPlantilla.findUnique({
+        where: { id: plantillaId },
+        select: { nombre: true, cuerpo: true },
+      });
       if (!p) throw new NotFoundException('La plantilla no existe.');
-      const c = await tx.alqContrato.findUnique({ where: { id: contratoId }, select: { codigo: true } });
+      const c = await tx.alqContrato.findUnique({
+        where: { id: contratoId },
+        select: { codigo: true },
+      });
       if (!c) throw new NotFoundException('El contrato no existe.');
-      return { texto: await this.completar(tx, contratoId, p.cuerpo), codigo: c.codigo, nombre: p.nombre };
+      return {
+        texto: await this.completar(tx, contratoId, p.cuerpo),
+        codigo: c.codigo,
+        nombre: p.nombre,
+      };
     });
     const marca = await marcaDe(this.db, ctx);
-    const buffer = await renderToBuffer(<PlantillaDocument texto={texto} tenantNombre={marca.nombre} logoUrl={marca.logoUrl} colorPrimario={marca.colorPrimario} />);
-    const doc = await this.firma.cargar(ctx, contratoId, { buffer, mimetype: 'application/pdf', originalname: `Contrato-${codigo}.pdf`, size: buffer.length });
+    const buffer = await renderToBuffer(
+      <PlantillaDocument
+        texto={texto}
+        tenantNombre={marca.nombre}
+        logoUrl={marca.logoUrl}
+        colorPrimario={marca.colorPrimario}
+      />,
+    );
+    const doc = await this.firma.cargar(ctx, contratoId, {
+      buffer,
+      mimetype: 'application/pdf',
+      originalname: `Contrato-${codigo}.pdf`,
+      size: buffer.length,
+    });
     await this.db.withTenant((tx) =>
-      registrarEventos(tx, ctx, { entidad: 'documento', entidadId: doc.id, contratoId, accion: 'documento', resumen: `Contrato generado desde la plantilla «${nombre}»` }),
+      registrarEventos(tx, ctx, {
+        entidad: 'documento',
+        entidadId: doc.id,
+        contratoId,
+        accion: 'documento',
+        resumen: `Contrato generado desde la plantilla «${nombre}»`,
+      }),
     );
     return doc;
   }
@@ -106,7 +176,19 @@ export class PlantillasService {
         where: { id: contratoId },
         include: {
           propiedad: true,
-          partes: { include: { persona: { select: { nombre: true, documento: true, cuit: true, domicilio: true, localidad: true } } } },
+          partes: {
+            include: {
+              persona: {
+                select: {
+                  nombre: true,
+                  documento: true,
+                  cuit: true,
+                  domicilio: true,
+                  localidad: true,
+                },
+              },
+            },
+          },
           tramos: { orderBy: { numero: 'asc' } },
         },
       }),
@@ -120,7 +202,9 @@ export class PlantillasService {
         .map((p) => {
           const doc = documento(p.persona.documento) ?? documento(p.persona.cuit);
           const dom = [p.persona.domicilio, p.persona.localidad].filter(Boolean).join(', ');
-          return [p.persona.nombre, doc && `DNI/CUIT ${doc}`, dom && `con domicilio en ${dom}`].filter(Boolean).join(', ');
+          return [p.persona.nombre, doc && `DNI/CUIT ${doc}`, dom && `con domicilio en ${dom}`]
+            .filter(Boolean)
+            .join(', ');
         })
         .join('; ') || '[sin cargar]';
     const inicio = fromDate(c.inicio)!;
@@ -148,7 +232,10 @@ export class PlantillasService {
           ? `${NOMBRE_INDICE[c.indice] ?? c.indice}, cada ${c.periodicidadMeses} meses`
           : 'los importes escalonados que se detallan',
       tramos: c.tramos
-        .map((t) => `- Tramo ${t.numero}: del ${fechaCorta(fromDate(t.desde)!)} al ${fechaCorta(fromDate(t.hasta)!)}: ${t.importe != null ? plata(decToNum(t.importe), moneda) : 'según el índice'}`)
+        .map(
+          (t) =>
+            `- Tramo ${t.numero}: del ${fechaCorta(fromDate(t.desde)!)} al ${fechaCorta(fromDate(t.hasta)!)}: ${t.importe != null ? plata(decToNum(t.importe), moneda) : 'según el índice'}`,
+        )
         .join('\n'),
       'vencimiento.dia': String(c.diaVencimiento),
       punitorio: `${decToNum(c.punitorioDiarioPct).toLocaleString('es-AR')}%`,

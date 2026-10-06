@@ -22,7 +22,9 @@ const OFFLINE_URL = '/offline';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_ESTATICOS).then((cache) => cache.addAll([OFFLINE_URL, '/icons/icon-192.png'])),
+    caches
+      .open(CACHE_ESTATICOS)
+      .then((cache) => cache.addAll([OFFLINE_URL, '/icons/icon-192.png'])),
   );
   // NO se activa sola: queda esperando hasta que la persona toca
   // «Actualizar» (mensaje ACTUALIZAR, abajo). Activarse sola recargaba la

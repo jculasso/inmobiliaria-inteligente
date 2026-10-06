@@ -1,6 +1,11 @@
 import { Body, Controller, Get, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CandidatosQuerySchema, ConfiguracionAlquileresSchema, ROLES_ADMINISTRACION_ALQUILERES, type ConfiguracionAlquileres } from '@vacker/types';
+import {
+  CandidatosQuerySchema,
+  ConfiguracionAlquileresSchema,
+  ROLES_ADMINISTRACION_ALQUILERES,
+  type ConfiguracionAlquileres,
+} from '@vacker/types';
 import { CurrentUser } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ctxDe } from '../tablero/tablero.util';
@@ -31,21 +36,30 @@ export class AlquileresController {
 
   @Get('resumen')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Cuántos contratos, personas y propiedades tiene cargados la inmobiliaria' })
+  @ApiOperation({
+    summary: 'Cuántos contratos, personas y propiedades tiene cargados la inmobiliaria',
+  })
   resumen() {
     return this.alquileres.resumen();
   }
 
   @Get('candidatos')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Inquilinos (con lo que deben) o propietarios (con lo que hay para liquidarles), para elegir a quién se cobra o se liquida' })
-  candidatosDe(@Query(new ZodValidationPipe(CandidatosQuerySchema)) q: z.infer<typeof CandidatosQuerySchema>) {
+  @ApiOperation({
+    summary:
+      'Inquilinos (con lo que deben) o propietarios (con lo que hay para liquidarles), para elegir a quién se cobra o se liquida',
+  })
+  candidatosDe(
+    @Query(new ZodValidationPipe(CandidatosQuerySchema)) q: z.infer<typeof CandidatosQuerySchema>,
+  ) {
     return this.candidatos.listar(q.papel);
   }
 
   @Get('configuracion')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Configuración del módulo: IVA de honorarios, comisión inicial, sellado y depósito' })
+  @ApiOperation({
+    summary: 'Configuración del módulo: IVA de honorarios, comisión inicial, sellado y depósito',
+  })
   configuracion(@CurrentUser() user: AuthPrincipal) {
     return this.alquileres.configuracion(ctxDe(user));
   }
@@ -53,7 +67,10 @@ export class AlquileresController {
   @Put('configuracion')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Guarda la configuración del módulo' })
-  guardarConfiguracion(@Body(new ZodValidationPipe(ConfiguracionAlquileresSchema)) dto: ConfiguracionAlquileres, @CurrentUser() user: AuthPrincipal) {
+  guardarConfiguracion(
+    @Body(new ZodValidationPipe(ConfiguracionAlquileresSchema)) dto: ConfiguracionAlquileres,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.alquileres.guardarConfiguracion(ctxDe(user), dto);
   }
 }

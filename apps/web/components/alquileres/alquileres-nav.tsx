@@ -64,7 +64,10 @@ const TABS: Pestania[] = [
  */
 export function AlquileresNav() {
   const pathname = usePathname();
-  const es = (href: string) => (href === '/alquileres' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  const es = (href: string) =>
+    href === '/alquileres'
+      ? pathname === href
+      : pathname === href || pathname.startsWith(`${href}/`);
   // La ficha de un contrato (/alquileres/contratos/…) sigue marcando «Contratos».
   const activa = (t: Pestania) => (t.sub ? t.sub.some((s) => es(s.href)) : es(t.href));
   const grupo = TABS.find((t) => t.sub && activa(t));
@@ -75,7 +78,10 @@ export function AlquileresNav() {
   return (
     <div>
       <div className="relative">
-        <nav aria-label="Alquileres" className="flex overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav
+          aria-label="Alquileres"
+          className="flex overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {TABS.map((tab) => (
             <Link
               key={tab.href}
@@ -86,14 +92,19 @@ export function AlquileresNav() {
               title={tab.icono ? tab.label : undefined}
               className={cn(
                 'shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-center text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-red/40 sm:text-sm lg:px-3.5',
-                activa(tab) ? 'border-brand-red text-brand-red' : 'border-transparent text-muted hover:text-ink',
+                activa(tab)
+                  ? 'border-brand-red text-brand-red'
+                  : 'border-transparent text-muted hover:text-ink',
               )}
             >
               {tab.icono ?? tab.label}
             </Link>
           ))}
         </nav>
-        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent lg:hidden" />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent lg:hidden"
+        />
       </div>
       {grupo?.sub && (
         <nav aria-label={grupo.label} className="mt-2 flex flex-wrap gap-1">
@@ -102,7 +113,12 @@ export function AlquileresNav() {
               key={s.href}
               href={s.href}
               aria-current={es(s.href) ? 'page' : undefined}
-              className={cn('rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40', es(s.href) ? 'bg-brand-red text-white' : 'bg-white text-muted ring-1 ring-line hover:text-ink')}
+              className={cn(
+                'rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40',
+                es(s.href)
+                  ? 'bg-brand-red text-white'
+                  : 'bg-white text-muted ring-1 ring-line hover:text-ink',
+              )}
             >
               {s.label}
             </Link>

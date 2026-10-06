@@ -16,7 +16,9 @@ export function LogoutButton({ redirectTo = '/' }: { redirectTo?: string }) {
     // Si la red falla, se borra igual la sesión local —en un celular
     // compartido, «Cerrar sesión» tiene que cerrar siempre— y se navega con
     // recarga completa, para que nada de la sesión quede en memoria.
-    const { error } = await supabase.auth.signOut({ scope: 'local' }).catch((e: unknown) => ({ error: e }));
+    const { error } = await supabase.auth
+      .signOut({ scope: 'local' })
+      .catch((e: unknown) => ({ error: e }));
     if (error) await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
     window.location.assign(redirectTo);
   }

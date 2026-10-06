@@ -23,7 +23,13 @@ const ESTADO: Record<EstadoDeposito, { texto: string; tono: TonoInsignia }> = {
  * propietario»). Dónde está, y las dos acciones: entregarlo al propietario en
  * su liquidación y, al terminar, devolverlo al inquilino.
  */
-export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string; deposito: DepositoDto }) {
+export function DepositoPanel({
+  contratoId,
+  deposito: d,
+}: {
+  contratoId: string;
+  deposito: DepositoDto;
+}) {
   const router = useRouter();
   const [devolviendo, setDevolviendo] = useState(false);
   const [fecha, setFecha] = useState(hoyIso());
@@ -46,25 +52,44 @@ export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string;
   }
 
   return (
-    <Panel icono="🔐" titulo="Depósito en garantía" derecha={<Insignia tono={ESTADO[d.estado].tono}>{ESTADO[d.estado].texto}</Insignia>}>
+    <Panel
+      icono="🔐"
+      titulo="Depósito en garantía"
+      derecha={<Insignia tono={ESTADO[d.estado].tono}>{ESTADO[d.estado].texto}</Insignia>}
+    >
       {d.estado === 'sin_deposito' ? (
         <p className="text-sm text-muted">El contrato no tiene depósito cargado.</p>
       ) : (
         <div className="flex flex-col gap-3">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-            <Dato etiqueta="Importe">{d.importe != null && <span className="font-semibold tabular-nums">{fmtMoneda(d.importe, moneda)}</span>}</Dato>
+            <Dato etiqueta="Importe">
+              {d.importe != null && (
+                <span className="font-semibold tabular-nums">{fmtMoneda(d.importe, moneda)}</span>
+              )}
+            </Dato>
             <Dato etiqueta="Cobrado">
               <span className="tabular-nums">{fmtMoneda(d.cobrado, moneda)}</span>
             </Dato>
             <Dato etiqueta="Gestión" className="col-span-2">
-              {d.gestion === 'entrega_propietario' ? 'Se le entrega al propietario' : 'Lo retiene la inmobiliaria'}
+              {d.gestion === 'entrega_propietario'
+                ? 'Se le entrega al propietario'
+                : 'Lo retiene la inmobiliaria'}
             </Dato>
             {d.devueltoEl && <Dato etiqueta="Devuelto el">{fmtFecha(d.devueltoEl)}</Dato>}
           </dl>
-          {d.estado === 'a_cobrar' && <p className="text-sm text-muted">Se cobra con los cargos de ingreso, desde Cobros.</p>}
+          {d.estado === 'a_cobrar' && (
+            <p className="text-sm text-muted">Se cobra con los cargos de ingreso, desde Cobros.</p>
+          )}
           <div className="flex flex-wrap gap-2">
             {d.estado === 'cobrado' && d.gestion === 'entrega_propietario' && (
-              <Button variant="primary" size="sm" disabled={ocupado} onClick={() => hacer(async () => entregarDeposito(await getAccessToken(), contratoId))}>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={ocupado}
+                onClick={() =>
+                  hacer(async () => entregarDeposito(await getAccessToken(), contratoId))
+                }
+              >
                 🤝 Entregar al propietario
               </Button>
             )}
@@ -85,11 +110,20 @@ export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string;
         <Modal title="Devolver el depósito" onClose={() => setDevolviendo(false)}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-ink">
-              Se le reconoce al inquilino {fmtMoneda(d.cobrado, moneda)} a favor en su cuenta corriente
-              {d.estado === 'entregado' ? ', y se le descuenta al propietario en su próxima liquidación' : ''}.
+              Se le reconoce al inquilino {fmtMoneda(d.cobrado, moneda)} a favor en su cuenta
+              corriente
+              {d.estado === 'entregado'
+                ? ', y se le descuenta al propietario en su próxima liquidación'
+                : ''}
+              .
             </p>
             <Campo label="Fecha de devolución" requerido>
-              <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+              />
             </Campo>
             {error && (
               <p role="alert" className="text-sm font-medium text-danger">
@@ -100,7 +134,13 @@ export function DepositoPanel({ contratoId, deposito: d }: { contratoId: string;
               <Button variant="secondary" onClick={() => setDevolviendo(false)}>
                 Cancelar
               </Button>
-              <Button variant="primary" disabled={ocupado || !fecha} onClick={() => hacer(async () => devolverDeposito(await getAccessToken(), contratoId, fecha))}>
+              <Button
+                variant="primary"
+                disabled={ocupado || !fecha}
+                onClick={() =>
+                  hacer(async () => devolverDeposito(await getAccessToken(), contratoId, fecha))
+                }
+              >
                 {ocupado ? 'Registrando…' : 'Registrar'}
               </Button>
             </div>

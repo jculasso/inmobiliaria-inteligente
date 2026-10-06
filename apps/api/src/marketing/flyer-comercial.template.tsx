@@ -24,7 +24,14 @@ const SURFACE = '#F4F5F7';
 const GREEN = '#1E9E5A';
 
 const s = StyleSheet.create({
-  page: { paddingTop: 44, paddingHorizontal: 44, paddingBottom: 52, fontSize: 10, color: INK, fontFamily: FUENTE_MARCA },
+  page: {
+    paddingTop: 44,
+    paddingHorizontal: 44,
+    paddingBottom: 52,
+    fontSize: 10,
+    color: INK,
+    fontFamily: FUENTE_MARCA,
+  },
 
   // — marca —
   marca: { flexDirection: 'row', alignItems: 'center', gap: 9 },
@@ -46,8 +53,20 @@ const s = StyleSheet.create({
   titulo: { fontSize: 25, fontWeight: 800, color: INK, marginTop: 8, lineHeight: 1.18 },
   subrayado: { width: 60, height: 4, backgroundColor: RED, marginTop: 14, marginBottom: 20 },
 
-  problema: { borderLeftWidth: 3.5, borderLeftColor: RED, paddingLeft: 14, paddingVertical: 4, marginBottom: 24 },
-  problemaTexto: { fontSize: 13, fontWeight: 700, color: INK, lineHeight: 1.5, fontStyle: 'italic' },
+  problema: {
+    borderLeftWidth: 3.5,
+    borderLeftColor: RED,
+    paddingLeft: 14,
+    paddingVertical: 4,
+    marginBottom: 24,
+  },
+  problemaTexto: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: INK,
+    lineHeight: 1.5,
+    fontStyle: 'italic',
+  },
 
   bloque: { borderWidth: 1, borderColor: LINE, borderRadius: 10, padding: 18, marginBottom: 14 },
   bloqueEtiqueta: { fontSize: 8, fontWeight: 800, color: RED, letterSpacing: 1.5 },
@@ -61,7 +80,13 @@ const s = StyleSheet.create({
   // — tres roles —
   roles: { flexDirection: 'row', gap: 11, marginBottom: 20 },
   rol: { flex: 1, borderWidth: 1, borderColor: LINE, borderRadius: 10, overflow: 'hidden' },
-  rolCabecera: { backgroundColor: SURFACE, paddingVertical: 11, paddingHorizontal: 13, borderBottomWidth: 2, borderBottomColor: RED },
+  rolCabecera: {
+    backgroundColor: SURFACE,
+    paddingVertical: 11,
+    paddingHorizontal: 13,
+    borderBottomWidth: 2,
+    borderBottomColor: RED,
+  },
   rolNombre: { fontSize: 12.5, fontWeight: 800, color: INK },
   rolCuerpo: { padding: 13 },
   rolItem: { flexDirection: 'row', gap: 6, marginBottom: 8 },
@@ -78,7 +103,14 @@ const s = StyleSheet.create({
   ctaTexto: { fontSize: 11, color: '#FFE3E5', lineHeight: 1.6, marginTop: 10 },
   ctaWeb: { fontSize: 13, fontWeight: 800, color: '#FFFFFF', marginTop: 16 },
 
-  pie: { position: 'absolute', bottom: 26, left: 44, right: 44, flexDirection: 'row', justifyContent: 'space-between' },
+  pie: {
+    position: 'absolute',
+    bottom: 26,
+    left: 44,
+    right: 44,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   pieTexto: { fontSize: 7.5, color: MUTED, letterSpacing: 0.5 },
 });
 
@@ -137,8 +169,8 @@ export function FlyerComercial() {
           </Text>
           <View style={s.portadaBarra} />
           <Text style={s.portadaBajada}>
-            Captación, seguimiento y resultados en un solo lugar. Cada uno ve lo que necesita: el vendedor
-            su día, el líder su equipo, la dirección el negocio.
+            Captación, seguimiento y resultados en un solo lugar. Cada uno ve lo que necesita: el
+            vendedor su día, el líder su equipo, la dirección el negocio.
           </Text>
           <View style={s.portadaPie}>
             <View style={s.puntoVerde} />
@@ -157,8 +189,8 @@ export function FlyerComercial() {
 
         <View style={s.problema}>
           <Text style={s.problemaTexto}>
-            &quot;¿Cuánto vale mi propiedad?&quot; es la pregunta más importante del negocio, y hoy se
-            contesta con un número dicho al pasar.
+            &quot;¿Cuánto vale mi propiedad?&quot; es la pregunta más importante del negocio, y hoy
+            se contesta con un número dicho al pasar.
           </Text>
         </View>
 
@@ -167,8 +199,8 @@ export function FlyerComercial() {
           <Text style={s.bloqueTitulo}>El propietario recibe un informe, no un mensaje</Text>
           <Text style={s.bloqueTexto}>
             Comparables reales del mercado, con valor mínimo, recomendado y aspiracional. El sistema
-            calcula la referencia y arma un informe profesional con la marca de tu inmobiliaria, listo
-            para dejarle al cliente en la primera visita.
+            calcula la referencia y arma un informe profesional con la marca de tu inmobiliaria,
+            listo para dejarle al cliente en la primera visita.
           </Text>
         </View>
 
@@ -176,14 +208,15 @@ export function FlyerComercial() {
           <Text style={s.bloqueEtiqueta}>PROTOCOLO DE 5 SEMANAS</Text>
           <Text style={s.bloqueTitulo}>Un método, no la memoria de cada uno</Text>
           <Text style={s.bloqueTexto}>
-            Desde que se firma la exclusividad, la plataforma sabe qué corresponde hacer cada semana y
-            registra quién lo hizo. Nada queda librado a que alguien se acuerde.
+            Desde que se firma la exclusividad, la plataforma sabe qué corresponde hacer cada semana
+            y registra quién lo hizo. Nada queda librado a que alguien se acuerde.
           </Text>
         </View>
 
         <View style={s.remate}>
           <Text style={s.remateTexto}>
-            Dejás de competir por precio{'\n'}y empezás a competir <Text style={s.remateAcento}>por método.</Text>
+            Dejás de competir por precio{'\n'}y empezás a competir{' '}
+            <Text style={s.remateAcento}>por método.</Text>
           </Text>
         </View>
         <Pie n={2} />
@@ -227,8 +260,8 @@ export function FlyerComercial() {
           <Text style={s.bloqueEtiqueta}>SIN REPORTES A MANO</Text>
           <Text style={s.bloqueTitulo}>Nadie pide un número por WhatsApp</Text>
           <Text style={s.bloqueTexto}>
-            Cada rol entra y ve lo suyo, sin planillas que alguien tenga que armar el lunes a la mañana.
-            Los números salen de las operaciones cargadas, así que están siempre al día.
+            Cada rol entra y ve lo suyo, sin planillas que alguien tenga que armar el lunes a la
+            mañana. Los números salen de las operaciones cargadas, así que están siempre al día.
           </Text>
         </View>
 
@@ -250,8 +283,8 @@ export function FlyerComercial() {
 
         <View style={s.citaCaja}>
           <Text style={s.citaTexto}>
-            A las cinco semanas, el propietario recibe un informe de lo que se hizo con su propiedad:
-            visitas, consultas, publicaciones y ajustes de precio.{'\n'}
+            A las cinco semanas, el propietario recibe un informe de lo que se hizo con su
+            propiedad: visitas, consultas, publicaciones y ajustes de precio.{'\n'}
             {'\n'}
             <Text style={s.citaFuerte}>
               La conversación deja de ser &quot;¿por qué no se vendió?&quot; y pasa a ser &quot;esto
@@ -263,16 +296,17 @@ export function FlyerComercial() {
         <View style={s.bloque}>
           <Text style={s.bloqueEtiqueta}>LO QUE CAMBIA</Text>
           <Text style={s.bloqueTexto}>
-            El cliente que recibe un informe cada mes renueva la exclusividad sin discutir. El que no
-            recibe nada, llama para preguntar qué está pasando — y esa llamada nunca es buena.
+            El cliente que recibe un informe cada mes renueva la exclusividad sin discutir. El que
+            no recibe nada, llama para preguntar qué está pasando — y esa llamada nunca es buena.
           </Text>
         </View>
 
         <View style={s.ctaCaja}>
           <Text style={s.ctaTitulo}>Te lo mostramos{'\n'}en 20 minutos</Text>
           <Text style={s.ctaTexto}>
-            Una demo con tus propios números: cargamos una operación, generamos un informe de tasación y
-            recorremos el protocolo de una propiedad. Vas a ver exactamente cómo lo usaría tu equipo.
+            Una demo con tus propios números: cargamos una operación, generamos un informe de
+            tasación y recorremos el protocolo de una propiedad. Vas a ver exactamente cómo lo
+            usaría tu equipo.
           </Text>
           <Text style={s.ctaWeb}>{WEB}</Text>
         </View>

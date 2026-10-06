@@ -50,19 +50,28 @@ describe('IndicesService.importar (regla 8)', () => {
       ],
     });
     const r = await new IndicesService(prisma as never, fuentes as never).importar('2026-10-15');
-    const llamadas = prisma.indiceValor.createMany.mock.calls as unknown as [{ data: { indice: string }[] }][];
+    const llamadas = prisma.indiceValor.createMany.mock.calls as unknown as [
+      { data: { indice: string }[] },
+    ][];
     const ipc = llamadas.find((c) => c[0].data[0]?.indice === 'IPC')!;
     expect(ipc[0]).toMatchObject({
       skipDuplicates: true,
       data: [{ indice: 'IPC', fecha: fecha('2026-09-01'), valor: 12_500.1234 }],
     });
-    expect(r.find((x) => x.indice === 'IPC')).toEqual({ indice: 'IPC', nuevos: 1, ultimaFecha: '2026-09-01' });
+    expect(r.find((x) => x.indice === 'IPC')).toEqual({
+      indice: 'IPC',
+      nuevos: 1,
+      ultimaFecha: '2026-09-01',
+    });
   });
 
   // Que el BCRA no responda no frena al IPC, y el error queda en el resultado.
   it('una fuente caída no frena a la otra', async () => {
     const prisma = makePrisma({ ICL: '2026-10-16', IPC: '2026-08-01' });
-    const fuentes = makeFuentes({ ICL: new Error('BCRA respondió 503.'), IPC: [{ fecha: '2026-09-01', valor: 1 }] });
+    const fuentes = makeFuentes({
+      ICL: new Error('BCRA respondió 503.'),
+      IPC: [{ fecha: '2026-09-01', valor: 1 }],
+    });
     const r = await new IndicesService(prisma as never, fuentes as never).importar('2026-10-15');
     expect(r).toEqual([
       { indice: 'ICL', nuevos: 0, ultimaFecha: '2026-10-16', error: 'BCRA respondió 503.' },
@@ -80,14 +89,20 @@ describe('FuentesIndices', () => {
   }
 
   it('ICL: lee el formato del BCRA y nunca pide desde una fecha futura', async () => {
-    const { f, http } = conRespuesta({ results: [{ detalle: [{ fecha: '2026-10-16', valor: 36.88 }] }] });
-    expect(await f.traer('ICL', '2026-10-17', '2026-10-05')).toEqual([{ fecha: '2026-10-16', valor: 36.88 }]);
+    const { f, http } = conRespuesta({
+      results: [{ detalle: [{ fecha: '2026-10-16', valor: 36.88 }] }],
+    });
+    expect(await f.traer('ICL', '2026-10-17', '2026-10-05')).toEqual([
+      { fecha: '2026-10-16', valor: 36.88 },
+    ]);
     expect(String(http.mock.calls[0]![0])).toContain('desde=2026-10-05&hasta=2026-12-04');
   });
 
   it('IPC: lee el formato de datos.gob.ar', async () => {
     const { f } = conRespuesta({ data: [['2026-08-01', 12276.766]] });
-    expect(await f.traer('IPC', '2026-08-01', '2026-10-05')).toEqual([{ fecha: '2026-08-01', valor: 12276.766 }]);
+    expect(await f.traer('IPC', '2026-08-01', '2026-10-05')).toEqual([
+      { fecha: '2026-08-01', valor: 12276.766 },
+    ]);
   });
 
   // Un valor en cero o negativo indexaría todos los contratos mal: no entra.

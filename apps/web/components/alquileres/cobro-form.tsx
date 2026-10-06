@@ -2,11 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import type { CandidatoDto, CobroDto, MedioCobro, MonedaAlquiler, PreparacionCobroDto } from '@vacker/types';
+import type {
+  CandidatoDto,
+  CobroDto,
+  MedioCobro,
+  MonedaAlquiler,
+  PreparacionCobroDto,
+} from '@vacker/types';
 import { planificarCobro } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarRecibo, prepararCobro, registrarCobro, enviarReciboPorMail } from '../../lib/alquileres-api';
+import {
+  generarRecibo,
+  prepararCobro,
+  registrarCobro,
+  enviarReciboPorMail,
+} from '../../lib/alquileres-api';
 import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
@@ -80,17 +91,33 @@ export function CobroForm({
         const conocidos = deudasAnteriores.current;
         deudasAnteriores.current = new Set(p.deudas.map((d) => d.conceptoId));
         setPrep(p);
-        setElegidos((previos) => new Set(p.deudas.map((d) => d.conceptoId).filter((id) => !mismaCuenta || !conocidos.has(id) || previos.has(id))));
+        setElegidos(
+          (previos) =>
+            new Set(
+              p.deudas
+                .map((d) => d.conceptoId)
+                .filter((id) => !mismaCuenta || !conocidos.has(id) || previos.has(id)),
+            ),
+        );
         setPunitorios((previos) =>
           Object.fromEntries(
             p.deudas
               .filter((d) => d.punitorio)
               // El importe se recalcula con la fecha nueva; el motivo escrito queda.
-              .map((d) => [d.conceptoId, { importe: escribirImporte(d.punitorio!.importe), motivo: mismaCuenta ? (previos[d.conceptoId]?.motivo ?? '') : '' }]),
+              .map((d) => [
+                d.conceptoId,
+                {
+                  importe: escribirImporte(d.punitorio!.importe),
+                  motivo: mismaCuenta ? (previos[d.conceptoId]?.motivo ?? '') : '',
+                },
+              ]),
           ),
         );
       } catch (err) {
-        if (vigente) setError(err instanceof Error ? err.message : 'No se pudo traer la cuenta de la persona.');
+        if (vigente)
+          setError(
+            err instanceof Error ? err.message : 'No se pudo traer la cuenta de la persona.',
+          );
       } finally {
         if (vigente) setCargando(false);
       }
@@ -100,14 +127,24 @@ export function CobroForm({
     };
   }, [personaId, moneda, fecha]);
 
-  const deudas = useMemo(() => (prep?.deudas ?? []).filter((d) => elegidos.has(d.conceptoId)), [prep, elegidos]);
+  const deudas = useMemo(
+    () => (prep?.deudas ?? []).filter((d) => elegidos.has(d.conceptoId)),
+    [prep, elegidos],
+  );
   const punitorioDe = (id: string) => {
     const v = punitorios[id] ? numero(punitorios[id]!.importe) : 0;
     return Number.isFinite(v) && v > 0 ? v : 0;
   };
-  const fila = deudas.flatMap((d) => [{ conceptoId: d.conceptoId, saldo: d.saldo }, ...(punitorioDe(d.conceptoId) > 0 ? [{ conceptoId: `p:${d.conceptoId}`, saldo: punitorioDe(d.conceptoId) }] : [])]);
+  const fila = deudas.flatMap((d) => [
+    { conceptoId: d.conceptoId, saldo: d.saldo },
+    ...(punitorioDe(d.conceptoId) > 0
+      ? [{ conceptoId: `p:${d.conceptoId}`, saldo: punitorioDe(d.conceptoId) }]
+      : []),
+  ]);
   const totalDeuda = fila.reduce((s, x) => s + x.saldo, 0);
-  const aFavor = (prep?.creditos ?? []).reduce((s, c) => s + c.disponible, 0) + (prep?.compensables ?? []).reduce((s, c) => s + c.saldo, 0);
+  const aFavor =
+    (prep?.creditos ?? []).reduce((s, c) => s + c.disponible, 0) +
+    (prep?.compensables ?? []).reduce((s, c) => s + c.saldo, 0);
   const sugerido = Math.max(0, Math.round((totalDeuda - aFavor) * 100) / 100);
   const monto = numero(importe);
   const plan =
@@ -115,18 +152,28 @@ export function CobroForm({
       ? planificarCobro({
           importe: monto,
           creditos: prep.creditos,
-          compensables: prep.compensables.map((c) => ({ conceptoId: c.conceptoId, saldo: c.saldo })),
+          compensables: prep.compensables.map((c) => ({
+            conceptoId: c.conceptoId,
+            saldo: c.saldo,
+          })),
           deudas: fila,
         })
       : null;
-  const cubierto = (id: string) => (plan?.imputaciones ?? []).filter((i) => i.conceptoId === id).reduce((s, i) => s + i.importe, 0);
+  const cubierto = (id: string) =>
+    (plan?.imputaciones ?? [])
+      .filter((i) => i.conceptoId === id)
+      .reduce((s, i) => s + i.importe, 0);
 
   async function confirmar() {
     if (!prep) return;
     setError(null);
     if (!(monto > 0)) return setError('Cargá el importe recibido.');
     for (const d of deudas) {
-      if (d.punitorio && punitorioDe(d.conceptoId) < d.punitorio.importe && (punitorios[d.conceptoId]?.motivo.trim().length ?? 0) < 3) {
+      if (
+        d.punitorio &&
+        punitorioDe(d.conceptoId) < d.punitorio.importe &&
+        (punitorios[d.conceptoId]?.motivo.trim().length ?? 0) < 3
+      ) {
         return setError(`Para condonar el punitorio de «${d.descripcion}» hace falta el motivo.`);
       }
     }
@@ -140,7 +187,13 @@ export function CobroForm({
         medio,
         obs,
         conceptoIds: deudas.length === prep.deudas.length ? null : deudas.map((d) => d.conceptoId),
-        punitorios: deudas.filter((d) => d.punitorio).map((d) => ({ conceptoId: d.conceptoId, importe: punitorioDe(d.conceptoId), motivo: punitorios[d.conceptoId]?.motivo })),
+        punitorios: deudas
+          .filter((d) => d.punitorio)
+          .map((d) => ({
+            conceptoId: d.conceptoId,
+            importe: punitorioDe(d.conceptoId),
+            motivo: punitorios[d.conceptoId]?.motivo,
+          })),
       });
       setHecho(r);
     } catch (err) {
@@ -156,8 +209,16 @@ export function CobroForm({
         titulo={`Recibo ${recibo(hecho.numero)} · ${fmtMoneda(hecho.importe, hecho.moneda)} de ${hecho.persona.nombre}`}
         detalle={
           <>
-            {hecho.aFavor > 0 && <p className="text-sm text-muted">Quedan {fmtMoneda(hecho.aFavor, hecho.moneda)} a su favor para el próximo pago.</p>}
-            {error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
+            {hecho.aFavor > 0 && (
+              <p className="text-sm text-muted">
+                Quedan {fmtMoneda(hecho.aFavor, hecho.moneda)} a su favor para el próximo pago.
+              </p>
+            )}
+            {error && (
+              <p role="alert" className="text-sm font-medium text-danger">
+                {error}
+              </p>
+            )}
           </>
         }
         volver={{ href: '/alquileres/cobros', texto: 'Volver a cobros' }}
@@ -167,7 +228,12 @@ export function CobroForm({
         </Button>
         <Button
           variant="secondary"
-          onClick={() => abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), hecho.id), { titulo: `Recibo ${recibo(hecho.numero)}`, onError: setError })}
+          onClick={() =>
+            abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), hecho.id), {
+              titulo: `Recibo ${recibo(hecho.numero)}`,
+              onError: setError,
+            })
+          }
         >
           📄 Abrir el recibo
         </Button>
@@ -191,7 +257,10 @@ export function CobroForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <EncabezadoPagina titulo="Nuevo cobro" volver={{ href: '/alquileres/cobros', texto: 'Cobros' }} />
+      <EncabezadoPagina
+        titulo="Nuevo cobro"
+        volver={{ href: '/alquileres/cobros', texto: 'Cobros' }}
+      />
       <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-2">
         <div className="sm:col-span-2">
           <SelectorPersona
@@ -205,10 +274,19 @@ export function CobroForm({
           />
         </div>
         <Campo label="Fecha">
-          <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          <input
+            type="date"
+            className={inputClass}
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+          />
         </Campo>
         <Campo label="Moneda">
-          <select className={inputClass} value={moneda} onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}>
+          <select
+            className={inputClass}
+            value={moneda}
+            onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}
+          >
             <option value="ARS">Pesos</option>
             <option value="USD">Dólares</option>
           </select>
@@ -221,14 +299,18 @@ export function CobroForm({
         <>
           <Bloque icono="📋" titulo="Lo que debe" detalle={String(prep.deudas.length)}>
             {prep.deudas.length === 0 ? (
-              <VacioBloque>No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}. Lo que pague queda a su favor.</VacioBloque>
+              <VacioBloque>
+                No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}. Lo que pague
+                queda a su favor.
+              </VacioBloque>
             ) : (
               <ul className="divide-y divide-line">
                 {prep.deudas.map((d) => {
                   const elegido = elegidos.has(d.conceptoId);
                   const cub = cubierto(d.conceptoId);
                   const p = punitorios[d.conceptoId];
-                  const condona = d.punitorio && elegido && punitorioDe(d.conceptoId) < d.punitorio.importe;
+                  const condona =
+                    d.punitorio && elegido && punitorioDe(d.conceptoId) < d.punitorio.importe;
                   return (
                     <li key={d.conceptoId} className="flex flex-col gap-2 px-4 py-3">
                       <label className="flex items-start gap-3">
@@ -251,14 +333,24 @@ export function CobroForm({
                           <span className="block text-xs text-muted">
                             {/* Se puede cobrar por adelantado: lo que todavía no venció no dice «venció». */}
                             {d.vencimiento < hoy ? 'Venció' : 'Vence'} el {fmtFecha(d.vencimiento)}
-                            {d.saldo < d.importe ? ` · ya pagó ${fmtMoneda(d.importe - d.saldo, moneda)}` : ''}
+                            {d.saldo < d.importe
+                              ? ` · ya pagó ${fmtMoneda(d.importe - d.saldo, moneda)}`
+                              : ''}
                           </span>
                         </span>
                         <span className="text-right text-sm tabular-nums">
-                          <span className="block font-bold text-ink">{fmtMoneda(d.saldo, moneda)}</span>
+                          <span className="block font-bold text-ink">
+                            {fmtMoneda(d.saldo, moneda)}
+                          </span>
                           {elegido && plan && (
-                            <span className={`block text-xs ${cub >= d.saldo ? 'text-success' : 'text-warning'}`}>
-                              {cub >= d.saldo ? 'Se cancela' : cub > 0 ? `Queda debiendo ${fmtMoneda(d.saldo - cub, moneda)}` : 'No alcanza'}
+                            <span
+                              className={`block text-xs ${cub >= d.saldo ? 'text-success' : 'text-warning'}`}
+                            >
+                              {cub >= d.saldo
+                                ? 'Se cancela'
+                                : cub > 0
+                                  ? `Queda debiendo ${fmtMoneda(d.saldo - cub, moneda)}`
+                                  : 'No alcanza'}
                             </span>
                           )}
                         </span>
@@ -266,14 +358,20 @@ export function CobroForm({
                       {d.punitorio && elegido && (
                         <div className="ml-7 grid gap-2 rounded-brand bg-surface p-3 sm:grid-cols-[auto_10rem_1fr] sm:items-end">
                           <p className="text-xs text-muted sm:pb-2.5">
-                            Punitorio: {d.punitorio.dias} días de atraso, {fmtMoneda(d.punitorio.importe, moneda)}
+                            Punitorio: {d.punitorio.dias} días de atraso,{' '}
+                            {fmtMoneda(d.punitorio.importe, moneda)}
                           </p>
                           <Campo label="Se cobra">
                             <InputImporte
                               aria-label={`Punitorio de ${d.descripcion}`}
                               moneda={moneda}
                               value={p?.importe ?? ''}
-                              onChange={(importe) => setPunitorios({ ...punitorios, [d.conceptoId]: { importe, motivo: p?.motivo ?? '' } })}
+                              onChange={(importe) =>
+                                setPunitorios({
+                                  ...punitorios,
+                                  [d.conceptoId]: { importe, motivo: p?.motivo ?? '' },
+                                })
+                              }
                             />
                           </Campo>
                           {condona && (
@@ -281,7 +379,15 @@ export function CobroForm({
                               <input
                                 className={inputClass}
                                 value={p?.motivo ?? ''}
-                                onChange={(e) => setPunitorios({ ...punitorios, [d.conceptoId]: { importe: p?.importe ?? '0', motivo: e.target.value } })}
+                                onChange={(e) =>
+                                  setPunitorios({
+                                    ...punitorios,
+                                    [d.conceptoId]: {
+                                      importe: p?.importe ?? '0',
+                                      motivo: e.target.value,
+                                    },
+                                  })
+                                }
                               />
                             </Campo>
                           )}
@@ -296,12 +402,16 @@ export function CobroForm({
               <div className="border-t border-line px-4 py-3 text-sm text-ink">
                 {prep.creditos.map((c) => (
                   <p key={c.cobroId}>
-                    A su favor del recibo {recibo(c.numero)}: <span className="font-semibold tabular-nums">{fmtMoneda(c.disponible, moneda)}</span>
+                    A su favor del recibo {recibo(c.numero)}:{' '}
+                    <span className="font-semibold tabular-nums">
+                      {fmtMoneda(c.disponible, moneda)}
+                    </span>
                   </p>
                 ))}
                 {prep.compensables.map((c) => (
                   <p key={c.conceptoId}>
-                    Reintegro a su favor, {c.descripcion}: <span className="font-semibold tabular-nums">{fmtMoneda(c.saldo, moneda)}</span>
+                    Reintegro a su favor, {c.descripcion}:{' '}
+                    <span className="font-semibold tabular-nums">{fmtMoneda(c.saldo, moneda)}</span>
                   </p>
                 ))}
                 <p className="text-xs text-muted">Se descuenta solo de lo que debe.</p>
@@ -310,18 +420,40 @@ export function CobroForm({
           </Bloque>
 
           <section className="grid gap-3 rounded-brand border border-line bg-white p-4 shadow-sm sm:grid-cols-3">
-            <Campo label="Importe recibido" requerido hint={sugerido > 0 ? `Para cancelar lo elegido: ${fmtMoneda(sugerido, moneda)}` : undefined}>
+            <Campo
+              label="Importe recibido"
+              requerido
+              hint={
+                sugerido > 0
+                  ? `Para cancelar lo elegido: ${fmtMoneda(sugerido, moneda)}`
+                  : undefined
+              }
+            >
               <div className="flex gap-2">
-                <InputImporte className="min-w-0 flex-1" moneda={moneda} aria-label="Importe recibido" value={importe} onChange={setImporte} />
+                <InputImporte
+                  className="min-w-0 flex-1"
+                  moneda={moneda}
+                  aria-label="Importe recibido"
+                  value={importe}
+                  onChange={setImporte}
+                />
                 {sugerido > 0 && (
-                  <Button type="button" variant="secondary" onClick={() => setImporte(escribirImporte(sugerido))}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setImporte(escribirImporte(sugerido))}
+                  >
                     Todo
                   </Button>
                 )}
               </div>
             </Campo>
             <Campo label="Medio">
-              <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
+              <select
+                className={inputClass}
+                value={medio}
+                onChange={(e) => setMedio(e.target.value as MedioCobro)}
+              >
                 {MEDIOS_COBRO.map((v) => (
                   <option key={v} value={v}>
                     {NOMBRE_MEDIO[v]}
@@ -341,7 +473,11 @@ export function CobroForm({
           )}
           <div className="flex justify-end">
             <Button variant="primary" onClick={confirmar} disabled={enviando || !(monto > 0)}>
-              {enviando ? 'Registrando…' : monto > 0 ? `Registrar el cobro de ${fmtMoneda(monto, moneda)}` : 'Registrar el cobro'}
+              {enviando
+                ? 'Registrando…'
+                : monto > 0
+                  ? `Registrar el cobro de ${fmtMoneda(monto, moneda)}`
+                  : 'Registrar el cobro'}
             </Button>
           </div>
         </>

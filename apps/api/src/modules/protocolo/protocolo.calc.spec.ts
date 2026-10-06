@@ -103,7 +103,9 @@ describe('estaAtrasada', () => {
   it('nunca marca atrasada una realizada ni una que no corresponde', () => {
     const vencida = { fechaPrevista: '2026-07-01' };
     expect(estaAtrasada(accion({ ...vencida, estado: 'realizada' }), '2026-07-30')).toBe(false);
-    expect(estaAtrasada(accion({ ...vencida, estado: 'no_corresponde' }), '2026-07-30')).toBe(false);
+    expect(estaAtrasada(accion({ ...vencida, estado: 'no_corresponde' }), '2026-07-30')).toBe(
+      false,
+    );
   });
 });
 
@@ -173,14 +175,24 @@ describe('calcularAlertas', () => {
       { ...base, vencimientoAutorizacion: '2026-07-15' },
       '2026-07-10',
     );
-    expect(porVencer.some((a) => a.nivel === 'ambar' && a.titulo === 'Autorización por vencer')).toBe(true);
+    expect(
+      porVencer.some((a) => a.nivel === 'ambar' && a.titulo === 'Autorización por vencer'),
+    ).toBe(true);
 
-    const vencida = calcularAlertas({ ...base, vencimientoAutorizacion: '2026-07-05' }, '2026-07-10');
-    expect(vencida.some((a) => a.nivel === 'roja' && a.titulo === 'Autorización vencida')).toBe(true);
+    const vencida = calcularAlertas(
+      { ...base, vencimientoAutorizacion: '2026-07-05' },
+      '2026-07-10',
+    );
+    expect(vencida.some((a) => a.nivel === 'roja' && a.titulo === 'Autorización vencida')).toBe(
+      true,
+    );
   });
 
   it('no alerta si la autorización vence a más de 10 días', () => {
-    const alertas = calcularAlertas({ ...base, vencimientoAutorizacion: '2026-08-30' }, '2026-07-10');
+    const alertas = calcularAlertas(
+      { ...base, vencimientoAutorizacion: '2026-08-30' },
+      '2026-07-10',
+    );
     expect(alertas.some((a) => a.titulo.startsWith('Autorización'))).toBe(false);
   });
 
@@ -219,7 +231,9 @@ describe('calcularAlertas', () => {
       { ...base, acciones: [accion({ semana: 5, estado: 'realizada' })] },
       '2026-08-01',
     );
-    expect(alertas.some((a) => a.nivel === 'verde' && a.titulo === 'Protocolo listo para cierre')).toBe(true);
+    expect(
+      alertas.some((a) => a.nivel === 'verde' && a.titulo === 'Protocolo listo para cierre'),
+    ).toBe(true);
   });
 });
 
@@ -250,7 +264,10 @@ describe('a qué semana lleva cada alerta', () => {
   });
 
   it('lo que no se resuelve en una semana puntual no apunta a ninguna', () => {
-    const alertas = calcularAlertas({ ...base, vencimientoAutorizacion: '2026-07-28' }, '2026-07-25');
+    const alertas = calcularAlertas(
+      { ...base, vencimientoAutorizacion: '2026-07-28' },
+      '2026-07-25',
+    );
     expect(alertas.find((a) => a.titulo === 'Autorización por vencer')?.semana).toBeNull();
   });
 });

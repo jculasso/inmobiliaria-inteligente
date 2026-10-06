@@ -151,15 +151,17 @@ describe('AdminUsuariosService', () => {
     const supabaseAdmin = makeSupabaseAdmin();
     const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage(), makeCache());
 
-    await expect(service.resetPassword(TENANT_ID, 'v1', { password: 'nuevaClave123' })).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.resetPassword(TENANT_ID, 'v1', { password: 'nuevaClave123' }),
+    ).rejects.toThrow(BadRequestException);
     expect(supabaseAdmin.setPassword).not.toHaveBeenCalled();
   });
 
   it('resetPassword actualiza la contraseña vía Supabase Admin usando el authUserId', async () => {
     const db = makeDb({
-      findFirst: vi.fn().mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1' }),
+      findFirst: vi
+        .fn()
+        .mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1' }),
     });
     const supabaseAdmin = makeSupabaseAdmin();
     const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage(), makeCache());
@@ -172,14 +174,16 @@ describe('AdminUsuariosService', () => {
 
   it('activarAcceso rechaza si el usuario ya tiene acceso', async () => {
     const db = makeDb({
-      findFirst: vi.fn().mockResolvedValue({ id: 'v1', email: 'v1@vacker.test', authUserId: 'auth-1' }),
+      findFirst: vi
+        .fn()
+        .mockResolvedValue({ id: 'v1', email: 'v1@vacker.test', authUserId: 'auth-1' }),
     });
     const supabaseAdmin = makeSupabaseAdmin();
     const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage(), makeCache());
 
-    await expect(service.activarAcceso(TENANT_ID, 'v1', { password: 'nuevaClave123' })).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.activarAcceso(TENANT_ID, 'v1', { password: 'nuevaClave123' }),
+    ).rejects.toThrow(BadRequestException);
     expect(supabaseAdmin.createUser).not.toHaveBeenCalled();
   });
 
@@ -187,14 +191,18 @@ describe('AdminUsuariosService', () => {
     const update = vi.fn();
     const findUniqueOrThrow = vi.fn().mockResolvedValue({ ...usuarioRow, id: 'vendedor-1' });
     const db = makeDb({
-      findFirst: vi.fn().mockResolvedValue({ id: 'vendedor-1', email: 'ezequiel@vacker.com', authUserId: null }),
+      findFirst: vi
+        .fn()
+        .mockResolvedValue({ id: 'vendedor-1', email: 'ezequiel@vacker.com', authUserId: null }),
       update,
       findUniqueOrThrow,
     });
     const supabaseAdmin = makeSupabaseAdmin();
     const service = new AdminUsuariosService(db, supabaseAdmin, makeStorage(), makeCache());
 
-    const result = await service.activarAcceso(TENANT_ID, 'vendedor-1', { password: 'nuevaClave123' });
+    const result = await service.activarAcceso(TENANT_ID, 'vendedor-1', {
+      password: 'nuevaClave123',
+    });
 
     expect(supabaseAdmin.createUser).toHaveBeenCalledWith('ezequiel@vacker.com', 'nuevaClave123');
     // La clave que pone el admin es temporal: al entrar se le pide una propia.
@@ -208,7 +216,9 @@ describe('AdminUsuariosService', () => {
   it('activarAcceso revierte el alta en Supabase Auth si falla el update en la base', async () => {
     const update = vi.fn().mockRejectedValue(new Error('boom'));
     const db = makeDb({
-      findFirst: vi.fn().mockResolvedValue({ id: 'vendedor-1', email: 'ezequiel@vacker.com', authUserId: null }),
+      findFirst: vi
+        .fn()
+        .mockResolvedValue({ id: 'vendedor-1', email: 'ezequiel@vacker.com', authUserId: null }),
       update,
     });
     const supabaseAdmin = makeSupabaseAdmin();
@@ -222,31 +232,63 @@ describe('AdminUsuariosService', () => {
 
   it('subirFoto sube la imagen y guarda fotoUrl', async () => {
     const update = vi.fn();
-    const findUniqueOrThrow = vi.fn().mockResolvedValue({ ...usuarioRow, fotoUrl: 'https://storage.test/foto.jpg' });
+    const findUniqueOrThrow = vi
+      .fn()
+      .mockResolvedValue({ ...usuarioRow, fotoUrl: 'https://storage.test/foto.jpg' });
     const db = makeDb({
-      findFirst: vi.fn().mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1', fotoUrl: null }),
+      findFirst: vi.fn().mockResolvedValue({
+        id: 'auth-1',
+        email: 'x@vacker.test',
+        authUserId: 'auth-1',
+        fotoUrl: null,
+      }),
       update,
       findUniqueOrThrow,
     });
-    const storage = makeStorage({ upload: vi.fn().mockResolvedValue('https://storage.test/foto.jpg') });
+    const storage = makeStorage({
+      upload: vi.fn().mockResolvedValue('https://storage.test/foto.jpg'),
+    });
     const service = new AdminUsuariosService(db, makeSupabaseAdmin(), storage, makeCache());
 
-    const file = { buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]), mimetype: 'image/jpeg', originalname: 'foto.jpg', size: 1024 };
+    const file = {
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]),
+      mimetype: 'image/jpeg',
+      originalname: 'foto.jpg',
+      size: 1024,
+    };
     const result = await service.subirFoto(TENANT_ID, 'auth-1', file);
 
-    expect(storage.upload).toHaveBeenCalledWith('usuarios-avatares', `${TENANT_ID}/auth-1.jpg`, file.buffer, 'image/jpeg');
-    expect(update).toHaveBeenCalledWith({ where: { id: 'auth-1' }, data: { fotoUrl: 'https://storage.test/foto.jpg' } });
+    expect(storage.upload).toHaveBeenCalledWith(
+      'usuarios-avatares',
+      `${TENANT_ID}/auth-1.jpg`,
+      file.buffer,
+      'image/jpeg',
+    );
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'auth-1' },
+      data: { fotoUrl: 'https://storage.test/foto.jpg' },
+    });
     expect(result.fotoUrl).toBe('https://storage.test/foto.jpg');
   });
 
   it('subirFoto rechaza un archivo que no es imagen', async () => {
     const db = makeDb({
-      findFirst: vi.fn().mockResolvedValue({ id: 'auth-1', email: 'x@vacker.test', authUserId: 'auth-1', fotoUrl: null }),
+      findFirst: vi.fn().mockResolvedValue({
+        id: 'auth-1',
+        email: 'x@vacker.test',
+        authUserId: 'auth-1',
+        fotoUrl: null,
+      }),
     });
     const storage = makeStorage();
     const service = new AdminUsuariosService(db, makeSupabaseAdmin(), storage, makeCache());
 
-    const file = { buffer: Buffer.from(''), mimetype: 'application/pdf', originalname: 'doc.pdf', size: 1024 };
+    const file = {
+      buffer: Buffer.from(''),
+      mimetype: 'application/pdf',
+      originalname: 'doc.pdf',
+      size: 1024,
+    };
     await expect(service.subirFoto(TENANT_ID, 'auth-1', file)).rejects.toThrow(BadRequestException);
     expect(storage.upload).not.toHaveBeenCalled();
   });

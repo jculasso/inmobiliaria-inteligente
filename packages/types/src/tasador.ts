@@ -45,10 +45,22 @@ export type Exclusividad = z.infer<typeof ExclusividadSchema>;
 // --- Vocabulario de la sección 2 (Características del inmueble), tomado
 // literal de las constantes *_OPS del prototipo. ---
 
-export const EstadoInmuebleSchema = z.enum(['Excelente', 'Muy bueno', 'Bueno', 'Regular', 'A reciclar']);
+export const EstadoInmuebleSchema = z.enum([
+  'Excelente',
+  'Muy bueno',
+  'Bueno',
+  'Regular',
+  'A reciclar',
+]);
 export type EstadoInmueble = z.infer<typeof EstadoInmuebleSchema>;
 
-export const DisposicionSchema = z.enum(['Frente', 'Contrafrente', 'Interno', 'Lateral', 'No aplica']);
+export const DisposicionSchema = z.enum([
+  'Frente',
+  'Contrafrente',
+  'Interno',
+  'Lateral',
+  'No aplica',
+]);
 export type Disposicion = z.infer<typeof DisposicionSchema>;
 
 export const OrientacionSchema = z.enum([
@@ -64,7 +76,12 @@ export const OrientacionSchema = z.enum([
 ]);
 export type Orientacion = z.infer<typeof OrientacionSchema>;
 
-export const DocumentacionSchema = z.enum(['Completa', 'Pendiente de revisión', 'Con observaciones', 'No aplica']);
+export const DocumentacionSchema = z.enum([
+  'Completa',
+  'Pendiente de revisión',
+  'Con observaciones',
+  'No aplica',
+]);
 export type Documentacion = z.infer<typeof DocumentacionSchema>;
 
 export const AptoCreditoSchema = z.enum(['Sí', 'No', 'A revisar']);
@@ -156,7 +173,13 @@ export const EstrategiaComercialSchema = z.object({
 export type EstrategiaComercial = z.infer<typeof EstrategiaComercialSchema>;
 
 /** Origen del dato del comparable (pondera y da confianza en la valuación). */
-export const FuenteComparableSchema = z.enum(['Publicación', 'Cierre real', 'Colega', 'Mapa de cierres', 'Otro']);
+export const FuenteComparableSchema = z.enum([
+  'Publicación',
+  'Cierre real',
+  'Colega',
+  'Mapa de cierres',
+  'Otro',
+]);
 export type FuenteComparable = z.infer<typeof FuenteComparableSchema>;
 
 /** Si el precio del comparable es de publicación o de cierre real. */

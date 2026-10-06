@@ -64,7 +64,13 @@ export function DashboardKpis({
      */
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard label="Volumen" value={fmtUSD(agg.volumen)} icon="💰" tone="brand" onClick={abrir('Volumen', 'volumen')} />
+        <KpiCard
+          label="Volumen"
+          value={fmtUSD(agg.volumen)}
+          icon="💰"
+          tone="brand"
+          onClick={abrir('Volumen', 'volumen')}
+        />
         <KpiCard
           label="Operaciones"
           value={fmtNum(agg.operaciones)}
@@ -90,7 +96,13 @@ export function DashboardKpis({
           icon="🧑‍💼"
           onClick={abrir('Puntas vendedoras', 'puntas', 'vendedora')}
         />
-        <KpiCard label="Comisión" value={fmtUSD(agg.comision)} icon="💵" tone="success" onClick={abrir('Comisión', 'comision')} />
+        <KpiCard
+          label="Comisión"
+          value={fmtUSD(agg.comision)}
+          icon="💵"
+          tone="success"
+          onClick={abrir('Comisión', 'comision')}
+        />
         {/*
           La comisión abierta por lado, como la mira Vacker en su planilla: qué
           parte abonó el comprador y qué parte el vendedor. Las dos suman la
@@ -124,7 +136,9 @@ export function DashboardKpis({
       )}
 
       <section className="flex flex-col gap-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">Acumulado año {anio}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">
+          Acumulado año {anio}
+        </p>
         {cards(resumen.anual, { anio, verTodo }, `Año ${anio}`)}
       </section>
 

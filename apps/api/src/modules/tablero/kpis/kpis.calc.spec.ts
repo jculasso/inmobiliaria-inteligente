@@ -1,15 +1,53 @@
 import { describe, expect, it } from 'vitest';
-import { agregar, ranking, seguimientoObjetivos, type ObjetivoRow, type PuntaCalc } from './kpis.calc';
+import {
+  agregar,
+  ranking,
+  seguimientoObjetivos,
+  type ObjetivoRow,
+  type PuntaCalc,
+} from './kpis.calc';
 
 // Dataset fijo de puntas escrituradas (ya filtrado por estado/año en el servicio).
 //   OP1  precio 100  → A vendedora (com 3) + B compradora (com 2)
 //   OP2  precio 200  → A vendedora (com 6)
 //   OP3  precio  50  → C compradora (com 1.5)
 const puntas: PuntaCalc[] = [
-  { operacionId: 'op1', usuarioId: 'a', nombre: 'A', fotoUrl: null, lado: 'vendedora', precio: 100, comision: 3 },
-  { operacionId: 'op1', usuarioId: 'b', nombre: 'B', fotoUrl: null, lado: 'compradora', precio: 100, comision: 2 },
-  { operacionId: 'op2', usuarioId: 'a', nombre: 'A', fotoUrl: null, lado: 'vendedora', precio: 200, comision: 6 },
-  { operacionId: 'op3', usuarioId: 'c', nombre: 'C', fotoUrl: null, lado: 'compradora', precio: 50, comision: 1.5 },
+  {
+    operacionId: 'op1',
+    usuarioId: 'a',
+    nombre: 'A',
+    fotoUrl: null,
+    lado: 'vendedora',
+    precio: 100,
+    comision: 3,
+  },
+  {
+    operacionId: 'op1',
+    usuarioId: 'b',
+    nombre: 'B',
+    fotoUrl: null,
+    lado: 'compradora',
+    precio: 100,
+    comision: 2,
+  },
+  {
+    operacionId: 'op2',
+    usuarioId: 'a',
+    nombre: 'A',
+    fotoUrl: null,
+    lado: 'vendedora',
+    precio: 200,
+    comision: 6,
+  },
+  {
+    operacionId: 'op3',
+    usuarioId: 'c',
+    nombre: 'C',
+    fotoUrl: null,
+    lado: 'compradora',
+    precio: 50,
+    comision: 1.5,
+  },
 ];
 
 describe('agregar', () => {
@@ -41,7 +79,10 @@ describe('agregar', () => {
    * sola vez, no dos.
    */
   it('en una venta compartida, la punta ajena no suma', () => {
-    const soloA = agregar(puntas.filter((p) => p.operacionId === 'op1'), new Set(['a']));
+    const soloA = agregar(
+      puntas.filter((p) => p.operacionId === 'op1'),
+      new Set(['a']),
+    );
     expect(soloA.comision).toBe(3); // la suya, no los 5 de la operación
     expect(soloA.puntas).toBe(1);
     expect(soloA.operaciones).toBe(1);
@@ -58,7 +99,13 @@ describe('ranking', () => {
   it('ordena por volumen desc y calcula peso relativo', () => {
     const r = ranking(puntas, null);
     expect(r.map((x) => x.usuarioId)).toEqual(['a', 'b', 'c']);
-    expect(r[0]).toMatchObject({ usuarioId: 'a', volumen: 300, puntas: 2, operaciones: 2, comision: 9 });
+    expect(r[0]).toMatchObject({
+      usuarioId: 'a',
+      volumen: 300,
+      puntas: 2,
+      operaciones: 2,
+      comision: 9,
+    });
     expect(r[0]?.peso).toBeCloseTo(300 / 450);
     expect(r[1]).toMatchObject({ usuarioId: 'b', volumen: 100 });
     expect(r[2]).toMatchObject({ usuarioId: 'c', volumen: 50 });
@@ -117,10 +164,10 @@ describe('agregar — la comisión por lado', () => {
     // cerrar, las tres tarjetas del dashboard se contradicen entre ellas.
     for (const scope of [null, new Set(['a']), new Set(['b', 'c']), new Set(['z'])]) {
       const a = agregar(puntas, scope);
-      expect(a.comisionCompradora + a.comisionVendedora, `scope ${JSON.stringify(scope)}`).toBeCloseTo(
-        a.comision,
-        10,
-      );
+      expect(
+        a.comisionCompradora + a.comisionVendedora,
+        `scope ${JSON.stringify(scope)}`,
+      ).toBeCloseTo(a.comision, 10);
     }
   });
 

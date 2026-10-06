@@ -16,7 +16,11 @@ export default function Tasador() {
       bajada="La captación se gana o se pierde en la primera reunión con el propietario. El Tasador convierte esa reunión en una presentación profesional: un rango de valores fundamentado en comparables reales, en un documento que el propietario se queda."
       sale="Informe de tasación en PDF, con la marca de su inmobiliaria"
     >
-      <Bloque kicker="El problema" titulo="El precio se discute de memoria, y así se pierde la autorización." fondo>
+      <Bloque
+        kicker="El problema"
+        titulo="El precio se discute de memoria, y así se pierde la autorización."
+        fondo
+      >
         <p>
           En la mayoría de las inmobiliarias, el valor de una propiedad sale de la experiencia del
           vendedor y de dos o tres propiedades que tiene en la cabeza. Puede estar bien. El problema
@@ -25,8 +29,8 @@ export default function Tasador() {
         <p>
           El propietario que escucha un número sin respaldo hace lo previsible: llama a otras dos
           inmobiliarias y se queda con la que le dice el número más alto. Seis meses después la
-          propiedad sigue publicada, ya se quemó, y hay que pedirle una baja de precio a alguien
-          que no entiende por qué.
+          propiedad sigue publicada, ya se quemó, y hay que pedirle una baja de precio a alguien que
+          no entiende por qué.
         </p>
         <p className="font-semibold text-ink">
           Una tasación fundamentada no sirve para acertar el precio. Sirve para que la conversación
@@ -81,12 +85,18 @@ export default function Tasador() {
 
       <Bloque kicker="Quién ve qué" titulo="Cada uno ve lo suyo, sin pedir permiso." fondo>
         <div className="mt-2">
-          <Rol rol="Vendedor" ve="Sus propias tasaciones. Las carga, las edita y descarga el informe." />
+          <Rol
+            rol="Vendedor"
+            ve="Sus propias tasaciones. Las carga, las edita y descarga el informe."
+          />
           <Rol
             rol="Team leader"
             ve="Las de su equipo, para revisar un rango antes de que salga a la calle."
           />
-          <Rol rol="Dirección" ve="Todas. Y qué se está tasando, que es el mejor anticipo de lo que se va a captar." />
+          <Rol
+            rol="Dirección"
+            ve="Todas. Y qué se está tasando, que es el mejor anticipo de lo que se va a captar."
+          />
         </div>
         <Captura
           src="/capturas/tasador-tasaciones.png"

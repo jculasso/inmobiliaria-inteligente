@@ -37,13 +37,19 @@ export function FiltroOperaciones({ anio, mes, trimestre }: Sel) {
   }, [anio, mes, trimestre]);
 
   const hoy = new Date();
-  const anios = [hoy.getFullYear() + 1, hoy.getFullYear(), hoy.getFullYear() - 1, hoy.getFullYear() - 2];
+  const anios = [
+    hoy.getFullYear() + 1,
+    hoy.getFullYear(),
+    hoy.getFullYear() - 1,
+    hoy.getFullYear() - 2,
+  ];
   const granularidad: Granularidad = sel.mes ? 'mensual' : sel.trimestre ? 'trimestral' : 'anual';
 
   function aplicar(nuevo: Sel) {
     setSel(nuevo); // resalta al instante
     const params = new URLSearchParams(searchParams);
-    const setOrDel = (k: string, v?: number) => (v != null ? params.set(k, String(v)) : params.delete(k));
+    const setOrDel = (k: string, v?: number) =>
+      v != null ? params.set(k, String(v)) : params.delete(k);
     setOrDel('anio', nuevo.anio);
     setOrDel('mes', nuevo.mes);
     setOrDel('trimestre', nuevo.trimestre);
@@ -72,7 +78,9 @@ export function FiltroOperaciones({ anio, mes, trimestre }: Sel) {
   }
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 transition-opacity ${isPending ? 'opacity-60' : ''}`}>
+    <div
+      className={`flex flex-wrap items-center gap-2 transition-opacity ${isPending ? 'opacity-60' : ''}`}
+    >
       <select
         aria-label="Año"
         value={sel.anio ?? ''}

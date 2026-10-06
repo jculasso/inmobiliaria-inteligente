@@ -16,7 +16,15 @@ import { Panel } from './piezas';
  * documento del contrato, listo para mandar a firmar. Mientras no se envió,
  * se puede volver a generar.
  */
-export function GenerarContrato({ contrato, plantillas, documento }: { contrato: ContratoDto; plantillas: PlantillaDto[]; documento: DocumentoContratoDto | null }) {
+export function GenerarContrato({
+  contrato,
+  plantillas,
+  documento,
+}: {
+  contrato: ContratoDto;
+  plantillas: PlantillaDto[];
+  documento: DocumentoContratoDto | null;
+}) {
   const router = useRouter();
   const sirven = plantillas.filter((p) => !p.tipoContrato || p.tipoContrato === contrato.tipo);
   const [plantillaId, setPlantillaId] = useState(sirven[0]?.id ?? '');
@@ -43,14 +51,22 @@ export function GenerarContrato({ contrato, plantillas, documento }: { contrato:
       {sirven.length === 0 ? (
         <p className="text-sm text-muted">
           Todavía no hay plantillas para este tipo de contrato.{' '}
-          <Link href="/alquileres/plantillas" className="font-semibold text-brand-red hover:underline">
+          <Link
+            href="/alquileres/plantillas"
+            className="font-semibold text-brand-red hover:underline"
+          >
             Crear una
           </Link>
         </p>
       ) : (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <select aria-label="Plantilla" className={`${inputClass} w-64`} value={plantillaId} onChange={(e) => setPlantillaId(e.target.value)}>
+            <select
+              aria-label="Plantilla"
+              className={`${inputClass} w-64`}
+              value={plantillaId}
+              onChange={(e) => setPlantillaId(e.target.value)}
+            >
               {sirven.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nombre}
@@ -61,16 +77,35 @@ export function GenerarContrato({ contrato, plantillas, documento }: { contrato:
               variant="secondary"
               size="sm"
               onClick={() =>
-                abrirPdfEnPestana(async () => vistaPreviaPlantilla(await getAccessToken(), contrato.id, sirven.find((p) => p.id === plantillaId)!.cuerpo), { titulo: 'Vista previa', onError: setError })
+                abrirPdfEnPestana(
+                  async () =>
+                    vistaPreviaPlantilla(
+                      await getAccessToken(),
+                      contrato.id,
+                      sirven.find((p) => p.id === plantillaId)!.cuerpo,
+                    ),
+                  { titulo: 'Vista previa', onError: setError },
+                )
               }
             >
               👁️ Vista previa
             </Button>
-            <Button variant="primary" size="sm" onClick={generar} disabled={generando || !plantillaId}>
-              {generando ? 'Generando…' : documento ? '📝 Volver a generar el PDF' : '📝 Generar el PDF del contrato'}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={generar}
+              disabled={generando || !plantillaId}
+            >
+              {generando
+                ? 'Generando…'
+                : documento
+                  ? '📝 Volver a generar el PDF'
+                  : '📝 Generar el PDF del contrato'}
             </Button>
           </div>
-          <p className="text-xs text-muted">Queda como el documento del contrato, abajo, para mandar a firmar.</p>
+          <p className="text-xs text-muted">
+            Queda como el documento del contrato, abajo, para mandar a firmar.
+          </p>
           {error && (
             <p role="alert" className="text-sm font-medium text-danger">
               {error}

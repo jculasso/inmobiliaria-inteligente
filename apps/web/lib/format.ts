@@ -46,7 +46,10 @@ export function fmtFecha(iso: string | null | undefined): string {
 export function fmtMoneda(n: number | null | undefined, moneda: 'ARS' | 'USD' = 'ARS'): string {
   // Redondeado a centavos primero: un resto de -0,001 no es «-$ 0,00».
   const v = Math.round((n ?? 0) * 100) / 100;
-  const texto = Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const texto = Math.abs(v).toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   return `${v < 0 ? '-' : ''}${moneda === 'USD' ? 'U$S' : '$'} ${texto}`;
 }
 
@@ -65,7 +68,12 @@ const ZONA_AR = 'America/Argentina/Buenos_Aires';
 export function fmtFechaHora(iso: string | null | undefined): string {
   if (!iso) return '—';
   // `hourCycle: 'h23'`: sin eso, es-AR sale «11:30 p. m.», que no es como se lee una hora acá.
-  const hora = new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: ZONA_AR });
+  const hora = new Date(iso).toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: ZONA_AR,
+  });
   return `${fmtFechaDe(iso)} ${hora}`;
 }
 
@@ -78,5 +86,10 @@ export function fmtFechaHora(iso: string | null | undefined): string {
 export function fmtFechaDe(isoTimestamp: string | null | undefined): string {
   if (!isoTimestamp) return '—';
   if (!isoTimestamp.includes('T')) return fmtFecha(isoTimestamp);
-  return new Date(isoTimestamp).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: ZONA_AR });
+  return new Date(isoTimestamp).toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: ZONA_AR,
+  });
 }

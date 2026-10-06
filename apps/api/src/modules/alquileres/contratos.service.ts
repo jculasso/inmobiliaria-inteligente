@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   LIMITE_LISTA_CON_SONDA,
@@ -13,7 +18,14 @@ import {
   type ExtenderContrato,
   type EstadoContrato,
 } from '@vacker/types';
-import { alquilerDeHoy, generarTramos, proximoCambio, sumarDiasIso, validarPartes, validarTramos } from '@vacker/domain';
+import {
+  alquilerDeHoy,
+  generarTramos,
+  proximoCambio,
+  sumarDiasIso,
+  validarPartes,
+  validarTramos,
+} from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
@@ -25,7 +37,14 @@ type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
 const INCLUIR = {
   propiedad: { select: { id: true, direccion: true, unidad: true, ciudad: true } },
-  partes: { select: { personaId: true, papel: true, porcentaje: true, persona: { select: { nombre: true } } } },
+  partes: {
+    select: {
+      personaId: true,
+      papel: true,
+      porcentaje: true,
+      persona: { select: { nombre: true } },
+    },
+  },
   tramos: { orderBy: { numero: 'asc' as const } },
 } satisfies Prisma.AlqContratoInclude;
 
@@ -63,13 +82,29 @@ export class ContratosService {
   async crear(ctx: TenantContext, dto: Contrato): Promise<ContratoDto> {
     return this.db.withTenant(async (tx) => {
       await this.validar(tx, dto);
-      const codigo = dto.codigo ? await this.normalizarCodigo(tx, ctx, dto.codigo) : await this.siguienteCodigo(tx, ctx);
+      const codigo = dto.codigo
+        ? await this.normalizarCodigo(tx, ctx, dto.codigo)
+        : await this.siguienteCodigo(tx, ctx);
       await this.assertCodigoLibre(tx, codigo);
       const fila = await tx.alqContrato.create({
-        data: { ...columnas(dto), codigo, tenantId: ctx.tenantId, estado: 'borrador', creadoPorId: ctx.userId, depositoGestion: await this.gestionDeposito(tx, ctx), ...hijos(ctx.tenantId, dto) },
+        data: {
+          ...columnas(dto),
+          codigo,
+          tenantId: ctx.tenantId,
+          estado: 'borrador',
+          creadoPorId: ctx.userId,
+          depositoGestion: await this.gestionDeposito(tx, ctx),
+          ...hijos(ctx.tenantId, dto),
+        },
         include: INCLUIR,
       });
-      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: fila.id, contratoId: fila.id, accion: 'alta', resumen: `Alta del contrato ${codigo}, en borrador` });
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: fila.id,
+        contratoId: fila.id,
+        accion: 'alta',
+        resumen: `Alta del contrato ${codigo}, en borrador`,
+      });
       return this.dto(tx, fila);
     });
   }
@@ -84,7 +119,9 @@ export class ContratosService {
     return this.db.withTenant(async (tx) => {
       const actual = await this.buscar(tx, id);
       if (actual.estado !== 'borrador') {
-        throw new BadRequestException('Solo un contrato en borrador se edita completo. Uno vigente cambia por indexación o rescisión.');
+        throw new BadRequestException(
+          'Solo un contrato en borrador se edita completo. Uno vigente cambia por indexación o rescisión.',
+        );
       }
       await this.validar(tx, dto);
       const codigo = dto.codigo ? await this.normalizarCodigo(tx, ctx, dto.codigo) : actual.codigo;
@@ -97,7 +134,13 @@ export class ContratosService {
         data: { ...columnas(dto), codigo, ...hijos(ctx.tenantId, dto) },
         include: INCLUIR,
       });
-      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'edicion', resumen: `Contrato ${codigo} editado (borrador)` });
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: id,
+        contratoId: id,
+        accion: 'edicion',
+        resumen: `Contrato ${codigo} editado (borrador)`,
+      });
       return this.dto(tx, fila);
     });
   }
@@ -106,23 +149,43 @@ export class ContratosService {
    * Lo que se edita de un contrato vigente: lo que no toca plata (decidido con
    * Javier el 6/10/2026). El historial dice qué cambió, de qué a qué.
    */
-  async actualizarDatos(ctx: TenantContext, id: string, datos: ContratoDatos): Promise<ContratoDto> {
+  async actualizarDatos(
+    ctx: TenantContext,
+    id: string,
+    datos: ContratoDatos,
+  ): Promise<ContratoDto> {
     return this.db.withTenant(async (tx) => {
       const actual = await this.buscar(tx, id);
       if (actual.estado !== 'vigente') {
-        throw new BadRequestException(actual.estado === 'borrador' ? 'Un contrato en borrador se edita completo.' : `Un contrato ${actual.estado} ya no se edita.`);
+        throw new BadRequestException(
+          actual.estado === 'borrador'
+            ? 'Un contrato en borrador se edita completo.'
+            : `Un contrato ${actual.estado} ya no se edita.`,
+        );
       }
-      const antes = { fechaFirma: fromDate(actual.fechaFirma), diaVencimiento: actual.diaVencimiento, diaPagoPropietario: actual.diaPagoPropietario, obs: actual.obs };
+      const antes = {
+        fechaFirma: fromDate(actual.fechaFirma),
+        diaVencimiento: actual.diaVencimiento,
+        diaPagoPropietario: actual.diaPagoPropietario,
+        obs: actual.obs,
+      };
       const NOMBRE: Record<keyof ContratoDatos, string> = {
         fechaFirma: 'fecha de firma',
         diaVencimiento: 'día de vencimiento',
         diaPagoPropietario: 'día de pago al propietario',
         obs: 'observaciones',
       };
-      const cambios = (Object.keys(NOMBRE) as (keyof ContratoDatos)[]).filter((k) => (antes[k] ?? null) !== (datos[k] ?? null));
+      const cambios = (Object.keys(NOMBRE) as (keyof ContratoDatos)[]).filter(
+        (k) => (antes[k] ?? null) !== (datos[k] ?? null),
+      );
       const fila = await tx.alqContrato.update({
         where: { id },
-        data: { fechaFirma: toDate(datos.fechaFirma), diaVencimiento: datos.diaVencimiento, diaPagoPropietario: datos.diaPagoPropietario, obs: datos.obs },
+        data: {
+          fechaFirma: toDate(datos.fechaFirma),
+          diaVencimiento: datos.diaVencimiento,
+          diaPagoPropietario: datos.diaPagoPropietario,
+          obs: datos.obs,
+        },
         include: INCLUIR,
       });
       if (cambios.length) {
@@ -132,7 +195,9 @@ export class ContratosService {
           contratoId: id,
           accion: 'edicion',
           resumen: `Cambió ${cambios.map((k) => NOMBRE[k]).join(', ')}`,
-          detalle: Object.fromEntries(cambios.map((k) => [k, { antes: antes[k] ?? null, despues: datos[k] ?? null }])),
+          detalle: Object.fromEntries(
+            cambios.map((k) => [k, { antes: antes[k] ?? null, despues: datos[k] ?? null }]),
+          ),
         });
       }
       return this.dto(tx, fila);
@@ -148,14 +213,23 @@ export class ContratosService {
   async extender(ctx: TenantContext, id: string, dto: ExtenderContrato): Promise<ContratoDto> {
     return this.db.withTenant(async (tx) => {
       const actual = await this.buscar(tx, id);
-      if (actual.estado !== 'vigente') throw new BadRequestException('Se extiende un contrato vigente.');
+      if (actual.estado !== 'vigente')
+        throw new BadRequestException('Se extiende un contrato vigente.');
       const finActual = fromDate(actual.fin)!;
-      if (dto.nuevoFin <= finActual) throw new BadRequestException(`La nueva fecha de fin tiene que ser posterior al ${dia(finActual)}.`);
+      if (dto.nuevoFin <= finActual)
+        throw new BadRequestException(
+          `La nueva fecha de fin tiene que ser posterior al ${dia(finActual)}.`,
+        );
       const desde = sumarDiasIso(finActual, 1);
       const indexado = actual.ajuste === 'indexado' && actual.periodicidadMeses;
-      if (!indexado && dto.importeBase == null) throw new BadRequestException('Un contrato escalonado necesita el importe del tramo nuevo.');
+      if (!indexado && dto.importeBase == null)
+        throw new BadRequestException(
+          'Un contrato escalonado necesita el importe del tramo nuevo.',
+        );
       const base = actual.tramos.at(-1)?.numero ?? 0;
-      const nuevos = indexado ? generarTramos(desde, dto.nuevoFin, actual.periodicidadMeses!) : [{ numero: 1, desde, hasta: dto.nuevoFin }];
+      const nuevos = indexado
+        ? generarTramos(desde, dto.nuevoFin, actual.periodicidadMeses!)
+        : [{ numero: 1, desde, hasta: dto.nuevoFin }];
       await tx.alqTramo.createMany({
         data: nuevos.map((t) => ({
           tenantId: ctx.tenantId,
@@ -167,7 +241,11 @@ export class ContratosService {
           importe: indexado ? null : dto.importeBase,
         })),
       });
-      const fila = await tx.alqContrato.update({ where: { id }, data: { fin: toDate(dto.nuevoFin)! }, include: INCLUIR });
+      const fila = await tx.alqContrato.update({
+        where: { id },
+        data: { fin: toDate(dto.nuevoFin)! },
+        include: INCLUIR,
+      });
       await registrarEventos(tx, ctx, {
         entidad: 'contrato',
         entidadId: id,
@@ -185,13 +263,35 @@ export class ContratosService {
    */
   async borrar(ctx: TenantContext, id: string): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
-      const c = await tx.alqContrato.findUnique({ where: { id }, select: { codigo: true, estado: true, _count: { select: { conceptos: true, documentos: true } } } });
+      const c = await tx.alqContrato.findUnique({
+        where: { id },
+        select: {
+          codigo: true,
+          estado: true,
+          _count: { select: { conceptos: true, documentos: true } },
+        },
+      });
       if (!c) throw new NotFoundException('Contrato no encontrado.');
-      if (c.estado !== 'borrador') throw new ConflictException(`El contrato ${c.codigo} está ${c.estado}: no se borra, se anula con un motivo.`);
-      if (c._count.conceptos) throw new ConflictException(`El contrato ${c.codigo} ya tiene conceptos: no se borra, se anula con un motivo.`);
-      if (c._count.documentos) throw new ConflictException(`El contrato ${c.codigo} tiene el PDF cargado: no se borra, se anula con un motivo.`);
+      if (c.estado !== 'borrador')
+        throw new ConflictException(
+          `El contrato ${c.codigo} está ${c.estado}: no se borra, se anula con un motivo.`,
+        );
+      if (c._count.conceptos)
+        throw new ConflictException(
+          `El contrato ${c.codigo} ya tiene conceptos: no se borra, se anula con un motivo.`,
+        );
+      if (c._count.documentos)
+        throw new ConflictException(
+          `El contrato ${c.codigo} tiene el PDF cargado: no se borra, se anula con un motivo.`,
+        );
       await tx.alqContrato.delete({ where: { id } });
-      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'borrado', resumen: `Contrato ${c.codigo} borrado (estaba en borrador)` });
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: id,
+        contratoId: id,
+        accion: 'borrado',
+        resumen: `Contrato ${c.codigo} borrado (estaba en borrador)`,
+      });
       return { id };
     });
   }
@@ -204,33 +304,61 @@ export class ContratosService {
   async anular(ctx: TenantContext, id: string, motivo: string): Promise<ContratoDto> {
     return this.db.withTenant(async (tx) => {
       const actual = await this.buscar(tx, id);
-      if (actual.estado === 'borrador') throw new BadRequestException('Un contrato en borrador se borra, no se anula.');
+      if (actual.estado === 'borrador')
+        throw new BadRequestException('Un contrato en borrador se borra, no se anula.');
       if (actual.estado === 'anulado') throw new ConflictException('El contrato ya está anulado.');
       const [cobrados, liquidados] = await Promise.all([
-        tx.alqConcepto.count({ where: { contratoId: id, anuladoEn: null, imputaciones: { some: IMPUTACION_ACTIVA } } }),
-        tx.alqConcepto.count({ where: { contratoId: id, anuladoEn: null, liquidacionId: { not: null } } }),
+        tx.alqConcepto.count({
+          where: { contratoId: id, anuladoEn: null, imputaciones: { some: IMPUTACION_ACTIVA } },
+        }),
+        tx.alqConcepto.count({
+          where: { contratoId: id, anuladoEn: null, liquidacionId: { not: null } },
+        }),
       ]);
       if (cobrados || liquidados) {
-        const que = [cobrados && 'cobros', liquidados && 'liquidaciones'].filter(Boolean).join(' y ');
-        throw new ConflictException(`El contrato ${actual.codigo} tiene ${que} registrados. Anulá primero esos recibos o liquidaciones; después, el contrato.`);
+        const que = [cobrados && 'cobros', liquidados && 'liquidaciones']
+          .filter(Boolean)
+          .join(' y ');
+        throw new ConflictException(
+          `El contrato ${actual.codigo} tiene ${que} registrados. Anulá primero esos recibos o liquidaciones; después, el contrato.`,
+        );
       }
       const ahora = new Date();
       await tx.alqConcepto.updateMany({
         where: { contratoId: id, anuladoEn: null },
-        data: { anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: `contrato anulado: ${motivo}` },
+        data: {
+          anuladoEn: ahora,
+          anuladoPorId: ctx.userId,
+          motivoAnulacion: `contrato anulado: ${motivo}`,
+        },
       });
       const fila = await tx.alqContrato.update({
         where: { id },
-        data: { estado: 'anulado', anuladoEn: ahora, anuladoPorId: ctx.userId, motivoAnulacion: motivo },
+        data: {
+          estado: 'anulado',
+          anuladoEn: ahora,
+          anuladoPorId: ctx.userId,
+          motivoAnulacion: motivo,
+        },
         include: INCLUIR,
       });
-      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'anulacion', resumen: `Contrato ${actual.codigo} anulado: ${motivo}` });
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: id,
+        contratoId: id,
+        accion: 'anulacion',
+        resumen: `Contrato ${actual.codigo} anulado: ${motivo}`,
+      });
       return this.dto(tx, fila);
     });
   }
 
   /** Reglas 2 y 3: las transiciones posibles, y lo que arrastra la rescisión. */
-  async cambiarEstado(ctx: TenantContext, id: string, cambio: CambiarEstadoContrato): Promise<ContratoDto> {
+  async cambiarEstado(
+    ctx: TenantContext,
+    id: string,
+    cambio: CambiarEstadoContrato,
+  ): Promise<ContratoDto> {
     return this.db.withTenant(async (tx) => {
       const actual = await this.buscar(tx, id);
       const desde = actual.estado as EstadoContrato;
@@ -249,22 +377,36 @@ export class ContratosService {
         const inicio = fromDate(actual.inicio)!;
         const fin = fromDate(actual.fin)!;
         if (cambio.fecha < inicio || cambio.fecha > fin) {
-          throw new BadRequestException('La fecha de rescisión tiene que estar dentro del contrato.');
+          throw new BadRequestException(
+            'La fecha de rescisión tiene que estar dentro del contrato.',
+          );
         }
         // Regla 3: lo generado de meses posteriores que no se cobró se anula.
         // Lo cobrado no se toca: esa plata entró y queda a la vista.
         await tx.alqConcepto.updateMany({
-          where: { contratoId: id, anuladoEn: null, periodo: { gt: cambio.fecha.slice(0, 7) }, imputaciones: { none: IMPUTACION_ACTIVA } },
+          where: {
+            contratoId: id,
+            anuladoEn: null,
+            periodo: { gt: cambio.fecha.slice(0, 7) },
+            imputaciones: { none: IMPUTACION_ACTIVA },
+          },
           data: { anuladoEn: new Date(), anuladoPorId: ctx.userId, motivoAnulacion: 'rescisión' },
         });
       }
 
       const fila = await tx.alqContrato.update({
         where: { id },
-        data: { estado: cambio.estado, rescindidoEl: cambio.estado === 'rescindido' ? toDate(cambio.fecha) : null },
+        data: {
+          estado: cambio.estado,
+          rescindidoEl: cambio.estado === 'rescindido' ? toDate(cambio.fecha) : null,
+        },
         include: INCLUIR,
       });
-      const QUE = { vigente: 'activado', finalizado: 'finalizado', rescindido: 'rescindido' } as const;
+      const QUE = {
+        vigente: 'activado',
+        finalizado: 'finalizado',
+        rescindido: 'rescindido',
+      } as const;
       await registrarEventos(tx, ctx, {
         entidad: 'contrato',
         entidadId: id,
@@ -290,9 +432,13 @@ export class ContratosService {
    * existen). Todos los problemas juntos, no de a uno.
    */
   private async validar(tx: Tx, dto: Contrato): Promise<void> {
-    const errores = [...validarTramos(dto.inicio, dto.fin, dto.tramos), ...validarPartes(dto.partes)];
+    const errores = [
+      ...validarTramos(dto.inicio, dto.fin, dto.tramos),
+      ...validarPartes(dto.partes),
+    ];
     const numeros = dto.tramos.map((t) => t.numero);
-    if (new Set(numeros).size !== numeros.length) errores.push('Hay dos tramos con el mismo número.');
+    if (new Set(numeros).size !== numeros.length)
+      errores.push('Hay dos tramos con el mismo número.');
 
     const ids = [...new Set(dto.partes.map((p) => p.personaId))];
     const [propiedad, personas] = await Promise.all([
@@ -302,7 +448,8 @@ export class ContratosService {
     if (!propiedad) errores.push('La propiedad no existe.');
     if (personas !== ids.length) errores.push('Alguna de las personas no existe.');
 
-    if (errores.length) throw new BadRequestException({ message: errores.join(' '), details: errores });
+    if (errores.length)
+      throw new BadRequestException({ message: errores.join(' '), details: errores });
   }
 
   /** La ficha con los nombres de quien la cargó y quien la anuló. */
@@ -313,12 +460,18 @@ export class ContratosService {
 
   /** Cómo se gestiona el depósito en los contratos nuevos: lo que diga la configuración de la inmobiliaria. */
   private async gestionDeposito(tx: Tx, ctx: TenantContext): Promise<string> {
-    const t = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } });
+    const t = await tx.tenant.findUniqueOrThrow({
+      where: { id: ctx.tenantId },
+      select: { config: true },
+    });
     return TenantConfigSchema.parse(t.config ?? {}).depositoGestion;
   }
 
   private async prefijo(tx: Tx, ctx: TenantContext): Promise<string> {
-    const t = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { nombre: true, config: true } });
+    const t = await tx.tenant.findUniqueOrThrow({
+      where: { id: ctx.tenantId },
+      select: { nombre: true, config: true },
+    });
     const corto = (t.config as { nombreCorto?: string | null } | null)?.nombreCorto;
     return prefijoDeContratos(corto || t.nombre);
   }
@@ -329,13 +482,18 @@ export class ContratosService {
    * desde el último número que traen de Gexion.
    */
   private async siguienteCodigo(tx: Tx, ctx: TenantContext): Promise<string> {
-    const [prefijo, max] = await Promise.all([this.prefijo(tx, ctx), tx.alqContrato.aggregate({ _max: { codigoNum: true } })]);
+    const [prefijo, max] = await Promise.all([
+      this.prefijo(tx, ctx),
+      tx.alqContrato.aggregate({ _max: { codigoNum: true } }),
+    ]);
     return codigoDeContrato(prefijo, (max._max.codigoNum ? decToNum(max._max.codigoNum) : 0) + 1);
   }
 
   /** Si se escribe solo el número («25»), se completa con el prefijo: VAC-0025. */
   private async normalizarCodigo(tx: Tx, ctx: TenantContext, codigo: string): Promise<string> {
-    return /^\d+$/.test(codigo) ? codigoDeContrato(await this.prefijo(tx, ctx), Number(codigo)) : codigo.toUpperCase();
+    return /^\d+$/.test(codigo)
+      ? codigoDeContrato(await this.prefijo(tx, ctx), Number(codigo))
+      : codigo.toUpperCase();
   }
 
   private async assertCodigoLibre(tx: Tx, codigo: string, exceptoId?: string): Promise<void> {
@@ -384,7 +542,10 @@ function hijos(tenantId: string, dto: Contrato) {
         personaId: p.personaId,
         papel: p.papel,
         // Un único propietario sin porcentaje es dueño del 100%.
-        porcentaje: p.papel === 'propietario' ? (p.porcentaje ?? (propietarios.length === 1 ? 100 : null)) : null,
+        porcentaje:
+          p.papel === 'propietario'
+            ? (p.porcentaje ?? (propietarios.length === 1 ? 100 : null))
+            : null,
       })),
     },
     tramos: {
@@ -397,15 +558,23 @@ function hijos(tenantId: string, dto: Contrato) {
         // se completa al indexar (regla 6). Si vinieran cargados —una
         // migración desde Gexion—, se respetan como ya confirmados.
         importe: t.importe,
-        confirmadoEl: t.importe != null && t.numero !== 1 && dto.ajuste === 'indexado' ? new Date() : null,
+        confirmadoEl:
+          t.importe != null && t.numero !== 1 && dto.ajuste === 'indexado' ? new Date() : null,
       })),
     },
   };
 }
 
 function aResumen(f: FilaContrato, hoy: string): ContratoResumenDto {
-  const tramos = f.tramos.map((t) => ({ desde: fromDate(t.desde)!, hasta: fromDate(t.hasta)!, importe: t.importe == null ? null : decToNum(t.importe) }));
-  const nombres = (papel: string) => f.partes.filter((p) => p.papel === papel).map((p) => ({ id: p.personaId, nombre: p.persona.nombre }));
+  const tramos = f.tramos.map((t) => ({
+    desde: fromDate(t.desde)!,
+    hasta: fromDate(t.hasta)!,
+    importe: t.importe == null ? null : decToNum(t.importe),
+  }));
+  const nombres = (papel: string) =>
+    f.partes
+      .filter((p) => p.papel === papel)
+      .map((p) => ({ id: p.personaId, nombre: p.persona.nombre }));
   return {
     id: f.id,
     codigo: f.codigo,
@@ -419,7 +588,13 @@ function aResumen(f: FilaContrato, hoy: string): ContratoResumenDto {
     inquilinos: nombres('inquilino'),
     // Las mismas definiciones que el tablero: antes uno decía «—» y el otro un importe.
     importeVigente: alquilerDeHoy(tramos, hoy),
-    proximaIndexacion: f.estado === 'vigente' ? proximoCambio(tramos.map((t, i) => ({ ...t, numero: f.tramos[i]!.numero })), hoy) : null,
+    proximaIndexacion:
+      f.estado === 'vigente'
+        ? proximoCambio(
+            tramos.map((t, i) => ({ ...t, numero: f.tramos[i]!.numero })),
+            hoy,
+          )
+        : null,
   };
 }
 
@@ -448,8 +623,17 @@ function aDto(f: FilaContrato, nombres: Map<string, string>): ContratoDto {
     depositoDevolucion: fromDate(f.depositoDevolucion),
     rescindidoEl: fromDate(f.rescindidoEl),
     obs: f.obs,
-    registrado: { en: f.createdAt.toISOString(), por: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null },
-    anulado: f.anuladoEn ? { en: f.anuladoEn.toISOString(), motivo: f.motivoAnulacion ?? '', por: f.anuladoPorId ? (nombres.get(f.anuladoPorId) ?? null) : null } : null,
+    registrado: {
+      en: f.createdAt.toISOString(),
+      por: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null,
+    },
+    anulado: f.anuladoEn
+      ? {
+          en: f.anuladoEn.toISOString(),
+          motivo: f.motivoAnulacion ?? '',
+          por: f.anuladoPorId ? (nombres.get(f.anuladoPorId) ?? null) : null,
+        }
+      : null,
     propiedad: f.propiedad,
     partes: f.partes.map((p) => ({
       personaId: p.personaId,

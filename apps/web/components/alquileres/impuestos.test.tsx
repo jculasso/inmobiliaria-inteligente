@@ -5,7 +5,9 @@ import type { BoletaDto, CuentaServicioDto, PlanillaBoletasDto, PolizaDto } from
 const cargarLoteBoletas = vi.fn();
 const pagarBoleta = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
-vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn().mockResolvedValue('token') }));
+vi.mock('../../lib/supabase/client', () => ({
+  getAccessToken: vi.fn().mockResolvedValue('token'),
+}));
 vi.mock('../../lib/alquileres-api', () => ({
   cargarLoteBoletas: (...a: unknown[]) => cargarLoteBoletas(...a),
   pagarBoleta: (...a: unknown[]) => pagarBoleta(...a),
@@ -25,7 +27,11 @@ import { EstadoPoliza } from './polizas';
 
 const API = '33333333-3333-4333-8333-333333333333';
 const EPE = '66666666-6666-4666-8666-666666666666';
-const cuenta = (id: string, nombre: string, over: Partial<CuentaServicioDto> = {}): CuentaServicioDto => ({
+const cuenta = (
+  id: string,
+  nombre: string,
+  over: Partial<CuentaServicioDto> = {},
+): CuentaServicioDto => ({
   id,
   propiedad: { id: 'p1', direccion: 'Mendoza 3340' },
   servicio: { id: `s-${id}`, nombre, clase: 'impuesto' },
@@ -38,7 +44,11 @@ const cuenta = (id: string, nombre: string, over: Partial<CuentaServicioDto> = {
 const planilla: PlanillaBoletasDto = {
   periodo: '2026-11',
   filas: [
-    { cuenta: cuenta(API, 'API'), cargadas: [], anterior: { cuota: '3/6', importe: 45_000, vencimiento: '2026-10-10' } },
+    {
+      cuenta: cuenta(API, 'API'),
+      cargadas: [],
+      anterior: { cuota: '3/6', importe: 45_000, vencimiento: '2026-10-10' },
+    },
     { cuenta: cuenta(EPE, 'EPE', { paga: 'inquilino' }), cargadas: [], anterior: null },
   ],
 };
@@ -67,7 +77,19 @@ const boleta = (over: Partial<BoletaDto> = {}): BoletaDto => ({
 });
 const vista = (over: Partial<Parameters<typeof ImpuestosVista>[0]> = {}) =>
   render(
-    <ImpuestosVista periodo="2026-11" ver="mes" planilla={planilla} boletas={[]} control={[]} servicios={[]} cuentas={[]} propiedades={[]} polizas={[]} contratos={[]} {...over} />,
+    <ImpuestosVista
+      periodo="2026-11"
+      ver="mes"
+      planilla={planilla}
+      boletas={[]}
+      control={[]}
+      servicios={[]}
+      cuentas={[]}
+      propiedades={[]}
+      polizas={[]}
+      contratos={[]}
+      {...over}
+    />,
   );
 
 describe('Impuestos y servicios (entrega 19)', () => {
@@ -81,16 +103,23 @@ describe('Impuestos y servicios (entrega 19)', () => {
     expect(screen.getByLabelText('Importe de EPE de Mendoza 3340')).toHaveValue('');
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     await waitFor(() =>
-      expect(cargarLoteBoletas).toHaveBeenCalledWith('token', { periodo: '2026-11', boletas: [{ cuentaId: API, cuota: '4/6', vencimiento: '2026-11-10', importe: 45_000 }] }),
+      expect(cargarLoteBoletas).toHaveBeenCalledWith('token', {
+        periodo: '2026-11',
+        boletas: [{ cuentaId: API, cuota: '4/6', vencimiento: '2026-11-10', importe: 45_000 }],
+      }),
     );
     expect(await screen.findByRole('status')).toHaveTextContent('Se cargaron 1 boleta');
   });
 
   it('una fila con importe y sin vencimiento no se guarda: dice cuál', async () => {
     render(<PlanillaBoletas planilla={planilla} mes="noviembre de 2026" />);
-    fireEvent.change(screen.getByLabelText('Importe de EPE de Mendoza 3340'), { target: { value: '30.000' } });
+    fireEvent.change(screen.getByLabelText('Importe de EPE de Mendoza 3340'), {
+      target: { value: '30.000' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('EPE de Mendoza 3340: falta el vencimiento');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'EPE de Mendoza 3340: falta el vencimiento',
+    );
     expect(cargarLoteBoletas).toHaveBeenCalledTimes(1);
   });
 
@@ -98,13 +127,17 @@ describe('Impuestos y servicios (entrega 19)', () => {
     vista({ boletas: [boleta(), boleta({ nombre: 'EPE', paga: 'inquilino' })] });
     const tabla = within(screen.getByRole('table'));
     expect(tabla.getByRole('button', { name: 'Pagar API' })).toBeInTheDocument();
-    expect(tabla.getByRole('button', { name: 'Registrar el comprobante de EPE' })).toBeInTheDocument();
+    expect(
+      tabla.getByRole('button', { name: 'Registrar el comprobante de EPE' }),
+    ).toBeInTheDocument();
     expect(tabla.getByText('Falta comprobante')).toBeInTheDocument();
   });
 
   it('lo ya cobrado o liquidado no ofrece «Anular»', () => {
     vista({ boletas: [boleta({ aplicada: true })] });
-    expect(within(screen.getByRole('table')).queryByRole('button', { name: 'Anular API' })).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('table')).queryByRole('button', { name: 'Anular API' }),
+    ).not.toBeInTheDocument();
   });
 
   it('registrar el pago manda fecha y medio', async () => {
@@ -113,14 +146,22 @@ describe('Impuestos y servicios (entrega 19)', () => {
     fireEvent.click(within(screen.getByRole('table')).getByRole('button', { name: 'Pagar API' }));
     fireEvent.change(screen.getByLabelText('Medio'), { target: { value: 'efectivo' } });
     fireEvent.click(screen.getByRole('button', { name: /Registrar el pago/ }));
-    await waitFor(() => expect(pagarBoleta).toHaveBeenCalledWith('token', b.id, expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), 'efectivo'));
+    await waitFor(() =>
+      expect(pagarBoleta).toHaveBeenCalledWith(
+        'token',
+        b.id,
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        'efectivo',
+      ),
+    );
   });
 
   it('una póliza: vigente, por vencer en 60 días, vencida o anulada', () => {
     const p = (hasta: string, anulada = false) =>
       ({ id: crypto.randomUUID(), hasta, anulada }) as PolizaDto;
     const hoy = new Date(Date.now() - 3 * 3600 * 1000);
-    const en = (dias: number) => new Date(hoy.getTime() + dias * 86_400_000).toISOString().slice(0, 10);
+    const en = (dias: number) =>
+      new Date(hoy.getTime() + dias * 86_400_000).toISOString().slice(0, 10);
     const { rerender } = render(<EstadoPoliza p={p(en(200))} />);
     expect(screen.getByText('Vigente')).toBeInTheDocument();
     rerender(<EstadoPoliza p={p(en(30))} />);

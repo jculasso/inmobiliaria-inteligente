@@ -43,10 +43,10 @@ pertenece al paquete de la API. `apps/api/scripts/` ya existía para esto.
 
 ## Qué copia cada uno, y por qué hacen falta los dos
 
-| | Qué guarda | Sin esto |
-|---|---|---|
-| `datos.mjs` | Las 17 tablas de `public`, una por archivo JSON | No hay tasaciones, operaciones ni usuarios |
-| `archivos.mjs` | Los 4 buckets de Storage | Las filas quedan apuntando a fotos e informes que no existen |
+|                | Qué guarda                                      | Sin esto                                                     |
+| -------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| `datos.mjs`    | Las 17 tablas de `public`, una por archivo JSON | No hay tasaciones, operaciones ni usuarios                   |
+| `archivos.mjs` | Los 4 buckets de Storage                        | Las filas quedan apuntando a fotos e informes que no existen |
 
 **Las fotos NO están en la base.** `tasacion_foto.url` guarda una ruta dentro de
 Supabase Storage, no la imagen. Una copia de la base sola parece completa y no

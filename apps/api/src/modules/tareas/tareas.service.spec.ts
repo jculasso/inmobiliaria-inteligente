@@ -16,7 +16,9 @@ const TENANT = (nombre: string, protocolo = true) => ({
 
 describe('TareasService', () => {
   it('saltea las inmobiliarias que no tienen el módulo', async () => {
-    const mail = { enviar: vi.fn().mockResolvedValue({ enviado: true, destinatarios: ['a@b.com'] }) };
+    const mail = {
+      enviar: vi.fn().mockResolvedValue({ enviado: true, destinatarios: ['a@b.com'] }),
+    };
     const svc = new TareasService(makePrisma([TENANT('Con'), TENANT('Sin', false)]), mail as never);
 
     const r = await svc.enviarReportesSemanales();

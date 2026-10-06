@@ -17,7 +17,8 @@ import { fmtFechaHora } from '../../lib/format';
  * módulo: sin él, quien navega con Tab no ve dónde está parado (los botones de
  * `@vacker/ui` ya lo traen; estos se escriben a mano).
  */
-export const CLASE_FOCO = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40';
+export const CLASE_FOCO =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40';
 
 /**
  * El título de la página, con sus filtros o acciones a la derecha. `volver`
@@ -36,7 +37,9 @@ export function EncabezadoPagina({
   children?: ReactNode;
 }) {
   return (
-    <div className={`flex flex-wrap justify-between gap-3 ${detalle ? 'items-start' : 'items-center'}`}>
+    <div
+      className={`flex flex-wrap justify-between gap-3 ${detalle ? 'items-start' : 'items-center'}`}
+    >
       <div className="min-w-0">
         {volver && (
           <p className="text-xs text-muted">
@@ -55,7 +58,15 @@ export function EncabezadoPagina({
 }
 
 /** El rótulo de una sección, con su ícono: «📊 Resumen acumulado». */
-export function TituloSeccion({ icono, children, detalle }: { icono: string; children: ReactNode; detalle?: string }) {
+export function TituloSeccion({
+  icono,
+  children,
+  detalle,
+}: {
+  icono: string;
+  children: ReactNode;
+  detalle?: string;
+}) {
   return (
     <h3 className="text-xs font-bold uppercase tracking-wider text-muted">
       <span aria-hidden>{icono}</span> {children}
@@ -82,7 +93,13 @@ const TONO: Record<TonoInsignia, string> = {
 
 /** La insignia de estado, igual a la de ventas. */
 export function Insignia({ tono, children }: { tono: TonoInsignia; children: ReactNode }) {
-  return <span className={`inline-block shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${TONO[tono]}`}>{children}</span>;
+  return (
+    <span
+      className={`inline-block shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${TONO[tono]}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 /**
@@ -94,7 +111,8 @@ export const CLASE_TABLA_ANCHA =
   'hidden max-h-[clamp(20rem,60vh,48rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-brand border border-line bg-white sm:block';
 
 /** Una celda de encabezado fija arriba. */
-export const CLASE_TH = 'sticky top-0 z-20 border-b border-line bg-white px-3 py-2 text-left text-[10px] font-extrabold uppercase tracking-wider text-muted';
+export const CLASE_TH =
+  'sticky top-0 z-20 border-b border-line bg-white px-3 py-2 text-left text-[10px] font-extrabold uppercase tracking-wider text-muted';
 
 /** El contenedor de las tarjetas del teléfono. */
 export const CLASE_LISTA_MOVIL = 'rounded-brand border border-line bg-white sm:hidden';
@@ -104,13 +122,15 @@ export const CLASE_BUSCADOR =
   'h-9 w-full max-w-sm rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red';
 
 /** La primera columna de una tabla ancha (el código), fija a la izquierda al desplazar. */
-export const CLASE_TD_FIJA = 'sticky left-0 z-10 whitespace-nowrap border-r border-line bg-white px-3 py-2 font-semibold tabular-nums text-ink';
+export const CLASE_TD_FIJA =
+  'sticky left-0 z-10 whitespace-nowrap border-r border-line bg-white px-3 py-2 font-semibold tabular-nums text-ink';
 
 /** Una celda común de tabla ancha. */
 export const CLASE_TD = 'whitespace-nowrap px-3 py-2';
 
 /** Una fila de tabla que se abre al tocarla. */
-export const CLASE_TR_ABRIBLE = 'cursor-pointer border-b border-line last:border-0 hover:bg-surface/60 [&:hover>td]:bg-surface/60';
+export const CLASE_TR_ABRIBLE =
+  'cursor-pointer border-b border-line last:border-0 hover:bg-surface/60 [&:hover>td]:bg-surface/60';
 
 /**
  * El contenido de la primera celda de una fila que se abre al tocarla, como
@@ -118,9 +138,22 @@ export const CLASE_TR_ABRIBLE = 'cursor-pointer border-b border-line last:border
  * link sí (Tab y Enter), y se puede abrir en otra pestaña. No deja pasar el
  * clic a la fila, que si no navegaría dos veces.
  */
-export function LinkFila({ href, children, etiqueta }: { href: string; children: ReactNode; etiqueta?: string }) {
+export function LinkFila({
+  href,
+  children,
+  etiqueta,
+}: {
+  href: string;
+  children: ReactNode;
+  etiqueta?: string;
+}) {
   return (
-    <Link href={href} aria-label={etiqueta} onClick={(e) => e.stopPropagation()} className={`rounded hover:underline ${CLASE_FOCO}`}>
+    <Link
+      href={href}
+      aria-label={etiqueta}
+      onClick={(e) => e.stopPropagation()}
+      className={`rounded hover:underline ${CLASE_FOCO}`}
+    >
       {children}
     </Link>
   );
@@ -178,7 +211,17 @@ export function BarraLista({
  * `onClick` abre un modal. `icono` cambia el «＋» cuando la acción tiene el
  * suyo en todo el módulo («🧾 Liquidar»).
  */
-export function BotonNuevo({ href, onClick, icono = '＋', children }: { href?: string; onClick?: () => void; icono?: string; children: ReactNode }) {
+export function BotonNuevo({
+  href,
+  onClick,
+  icono = '＋',
+  children,
+}: {
+  href?: string;
+  onClick?: () => void;
+  icono?: string;
+  children: ReactNode;
+}) {
   const boton = (
     <Button variant="primary" size="sm" onClick={onClick}>
       {icono} {children}
@@ -189,7 +232,11 @@ export function BotonNuevo({ href, onClick, icono = '＋', children }: { href?: 
 
 /** Lo que se muestra en lugar de una lista vacía, o de una búsqueda sin resultados. */
 export function Vacio({ children }: { children: ReactNode }) {
-  return <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">{children}</p>;
+  return (
+    <p className="rounded-brand border border-line bg-white px-4 py-6 text-center text-sm text-muted">
+      {children}
+    </p>
+  );
 }
 
 /** Lo mismo, dentro de un `Bloque`: el bloque ya pone el borde y el fondo. */
@@ -198,11 +245,21 @@ export function VacioBloque({ children }: { children: ReactNode }) {
 }
 
 /** Un dato de una ficha, con su rótulo arriba. Va dentro de un `<dl>`; vacío, una raya. */
-export function Dato({ etiqueta, children, className = '' }: { etiqueta: string; children: ReactNode; className?: string }) {
+export function Dato({
+  etiqueta,
+  children,
+  className = '',
+}: {
+  etiqueta: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`min-w-0 ${className}`}>
       <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">{etiqueta}</dt>
-      <dd className="mt-0.5 break-words text-sm text-ink">{children == null || children === false || children === '' ? '—' : children}</dd>
+      <dd className="mt-0.5 break-words text-sm text-ink">
+        {children == null || children === false || children === '' ? '—' : children}
+      </dd>
     </div>
   );
 }
@@ -227,16 +284,32 @@ export function Segmentado<T extends string>({
   onCambio?: (v: T) => void;
   hrefDe?: (v: T) => string;
 }) {
-  const clase = (v: T) => `rounded-brand px-3 py-1 text-sm font-semibold ${CLASE_FOCO} ${valor === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`;
+  const clase = (v: T) =>
+    `rounded-brand px-3 py-1 text-sm font-semibold ${CLASE_FOCO} ${valor === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`;
   return (
-    <div role="group" aria-label={etiqueta} className="flex flex-wrap gap-1 rounded-brand border border-line bg-white p-1">
+    <div
+      role="group"
+      aria-label={etiqueta}
+      className="flex flex-wrap gap-1 rounded-brand border border-line bg-white p-1"
+    >
       {opciones.map(([v, texto]) =>
         hrefDe ? (
-          <Link key={v} href={hrefDe(v)} aria-current={valor === v ? 'page' : undefined} className={clase(v)}>
+          <Link
+            key={v}
+            href={hrefDe(v)}
+            aria-current={valor === v ? 'page' : undefined}
+            className={clase(v)}
+          >
             {texto}
           </Link>
         ) : (
-          <button key={v} type="button" aria-pressed={valor === v} onClick={() => onCambio?.(v)} className={clase(v)}>
+          <button
+            key={v}
+            type="button"
+            aria-pressed={valor === v}
+            onClick={() => onCambio?.(v)}
+            className={clase(v)}
+          >
             {texto}
           </button>
         ),
@@ -246,21 +319,33 @@ export function Segmentado<T extends string>({
 }
 
 /** «Diciembre de 2026»: mayúscula solo al principio (`capitalize` daría «Diciembre De»). */
-export const mesTitulo = (periodo: string) => mesLargo(`${periodo}-01`).replace(/^./, (l) => l.toUpperCase());
+export const mesTitulo = (periodo: string) =>
+  mesLargo(`${periodo}-01`).replace(/^./, (l) => l.toUpperCase());
 
 /** El período `n` meses antes o después: «2026-10» → «2026-11». */
-export const correrPeriodo = (periodo: string, n: number) => sumarMesesIso(`${periodo}-01`, n).slice(0, 7);
+export const correrPeriodo = (periodo: string, n: number) =>
+  sumarMesesIso(`${periodo}-01`, n).slice(0, 7);
 
 /** El mes que se está mirando, con flechas al anterior y al siguiente. El mes viaja en la dirección (`?periodo=`). */
 export function NavegadorMes({ periodo }: { periodo: string }) {
   const flecha = `rounded-brand px-2.5 py-1 text-lg text-muted hover:text-ink ${CLASE_FOCO}`;
   return (
     <div className="flex items-center gap-1 rounded-brand border border-line bg-white">
-      <Link href={`?periodo=${correrPeriodo(periodo, -1)}`} aria-label="Mes anterior" className={flecha}>
+      <Link
+        href={`?periodo=${correrPeriodo(periodo, -1)}`}
+        aria-label="Mes anterior"
+        className={flecha}
+      >
         ‹
       </Link>
-      <span className="min-w-[9.5rem] text-center text-sm font-bold text-ink">{mesTitulo(periodo)}</span>
-      <Link href={`?periodo=${correrPeriodo(periodo, 1)}`} aria-label="Mes siguiente" className={flecha}>
+      <span className="min-w-[9.5rem] text-center text-sm font-bold text-ink">
+        {mesTitulo(periodo)}
+      </span>
+      <Link
+        href={`?periodo=${correrPeriodo(periodo, 1)}`}
+        aria-label="Mes siguiente"
+        className={flecha}
+      >
         ›
       </Link>
     </div>
@@ -271,7 +356,15 @@ export function NavegadorMes({ periodo }: { periodo: string }) {
  * El encabezado de una tarjeta del teléfono, como en ventas: el título en
  * negrita, debajo «código · fecha» y la insignia de estado a la derecha.
  */
-export function CabezaTarjeta({ titulo, detalle, insignia }: { titulo: ReactNode; detalle?: ReactNode; insignia?: ReactNode }) {
+export function CabezaTarjeta({
+  titulo,
+  detalle,
+  insignia,
+}: {
+  titulo: ReactNode;
+  detalle?: ReactNode;
+  insignia?: ReactNode;
+}) {
   return (
     <div className="flex items-start gap-2">
       <span className="min-w-0 flex-1">
@@ -284,7 +377,19 @@ export function CabezaTarjeta({ titulo, detalle, insignia }: { titulo: ReactNode
 }
 
 /** Un bloque de pantalla con su rótulo arriba, en una tarjeta blanca. */
-export function Bloque({ icono, titulo, detalle, children, acciones }: { icono: string; titulo: ReactNode; detalle?: string; children: ReactNode; acciones?: ReactNode }) {
+export function Bloque({
+  icono,
+  titulo,
+  detalle,
+  children,
+  acciones,
+}: {
+  icono: string;
+  titulo: ReactNode;
+  detalle?: string;
+  children: ReactNode;
+  acciones?: ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -293,13 +398,25 @@ export function Bloque({ icono, titulo, detalle, children, acciones }: { icono: 
         </TituloSeccion>
         {acciones}
       </div>
-      <div className="overflow-hidden rounded-brand border border-line bg-white shadow-sm">{children}</div>
+      <div className="overflow-hidden rounded-brand border border-line bg-white shadow-sm">
+        {children}
+      </div>
     </section>
   );
 }
 
 /** Una tarjeta de ficha, con su rótulo arriba a la izquierda y, si hace falta, algo a la derecha. */
-export function Panel({ icono, titulo, derecha, children }: { icono: string; titulo: ReactNode; derecha?: ReactNode; children: ReactNode }) {
+export function Panel({
+  icono,
+  titulo,
+  derecha,
+  children,
+}: {
+  icono: string;
+  titulo: ReactNode;
+  derecha?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="rounded-brand border border-line bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -340,9 +457,24 @@ export function AccionesFila({
 }) {
   if (!onEditar && !onBorrar && !extra) return null;
   return (
-    <div className={tarjeta ? 'mt-2 flex items-center justify-end gap-1 border-t border-line pt-2' : 'flex items-center gap-1'}>
+    <div
+      className={
+        tarjeta
+          ? 'mt-2 flex items-center justify-end gap-1 border-t border-line pt-2'
+          : 'flex items-center gap-1'
+      }
+    >
       {extra}
-      {onEditar && <AccionFila icono="✏️" texto="Editar" etiqueta={`Editar ${nombre}`} title="Editar" onClick={onEditar} tarjeta={tarjeta} />}
+      {onEditar && (
+        <AccionFila
+          icono="✏️"
+          texto="Editar"
+          etiqueta={`Editar ${nombre}`}
+          title="Editar"
+          onClick={onEditar}
+          tarjeta={tarjeta}
+        />
+      )}
       {onBorrar && (
         <AccionFila
           icono={anula ? '🚫' : '🗑️'}
@@ -415,7 +547,17 @@ export function AccionFila({
  * igual en los dos: qué se registró, los botones (primero «Ver la cuenta») y
  * abajo el camino de vuelta a la lista.
  */
-export function Confirmacion({ titulo, detalle, children, volver }: { titulo: ReactNode; detalle?: ReactNode; children: ReactNode; volver: { href: string; texto: string } }) {
+export function Confirmacion({
+  titulo,
+  detalle,
+  children,
+  volver,
+}: {
+  titulo: ReactNode;
+  detalle?: ReactNode;
+  children: ReactNode;
+  volver: { href: string; texto: string };
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-brand border border-success/30 bg-white p-5 shadow-sm">
       <p role="status" className="flex items-start gap-2 text-lg font-extrabold text-ink">
@@ -424,7 +566,10 @@ export function Confirmacion({ titulo, detalle, children, volver }: { titulo: Re
       </p>
       {detalle}
       <div className="flex flex-wrap gap-2">{children}</div>
-      <Link href={volver.href} className={`w-fit rounded text-sm font-semibold text-muted hover:text-ink hover:underline ${CLASE_FOCO}`}>
+      <Link
+        href={volver.href}
+        className={`w-fit rounded text-sm font-semibold text-muted hover:text-ink hover:underline ${CLASE_FOCO}`}
+      >
         ← {volver.texto}
       </Link>
     </div>

@@ -104,7 +104,8 @@ export function ArchivarModal({
         </Campo>
 
         <p className="text-xs text-muted">
-          La propiedad deja de generar alertas y pasa a solo lectura. Se puede reabrir si fue un error.
+          La propiedad deja de generar alertas y pasa a solo lectura. Se puede reabrir si fue un
+          error.
         </p>
 
         {error && (

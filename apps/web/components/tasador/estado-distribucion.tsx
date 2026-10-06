@@ -12,7 +12,12 @@ interface Props {
 }
 
 /** Barras proporcionales por estado, coloreadas — compartido entre Dashboard y Reporte. */
-export function EstadoDistribucion({ distribucion, periodoLabel, onSelect, titulo = 'Distribución por estado' }: Props) {
+export function EstadoDistribucion({
+  distribucion,
+  periodoLabel,
+  onSelect,
+  titulo = 'Distribución por estado',
+}: Props) {
   const max = Math.max(...distribucion.map((d) => d.cantidad), 1);
 
   return (
@@ -33,10 +38,15 @@ export function EstadoDistribucion({ distribucion, periodoLabel, onSelect, titul
               <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
                 <span
                   className="block h-full rounded-full"
-                  style={{ width: `${(d.cantidad / max) * 100}%`, background: ESTADO_TASACION_COLOR[d.estado] }}
+                  style={{
+                    width: `${(d.cantidad / max) * 100}%`,
+                    background: ESTADO_TASACION_COLOR[d.estado],
+                  }}
                 />
               </span>
-              <span className="w-8 shrink-0 text-right text-sm font-semibold text-ink">{d.cantidad}</span>
+              <span className="w-8 shrink-0 text-right text-sm font-semibold text-ink">
+                {d.cantidad}
+              </span>
             </>
           );
           return onSelect ? (

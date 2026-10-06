@@ -25,7 +25,10 @@ describe('ServiceWorker', () => {
       },
     });
     const reload = vi.fn();
-    Object.defineProperty(window, 'location', { configurable: true, value: { ...window.location, reload } });
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...window.location, reload },
+    });
     return { oyentes, esperando, reload };
   }
 

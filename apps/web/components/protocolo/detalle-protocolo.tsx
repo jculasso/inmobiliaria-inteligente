@@ -35,11 +35,31 @@ const METRICAS = [
 ] as const;
 
 const ANALISIS = [
-  { key: 'devolucionesMercado', label: 'Devoluciones del mercado', ph: 'Comentarios más frecuentes de compradores y colegas' },
-  { key: 'objeciones', label: 'Principales objeciones', ph: 'Precio, estado, ubicación, condiciones…' },
-  { key: 'recomendacion', label: 'Recomendación de la inmobiliaria', ph: 'Mantener, reforzar, ajustar precio…' },
-  { key: 'decisionPropietario', label: 'Decisión acordada con el propietario', ph: 'Acuerdo y fecha de la decisión' },
-  { key: 'proximasAcciones', label: 'Próximas acciones', ph: 'Acciones concretas para la etapa siguiente' },
+  {
+    key: 'devolucionesMercado',
+    label: 'Devoluciones del mercado',
+    ph: 'Comentarios más frecuentes de compradores y colegas',
+  },
+  {
+    key: 'objeciones',
+    label: 'Principales objeciones',
+    ph: 'Precio, estado, ubicación, condiciones…',
+  },
+  {
+    key: 'recomendacion',
+    label: 'Recomendación de la inmobiliaria',
+    ph: 'Mantener, reforzar, ajustar precio…',
+  },
+  {
+    key: 'decisionPropietario',
+    label: 'Decisión acordada con el propietario',
+    ph: 'Acuerdo y fecha de la decisión',
+  },
+  {
+    key: 'proximasAcciones',
+    label: 'Próximas acciones',
+    ph: 'Acciones concretas para la etapa siguiente',
+  },
 ] as const;
 
 /**
@@ -97,7 +117,10 @@ export function DetalleProtocolo({
    * semana, alertas) pero se conserva la foto ya firmada, porque las mutaciones
    * devuelven la key cruda para ahorrarse el round trip a Storage.
    */
-  async function guardar(local: (prev: ProtocoloDto) => ProtocoloDto, fn: (token: string) => Promise<ProtocoloDto>) {
+  async function guardar(
+    local: (prev: ProtocoloDto) => ProtocoloDto,
+    fn: (token: string) => Promise<ProtocoloDto>,
+  ) {
     const previo = p;
     setP(local);
     setGuardando(true);
@@ -146,18 +169,22 @@ export function DetalleProtocolo({
           className="h-32 w-full shrink-0 rounded-brand sm:h-24 sm:w-32"
         />
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-extrabold leading-tight text-ink sm:text-xl">{p.propiedad.direccion}</h2>
+          <h2 className="text-lg font-extrabold leading-tight text-ink sm:text-xl">
+            {p.propiedad.direccion}
+          </h2>
           <p className="text-sm text-muted">
             {p.propiedad.tipoPropiedad} ·{' '}
-            {p.precioPublicado != null ? fmtUSD(p.precioPublicado) : 'Precio no informado'} · Propietario:{' '}
-            {p.propietarioNombre ?? 'No informado'}
+            {p.precioPublicado != null ? fmtUSD(p.precioPublicado) : 'Precio no informado'} ·
+            Propietario: {p.propietarioNombre ?? 'No informado'}
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Pill tono={archivada ? 'neutro' : 'rojo'}>
               {archivada ? 'Archivada' : `Semana ${p.semanaActual} de ${TOTAL_SEMANAS}`}
             </Pill>
             <Pill>{p.diasPublicada} días en comercialización</Pill>
-            <Pill tono={p.avance === 1 ? 'verde' : 'neutro'}>{porcentaje(p.avance)} completado</Pill>
+            <Pill tono={p.avance === 1 ? 'verde' : 'neutro'}>
+              {porcentaje(p.avance)} completado
+            </Pill>
             <Pill>{p.agente.nombre}</Pill>
           </div>
         </div>
@@ -183,7 +210,12 @@ export function DetalleProtocolo({
         <div className="flex flex-col gap-2">
           {p.alertas.map((a, i) =>
             a.semana != null ? (
-              <button key={i} type="button" onClick={() => setSemana(a.semana!)} className="text-left">
+              <button
+                key={i}
+                type="button"
+                onClick={() => setSemana(a.semana!)}
+                className="text-left"
+              >
                 <AlertaItem alerta={a} />
               </button>
             ) : (
@@ -194,7 +226,10 @@ export function DetalleProtocolo({
       )}
 
       {error && (
-        <p role="alert" className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red">
+        <p
+          role="alert"
+          className="rounded-brand bg-brand-red/10 px-3 py-2 text-sm font-medium text-brand-red"
+        >
           {error}
         </p>
       )}
@@ -206,7 +241,10 @@ export function DetalleProtocolo({
           role="status"
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink/90 px-3.5 py-2 text-xs font-semibold text-white shadow-lg"
         >
-          <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          <span
+            aria-hidden
+            className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white"
+          />
           Guardando…
         </div>
       )}
@@ -246,8 +284,9 @@ export function DetalleProtocolo({
           ))}
         </div>
         <p className="mt-2 text-xs text-muted">
-          Conversión a visita: <strong className="text-ink">{porcentaje(p.embudo.conversionVisita)}</strong> ·
-          Conversión visita → oferta:{' '}
+          Conversión a visita:{' '}
+          <strong className="text-ink">{porcentaje(p.embudo.conversionVisita)}</strong> · Conversión
+          visita → oferta:{' '}
           <strong className="text-ink">{porcentaje(p.embudo.conversionOferta)}</strong>
         </p>
       </section>
@@ -255,7 +294,9 @@ export function DetalleProtocolo({
       {/* Semanas */}
       <div className="flex gap-1.5 pb-1 sm:gap-2">
         {SEMANAS.map((n) => {
-          const acciones = p.acciones.filter((a) => a.semana === n && a.estado !== 'no_corresponde');
+          const acciones = p.acciones.filter(
+            (a) => a.semana === n && a.estado !== 'no_corresponde',
+          );
           const hechas = acciones.filter((a) => a.estado === 'realizada').length;
           const completa = acciones.length > 0 && hechas === acciones.length;
           return (
@@ -273,8 +314,8 @@ export function DetalleProtocolo({
             >
               {/* En el celular cinco solapas no entran con la palabra completa. */}
               <span className="sm:hidden">S{n}</span>
-              <span className="hidden sm:inline">Semana {n}</span>{' '}
-              · {acciones.length === 0 ? '—' : `${Math.round((hechas / acciones.length) * 100)}%`}
+              <span className="hidden sm:inline">Semana {n}</span> ·{' '}
+              {acciones.length === 0 ? '—' : `${Math.round((hechas / acciones.length) * 100)}%`}
             </button>
           );
         })}
@@ -300,7 +341,10 @@ export function DetalleProtocolo({
         {semana === TOTAL_SEMANAS && (
           <div className="grid gap-3 border-t border-line p-4 sm:grid-cols-2">
             {ANALISIS.map((campo) => (
-              <label key={campo.key} className={campo.key === 'proximasAcciones' ? 'sm:col-span-2' : ''}>
+              <label
+                key={campo.key}
+                className={campo.key === 'proximasAcciones' ? 'sm:col-span-2' : ''}
+              >
                 <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-wide text-muted">
                   {campo.label}
                 </span>
@@ -401,9 +445,21 @@ function AccionFila({
         <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
           {(
             [
-              { key: 'observaciones', label: 'Observaciones', ph: 'Qué se hizo, incidencias o contexto' },
-              { key: 'resultado', label: 'Resultado', ph: 'Consultas, respuestas o resultado obtenido' },
-              { key: 'evidencia', label: 'Enlace / evidencia', ph: 'URL de la publicación, carpeta, video…' },
+              {
+                key: 'observaciones',
+                label: 'Observaciones',
+                ph: 'Qué se hizo, incidencias o contexto',
+              },
+              {
+                key: 'resultado',
+                label: 'Resultado',
+                ph: 'Consultas, respuestas o resultado obtenido',
+              },
+              {
+                key: 'evidencia',
+                label: 'Enlace / evidencia',
+                ph: 'URL de la publicación, carpeta, video…',
+              },
             ] as const
           ).map((campo) => (
             <label key={campo.key}>

@@ -15,8 +15,22 @@ const cobro = (over: Partial<CobroDto> = {}): CobroDto => ({
   medio: 'transferencia',
   obs: null,
   imputaciones: [
-    { conceptoId: '33333333-3333-4333-8333-333333333333', contrato: { id: '44444444-4444-4444-8444-444444444444', codigo: '5' }, descripcion: 'Arreglo del aire', sentido: 'a_pagar', importe: 140_699, deSaldoAFavor: null },
-    { conceptoId: '55555555-5555-4555-8555-555555555555', contrato: { id: '44444444-4444-4444-8444-444444444444', codigo: '5' }, descripcion: 'Alquiler noviembre 2026', sentido: 'a_cobrar', importe: 1_137_518, deSaldoAFavor: 7 },
+    {
+      conceptoId: '33333333-3333-4333-8333-333333333333',
+      contrato: { id: '44444444-4444-4444-8444-444444444444', codigo: '5' },
+      descripcion: 'Arreglo del aire',
+      sentido: 'a_pagar',
+      importe: 140_699,
+      deSaldoAFavor: null,
+    },
+    {
+      conceptoId: '55555555-5555-4555-8555-555555555555',
+      contrato: { id: '44444444-4444-4444-8444-444444444444', codigo: '5' },
+      descripcion: 'Alquiler noviembre 2026',
+      sentido: 'a_cobrar',
+      importe: 1_137_518,
+      deSaldoAFavor: 7,
+    },
   ],
   aFavor: 103_181,
   anulado: null,
@@ -24,7 +38,17 @@ const cobro = (over: Partial<CobroDto> = {}): CobroDto => ({
   ...over,
 });
 
-const texto = async (c: CobroDto) => textoDePdf(await renderToBuffer(<ReciboDocument cobro={c} tenantNombre="Alteva Propiedades" logoUrl={null} colorPrimario={null} />));
+const texto = async (c: CobroDto) =>
+  textoDePdf(
+    await renderToBuffer(
+      <ReciboDocument
+        cobro={c}
+        tenantNombre="Alteva Propiedades"
+        logoUrl={null}
+        colorPrimario={null}
+      />,
+    ),
+  );
 
 describe('Recibo (regla 23)', () => {
   it('lista lo que canceló, el total y la leyenda de no factura', async () => {
@@ -51,7 +75,13 @@ describe('Recibo (regla 23)', () => {
   });
 
   it('un recibo anulado lo dice con su motivo', async () => {
-    expect(await texto(cobro({ anulado: { en: '2026-11-06T10:00:00Z', motivo: 'Transferencia rechazada', por: null } }))).toContain('Transferencia rechazada');
+    expect(
+      await texto(
+        cobro({
+          anulado: { en: '2026-11-06T10:00:00Z', motivo: 'Transferencia rechazada', por: null },
+        }),
+      ),
+    ).toContain('Transferencia rechazada');
   });
 });
 
@@ -61,7 +91,12 @@ describe('Liquidación en PDF (regla 23)', () => {
     const C5 = crypto.randomUUID();
     const linea = (descripcion: string, importe: number, tipo: 'alquiler' | 'honorarios') => ({
       conceptoId: crypto.randomUUID(),
-      contrato: { id: C5, codigo: 'ALT-0005', propiedad: 'Córdoba 1452 3° B', inquilinos: ['Ana Inquilina'] },
+      contrato: {
+        id: C5,
+        codigo: 'ALT-0005',
+        propiedad: 'Córdoba 1452 3° B',
+        inquilinos: ['Ana Inquilina'],
+      },
       tipo,
       descripcion,
       importe,
@@ -80,7 +115,12 @@ describe('Liquidación en PDF (regla 23)', () => {
           neto: 1_027_406.26,
           anulado: null,
           registradoPor: 'Lucía Operadora',
-          cuentaDestino: { banco: 'Banco Nación', cbu: null, alias: 'casa.mar.sol', titular: 'Juan Propietario' },
+          cuentaDestino: {
+            banco: 'Banco Nación',
+            cbu: null,
+            alias: 'casa.mar.sol',
+            titular: 'Juan Propietario',
+          },
         }}
         tenantNombre="Alteva Propiedades"
         logoUrl={null}
@@ -93,7 +133,9 @@ describe('Liquidación en PDF (regla 23)', () => {
     // Pedido de Javier del 6/10/2026: cada propiedad con su inquilino y su propietario.
     expect(t).toContain('PROPIEDAD: Córdoba 1452 3° B');
     expect(t).toContain('Lucía Operadora');
-    expect(t).toMatch(/Inquilino: Ana Inquilina.*Propietario: Juan Propietario.*Contrato: ALT-0005/);
+    expect(t).toMatch(
+      /Inquilino: Ana Inquilina.*Propietario: Juan Propietario.*Contrato: ALT-0005/,
+    );
     expect(t).toContain('$ 1.027.406,26');
     expect(t).toContain(LEYENDA_NO_FACTURA);
   });

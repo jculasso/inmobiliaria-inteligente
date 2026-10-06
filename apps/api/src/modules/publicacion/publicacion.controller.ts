@@ -34,8 +34,6 @@ export class PublicacionController {
     return this.publicacion.estado();
   }
 
-
-
   /**
    * POST y no GET porque sale a la red hacia un tercero: no es una lectura
    * cacheable y no queremos que un prefetch del navegador la dispare sola.

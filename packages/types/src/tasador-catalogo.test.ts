@@ -109,7 +109,13 @@ const NO_CORRESPONDE: Array<[TipoPropiedad, string[]]> = [
   ['Galpón', ['Falta de balcón', 'Balcón funcional', 'Ambientes chicos', 'Falta de cochera']],
   [
     'Departamento',
-    ['Esquina', 'Calle sin pavimentar', 'Excelente acceso para camiones', 'Patio exclusivo', 'Necesidad de demolición'],
+    [
+      'Esquina',
+      'Calle sin pavimentar',
+      'Excelente acceso para camiones',
+      'Patio exclusivo',
+      'Necesidad de demolición',
+    ],
   ],
   ['Casa', ['PH interno', 'Altura insuficiente', 'Sin ascensor']],
 ];

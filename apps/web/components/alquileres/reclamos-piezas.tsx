@@ -18,10 +18,22 @@ import { Campo, inputClass, textareaClass } from '../form-ui';
 import { Insignia, type TonoInsignia } from './piezas';
 
 // «Urgente» va en rojo de urgencia, no en el color de la marca (CONVENCIONES_TECNICAS §13); «En curso» no urge: avisa.
-const TONO_ESTADO: Record<EstadoReclamo, TonoInsignia> = { abierto: 'aviso', en_curso: 'aviso', resuelto: 'exito', cerrado: 'neutro' };
-const TONO_PRIORIDAD: Record<PrioridadReclamo, TonoInsignia> = { urgente: 'peligro', alta: 'aviso', media: 'neutro', baja: 'neutro' };
+const TONO_ESTADO: Record<EstadoReclamo, TonoInsignia> = {
+  abierto: 'aviso',
+  en_curso: 'aviso',
+  resuelto: 'exito',
+  cerrado: 'neutro',
+};
+const TONO_PRIORIDAD: Record<PrioridadReclamo, TonoInsignia> = {
+  urgente: 'peligro',
+  alta: 'aviso',
+  media: 'neutro',
+  baja: 'neutro',
+};
 
-export const EstadoReclamoBadge = ({ estado }: { estado: EstadoReclamo }) => <Insignia tono={TONO_ESTADO[estado]}>{NOMBRE_ESTADO_RECLAMO[estado]}</Insignia>;
+export const EstadoReclamoBadge = ({ estado }: { estado: EstadoReclamo }) => (
+  <Insignia tono={TONO_ESTADO[estado]}>{NOMBRE_ESTADO_RECLAMO[estado]}</Insignia>
+);
 export const PrioridadBadge = ({ prioridad }: { prioridad: PrioridadReclamo }) => (
   <Insignia tono={TONO_PRIORIDAD[prioridad]}>
     {prioridad === 'urgente' ? '🔥 ' : ''}
@@ -72,7 +84,15 @@ export function NuevoReclamoModal({
   const [enviando, setEnviando] = useState(false);
 
   async function crear() {
-    const dto = { asunto, descripcion, tipo, prioridad, contratoId: contratoId || null, personaId: null, asignadoAId: asignadoAId || null };
+    const dto = {
+      asunto,
+      descripcion,
+      tipo,
+      prioridad,
+      contratoId: contratoId || null,
+      personaId: null,
+      asignadoAId: asignadoAId || null,
+    };
     const r = ReclamoInputSchema.safeParse(dto);
     if (!r.success) {
       setError(r.error.issues[0]?.message ?? 'Revisá los datos.');
@@ -94,7 +114,11 @@ export function NuevoReclamoModal({
       <div className="flex flex-col gap-3">
         {!contratoFijo && (
           <Campo label="Contrato" requerido>
-            <select className={inputClass} value={contratoId} onChange={(e) => setContratoId(e.target.value)}>
+            <select
+              className={inputClass}
+              value={contratoId}
+              onChange={(e) => setContratoId(e.target.value)}
+            >
               <option value="">Elegí el contrato…</option>
               {contratos
                 .filter((c) => c.estado === 'vigente')
@@ -108,14 +132,29 @@ export function NuevoReclamoModal({
           </Campo>
         )}
         <Campo label="Asunto" requerido>
-          <input className={inputClass} value={asunto} onChange={(e) => setAsunto(e.target.value)} placeholder="Pérdida de agua en el baño" autoFocus />
+          <input
+            className={inputClass}
+            value={asunto}
+            onChange={(e) => setAsunto(e.target.value)}
+            placeholder="Pérdida de agua en el baño"
+            autoFocus
+          />
         </Campo>
         <Campo label="Detalle">
-          <textarea className={textareaClass} rows={3} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+          <textarea
+            className={textareaClass}
+            rows={3}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+          />
         </Campo>
         <div className="grid gap-3 sm:grid-cols-3">
           <Campo label="Tipo">
-            <select className={inputClass} value={tipo} onChange={(e) => setTipo(e.target.value as TipoReclamo)}>
+            <select
+              className={inputClass}
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as TipoReclamo)}
+            >
               {Object.entries(NOMBRE_TIPO_RECLAMO).map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}
@@ -124,7 +163,11 @@ export function NuevoReclamoModal({
             </select>
           </Campo>
           <Campo label="Prioridad">
-            <select className={inputClass} value={prioridad} onChange={(e) => setPrioridad(e.target.value as PrioridadReclamo)}>
+            <select
+              className={inputClass}
+              value={prioridad}
+              onChange={(e) => setPrioridad(e.target.value as PrioridadReclamo)}
+            >
               {Object.entries(NOMBRE_PRIORIDAD).map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}
@@ -133,7 +176,11 @@ export function NuevoReclamoModal({
             </select>
           </Campo>
           <Campo label="Asignado a">
-            <select className={inputClass} value={asignadoAId} onChange={(e) => setAsignadoAId(e.target.value)}>
+            <select
+              className={inputClass}
+              value={asignadoAId}
+              onChange={(e) => setAsignadoAId(e.target.value)}
+            >
               <option value="">Sin asignar</option>
               {usuarios.map((u) => (
                 <option key={u.id} value={u.id}>

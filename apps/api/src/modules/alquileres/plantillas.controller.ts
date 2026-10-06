@@ -1,6 +1,11 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PlantillaInputSchema, ROLES_ADMINISTRACION_ALQUILERES, VistaPreviaPlantillaSchema, type Plantilla } from '@vacker/types';
+import {
+  PlantillaInputSchema,
+  ROLES_ADMINISTRACION_ALQUILERES,
+  VistaPreviaPlantillaSchema,
+  type Plantilla,
+} from '@vacker/types';
 import type { z } from 'zod';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
@@ -34,14 +39,20 @@ export class PlantillasController {
   @Post()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Crea una plantilla' })
-  crear(@Body(new ZodValidationPipe(PlantillaInputSchema)) dto: Plantilla, @CurrentUser() user: AuthPrincipal) {
+  crear(
+    @Body(new ZodValidationPipe(PlantillaInputSchema)) dto: Plantilla,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.plantillas.crear(ctxDe(user), dto);
   }
 
   @Patch(':id')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Edita una plantilla' })
-  actualizar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(PlantillaInputSchema)) dto: Plantilla) {
+  actualizar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(PlantillaInputSchema)) dto: Plantilla,
+  ) {
     return this.plantillas.actualizar(id, dto);
   }
 
@@ -55,7 +66,14 @@ export class PlantillasController {
   @Post('vista-previa')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'El PDF de un texto con los datos de un contrato, para ver cómo queda' })
-  async vistaPrevia(@Body(new ZodValidationPipe(VistaPreviaPlantillaSchema)) body: z.output<typeof VistaPreviaPlantillaSchema>, @CurrentUser() user: AuthPrincipal) {
-    return pdfResponse(await this.plantillas.vistaPrevia(ctxDe(user), body.contratoId, body.cuerpo), 'Vista-previa');
+  async vistaPrevia(
+    @Body(new ZodValidationPipe(VistaPreviaPlantillaSchema))
+    body: z.output<typeof VistaPreviaPlantillaSchema>,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return pdfResponse(
+      await this.plantillas.vistaPrevia(ctxDe(user), body.contratoId, body.cuerpo),
+      'Vista-previa',
+    );
   }
 }

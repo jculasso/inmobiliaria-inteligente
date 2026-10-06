@@ -23,7 +23,15 @@ import {
 } from '@vacker/types';
 import { Button, KpiCard, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { anularBoleta, borrarCuentaServicio, borrarServicio, cargarServiciosSugeridos, guardarCuentaServicio, guardarServicio, pagarBoleta } from '../../lib/alquileres-api';
+import {
+  anularBoleta,
+  borrarCuentaServicio,
+  borrarServicio,
+  cargarServiciosSugeridos,
+  guardarCuentaServicio,
+  guardarServicio,
+  pagarBoleta,
+} from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
@@ -49,21 +57,39 @@ import {
   VacioBloque,
 } from './piezas';
 
-const ICONO_CLASE: Record<ClaseServicio | 'poliza', string> = { impuesto: '🏛️', servicio: '💡', expensa: '🏢', poliza: '🛡️' };
+const ICONO_CLASE: Record<ClaseServicio | 'poliza', string> = {
+  impuesto: '🏛️',
+  servicio: '💡',
+  expensa: '🏢',
+  poliza: '🛡️',
+};
 const quienPaga = (p: QuienPaga) => NOMBRE_QUIEN_PAGA[p].toLowerCase();
 
 function EstadoBoleta({ b }: { b: BoletaDto }) {
   if (b.estado === 'anulada') return <Insignia tono="neutro">Anulada</Insignia>;
-  if (b.estado === 'pagada') return <Insignia tono="exito">{b.paga === 'inmobiliaria' ? 'Pagada' : 'Comprobante'} {b.pagadaEl ? fmtFecha(b.pagadaEl) : ''}</Insignia>;
+  if (b.estado === 'pagada')
+    return (
+      <Insignia tono="exito">
+        {b.paga === 'inmobiliaria' ? 'Pagada' : 'Comprobante'}{' '}
+        {b.pagadaEl ? fmtFecha(b.pagadaEl) : ''}
+      </Insignia>
+    );
   if (b.vencimiento < hoyIso()) return <Insignia tono="peligro">Vencida</Insignia>;
-  return <Insignia tono="aviso">{b.paga === 'inmobiliaria' ? 'A pagar' : 'Falta comprobante'}</Insignia>;
+  return (
+    <Insignia tono="aviso">{b.paga === 'inmobiliaria' ? 'A pagar' : 'Falta comprobante'}</Insignia>
+  );
 }
 
 /** «Pagar» si la paga la inmobiliaria; si la paga una parte, que presentó el comprobante. */
 const accionDe = (b: BoletaDto) =>
   b.paga === 'inmobiliaria'
     ? { icono: '💸', texto: 'Pagar', etiqueta: `Pagar ${b.nombre}`, title: 'Registrar el pago' }
-    : { icono: '✅', texto: 'Comprobante', etiqueta: `Registrar el comprobante de ${b.nombre}`, title: 'La parte presentó el comprobante' };
+    : {
+        icono: '✅',
+        texto: 'Comprobante',
+        etiqueta: `Registrar el comprobante de ${b.nombre}`,
+        title: 'La parte presentó el comprobante',
+      };
 
 /**
  * Impuestos, servicios y pólizas (entrega 19): las boletas del mes y lo que
@@ -113,7 +139,12 @@ export function ImpuestosVista({
     <div className="flex flex-col gap-5">
       <EncabezadoPagina titulo="Impuestos y servicios">
         <NavegadorMes periodo={periodo} />
-        <Button variant="primary" size="sm" onClick={() => setCargando((v) => !v)} aria-expanded={cargando}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => setCargando((v) => !v)}
+          aria-expanded={cargando}
+        >
           {cargando ? 'Cerrar la planilla' : '📝 Cargar boletas'}
         </Button>
       </EncabezadoPagina>
@@ -121,14 +152,37 @@ export function ImpuestosVista({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="Paga la inmobiliaria, a 7 días"
-          value={fmtMoneda(aPagarInmo.reduce((s, b) => s + (b.moneda === 'ARS' ? b.importe : 0), 0), 'ARS')}
+          value={fmtMoneda(
+            aPagarInmo.reduce((s, b) => s + (b.moneda === 'ARS' ? b.importe : 0), 0),
+            'ARS',
+          )}
           sub={`${aPagarInmo.length} ${aPagarInmo.length === 1 ? 'boleta' : 'boletas'}`}
           icon="💸"
           tone={aPagarInmo.length ? 'warning' : 'success'}
         />
-        <KpiCard label="Vencidas sin pagar" value={String(vencidas.length)} sub="de cualquier mes" icon="⏰" tone={vencidas.length ? 'danger' : 'success'} />
-        <KpiCard label={`Cargadas de ${mes.split(' ')[0]}`} value={fmtMoneda(vivas.reduce((s, b) => s + (b.moneda === 'ARS' ? b.importe : 0), 0), 'ARS')} sub={`${vivas.length} boletas`} icon="🧾" />
-        <KpiCard label="Falta el comprobante" value={String(sinComprobante.length)} sub="las pagan las partes" icon="📎" tone={sinComprobante.length ? 'warning' : 'success'} />
+        <KpiCard
+          label="Vencidas sin pagar"
+          value={String(vencidas.length)}
+          sub="de cualquier mes"
+          icon="⏰"
+          tone={vencidas.length ? 'danger' : 'success'}
+        />
+        <KpiCard
+          label={`Cargadas de ${mes.split(' ')[0]}`}
+          value={fmtMoneda(
+            vivas.reduce((s, b) => s + (b.moneda === 'ARS' ? b.importe : 0), 0),
+            'ARS',
+          )}
+          sub={`${vivas.length} boletas`}
+          icon="🧾"
+        />
+        <KpiCard
+          label="Falta el comprobante"
+          value={String(sinComprobante.length)}
+          sub="las pagan las partes"
+          icon="📎"
+          tone={sinComprobante.length ? 'warning' : 'success'}
+        />
       </div>
 
       {cargando && <PlanillaBoletas planilla={planilla} mes={mes} />}
@@ -150,23 +204,35 @@ export function ImpuestosVista({
         }
       >
         {lista.length === 0 ? (
-          <VacioBloque>{ver === 'control' ? 'Nada vencido ni por vencer en los próximos 7 días.' : `Todavía no hay boletas de ${mes}: «📝 Cargar boletas».`}</VacioBloque>
+          <VacioBloque>
+            {ver === 'control'
+              ? 'Nada vencido ni por vencer en los próximos 7 días.'
+              : `Todavía no hay boletas de ${mes}: «📝 Cargar boletas».`}
+          </VacioBloque>
         ) : (
           <>
             <div className="sm:hidden">
               <ListaTarjetas etiqueta="Boletas">
                 {lista.map((b) => (
                   <Tarjeta key={b.id}>
-                    <CabezaTarjeta titulo={`${ICONO_CLASE[b.clase]} ${b.nombre}${b.cuota ? ` ${b.cuota}` : ''}`} detalle={b.propiedad} insignia={<EstadoBoleta b={b} />} />
+                    <CabezaTarjeta
+                      titulo={`${ICONO_CLASE[b.clase]} ${b.nombre}${b.cuota ? ` ${b.cuota}` : ''}`}
+                      detalle={b.propiedad}
+                      insignia={<EstadoBoleta b={b} />}
+                    />
                     <CamposTarjeta>
                       <CampoTarjeta etiqueta="Importe">
-                        <span className={b.estado === 'anulada' ? 'text-muted line-through' : ''}>{fmtMoneda(b.importe, b.moneda)}</span>
+                        <span className={b.estado === 'anulada' ? 'text-muted line-through' : ''}>
+                          {fmtMoneda(b.importe, b.moneda)}
+                        </span>
                       </CampoTarjeta>
                       <CampoTarjeta etiqueta="Vence">{fmtFecha(b.vencimiento)}</CampoTarjeta>
                       <CampoTarjeta etiqueta="La debe / paga">
                         {b.aCargoDe} / {quienPaga(b.paga)}
                       </CampoTarjeta>
-                      <CampoTarjeta etiqueta="Contrato">{b.contrato?.codigo ?? 'sin contrato'}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Contrato">
+                        {b.contrato?.codigo ?? 'sin contrato'}
+                      </CampoTarjeta>
                     </CamposTarjeta>
                     {b.estado === 'pendiente' && (
                       <AccionesFila
@@ -197,7 +263,9 @@ export function ImpuestosVista({
                 <tbody>
                   {lista.map((b) => (
                     <tr key={b.id} className="border-b border-line last:border-0">
-                      <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(b.vencimiento)}</td>
+                      <td className={`${CLASE_TD} tabular-nums text-muted`}>
+                        {fmtFecha(b.vencimiento)}
+                      </td>
                       <td className="px-3 py-2 text-ink">
                         <span aria-hidden>{ICONO_CLASE[b.clase]} </span>
                         {b.nombre}
@@ -213,7 +281,10 @@ export function ImpuestosVista({
                       <td className="px-3 py-2 text-muted">
                         {b.propiedad}
                         {b.contrato && (
-                          <Link href={`/alquileres/contratos/${b.contrato.id}`} className={`block w-fit rounded text-xs font-semibold text-ink hover:text-brand-red ${CLASE_FOCO}`}>
+                          <Link
+                            href={`/alquileres/contratos/${b.contrato.id}`}
+                            className={`block w-fit rounded text-xs font-semibold text-ink hover:text-brand-red ${CLASE_FOCO}`}
+                          >
                             {b.contrato.codigo}
                           </Link>
                         )}
@@ -221,7 +292,11 @@ export function ImpuestosVista({
                       <td className={`${CLASE_TD} text-muted`}>
                         {b.aCargoDe} · {quienPaga(b.paga)}
                       </td>
-                      <td className={`${CLASE_TD} text-right font-semibold tabular-nums ${b.estado === 'anulada' ? 'text-muted line-through' : 'text-ink'}`}>{fmtMoneda(b.importe, b.moneda)}</td>
+                      <td
+                        className={`${CLASE_TD} text-right font-semibold tabular-nums ${b.estado === 'anulada' ? 'text-muted line-through' : 'text-ink'}`}
+                      >
+                        {fmtMoneda(b.importe, b.moneda)}
+                      </td>
                       <td className={CLASE_TD}>
                         <EstadoBoleta b={b} />
                       </td>
@@ -248,7 +323,9 @@ export function ImpuestosVista({
       <Polizas polizas={polizas} contratos={contratos} />
       <Catalogo servicios={servicios} />
 
-      {aPagar && <PagarBoletaModal boleta={aPagar} onClose={() => setAPagar(null)} onDone={listo} />}
+      {aPagar && (
+        <PagarBoletaModal boleta={aPagar} onClose={() => setAPagar(null)} onDone={listo} />
+      )}
       {aAnular && (
         <AnularModal
           titulo="Anular la boleta"
@@ -262,23 +339,44 @@ export function ImpuestosVista({
   );
 }
 
-function PagarBoletaModal({ boleta: b, onClose, onDone }: { boleta: BoletaDto; onClose: () => void; onDone: () => void }) {
+function PagarBoletaModal({
+  boleta: b,
+  onClose,
+  onDone,
+}: {
+  boleta: BoletaDto;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [fecha, setFecha] = useState(hoyIso());
   const [medio, setMedio] = useState<MedioCobro>('transferencia');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const inmo = b.paga === 'inmobiliaria';
   return (
-    <Modal title={inmo ? `Pagar ${b.nombre}` : `Comprobante de ${b.nombre}`} subtitle={`${b.propiedad} · ${fmtMoneda(b.importe, b.moneda)}${inmo ? '' : ` · la pagó ${quienPaga(b.paga)}`}`} onClose={onClose}>
+    <Modal
+      title={inmo ? `Pagar ${b.nombre}` : `Comprobante de ${b.nombre}`}
+      subtitle={`${b.propiedad} · ${fmtMoneda(b.importe, b.moneda)}${inmo ? '' : ` · la pagó ${quienPaga(b.paga)}`}`}
+      onClose={onClose}
+    >
       <div className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label={inmo ? 'Fecha del pago' : 'Fecha del comprobante'}>
-            <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <input
+              type="date"
+              className={inputClass}
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+            />
           </Campo>
           {/* Si la pagó una parte, solo se registra que trajo el comprobante: el medio no es nuestro. */}
           {inmo && (
             <Campo label="Medio">
-              <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
+              <select
+                className={inputClass}
+                value={medio}
+                onChange={(e) => setMedio(e.target.value as MedioCobro)}
+              >
                 {MEDIOS_COBRO.map((v) => (
                   <option key={v} value={v}>
                     {NOMBRE_MEDIO[v]}
@@ -311,7 +409,11 @@ function PagarBoletaModal({ boleta: b, onClose, onDone }: { boleta: BoletaDto; o
               }
             }}
           >
-            {enviando ? 'Registrando…' : inmo ? '💸 Registrar el pago' : '✅ Registrar el comprobante'}
+            {enviando
+              ? 'Registrando…'
+              : inmo
+                ? '💸 Registrar el pago'
+                : '✅ Registrar el comprobante'}
           </Button>
         </div>
       </div>
@@ -320,7 +422,15 @@ function PagarBoletaModal({ boleta: b, onClose, onDone }: { boleta: BoletaDto; o
 }
 
 /** Qué impuestos y servicios tiene cada propiedad, con su número de cuenta, quién los debe y quién paga. */
-function CuentasPorPropiedad({ cuentas, servicios, propiedades }: { cuentas: CuentaServicioDto[]; servicios: ServicioDto[]; propiedades: PropiedadAlquilerDto[] }) {
+function CuentasPorPropiedad({
+  cuentas,
+  servicios,
+  propiedades,
+}: {
+  cuentas: CuentaServicioDto[];
+  servicios: ServicioDto[];
+  propiedades: PropiedadAlquilerDto[];
+}) {
   const router = useRouter();
   const [editar, setEditar] = useState<CuentaServicioDto | 'nueva' | null>(null);
   const [aBorrar, setABorrar] = useState<CuentaServicioDto | null>(null);
@@ -332,20 +442,31 @@ function CuentasPorPropiedad({ cuentas, servicios, propiedades }: { cuentas: Cue
       titulo="Cuentas por propiedad"
       detalle={`${cuentas.length}`}
       acciones={
-        <Button variant="secondary" size="sm" onClick={() => setEditar('nueva')} disabled={servicios.length === 0}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setEditar('nueva')}
+          disabled={servicios.length === 0}
+        >
           ＋ Asignar
         </Button>
       }
     >
       {cuentas.length === 0 ? (
-        <VacioBloque>{servicios.length ? 'Ninguna propiedad tiene impuestos o servicios asignados todavía.' : 'Primero armá el catálogo, abajo.'}</VacioBloque>
+        <VacioBloque>
+          {servicios.length
+            ? 'Ninguna propiedad tiene impuestos o servicios asignados todavía.'
+            : 'Primero armá el catálogo, abajo.'}
+        </VacioBloque>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {[...grupos.values()].map((g) => (
             <li key={g[0]!.propiedad.id} className="px-4 py-2.5">
               <p className="font-semibold text-ink">
                 {g[0]!.propiedad.direccion}
-                {g[0]!.contrato && <span className="font-normal text-muted"> · {g[0]!.contrato.codigo}</span>}
+                {g[0]!.contrato && (
+                  <span className="font-normal text-muted"> · {g[0]!.contrato.codigo}</span>
+                )}
               </p>
               <ul className="mt-1 flex flex-col gap-1">
                 {g.map((c) => (
@@ -354,10 +475,15 @@ function CuentasPorPropiedad({ cuentas, servicios, propiedades }: { cuentas: Cue
                       <span aria-hidden>{ICONO_CLASE[c.servicio.clase]} </span>
                       {c.servicio.nombre}
                       <span className="text-xs text-muted">
-                        {c.numeroCuenta ? ` · cuenta ${c.numeroCuenta}` : ''} · la debe el {c.aCargoDe}, paga {quienPaga(c.paga)}
+                        {c.numeroCuenta ? ` · cuenta ${c.numeroCuenta}` : ''} · la debe el{' '}
+                        {c.aCargoDe}, paga {quienPaga(c.paga)}
                       </span>
                     </span>
-                    <AccionesFila nombre={`${c.servicio.nombre} de ${c.propiedad.direccion}`} onEditar={() => setEditar(c)} onBorrar={() => setABorrar(c)} />
+                    <AccionesFila
+                      nombre={`${c.servicio.nombre} de ${c.propiedad.direccion}`}
+                      onEditar={() => setEditar(c)}
+                      onBorrar={() => setABorrar(c)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -433,10 +559,18 @@ function CuentaModal({
   }
 
   return (
-    <Modal title={c ? `Editar ${c.servicio.nombre}` : 'Asignar a una propiedad'} subtitle="Si la paga alguien distinto de quien la debe, a uno se le carga y al otro se le reconoce." onClose={onClose}>
+    <Modal
+      title={c ? `Editar ${c.servicio.nombre}` : 'Asignar a una propiedad'}
+      subtitle="Si la paga alguien distinto de quien la debe, a uno se le carga y al otro se le reconoce."
+      onClose={onClose}
+    >
       <div className="flex flex-col gap-3">
         <Campo label="Propiedad" requerido>
-          <select className={inputClass} value={propiedadId} onChange={(e) => setPropiedadId(e.target.value)}>
+          <select
+            className={inputClass}
+            value={propiedadId}
+            onChange={(e) => setPropiedadId(e.target.value)}
+          >
             <option value="">Elegí la propiedad…</option>
             {propiedades.map((p) => (
               <option key={p.id} value={p.id}>
@@ -448,7 +582,11 @@ function CuentaModal({
         </Campo>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Impuesto o servicio" requerido>
-            <select className={inputClass} value={servicioId} onChange={(e) => setServicioId(e.target.value)}>
+            <select
+              className={inputClass}
+              value={servicioId}
+              onChange={(e) => setServicioId(e.target.value)}
+            >
               {servicios.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre}
@@ -457,18 +595,30 @@ function CuentaModal({
             </select>
           </Campo>
           <Campo label="Número de cuenta">
-            <input className={inputClass} value={numeroCuenta} onChange={(e) => setNumero(e.target.value)} />
+            <input
+              className={inputClass}
+              value={numeroCuenta}
+              onChange={(e) => setNumero(e.target.value)}
+            />
           </Campo>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="La debe">
-            <select className={inputClass} value={aCargoDe} onChange={(e) => setACargoDe(e.target.value as 'inquilino' | 'propietario')}>
+            <select
+              className={inputClass}
+              value={aCargoDe}
+              onChange={(e) => setACargoDe(e.target.value as 'inquilino' | 'propietario')}
+            >
               <option value="inquilino">El inquilino</option>
               <option value="propietario">El propietario</option>
             </select>
           </Campo>
           <Campo label="La paga">
-            <select className={inputClass} value={paga} onChange={(e) => setPaga(e.target.value as QuienPaga)}>
+            <select
+              className={inputClass}
+              value={paga}
+              onChange={(e) => setPaga(e.target.value as QuienPaga)}
+            >
               {Object.entries(NOMBRE_QUIEN_PAGA).map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}
@@ -514,7 +664,10 @@ function Catalogo({ servicios }: { servicios: ServicioDto[] }) {
     >
       {servicios.length === 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm text-muted">
-          <span>Vacío. Los habituales son {CATALOGO_SUGERIDO.map((s) => s.nombre.split(' (')[0]).join(', ')}.</span>
+          <span>
+            Vacío. Los habituales son{' '}
+            {CATALOGO_SUGERIDO.map((s) => s.nombre.split(' (')[0]).join(', ')}.
+          </span>
           <Button
             variant="primary"
             size="sm"
@@ -541,10 +694,15 @@ function Catalogo({ servicios }: { servicios: ServicioDto[] }) {
                 {s.nombre}
                 <span className="text-xs text-muted">
                   {' '}
-                  · {NOMBRE_CLASE_SERVICIO[s.clase].toLowerCase()} · {s.cuentas} {s.cuentas === 1 ? 'propiedad' : 'propiedades'}
+                  · {NOMBRE_CLASE_SERVICIO[s.clase].toLowerCase()} · {s.cuentas}{' '}
+                  {s.cuentas === 1 ? 'propiedad' : 'propiedades'}
                 </span>
               </span>
-              <AccionesFila nombre={s.nombre} onEditar={() => setEditar(s)} onBorrar={() => setABorrar(s)} />
+              <AccionesFila
+                nombre={s.nombre}
+                onEditar={() => setEditar(s)}
+                onBorrar={() => setABorrar(s)}
+              />
             </li>
           ))}
         </ul>
@@ -563,7 +721,9 @@ function Catalogo({ servicios }: { servicios: ServicioDto[] }) {
         <ConfirmarBorradoModal
           titulo={`Borrar ${aBorrar.nombre}`}
           descripcion="Se borra solo si ninguna propiedad lo tiene."
-          detalle={<DatoBorrado etiqueta="Tipo">{NOMBRE_CLASE_SERVICIO[aBorrar.clase]}</DatoBorrado>}
+          detalle={
+            <DatoBorrado etiqueta="Tipo">{NOMBRE_CLASE_SERVICIO[aBorrar.clase]}</DatoBorrado>
+          }
           onConfirm={async () => {
             await borrarServicio(await getAccessToken(), aBorrar.id);
             router.refresh();
@@ -575,7 +735,15 @@ function Catalogo({ servicios }: { servicios: ServicioDto[] }) {
   );
 }
 
-function ServicioModal({ servicio: s, onClose, onDone }: { servicio: ServicioDto | null; onClose: () => void; onDone: () => void }) {
+function ServicioModal({
+  servicio: s,
+  onClose,
+  onDone,
+}: {
+  servicio: ServicioDto | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [nombre, setNombre] = useState(s?.nombre ?? '');
   const [clase, setClase] = useState<ClaseServicio>(s?.clase ?? 'impuesto');
   const [error, setError] = useState<string | null>(null);
@@ -601,10 +769,19 @@ function ServicioModal({ servicio: s, onClose, onDone }: { servicio: ServicioDto
       <div className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
           <Campo label="Nombre" requerido>
-            <input className={inputClass} value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus />
+            <input
+              className={inputClass}
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              autoFocus
+            />
           </Campo>
           <Campo label="Tipo">
-            <select className={inputClass} value={clase} onChange={(e) => setClase(e.target.value as ClaseServicio)}>
+            <select
+              className={inputClass}
+              value={clase}
+              onChange={(e) => setClase(e.target.value as ClaseServicio)}
+            >
               {Object.entries(NOMBRE_CLASE_SERVICIO).map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}

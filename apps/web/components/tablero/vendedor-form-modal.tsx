@@ -45,7 +45,12 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
       // Objetivo va inline en el mismo POST/PATCH (1 sola transacción en vez
       // de 2 requests separados) — con la latencia hacia la base, evitar un
       // segundo viaje completo solo para el objetivo se nota bastante.
-      const objetivo = { anio: anioActual, objComision: Number(objComision) || 0, objVolumen: 0, objPuntas: 0 };
+      const objetivo = {
+        anio: anioActual,
+        objComision: Number(objComision) || 0,
+        objVolumen: 0,
+        objPuntas: 0,
+      };
 
       if (vendedor) {
         // El selector "Rol" solo alterna vendedor/team_leader. Todo lo demás
@@ -97,7 +102,12 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
         <Seccion titulo="Datos personales" icono="👤">
           <div className="flex flex-col gap-2.5">
             <Campo label="Nombre y apellido">
-              <input value={nombre} onChange={(e) => setNombre(e.target.value)} required className={inputClass} />
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+                className={inputClass}
+              />
             </Campo>
             <Campo
               label="Email"

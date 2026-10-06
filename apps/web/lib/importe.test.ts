@@ -24,7 +24,8 @@ describe('leerImporte', () => {
   });
 
   it('lo que escribe el campo se vuelve a leer igual', () => {
-    for (const n of [0, 0.5, 200_000, 471_207.03, 1_234_567.89]) expect(leerImporte(escribirImporte(n))).toBe(n);
+    for (const n of [0, 0.5, 200_000, 471_207.03, 1_234_567.89])
+      expect(leerImporte(escribirImporte(n))).toBe(n);
   });
 });
 

@@ -2,7 +2,12 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { VARIABLES_PLANTILLA, type ContratoResumenDto, type PlantillaDto, type TipoContrato } from '@vacker/types';
+import {
+  VARIABLES_PLANTILLA,
+  type ContratoResumenDto,
+  type PlantillaDto,
+  type TipoContrato,
+} from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { borrarPlantilla, guardarPlantilla, vistaPreviaPlantilla } from '../../lib/alquileres-api';
@@ -12,20 +17,36 @@ import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { CLASE_FOCO, EncabezadoPagina, Panel } from './piezas';
 
 /** Para qué contratos sirve una plantilla, dicho igual en la lista, en el formulario y al borrarla. */
-const PARA: Record<TipoContrato | '', string> = { '': 'Particulares y comerciales', vivienda: 'Particulares', comercial: 'Comerciales' };
+const PARA: Record<TipoContrato | '', string> = {
+  '': 'Particulares y comerciales',
+  vivienda: 'Particulares',
+  comercial: 'Comerciales',
+};
 
 /**
  * Las plantillas de contrato de la inmobiliaria (entrega 15). Texto con
  * variables {{así}} que se completan con los datos de cada contrato; «# » es
  * el título y «## » cada cláusula.
  */
-export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas: PlantillaDto[]; modelo: string; contratos: ContratoResumenDto[] }) {
+export function PlantillasVista({
+  plantillas,
+  modelo,
+  contratos,
+}: {
+  plantillas: PlantillaDto[];
+  modelo: string;
+  contratos: ContratoResumenDto[];
+}) {
   const router = useRouter();
-  const [editando, setEditando] = useState<PlantillaDto | 'nueva' | null>(plantillas.length === 0 ? 'nueva' : null);
+  const [editando, setEditando] = useState<PlantillaDto | 'nueva' | null>(
+    plantillas.length === 0 ? 'nueva' : null,
+  );
   const [nombre, setNombre] = useState(plantillas.length === 0 ? 'Contrato de locación' : '');
   const [tipo, setTipo] = useState<TipoContrato | ''>('');
   const [cuerpo, setCuerpo] = useState(plantillas.length === 0 ? modelo : '');
-  const [contratoId, setContratoId] = useState(contratos.find((c) => c.estado !== 'anulado')?.id ?? '');
+  const [contratoId, setContratoId] = useState(
+    contratos.find((c) => c.estado !== 'anulado')?.id ?? '',
+  );
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [aBorrar, setABorrar] = useState<PlantillaDto | null>(null);
@@ -56,7 +77,11 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
     setError(null);
     setGuardando(true);
     try {
-      await guardarPlantilla(await getAccessToken(), editando === 'nueva' || !editando ? null : editando.id, { nombre, tipoContrato: tipo || null, cuerpo });
+      await guardarPlantilla(
+        await getAccessToken(),
+        editando === 'nueva' || !editando ? null : editando.id,
+        { nombre, tipoContrato: tipo || null, cuerpo },
+      );
       setEditando(null);
       router.refresh();
     } catch (err) {
@@ -68,7 +93,10 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
 
   return (
     <div className="flex flex-col gap-4">
-      <EncabezadoPagina titulo="Plantillas de contrato" volver={{ href: '/alquileres/configuracion', texto: 'Configuración' }}>
+      <EncabezadoPagina
+        titulo="Plantillas de contrato"
+        volver={{ href: '/alquileres/configuracion', texto: 'Configuración' }}
+      >
         {!editando && (
           <Button variant="primary" size="sm" onClick={() => editar('nueva')}>
             ＋ Nueva plantilla
@@ -89,10 +117,18 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
                     <span className="font-normal text-muted"> · {PARA[p.tipoContrato ?? '']}</span>
                   </span>
                   <span className="flex gap-1">
-                    <button type="button" onClick={() => editar(p)} className={`rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`}>
+                    <button
+                      type="button"
+                      onClick={() => editar(p)}
+                      className={`rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`}
+                    >
                       ✏️ Editar
                     </button>
-                    <button type="button" onClick={() => setABorrar(p)} className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}>
+                    <button
+                      type="button"
+                      onClick={() => setABorrar(p)}
+                      className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}
+                    >
                       🗑️ Borrar
                     </button>
                   </span>
@@ -104,15 +140,31 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
       )}
 
       {editando && (
-        <Panel icono="📝" titulo={editando === 'nueva' ? 'Nueva plantilla' : `Editar «${editando.nombre}»`}>
+        <Panel
+          icono="📝"
+          titulo={editando === 'nueva' ? 'Nueva plantilla' : `Editar «${editando.nombre}»`}
+        >
           <div className="flex flex-col gap-3">
-            {editando === 'nueva' && <p className="text-sm text-muted">Arranca con un modelo de contrato de locación. Es un punto de partida: revisalo con el abogado de la inmobiliaria.</p>}
+            {editando === 'nueva' && (
+              <p className="text-sm text-muted">
+                Arranca con un modelo de contrato de locación. Es un punto de partida: revisalo con
+                el abogado de la inmobiliaria.
+              </p>
+            )}
             <div className="grid gap-3 sm:grid-cols-[1fr_14rem]">
               <Campo label="Nombre" requerido>
-                <input className={inputClass} value={nombre} onChange={(e) => setNombre(e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                />
               </Campo>
               <Campo label="Para contratos">
-                <select className={inputClass} value={tipo} onChange={(e) => setTipo(e.target.value as TipoContrato | '')}>
+                <select
+                  className={inputClass}
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value as TipoContrato | '')}
+                >
                   {(['', 'vivienda', 'comercial'] as const).map((v) => (
                     <option key={v} value={v}>
                       {PARA[v]}
@@ -122,22 +174,42 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
               </Campo>
             </div>
             <div>
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-muted">Variables · tocá una para insertarla</p>
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-muted">
+                Variables · tocá una para insertarla
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {VARIABLES_PLANTILLA.map(([v, desc]) => (
-                  <button key={v} type="button" title={desc} onClick={() => insertar(v)} className={`rounded-full border border-line bg-white px-2 py-0.5 text-xs text-ink hover:border-brand-red ${CLASE_FOCO}`}>
+                  <button
+                    key={v}
+                    type="button"
+                    title={desc}
+                    onClick={() => insertar(v)}
+                    className={`rounded-full border border-line bg-white px-2 py-0.5 text-xs text-ink hover:border-brand-red ${CLASE_FOCO}`}
+                  >
                     {v}
                   </button>
                 ))}
               </div>
             </div>
-            <Campo label="Texto del contrato" hint="«# » para el título, «## » para cada cláusula, una línea en blanco entre párrafos.">
-              <textarea ref={area} className={`${inputClass} h-[28rem] font-mono text-sm leading-relaxed`} value={cuerpo} onChange={(e) => setCuerpo(e.target.value)} />
+            <Campo
+              label="Texto del contrato"
+              hint="«# » para el título, «## » para cada cláusula, una línea en blanco entre párrafos."
+            >
+              <textarea
+                ref={area}
+                className={`${inputClass} h-[28rem] font-mono text-sm leading-relaxed`}
+                value={cuerpo}
+                onChange={(e) => setCuerpo(e.target.value)}
+              />
             </Campo>
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div className="flex flex-wrap items-end gap-2">
                 <Campo label="Ver con los datos del contrato">
-                  <select className={`${inputClass} w-64`} value={contratoId} onChange={(e) => setContratoId(e.target.value)}>
+                  <select
+                    className={`${inputClass} w-64`}
+                    value={contratoId}
+                    onChange={(e) => setContratoId(e.target.value)}
+                  >
                     {contratos
                       .filter((c) => c.estado !== 'anulado')
                       .map((c) => (
@@ -151,7 +223,12 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
                   variant="secondary"
                   size="sm"
                   disabled={!contratoId}
-                  onClick={() => abrirPdfEnPestana(async () => vistaPreviaPlantilla(await getAccessToken(), contratoId, cuerpo), { titulo: 'Vista previa', onError: setError })}
+                  onClick={() =>
+                    abrirPdfEnPestana(
+                      async () => vistaPreviaPlantilla(await getAccessToken(), contratoId, cuerpo),
+                      { titulo: 'Vista previa', onError: setError },
+                    )
+                  }
                 >
                   👁️ Vista previa
                 </Button>

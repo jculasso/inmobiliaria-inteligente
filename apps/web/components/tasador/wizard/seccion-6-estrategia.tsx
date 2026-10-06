@@ -24,7 +24,11 @@ export function Seccion6Estrategia({
 }: Props) {
   return (
     <div className="flex flex-col gap-3">
-      <PasoHeader numero={6} titulo="Estrategia comercial" bajada="Cómo se va a comercializar y qué se le promete al propietario." />
+      <PasoHeader
+        numero={6}
+        titulo="Estrategia comercial"
+        bajada="Cómo se va a comercializar y qué se le promete al propietario."
+      />
       <CheckPills
         label="Acciones"
         opciones={ESTRATEGIAS}

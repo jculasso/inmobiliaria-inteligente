@@ -25,7 +25,9 @@ export const ETIQUETA_PRIORIDAD: Record<NivelAlerta, string> = {
 /** Alerta de una propiedad, con su color según urgencia. */
 export function AlertaItem({ alerta }: { alerta: AlertaProtocolo }) {
   return (
-    <div className={`flex items-start gap-2.5 rounded-brand border px-3 py-2 ${CLASE_NIVEL[alerta.nivel]}`}>
+    <div
+      className={`flex items-start gap-2.5 rounded-brand border px-3 py-2 ${CLASE_NIVEL[alerta.nivel]}`}
+    >
       <span
         aria-hidden
         className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-xs font-extrabold"
@@ -74,7 +76,9 @@ export function Pill({
     ambar: 'bg-warning/10 text-warning',
   }[tono];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${clases}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${clases}`}
+    >
       {children}
     </span>
   );
@@ -92,7 +96,9 @@ export function FotoPropiedad({
 }) {
   if (!url) {
     return (
-      <div className={`flex items-center justify-center bg-surface text-xs text-muted ${className}`}>
+      <div
+        className={`flex items-center justify-center bg-surface text-xs text-muted ${className}`}
+      >
         Sin fotografía
       </div>
     );

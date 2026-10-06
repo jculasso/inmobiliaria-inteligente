@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   TenantConfigSchema,
@@ -46,10 +51,20 @@ const CONTRATO = {
 type FilaContrato = Prisma.AlqContratoGetPayload<{ select: typeof CONTRATO }>;
 
 /** A quién se le carga: el inquilino titular (el de menor id, como la generación del mes), o los propietarios por porcentaje. */
-function reparto(c: FilaContrato, papel: 'inquilino' | 'propietario', importe: number): { personaId: string; importe: number }[] {
-  const lado = c.partes.filter((p) => p.papel === papel).sort((a, b) => (a.personaId < b.personaId ? -1 : 1));
-  if (papel === 'inquilino') return lado.slice(0, 1).map((p) => ({ personaId: p.personaId, importe }));
-  const importes = repartir(importe, lado.map((p) => (p.porcentaje == null ? 100 : decToNum(p.porcentaje))));
+function reparto(
+  c: FilaContrato,
+  papel: 'inquilino' | 'propietario',
+  importe: number,
+): { personaId: string; importe: number }[] {
+  const lado = c.partes
+    .filter((p) => p.papel === papel)
+    .sort((a, b) => (a.personaId < b.personaId ? -1 : 1));
+  if (papel === 'inquilino')
+    return lado.slice(0, 1).map((p) => ({ personaId: p.personaId, importe }));
+  const importes = repartir(
+    importe,
+    lado.map((p) => (p.porcentaje == null ? 100 : decToNum(p.porcentaje))),
+  );
   return lado.map((p, i) => ({ personaId: p.personaId, importe: importes[i]! }));
 }
 
@@ -72,7 +87,9 @@ export class ContratoCompletoService {
         tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } }),
         this.conceptosDeposito(tx, id),
         tx.alqGarantia.findMany({ where: { contratoId: id }, orderBy: { createdAt: 'asc' } }),
-        tx.alqConcepto.count({ where: { contratoId: id, claveGeneracion: { startsWith: `ing|${id}|` } } }),
+        tx.alqConcepto.count({
+          where: { contratoId: id, claveGeneracion: { startsWith: `ing|${id}|` } },
+        }),
       ]);
       const config = TenantConfigSchema.parse(tenant.config ?? {});
       const meses = mesesDeContrato(fromDate(c.inicio)!, fromDate(c.fin)!);
@@ -81,22 +98,38 @@ export class ContratoCompletoService {
       return {
         deposito: estadoDeposito(c, depositos),
         garantias: garantias.map(aGarantia),
-        cargos: { cargados: cargados > 0, valorTotal, meses, propuesta: cargados > 0 ? [] : propuesta(c, config, valorTotal) },
+        cargos: {
+          cargados: cargados > 0,
+          valorTotal,
+          meses,
+          propuesta: cargados > 0 ? [] : propuesta(c, config, valorTotal),
+        },
       };
     });
   }
 
   /** Los cargos de ingreso, una sola vez por contrato: se cargan al firmar. */
-  async cargarCargos(ctx: TenantContext, id: string, cargos: CargoIngreso[]): Promise<CompletoContratoDto> {
+  async cargarCargos(
+    ctx: TenantContext,
+    id: string,
+    cargos: CargoIngreso[],
+  ): Promise<CompletoContratoDto> {
     await this.db.withTenant(async (tx) => {
       const c = await this.contrato(tx, id);
-      if (c.estado !== 'vigente') throw new BadRequestException('Los cargos de ingreso se cargan con el contrato vigente.');
-      const ya = await tx.alqConcepto.count({ where: { contratoId: id, claveGeneracion: { startsWith: `ing|${id}|` } } });
-      if (ya) throw new ConflictException('Los cargos de ingreso de este contrato ya se cargaron. Para agregar algo, usá un gasto suelto.');
+      if (c.estado !== 'vigente')
+        throw new BadRequestException('Los cargos de ingreso se cargan con el contrato vigente.');
+      const ya = await tx.alqConcepto.count({
+        where: { contratoId: id, claveGeneracion: { startsWith: `ing|${id}|` } },
+      });
+      if (ya)
+        throw new ConflictException(
+          'Los cargos de ingreso de este contrato ya se cargaron. Para agregar algo, usá un gasto suelto.',
+        );
       const filas: Prisma.AlqConceptoCreateManyInput[] = [];
       cargos.forEach((cargo, i) => {
         const lado = reparto(c, cargo.aCargoDe, cargo.importe);
-        if (lado.length === 0) throw new BadRequestException(`El contrato no tiene ${cargo.aCargoDe}.`);
+        if (lado.length === 0)
+          throw new BadRequestException(`El contrato no tiene ${cargo.aCargoDe}.`);
         for (const { personaId, importe } of lado) {
           filas.push({
             id: randomUUID(),
@@ -133,9 +166,14 @@ export class ContratoCompletoService {
       const c = await this.contrato(tx, id);
       const dep = estadoDeposito(c, await this.conceptosDeposito(tx, id));
       if (dep.estado !== 'cobrado') {
-        throw new BadRequestException(dep.estado === 'a_cobrar' ? 'El inquilino todavía no pagó el depósito completo.' : `El depósito está ${dep.estado}.`);
+        throw new BadRequestException(
+          dep.estado === 'a_cobrar'
+            ? 'El inquilino todavía no pagó el depósito completo.'
+            : `El depósito está ${dep.estado}.`,
+        );
       }
-      if (dep.gestion !== 'entrega_propietario') throw new BadRequestException('En este contrato el depósito lo retiene la inmobiliaria.');
+      if (dep.gestion !== 'entrega_propietario')
+        throw new BadRequestException('En este contrato el depósito lo retiene la inmobiliaria.');
       const lado = reparto(c, 'propietario', dep.cobrado);
       await tx.alqConcepto.createMany({
         data: lado.map(({ personaId, importe }) => ({
@@ -152,7 +190,13 @@ export class ContratoCompletoService {
           creadoPorId: ctx.userId,
         })),
       });
-      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'alta', resumen: `Depósito de ${plata(dep.cobrado, dep.moneda ?? c.moneda)} para entregar al propietario en su liquidación` });
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: id,
+        contratoId: id,
+        accion: 'alta',
+        resumen: `Depósito de ${plata(dep.cobrado, dep.moneda ?? c.moneda)} para entregar al propietario en su liquidación`,
+      });
     });
     return this.obtener(ctx, id);
   }
@@ -162,25 +206,32 @@ export class ContratoCompletoService {
    * propietario, se le descuenta en la liquidación; el inquilino lo ve a su
    * favor en la cuenta corriente.
    */
-  async devolverDeposito(ctx: TenantContext, id: string, fecha: string): Promise<CompletoContratoDto> {
+  async devolverDeposito(
+    ctx: TenantContext,
+    id: string,
+    fecha: string,
+  ): Promise<CompletoContratoDto> {
     await this.db.withTenant(async (tx) => {
       const c = await this.contrato(tx, id);
       const dep = estadoDeposito(c, await this.conceptosDeposito(tx, id));
-      if (dep.estado !== 'cobrado' && dep.estado !== 'entregado') throw new BadRequestException(`El depósito está ${dep.estado}: no hay nada para devolver.`);
+      if (dep.estado !== 'cobrado' && dep.estado !== 'entregado')
+        throw new BadRequestException(`El depósito está ${dep.estado}: no hay nada para devolver.`);
       const moneda = dep.moneda ?? c.moneda;
-      const filas: Prisma.AlqConceptoCreateManyInput[] = reparto(c, 'inquilino', dep.cobrado).map(({ personaId, importe }) => ({
-        tenantId: ctx.tenantId,
-        contratoId: id,
-        personaId,
-        tipo: 'deposito',
-        sentido: 'a_pagar',
-        moneda,
-        vencimiento: toDate(fecha)!,
-        importe,
-        descripcion: 'Devolución del depósito en garantía',
-        claveGeneracion: `dep|${id}|devolucion|${personaId}`,
-        creadoPorId: ctx.userId,
-      }));
+      const filas: Prisma.AlqConceptoCreateManyInput[] = reparto(c, 'inquilino', dep.cobrado).map(
+        ({ personaId, importe }) => ({
+          tenantId: ctx.tenantId,
+          contratoId: id,
+          personaId,
+          tipo: 'deposito',
+          sentido: 'a_pagar',
+          moneda,
+          vencimiento: toDate(fecha)!,
+          importe,
+          descripcion: 'Devolución del depósito en garantía',
+          claveGeneracion: `dep|${id}|devolucion|${personaId}`,
+          creadoPorId: ctx.userId,
+        }),
+      );
       if (dep.estado === 'entregado') {
         for (const { personaId, importe } of reparto(c, 'propietario', dep.cobrado)) {
           filas.push({
@@ -200,19 +251,34 @@ export class ContratoCompletoService {
       }
       await tx.alqConcepto.createMany({ data: filas });
       await tx.alqContrato.update({ where: { id }, data: { depositoDevolucion: toDate(fecha) } });
-      await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: id, contratoId: id, accion: 'alta', resumen: `Devolución del depósito: ${plata(dep.cobrado, moneda)} al inquilino` });
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: id,
+        contratoId: id,
+        accion: 'alta',
+        resumen: `Devolución del depósito: ${plata(dep.cobrado, moneda)} al inquilino`,
+      });
     });
     return this.obtener(ctx, id);
   }
 
   /** Punto 11: las garantías del contrato, todas juntas. */
-  async guardarGarantias(ctx: TenantContext, id: string, garantias: Garantia[]): Promise<GarantiaDto[]> {
+  async guardarGarantias(
+    ctx: TenantContext,
+    id: string,
+    garantias: Garantia[],
+  ): Promise<GarantiaDto[]> {
     return this.db.withTenant(async (tx) => {
       const c = await this.contrato(tx, id);
       await tx.alqGarantia.deleteMany({ where: { contratoId: id } });
       if (garantias.length) {
         await tx.alqGarantia.createMany({
-          data: garantias.map((g) => ({ ...g, aprobadaEl: toDate(g.aprobadaEl), tenantId: ctx.tenantId, contratoId: id })),
+          data: garantias.map((g) => ({
+            ...g,
+            aprobadaEl: toDate(g.aprobadaEl),
+            tenantId: ctx.tenantId,
+            contratoId: id,
+          })),
         });
       }
       await registrarEventos(tx, ctx, {
@@ -222,7 +288,9 @@ export class ContratoCompletoService {
         accion: 'edicion',
         resumen: `Garantías de ${c.codigo}: ${garantias.length ? garantias.map((g) => `${g.tipo}${g.garante ? ` (${g.garante})` : ''} ${g.estado}`).join(', ') : 'ninguna'}`,
       });
-      return (await tx.alqGarantia.findMany({ where: { contratoId: id }, orderBy: { createdAt: 'asc' } })).map(aGarantia);
+      return (
+        await tx.alqGarantia.findMany({ where: { contratoId: id }, orderBy: { createdAt: 'asc' } })
+      ).map(aGarantia);
     });
   }
 
@@ -235,7 +303,13 @@ export class ContratoCompletoService {
   private conceptosDeposito(tx: Tx, contratoId: string) {
     return tx.alqConcepto.findMany({
       where: { contratoId, tipo: 'deposito', anuladoEn: null },
-      select: { sentido: true, importe: true, moneda: true, claveGeneracion: true, imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } } },
+      select: {
+        sentido: true,
+        importe: true,
+        moneda: true,
+        claveGeneracion: true,
+        imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
+      },
     });
   }
 }
@@ -243,9 +317,22 @@ export class ContratoCompletoService {
 type ConceptoDeposito = Awaited<ReturnType<ContratoCompletoService['conceptosDeposito']>>[number];
 
 /** Dónde está el depósito, a partir de sus conceptos. */
-export function estadoDeposito(c: Pick<FilaContrato, 'depositoImporte' | 'depositoMoneda' | 'depositoDevolucion' | 'depositoGestion'>, ks: ConceptoDeposito[]): DepositoDto {
-  const delInquilino = ks.filter((k) => k.sentido === 'a_cobrar' && k.claveGeneracion?.startsWith('ing|'));
-  const cobrado = centavos(delInquilino.reduce((s, k) => s + k.imputaciones.reduce((t, i) => t + decToNum(i.importe), 0), 0));
+export function estadoDeposito(
+  c: Pick<
+    FilaContrato,
+    'depositoImporte' | 'depositoMoneda' | 'depositoDevolucion' | 'depositoGestion'
+  >,
+  ks: ConceptoDeposito[],
+): DepositoDto {
+  const delInquilino = ks.filter(
+    (k) => k.sentido === 'a_cobrar' && k.claveGeneracion?.startsWith('ing|'),
+  );
+  const cobrado = centavos(
+    delInquilino.reduce(
+      (s, k) => s + k.imputaciones.reduce((t, i) => t + decToNum(i.importe), 0),
+      0,
+    ),
+  );
   const debe = centavos(delInquilino.reduce((s, k) => s + decToNum(k.importe), 0));
   const entregado = ks.some((k) => k.claveGeneracion?.includes('|entrega|'));
   const base = {
@@ -257,7 +344,8 @@ export function estadoDeposito(c: Pick<FilaContrato, 'depositoImporte' | 'deposi
   };
   if (c.depositoDevolucion) return { ...base, estado: 'devuelto' };
   if (entregado) return { ...base, estado: 'entregado' };
-  if (delInquilino.length === 0) return { ...base, estado: base.importe ? 'a_cobrar' : 'sin_deposito' };
+  if (delInquilino.length === 0)
+    return { ...base, estado: base.importe ? 'a_cobrar' : 'sin_deposito' };
   return { ...base, estado: cobrado >= debe && debe > 0 ? 'cobrado' : 'a_cobrar' };
 }
 
@@ -266,14 +354,23 @@ export function estadoDeposito(c: Pick<FilaContrato, 'depositoImporte' | 'deposi
  * comisión sobre el valor total del contrato, más IVA, en cuotas; el depósito;
  * y el sellado repartido entre las partes. Todo editable antes de cargarlo.
  */
-export function propuesta(c: FilaContrato, config: ReturnType<typeof TenantConfigSchema.parse>, valorTotal: number): CargoIngreso[] {
+export function propuesta(
+  c: FilaContrato,
+  config: ReturnType<typeof TenantConfigSchema.parse>,
+  valorTotal: number,
+): CargoIngreso[] {
   const primera = fromDate(c.fechaFirma) ?? fromDate(c.inicio)!;
   const cargos: CargoIngreso[] = [];
   if (config.comisionInicialPct > 0 && valorTotal > 0) {
     const base = valorTotal * (config.comisionInicialPct / 100);
-    const total = centavos(config.comisionInicialConIva ? base * (1 + config.ivaHonorariosPct / 100) : base);
+    const total = centavos(
+      config.comisionInicialConIva ? base * (1 + config.ivaHonorariosPct / 100) : base,
+    );
     const n = config.comisionInicialCuotas;
-    repartir(total, Array.from({ length: n }, () => 100 / n)).forEach((importe, i) =>
+    repartir(
+      total,
+      Array.from({ length: n }, () => 100 / n),
+    ).forEach((importe, i) =>
       cargos.push({
         tipo: 'comision',
         descripcion: n > 1 ? `Comisión inicial ${i + 1} de ${n}` : 'Comisión inicial',
@@ -285,17 +382,54 @@ export function propuesta(c: FilaContrato, config: ReturnType<typeof TenantConfi
     );
   }
   if (c.depositoImporte != null && decToNum(c.depositoImporte) > 0) {
-    cargos.push({ tipo: 'deposito', descripcion: 'Depósito en garantía', aCargoDe: 'inquilino', importe: decToNum(c.depositoImporte), vencimiento: primera, moneda: (c.depositoMoneda as MonedaAlquiler | null) ?? null });
+    cargos.push({
+      tipo: 'deposito',
+      descripcion: 'Depósito en garantía',
+      aCargoDe: 'inquilino',
+      importe: decToNum(c.depositoImporte),
+      vencimiento: primera,
+      moneda: (c.depositoMoneda as MonedaAlquiler | null) ?? null,
+    });
   }
   if (config.selladoPct > 0 && valorTotal > 0) {
     const total = centavos(valorTotal * (config.selladoPct / 100));
     const inquilino = centavos(total * (config.selladoInquilinoPct / 100));
-    if (inquilino > 0) cargos.push({ tipo: 'sellado', descripcion: `Sellado del contrato (${config.selladoInquilinoPct}%)`, aCargoDe: 'inquilino', importe: inquilino, vencimiento: primera, moneda: null });
-    if (total - inquilino > 0) cargos.push({ tipo: 'sellado', descripcion: `Sellado del contrato (${100 - config.selladoInquilinoPct}%)`, aCargoDe: 'propietario', importe: centavos(total - inquilino), vencimiento: primera, moneda: null });
+    if (inquilino > 0)
+      cargos.push({
+        tipo: 'sellado',
+        descripcion: `Sellado del contrato (${config.selladoInquilinoPct}%)`,
+        aCargoDe: 'inquilino',
+        importe: inquilino,
+        vencimiento: primera,
+        moneda: null,
+      });
+    if (total - inquilino > 0)
+      cargos.push({
+        tipo: 'sellado',
+        descripcion: `Sellado del contrato (${100 - config.selladoInquilinoPct}%)`,
+        aCargoDe: 'propietario',
+        importe: centavos(total - inquilino),
+        vencimiento: primera,
+        moneda: null,
+      });
   }
   return cargos;
 }
 
-function aGarantia(g: { id: string; tipo: string; personaId: string | null; garante: string | null; detalle: string | null; estado: string; aprobadaEl: Date | null; obs: string | null }): GarantiaDto {
-  return { ...g, tipo: g.tipo as GarantiaDto['tipo'], estado: g.estado as GarantiaDto['estado'], aprobadaEl: fromDate(g.aprobadaEl) };
+function aGarantia(g: {
+  id: string;
+  tipo: string;
+  personaId: string | null;
+  garante: string | null;
+  detalle: string | null;
+  estado: string;
+  aprobadaEl: Date | null;
+  obs: string | null;
+}): GarantiaDto {
+  return {
+    ...g,
+    tipo: g.tipo as GarantiaDto['tipo'],
+    estado: g.estado as GarantiaDto['estado'],
+    aprobadaEl: fromDate(g.aprobadaEl),
+  };
 }

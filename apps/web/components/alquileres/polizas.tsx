@@ -31,7 +31,8 @@ const num = (v: string) => leerImporte(v) ?? 0;
 export function EstadoPoliza({ p }: { p: PolizaDto }) {
   if (p.anulada) return <Insignia tono="neutro">Anulada</Insignia>;
   if (p.hasta < hoyIso()) return <Insignia tono="peligro">Vencida</Insignia>;
-  if (p.hasta <= sumarDiasIso(hoyIso(), DIAS_TABLERO_PROXIMOS)) return <Insignia tono="aviso">Vence el {fmtFecha(p.hasta)}</Insignia>;
+  if (p.hasta <= sumarDiasIso(hoyIso(), DIAS_TABLERO_PROXIMOS))
+    return <Insignia tono="aviso">Vence el {fmtFecha(p.hasta)}</Insignia>;
   return <Insignia tono="exito">Vigente</Insignia>;
 }
 
@@ -69,28 +70,46 @@ export function Polizas({
       ) : (
         <ul className="divide-y divide-line text-sm">
           {polizas.map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+            <li
+              key={p.id}
+              className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"
+            >
               <span className="min-w-0">
-                <span className={`block font-semibold ${p.anulada ? 'text-muted line-through' : 'text-ink'}`}>
+                <span
+                  className={`block font-semibold ${p.anulada ? 'text-muted line-through' : 'text-ink'}`}
+                >
                   {p.aseguradora}
-                  {p.numero ? ` N.º ${p.numero}` : ''} <span className="font-normal text-muted">· {NOMBRE_COBERTURA[p.cobertura]}</span>
+                  {p.numero ? ` N.º ${p.numero}` : ''}{' '}
+                  <span className="font-normal text-muted">· {NOMBRE_COBERTURA[p.cobertura]}</span>
                 </span>
                 <span className="block text-xs text-muted">
                   {!contratoFijo && (
                     <>
-                      <Link href={`/alquileres/contratos/${p.contrato.id}`} className={`rounded font-semibold text-ink hover:text-brand-red ${CLASE_FOCO}`}>
+                      <Link
+                        href={`/alquileres/contratos/${p.contrato.id}`}
+                        className={`rounded font-semibold text-ink hover:text-brand-red ${CLASE_FOCO}`}
+                      >
                         {p.contrato.codigo}
                       </Link>{' '}
                       · {p.contrato.propiedad} ·{' '}
                     </>
                   )}
-                  {fmtFecha(p.desde)} al {fmtFecha(p.hasta)} · {fmtMoneda(p.premio, p.moneda)} en {p.cuotas} {p.cuotas === 1 ? 'cuota' : 'cuotas'} ({p.cuotasPagadas} pagas) · la debe el {p.aCargoDe}, paga {NOMBRE_QUIEN_PAGA[p.paga].toLowerCase()}
+                  {fmtFecha(p.desde)} al {fmtFecha(p.hasta)} · {fmtMoneda(p.premio, p.moneda)} en{' '}
+                  {p.cuotas} {p.cuotas === 1 ? 'cuota' : 'cuotas'} ({p.cuotasPagadas} pagas) · la
+                  debe el {p.aCargoDe}, paga {NOMBRE_QUIEN_PAGA[p.paga].toLowerCase()}
                 </span>
               </span>
               <span className="flex items-center gap-2">
                 <EstadoPoliza p={p} />
                 {!p.anulada && (
-                  <AccionFila icono="🚫" texto="Anular" etiqueta={`Anular la póliza de ${p.aseguradora}`} title="Anular, con un motivo" onClick={() => setAAnular(p)} peligro />
+                  <AccionFila
+                    icono="🚫"
+                    texto="Anular"
+                    etiqueta={`Anular la póliza de ${p.aseguradora}`}
+                    title="Anular, con un motivo"
+                    onClick={() => setAAnular(p)}
+                    peligro
+                  />
                 )}
               </span>
             </li>
@@ -154,10 +173,25 @@ export function PolizaModal({
   const [enviando, setEnviando] = useState(false);
 
   async function guardar() {
-    const dto = { contratoId, aseguradora, numero, cobertura, desde, hasta, premio: num(premio), cuotas: Number(cuotas) || 1, primerVencimiento, moneda, aCargoDe, paga };
+    const dto = {
+      contratoId,
+      aseguradora,
+      numero,
+      cobertura,
+      desde,
+      hasta,
+      premio: num(premio),
+      cuotas: Number(cuotas) || 1,
+      primerVencimiento,
+      moneda,
+      aCargoDe,
+      paga,
+    };
     const r = PolizaInputSchema.safeParse(dto);
     if (!r.success) {
-      setError(contratoId ? (r.error.issues[0]?.message ?? 'Revisá los datos.') : 'Elegí el contrato.');
+      setError(
+        contratoId ? (r.error.issues[0]?.message ?? 'Revisá los datos.') : 'Elegí el contrato.',
+      );
       return;
     }
     setError(null);
@@ -172,11 +206,19 @@ export function PolizaModal({
   }
 
   return (
-    <Modal title="Nueva póliza" subtitle="Cada cuota se carga como una boleta, una por mes desde el primer vencimiento." onClose={onClose} size="lg">
+    <Modal
+      title="Nueva póliza"
+      subtitle="Cada cuota se carga como una boleta, una por mes desde el primer vencimiento."
+      onClose={onClose}
+      size="lg"
+    >
       <div className="flex flex-col gap-3">
         {!contratoFijo && (
           <Campo label="Contrato" requerido>
-            <select className={inputClass} value={contratoId} onChange={(e) => {
+            <select
+              className={inputClass}
+              value={contratoId}
+              onChange={(e) => {
                 setContratoId(e.target.value);
                 setMoneda(contratos.find((c) => c.id === e.target.value)?.moneda ?? 'ARS');
               }}
@@ -195,13 +237,25 @@ export function PolizaModal({
         )}
         <div className="grid gap-3 sm:grid-cols-3">
           <Campo label="Aseguradora" requerido>
-            <input className={inputClass} value={aseguradora} onChange={(e) => setAseguradora(e.target.value)} />
+            <input
+              className={inputClass}
+              value={aseguradora}
+              onChange={(e) => setAseguradora(e.target.value)}
+            />
           </Campo>
           <Campo label="Número de póliza">
-            <input className={inputClass} value={numero} onChange={(e) => setNumero(e.target.value)} />
+            <input
+              className={inputClass}
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
+            />
           </Campo>
           <Campo label="Cobertura">
-            <select className={inputClass} value={cobertura} onChange={(e) => setCobertura(e.target.value as CoberturaPoliza)}>
+            <select
+              className={inputClass}
+              value={cobertura}
+              onChange={(e) => setCobertura(e.target.value as CoberturaPoliza)}
+            >
               {Object.entries(NOMBRE_COBERTURA).map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}
@@ -212,15 +266,29 @@ export function PolizaModal({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Vigente desde" requerido>
-            <input type="date" className={inputClass} value={desde} onChange={(e) => setDesde(e.target.value)} />
+            <input
+              type="date"
+              className={inputClass}
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+            />
           </Campo>
           <Campo label="Hasta" requerido>
-            <input type="date" className={inputClass} value={hasta} onChange={(e) => setHasta(e.target.value)} />
+            <input
+              type="date"
+              className={inputClass}
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+            />
           </Campo>
         </div>
         <div className="grid gap-3 sm:grid-cols-[7rem_1fr_6rem_1fr]">
           <Campo label="Moneda">
-            <select className={inputClass} value={moneda} onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}>
+            <select
+              className={inputClass}
+              value={moneda}
+              onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}
+            >
               <option value="ARS">Pesos</option>
               <option value="USD">Dólares</option>
             </select>
@@ -229,21 +297,39 @@ export function PolizaModal({
             <InputImporte moneda={moneda} value={premio} onChange={setPremio} />
           </Campo>
           <Campo label="Cuotas">
-            <input className={`${inputClass} text-right tabular-nums`} inputMode="numeric" value={cuotas} onChange={(e) => setCuotas(e.target.value)} />
+            <input
+              className={`${inputClass} text-right tabular-nums`}
+              inputMode="numeric"
+              value={cuotas}
+              onChange={(e) => setCuotas(e.target.value)}
+            />
           </Campo>
           <Campo label="Primer vencimiento" requerido>
-            <input type="date" className={inputClass} value={primerVencimiento} onChange={(e) => setPrimer(e.target.value)} />
+            <input
+              type="date"
+              className={inputClass}
+              value={primerVencimiento}
+              onChange={(e) => setPrimer(e.target.value)}
+            />
           </Campo>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="La debe">
-            <select className={inputClass} value={aCargoDe} onChange={(e) => setACargoDe(e.target.value as 'inquilino' | 'propietario')}>
+            <select
+              className={inputClass}
+              value={aCargoDe}
+              onChange={(e) => setACargoDe(e.target.value as 'inquilino' | 'propietario')}
+            >
               <option value="inquilino">El inquilino</option>
               <option value="propietario">El propietario</option>
             </select>
           </Campo>
           <Campo label="La paga">
-            <select className={inputClass} value={paga} onChange={(e) => setPaga(e.target.value as QuienPaga)}>
+            <select
+              className={inputClass}
+              value={paga}
+              onChange={(e) => setPaga(e.target.value as QuienPaga)}
+            >
               {Object.entries(NOMBRE_QUIEN_PAGA).map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}

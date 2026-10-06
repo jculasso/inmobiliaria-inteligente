@@ -66,14 +66,32 @@ const enLasTarjetas = () => within(screen.getByRole('list', { name: 'Operaciones
 
 describe('OperacionesTable', () => {
   it('muestra las operaciones y el contador', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(enLaTabla().getByText('Calle Falsa 123')).toBeInTheDocument();
     expect(screen.getByText('2 de 2 operaciones')).toBeInTheDocument();
   });
 
   it('en el celular cada operación es una tarjeta, sin tabla que deslizar', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
     expect(enLasTarjetas().getAllByRole('listitem')).toHaveLength(2);
     expect(enLasTarjetas().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     // El precio y la comisión se ven de una: antes había que deslizar a ciegas.
@@ -82,7 +100,16 @@ describe('OperacionesTable', () => {
   });
 
   it('filtra por texto de búsqueda', async () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
     await userEvent.type(screen.getByPlaceholderText(/Buscar/), 'Ana');
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(screen.queryByText('Calle Falsa 123')).not.toBeInTheDocument();
@@ -93,14 +120,32 @@ describe('OperacionesTable', () => {
   // las TRES acciones, no solo el borrado: ocultar una y olvidar otra deja un
   // botón que promete algo que la API va a rechazar con un 403.
   it('sin permiso de escritura no hay alta, edición ni borrado', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
     expect(screen.queryByRole('button', { name: /Nueva venta/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Editar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Borrar/ })).not.toBeInTheDocument();
   });
 
   it('con permiso de escritura están las tres', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
     expect(screen.getByRole('button', { name: /Nueva venta/ })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /Editar/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /Borrar/ }).length).toBeGreaterThan(0);
@@ -110,7 +155,16 @@ describe('OperacionesTable', () => {
     // El implementador va a depurar ventas reales y el borrado es definitivo:
     // tiene que poder confirmar que está mirando la operación correcta.
     const user = userEvent.setup();
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
 
     await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
 
@@ -130,9 +184,20 @@ describe('OperacionesTable', () => {
       id: `op-${i}`,
       codigo: `OP-${i}`,
     }));
-    render(<OperacionesTable tipo="venta" operaciones={muchas} vendedores={[]} puedeEscribir={false} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={muchas}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
 
-    expect(screen.getByRole('status')).toHaveTextContent(`Se están mostrando ${LIMITE_LISTA} ventas, y hay más`);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      `Se están mostrando ${LIMITE_LISTA} ventas, y hay más`,
+    );
     // Y se muestra el tope exacto, no la fila de sonda.
     expect(enLaTabla().getAllByRole('row')).toHaveLength(LIMITE_LISTA + 1); // + encabezado
     // Dibuja 501 filas dos veces (tabla + tarjetas): con los 5s por defecto se
@@ -141,18 +206,38 @@ describe('OperacionesTable', () => {
   }, 20_000);
 
   it('con pocas operaciones no avisa nada', () => {
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={false} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('borra recién cuando se confirma en el modal', async () => {
     const user = userEvent.setup();
-    render(<OperacionesTable tipo="venta" operaciones={OPERACIONES} vendedores={[]} puedeEscribir={true} orden="codigo" dir="desc" />);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
 
     await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
     expect(deleteOperacion).not.toHaveBeenCalled();
 
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Sí, borrar' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Sí, borrar' }),
+    );
     expect(deleteOperacion).toHaveBeenCalledWith('token', '1');
   });
 });

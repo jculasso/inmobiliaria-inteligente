@@ -43,8 +43,10 @@ export function PanelAlertas({ alertas }: { alertas: AlertaConPropiedad[] }) {
             <span className="block text-xs text-muted">
               {sinAlertas
                 ? 'No hay pendientes en las propiedades activas.'
-                : [rojas > 0 ? `${rojas} urgente${rojas === 1 ? '' : 's'}` : null,
-                   ambares > 0 ? `${ambares} para revisar` : null]
+                : [
+                    rojas > 0 ? `${rojas} urgente${rojas === 1 ? '' : 's'}` : null,
+                    ambares > 0 ? `${ambares} para revisar` : null,
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
             </span>
@@ -63,7 +65,10 @@ export function PanelAlertas({ alertas }: { alertas: AlertaConPropiedad[] }) {
                 {ambares}
               </span>
             )}
-            <span aria-hidden className={`text-muted transition-transform ${abierto ? 'rotate-180' : ''}`}>
+            <span
+              aria-hidden
+              className={`text-muted transition-transform ${abierto ? 'rotate-180' : ''}`}
+            >
               ▾
             </span>
           </span>

@@ -77,8 +77,12 @@ export function LiquidacionDocument({
         {/* Una propiedad por bloque: qué es, quién la alquila y lo suyo. */}
         {grupos.map((g) => (
           <View key={g.contrato?.id ?? 'otros'} style={{ marginBottom: 14 }} wrap={false}>
-            <View style={{ backgroundColor: '#F4F5F7', padding: 8, borderRadius: 4, marginBottom: 4 }}>
-              <Text style={{ fontSize: 10, fontWeight: 800 }}>{`PROPIEDAD: ${g.contrato?.propiedad || '—'}`}</Text>
+            <View
+              style={{ backgroundColor: '#F4F5F7', padding: 8, borderRadius: 4, marginBottom: 4 }}
+            >
+              <Text
+                style={{ fontSize: 10, fontWeight: 800 }}
+              >{`PROPIEDAD: ${g.contrato?.propiedad || '—'}`}</Text>
               <Text style={{ fontSize: 8.5, marginTop: 3 }}>{detalleDe(g.contrato)}</Text>
             </View>
             <View style={e.filaHead}>
@@ -92,7 +96,9 @@ export function LiquidacionDocument({
               <Linea key={x.conceptoId} x={x} signo="− " />
             ))}
             <View style={e.fila}>
-              <Text style={[e.colConcepto, { width: '76%', fontWeight: 700 }]}>Subtotal de la propiedad</Text>
+              <Text style={[e.colConcepto, { width: '76%', fontWeight: 700 }]}>
+                Subtotal de la propiedad
+              </Text>
               <Text style={[e.colImporte, { fontWeight: 700 }]}>{pesos(g.subtotal, l.moneda)}</Text>
             </View>
           </View>
@@ -107,7 +113,11 @@ export function LiquidacionDocument({
             {`Se transfiere a: ${l.cuentaDestino.banco}${l.cuentaDestino.cbu ? ` · CBU ${l.cuentaDestino.cbu}` : ''}${l.cuentaDestino.alias ? ` · Alias ${l.cuentaDestino.alias}` : ''}${l.cuentaDestino.titular ? ` · ${l.cuentaDestino.titular}` : ''}`}
           </Text>
         )}
-        {l.anulado && <Text style={e.anulado}>{`LIQUIDACIÓN ANULADA · ${l.anulado.motivo}${l.anulado.por ? ` · ${l.anulado.por}` : ''}`}</Text>}
+        {l.anulado && (
+          <Text
+            style={e.anulado}
+          >{`LIQUIDACIÓN ANULADA · ${l.anulado.motivo}${l.anulado.por ? ` · ${l.anulado.por}` : ''}`}</Text>
+        )}
 
         <Text style={e.pie} fixed>
           {LEYENDA_NO_FACTURA}

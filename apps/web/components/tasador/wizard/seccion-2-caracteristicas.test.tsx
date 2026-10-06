@@ -135,7 +135,14 @@ describe('ficha — no se le pide al inmueble lo que no tiene', () => {
 
   it('una casa sigue viendo la ficha entera', () => {
     const c = montar({ tipoPropiedad: 'Casa' });
-    for (const campo of ['Dormitorios', 'Baños', 'Ambientes', 'Antigüedad (años)', 'Estado del inmueble', 'Servicios']) {
+    for (const campo of [
+      'Dormitorios',
+      'Baños',
+      'Ambientes',
+      'Antigüedad (años)',
+      'Estado del inmueble',
+      'Servicios',
+    ]) {
       expect(hay(c, campo)).toBe(true);
     }
   });
@@ -240,7 +247,14 @@ describe('ficha — las tipologías que faltaban', () => {
   it('un PH y un «Otro» ven la ficha entera, como la casa', () => {
     for (const tipo of ['PH', 'Otro'] as const) {
       const c = montar({ tipoPropiedad: tipo });
-      for (const campo of ['Dormitorios', 'Baños', 'Ambientes', 'Antigüedad (años)', 'Servicios', 'Características']) {
+      for (const campo of [
+        'Dormitorios',
+        'Baños',
+        'Ambientes',
+        'Antigüedad (años)',
+        'Servicios',
+        'Características',
+      ]) {
         expect(hay(c, campo), `${tipo} · ${campo}`).toBe(true);
       }
     }

@@ -46,14 +46,21 @@ export function TenantsTable({ tenants }: { tenants: TenantDto[] }) {
                 </div>
 
                 <div className="mt-2">
-                  <span className="block text-[10px] uppercase tracking-wide text-muted">Módulos</span>
+                  <span className="block text-[10px] uppercase tracking-wide text-muted">
+                    Módulos
+                  </span>
                   <span className="block text-sm text-ink">
-                    {modulosHabilitados(t.modulos).map((m) => NOMBRE_MODULO[m]).join(', ') || '—'}
+                    {modulosHabilitados(t.modulos)
+                      .map((m) => NOMBRE_MODULO[m])
+                      .join(', ') || '—'}
                   </span>
                 </div>
 
                 <div className="mt-2 flex items-center justify-end gap-3 border-t border-line pt-2">
-                  <Link href={`/admin/tenants/${t.id}`} className="text-xs font-semibold text-brand-red hover:underline">
+                  <Link
+                    href={`/admin/tenants/${t.id}`}
+                    className="text-xs font-semibold text-brand-red hover:underline"
+                  >
                     Ver usuarios →
                   </Link>
                   <button
@@ -96,19 +103,26 @@ export function TenantsTable({ tenants }: { tenants: TenantDto[] }) {
                   <td className="px-4 py-2 text-muted">{t.slug}</td>
                   <td className="px-4 py-2 capitalize text-muted">{t.plan}</td>
                   <td className="px-4 py-2 text-xs text-muted">
-                    {modulosHabilitados(t.modulos).map((m) => NOMBRE_MODULO[m]).join(', ') || '—'}
+                    {modulosHabilitados(t.modulos)
+                      .map((m) => NOMBRE_MODULO[m])
+                      .join(', ') || '—'}
                   </td>
                   <td className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        t.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-surface text-muted'
+                        t.estado === 'activo'
+                          ? 'bg-success/10 text-success'
+                          : 'bg-surface text-muted'
                       }`}
                     >
                       {t.estado === 'activo' ? 'Activo' : 'Suspendido'}
                     </span>
                   </td>
                   <td className="px-4 py-2 flex items-center gap-3">
-                    <Link href={`/admin/tenants/${t.id}`} className="text-sm font-medium text-brand-red hover:underline">
+                    <Link
+                      href={`/admin/tenants/${t.id}`}
+                      className="text-sm font-medium text-brand-red hover:underline"
+                    >
                       Ver usuarios →
                     </Link>
                     <button

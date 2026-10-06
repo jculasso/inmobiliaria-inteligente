@@ -78,8 +78,24 @@ export function PeriodosChart({
   // El de arriba más alto: es la magnitud principal. El de abajo alcanza para
   // ver la forma de la comisión mes a mes.
   const paneles = [
-    { clave: 'barras', nombre: nombreBarras, valores: barras, formato: formatoBarras, eje: marcasDelEje(Math.max(...barras), barrasEnteras), top: 26, alto: 140 },
-    { clave: 'linea', nombre: nombreLinea, valores: linea, formato: formatoLinea, eje: marcasDelEje(Math.max(...linea), false, 3), top: 210, alto: 84 },
+    {
+      clave: 'barras',
+      nombre: nombreBarras,
+      valores: barras,
+      formato: formatoBarras,
+      eje: marcasDelEje(Math.max(...barras), barrasEnteras),
+      top: 26,
+      alto: 140,
+    },
+    {
+      clave: 'linea',
+      nombre: nombreLinea,
+      valores: linea,
+      formato: formatoLinea,
+      eje: marcasDelEje(Math.max(...linea), false, 3),
+      top: 210,
+      alto: 84,
+    },
   ];
   /** El largo de las barras acostadas del celular, contra el mismo techo. */
   const barMax = paneles[0]!.eje.techo;
@@ -111,9 +127,16 @@ export function PeriodosChart({
                   onClick={() => onSelect(i + 1)}
                   className={`grid min-h-11 w-full grid-cols-[2.25rem_1fr_auto] items-center gap-2 rounded-lg border px-2.5 text-left ${marco}`}
                 >
-                  <span className={`text-xs font-extrabold ${activo ? 'text-brand-red' : 'text-ink'}`}>{etiquetas[i]}</span>
+                  <span
+                    className={`text-xs font-extrabold ${activo ? 'text-brand-red' : 'text-ink'}`}
+                  >
+                    {etiquetas[i]}
+                  </span>
                   <span className="block h-2 overflow-hidden rounded-full bg-surface">
-                    <span className="block h-full rounded-full bg-brand-red" style={{ width: `${(v / barMax) * 100}%` }} />
+                    <span
+                      className="block h-full rounded-full bg-brand-red"
+                      style={{ width: `${(v / barMax) * 100}%` }}
+                    />
                   </span>
                   <span className="text-right text-xs font-bold tabular-nums text-ink">
                     {formatoBarras(v)}{' '}
@@ -127,13 +150,18 @@ export function PeriodosChart({
                   className={`w-full rounded-lg border px-2.5 py-2 text-left ${marco}`}
                 >
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className={`text-xs font-extrabold ${activo ? 'text-brand-red' : 'text-ink'}`}>
+                    <span
+                      className={`text-xs font-extrabold ${activo ? 'text-brand-red' : 'text-ink'}`}
+                    >
                       {etiquetas[i]}
                     </span>
                     <span className="text-xs font-bold text-ink">{formatoBarras(v)}</span>
                   </span>
                   <span className="mt-1 block h-2 overflow-hidden rounded-full bg-surface">
-                    <span className="block h-full rounded-full bg-brand-red" style={{ width: `${(v / barMax) * 100}%` }} />
+                    <span
+                      className="block h-full rounded-full bg-brand-red"
+                      style={{ width: `${(v / barMax) * 100}%` }}
+                    />
                   </span>
                   <span className="mt-1 block text-[11px] text-muted">{`${nombreLineaCorto} ${formatoLinea(linea[i]!)}`}</span>
                 </button>
@@ -153,13 +181,32 @@ export function PeriodosChart({
           const y = (v: number) => p.top + p.alto - (v / p.eje.techo) * p.alto;
           return (
             <g key={p.clave}>
-              <text x={marginLeft} y={p.top - 12} fontSize={11} fontWeight={700} fill="var(--color-ink)">
+              <text
+                x={marginLeft}
+                y={p.top - 12}
+                fontSize={11}
+                fontWeight={700}
+                fill="var(--color-ink)"
+              >
                 {p.nombre}
               </text>
               {p.eje.marcas.map((m) => (
                 <g key={m}>
-                  <line x1={marginLeft} y1={y(m)} x2={width - marginRight} y2={y(m)} stroke="var(--color-line)" strokeWidth={1} />
-                  <text x={marginLeft - 8} y={y(m) + 4} fontSize={10} textAnchor="end" fill="var(--color-muted)">
+                  <line
+                    x1={marginLeft}
+                    y1={y(m)}
+                    x2={width - marginRight}
+                    y2={y(m)}
+                    stroke="var(--color-line)"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={marginLeft - 8}
+                    y={y(m) + 4}
+                    fontSize={10}
+                    textAnchor="end"
+                    fill="var(--color-muted)"
+                  >
                     {p.formato(m)}
                   </text>
                 </g>

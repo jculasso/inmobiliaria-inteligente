@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AnularConMotivoSchema,
@@ -44,7 +55,9 @@ export class ImpuestosController {
   @Post('servicios/sugeridos')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Carga los impuestos y servicios habituales (API, TGI, EPE, gas, agua, expensas)' })
+  @ApiOperation({
+    summary: 'Carga los impuestos y servicios habituales (API, TGI, EPE, gas, agua, expensas)',
+  })
   sugeridos(@CurrentUser() user: AuthPrincipal) {
     return this.impuestos.cargarSugeridos(ctxDe(user));
   }
@@ -52,14 +65,21 @@ export class ImpuestosController {
   @Post('servicios')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Suma un impuesto o servicio al catálogo' })
-  crearServicio(@Body(new ZodValidationPipe(ServicioInputSchema)) dto: ServicioInput, @CurrentUser() user: AuthPrincipal) {
+  crearServicio(
+    @Body(new ZodValidationPipe(ServicioInputSchema)) dto: ServicioInput,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.guardarServicio(ctxDe(user), null, dto);
   }
 
   @Patch('servicios/:id')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Edita un impuesto o servicio del catálogo' })
-  editarServicio(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(ServicioInputSchema)) dto: ServicioInput, @CurrentUser() user: AuthPrincipal) {
+  editarServicio(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(ServicioInputSchema)) dto: ServicioInput,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.guardarServicio(ctxDe(user), id, dto);
   }
 
@@ -73,21 +93,31 @@ export class ImpuestosController {
   @Get('cuentas-servicio')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Los impuestos y servicios de cada propiedad, con su número de cuenta' })
-  cuentas(@Query(new ZodValidationPipe(PorPropiedadQuerySchema)) q: z.output<typeof PorPropiedadQuerySchema>) {
+  cuentas(
+    @Query(new ZodValidationPipe(PorPropiedadQuerySchema))
+    q: z.output<typeof PorPropiedadQuerySchema>,
+  ) {
     return this.impuestos.cuentas(q.propiedadId);
   }
 
   @Post('cuentas-servicio')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Asigna un impuesto o servicio a una propiedad' })
-  crearCuenta(@Body(new ZodValidationPipe(CuentaServicioInputSchema)) dto: CuentaServicio, @CurrentUser() user: AuthPrincipal) {
+  crearCuenta(
+    @Body(new ZodValidationPipe(CuentaServicioInputSchema)) dto: CuentaServicio,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.guardarCuenta(ctxDe(user), null, dto);
   }
 
   @Patch('cuentas-servicio/:id')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Edita la cuenta de un impuesto o servicio' })
-  editarCuenta(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(CuentaServicioInputSchema)) dto: CuentaServicio, @CurrentUser() user: AuthPrincipal) {
+  editarCuenta(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(CuentaServicioInputSchema)) dto: CuentaServicio,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.guardarCuenta(ctxDe(user), id, dto);
   }
 
@@ -100,31 +130,49 @@ export class ImpuestosController {
 
   @Get('boletas/planilla')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'La planilla del mes: cada cuenta, lo cargado y lo del mes anterior para copiar' })
-  planilla(@Query(new ZodValidationPipe(PlanillaQuerySchema)) q: z.output<typeof PlanillaQuerySchema>) {
+  @ApiOperation({
+    summary: 'La planilla del mes: cada cuenta, lo cargado y lo del mes anterior para copiar',
+  })
+  planilla(
+    @Query(new ZodValidationPipe(PlanillaQuerySchema)) q: z.output<typeof PlanillaQuerySchema>,
+  ) {
     return this.impuestos.planilla(q.periodo);
   }
 
   @Post('boletas/lote')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Carga varias boletas juntas; lo que va a cargo de una parte se le carga como concepto' })
-  lote(@Body(new ZodValidationPipe(LoteBoletasSchema)) dto: LoteBoletas, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary:
+      'Carga varias boletas juntas; lo que va a cargo de una parte se le carga como concepto',
+  })
+  lote(
+    @Body(new ZodValidationPipe(LoteBoletasSchema)) dto: LoteBoletas,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.cargarLote(ctxDe(user), dto);
   }
 
   @Get('boletas')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Boletas de un mes, o las pendientes vencidas o por vencer (control)' })
-  boletas(@Query(new ZodValidationPipe(BoletasQuerySchema)) q: z.output<typeof BoletasQuerySchema>) {
+  boletas(
+    @Query(new ZodValidationPipe(BoletasQuerySchema)) q: z.output<typeof BoletasQuerySchema>,
+  ) {
     return this.impuestos.boletas(q);
   }
 
   @Post('boletas/:id/pagar')
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Registra el pago de una boleta, o que la parte presentó el comprobante' })
-  pagar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(PagarBoletaSchema)) body: z.output<typeof PagarBoletaSchema>, @CurrentUser() user: AuthPrincipal) {
+  @ApiOperation({
+    summary: 'Registra el pago de una boleta, o que la parte presentó el comprobante',
+  })
+  pagar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(PagarBoletaSchema)) body: z.output<typeof PagarBoletaSchema>,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.pagarBoleta(ctxDe(user), id, body.fecha, body.medio);
   }
 
@@ -132,21 +180,32 @@ export class ImpuestosController {
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Anula una boleta cargada por error, con motivo' })
-  anularBoleta(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(AnularConMotivoSchema)) body: z.output<typeof AnularConMotivoSchema>, @CurrentUser() user: AuthPrincipal) {
+  anularBoleta(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(AnularConMotivoSchema))
+    body: z.output<typeof AnularConMotivoSchema>,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.anularBoleta(ctxDe(user), id, body.motivo);
   }
 
   @Get('polizas')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Pólizas de seguro, de todos los contratos o de uno' })
-  polizas(@Query(new ZodValidationPipe(PorContratoQuerySchema)) q: z.output<typeof PorContratoQuerySchema>) {
+  polizas(
+    @Query(new ZodValidationPipe(PorContratoQuerySchema))
+    q: z.output<typeof PorContratoQuerySchema>,
+  ) {
     return this.impuestos.polizas(q.contratoId);
   }
 
   @Post('polizas')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Alta de una póliza: sus cuotas se cargan como boletas' })
-  crearPoliza(@Body(new ZodValidationPipe(PolizaInputSchema)) dto: Poliza, @CurrentUser() user: AuthPrincipal) {
+  crearPoliza(
+    @Body(new ZodValidationPipe(PolizaInputSchema)) dto: Poliza,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.crearPoliza(ctxDe(user), dto);
   }
 
@@ -154,7 +213,12 @@ export class ImpuestosController {
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Anula una póliza y las cuotas que faltan pagar' })
-  anularPoliza(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(AnularConMotivoSchema)) body: z.output<typeof AnularConMotivoSchema>, @CurrentUser() user: AuthPrincipal) {
+  anularPoliza(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(AnularConMotivoSchema))
+    body: z.output<typeof AnularConMotivoSchema>,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
     return this.impuestos.anularPoliza(ctxDe(user), id, body.motivo);
   }
 }

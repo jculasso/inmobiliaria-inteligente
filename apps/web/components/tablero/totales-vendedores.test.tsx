@@ -68,7 +68,11 @@ describe('TotalesVendedores — el selector de período, encima de la tabla', ()
 
   it('arranca en el año, sin volver a pedir lo que ya trajo la página', async () => {
     render(
-      <TotalesVendedores anio={2026} mesSeleccionado={7} inicial={{ agregado: AGG, ranking: [ANA] }} />,
+      <TotalesVendedores
+        anio={2026}
+        mesSeleccionado={7}
+        inicial={{ agregado: AGG, ranking: [ANA] }}
+      />,
     );
     expect(screen.getByText(/Totales por vendedor · Año 2026/)).toBeInTheDocument();
     expect(screen.getAllByText('Ana').length).toBeGreaterThan(0);

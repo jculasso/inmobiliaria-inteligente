@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { ContratoDeLiquidacion, LiquidacionResumenDto, PendienteLiquidarDto } from '@vacker/types';
+import type {
+  ContratoDeLiquidacion,
+  LiquidacionResumenDto,
+  PendienteLiquidarDto,
+} from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularLiquidacion, generarLiquidacionPdf } from '../../lib/alquileres-api';
@@ -58,17 +62,35 @@ function Propiedades({ contratos }: { contratos: ContratoDeLiquidacion[] }) {
  * Lo que espera a que pague el inquilino se muestra aparte: no es una deuda de
  * la inmobiliaria todavía.
  */
-export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes: PendienteLiquidarDto[]; liquidaciones: LiquidacionResumenDto[] }) {
+export function LiquidacionesBandeja({
+  pendientes,
+  liquidaciones,
+}: {
+  pendientes: PendienteLiquidarDto[];
+  liquidaciones: LiquidacionResumenDto[];
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [aAnular, setAAnular] = useState<LiquidacionResumenDto | null>(null);
   const listos = pendientes.filter((p) => p.neto > 0);
   const soloEspera = pendientes.filter((p) => p.neto <= 0);
   const pdf = (l: LiquidacionResumenDto) =>
-    abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), l.id), { titulo: `Liquidación ${numero(l.numero)}`, onError: setError });
+    abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), l.id), {
+      titulo: `Liquidación ${numero(l.numero)}`,
+      onError: setError,
+    });
   const abrir = (l: LiquidacionResumenDto) => router.push(`/alquileres/personas/${l.persona.id}`);
-  const estado = (l: LiquidacionResumenDto) => (l.anulado ? <Insignia tono="neutro">Anulada</Insignia> : <Insignia tono="exito">Pagada</Insignia>);
-  const neto = (l: LiquidacionResumenDto) => <span className={l.anulado ? 'text-muted line-through' : ''}>{fmtMoneda(l.neto, l.moneda)}</span>;
+  const estado = (l: LiquidacionResumenDto) =>
+    l.anulado ? (
+      <Insignia tono="neutro">Anulada</Insignia>
+    ) : (
+      <Insignia tono="exito">Pagada</Insignia>
+    );
+  const neto = (l: LiquidacionResumenDto) => (
+    <span className={l.anulado ? 'text-muted line-through' : ''}>
+      {fmtMoneda(l.neto, l.moneda)}
+    </span>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -83,25 +105,42 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
         </p>
       )}
 
-      <Bloque icono="🧾" titulo="Para liquidar" detalle={`${listos.length} ${listos.length === 1 ? 'propietario' : 'propietarios'}`}>
+      <Bloque
+        icono="🧾"
+        titulo="Para liquidar"
+        detalle={`${listos.length} ${listos.length === 1 ? 'propietario' : 'propietarios'}`}
+      >
         {listos.length === 0 ? (
           <VacioBloque>Ningún propietario tiene alquileres cobrados sin liquidar.</VacioBloque>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {listos.map((p) => (
-              <li key={`${p.persona.id}-${p.moneda}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+              <li
+                key={`${p.persona.id}-${p.moneda}`}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+              >
                 <span className="min-w-0">
                   <span className="block font-semibold text-ink">
                     <span className="font-normal text-muted">Propietario: </span>
                     {p.persona.nombre}
                   </span>
                   <Propiedades contratos={p.contratos} />
-                  {p.enEspera > 0 && <span className="mt-1 block text-xs text-muted">⏳ Además espera {fmtMoneda(p.enEspera, p.moneda)} de inquilinos que no pagaron</span>}
+                  {p.enEspera > 0 && (
+                    <span className="mt-1 block text-xs text-muted">
+                      ⏳ Además espera {fmtMoneda(p.enEspera, p.moneda)} de inquilinos que no
+                      pagaron
+                    </span>
+                  )}
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="whitespace-nowrap font-bold tabular-nums text-ink">{fmtMoneda(p.neto, p.moneda)}</span>
+                  <span className="whitespace-nowrap font-bold tabular-nums text-ink">
+                    {fmtMoneda(p.neto, p.moneda)}
+                  </span>
                   <Button asChild variant="secondary" size="sm">
-                    <Link href={`/alquileres/liquidaciones/nueva?persona=${p.persona.id}`} aria-label={`Liquidar a ${p.persona.nombre}`}>
+                    <Link
+                      href={`/alquileres/liquidaciones/nueva?persona=${p.persona.id}`}
+                      aria-label={`Liquidar a ${p.persona.nombre}`}
+                    >
                       🧾 Liquidar
                     </Link>
                   </Button>
@@ -112,7 +151,11 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
         )}
         {soloEspera.length > 0 && (
           <p className="border-t border-line px-4 py-2.5 text-xs text-muted">
-            ⏳ En espera, sin nada cobrado todavía: {soloEspera.map((p) => `${p.persona.nombre} (${fmtMoneda(p.enEspera, p.moneda)})`).join(', ')}.
+            ⏳ En espera, sin nada cobrado todavía:{' '}
+            {soloEspera
+              .map((p) => `${p.persona.nombre} (${fmtMoneda(p.enEspera, p.moneda)})`)
+              .join(', ')}
+            .
           </p>
         )}
       </Bloque>
@@ -126,8 +169,17 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
               <ListaTarjetas etiqueta="Liquidaciones">
                 {liquidaciones.map((l) => (
                   <Tarjeta key={l.id}>
-                    <button type="button" onClick={() => abrir(l)} className={`block w-full rounded text-left ${CLASE_FOCO}`} title={`Abrir la cuenta de ${l.persona.nombre}`}>
-                      <CabezaTarjeta titulo={l.persona.nombre} detalle={`N.º ${numero(l.numero)} · ${fmtFecha(l.fecha)}`} insignia={estado(l)} />
+                    <button
+                      type="button"
+                      onClick={() => abrir(l)}
+                      className={`block w-full rounded text-left ${CLASE_FOCO}`}
+                      title={`Abrir la cuenta de ${l.persona.nombre}`}
+                    >
+                      <CabezaTarjeta
+                        titulo={l.persona.nombre}
+                        detalle={`N.º ${numero(l.numero)} · ${fmtFecha(l.fecha)}`}
+                        insignia={estado(l)}
+                      />
                       <Propiedades contratos={l.contratos} />
                       <CamposTarjeta>
                         <CampoTarjeta etiqueta="Neto">{neto(l)}</CampoTarjeta>
@@ -137,7 +189,15 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                     <AccionesFila
                       tarjeta
                       nombre={`la liquidación ${numero(l.numero)}`}
-                      extra={<AccionFila tarjeta icono="📄" texto="PDF" etiqueta={`PDF de la liquidación ${numero(l.numero)}`} onClick={() => pdf(l)} />}
+                      extra={
+                        <AccionFila
+                          tarjeta
+                          icono="📄"
+                          texto="PDF"
+                          etiqueta={`PDF de la liquidación ${numero(l.numero)}`}
+                          onClick={() => pdf(l)}
+                        />
+                      }
                       onBorrar={l.anulado ? undefined : () => setAAnular(l)}
                       anula
                     />
@@ -163,22 +223,39 @@ export function LiquidacionesBandeja({ pendientes, liquidaciones }: { pendientes
                   {liquidaciones.map((l) => (
                     <tr key={l.id} onClick={() => abrir(l)} className={CLASE_TR_ABRIBLE}>
                       <td className={CLASE_TD_FIJA}>
-                        <LinkFila href={`/alquileres/personas/${l.persona.id}`} etiqueta={`Liquidación ${numero(l.numero)}: abrir la cuenta de ${l.persona.nombre}`}>
+                        <LinkFila
+                          href={`/alquileres/personas/${l.persona.id}`}
+                          etiqueta={`Liquidación ${numero(l.numero)}: abrir la cuenta de ${l.persona.nombre}`}
+                        >
                           {numero(l.numero)}
                         </LinkFila>
                       </td>
                       <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(l.fecha)}</td>
                       <td className={`${CLASE_TD} text-ink`}>{l.persona.nombre}</td>
                       <td className="px-3 py-1">
-                        {l.contratos.length === 0 ? <span className="text-muted">—</span> : <Propiedades contratos={l.contratos} />}
+                        {l.contratos.length === 0 ? (
+                          <span className="text-muted">—</span>
+                        ) : (
+                          <Propiedades contratos={l.contratos} />
+                        )}
                       </td>
-                      <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{neto(l)}</td>
+                      <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>
+                        {neto(l)}
+                      </td>
                       <td className={CLASE_TD}>{estado(l)}</td>
                       <td className={`${CLASE_TD} text-muted`}>{l.registradoPor ?? '—'}</td>
                       <td className={CLASE_TD_ACCIONES}>
                         <AccionesFila
                           nombre={`la liquidación ${numero(l.numero)}`}
-                          extra={<AccionFila icono="📄" texto="PDF" etiqueta={`PDF de la liquidación ${numero(l.numero)}`} title="Abrir el PDF" onClick={() => pdf(l)} />}
+                          extra={
+                            <AccionFila
+                              icono="📄"
+                              texto="PDF"
+                              etiqueta={`PDF de la liquidación ${numero(l.numero)}`}
+                              title="Abrir el PDF"
+                              onClick={() => pdf(l)}
+                            />
+                          }
                           onBorrar={l.anulado ? undefined : () => setAAnular(l)}
                           anula
                         />

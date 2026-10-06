@@ -34,9 +34,7 @@ function semanaDe(prop: PropiedadEnReporte, semana: number): SemanaEnReporte {
 }
 
 function titulosDe(prop: PropiedadEnReporte): string[] {
-  return [...prop.alertasGenerales, ...prop.semanas.flatMap((s) => s.alertas)].map(
-    (a) => a.titulo,
-  );
+  return [...prop.alertasGenerales, ...prop.semanas.flatMap((s) => s.alertas)].map((a) => a.titulo);
 }
 
 /** Acciones de las 5 semanas, dos por semana, con su fecha prevista real. */
@@ -285,9 +283,7 @@ describe('generarReporteSemanal', () => {
     const prop = unicaPropiedad(generarReporteSemanal([protocolo({ acciones: conUna })], HOY));
 
     expect(prop.pendientesArrastrados).toBe(1);
-    expect(textoDeCierre(prop)).toBe(
-      'Listo para cierre · 1 tarea pendiente de semanas anteriores',
-    );
+    expect(textoDeCierre(prop)).toBe('Listo para cierre · 1 tarea pendiente de semanas anteriores');
   });
 
   it('cierre · una propiedad que no llegó al final no anuncia cierre', () => {
@@ -326,7 +322,12 @@ describe('generarReporteSemanal', () => {
 
   it('borde · un protocolo iniciado hoy no arrastra atrasos ni semanas incompletas', () => {
     const r = generarReporteSemanal(
-      [protocolo({ fechaInicio: HOY, acciones: acciones(HOY, { 1: 'pendiente', 2: 'pendiente' }) })],
+      [
+        protocolo({
+          fechaInicio: HOY,
+          acciones: acciones(HOY, { 1: 'pendiente', 2: 'pendiente' }),
+        }),
+      ],
       HOY,
     );
 

@@ -21,9 +21,19 @@ const ICONO: Record<AccionEvento, string> = {
  */
 export function Historial({ eventos }: { eventos: EventoDto[] }) {
   return (
-    <Bloque icono="🕓" titulo="Historial" detalle={eventos.length ? `${eventos.length} ${eventos.length === 1 ? 'movimiento' : 'movimientos'}` : undefined}>
+    <Bloque
+      icono="🕓"
+      titulo="Historial"
+      detalle={
+        eventos.length
+          ? `${eventos.length} ${eventos.length === 1 ? 'movimiento' : 'movimientos'}`
+          : undefined
+      }
+    >
       {eventos.length === 0 ? (
-        <VacioBloque>Todavía no hay movimientos registrados. Lo anterior al 6/10/2026 no tiene historial.</VacioBloque>
+        <VacioBloque>
+          Todavía no hay movimientos registrados. Lo anterior al 6/10/2026 no tiene historial.
+        </VacioBloque>
       ) : (
         <ol className="max-h-[28rem] divide-y divide-line overflow-y-auto text-sm">
           {eventos.map((e) => (

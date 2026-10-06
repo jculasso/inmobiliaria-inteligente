@@ -175,8 +175,7 @@ export function generarReporteSemanal(
     // Regla 4: dentro del vendedor sí manda la urgencia.
     grupo.propiedades.sort(
       (a, b) =>
-        ORDEN_NIVEL[a.prioridad] - ORDEN_NIVEL[b.prioridad] ||
-        porTexto(a.direccion, b.direccion),
+        ORDEN_NIVEL[a.prioridad] - ORDEN_NIVEL[b.prioridad] || porTexto(a.direccion, b.direccion),
     );
   }
 

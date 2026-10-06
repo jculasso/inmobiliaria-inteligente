@@ -1,11 +1,20 @@
 import { puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../../lib/server-principal';
-import { getReporteGastos, listComprobantes, listContratos, listProveedores } from '../../../lib/alquileres-api';
+import {
+  getReporteGastos,
+  listComprobantes,
+  listContratos,
+  listProveedores,
+} from '../../../lib/alquileres-api';
 import { ProveedoresVista } from '../../../components/alquileres/proveedores-vista';
 
 export const metadata = { title: 'Proveedores · Alquileres' };
 
-export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<{ anio?: string; ver?: string }> }) {
+export default async function ProveedoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ anio?: string; ver?: string }>;
+}) {
   const ctx = await requireServerPrincipal();
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
   const q = await searchParams;
@@ -17,5 +26,13 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
     getReporteGastos(ctx.accessToken, anio),
     listContratos(ctx.accessToken),
   ]);
-  return <ProveedoresVista proveedores={proveedores} comprobantes={comprobantes} reporte={reporte} contratos={contratos} estado={estado} />;
+  return (
+    <ProveedoresVista
+      proveedores={proveedores}
+      comprobantes={comprobantes}
+      reporte={reporte}
+      contratos={contratos}
+      estado={estado}
+    />
+  );
 }

@@ -26,7 +26,9 @@ export function AdminNav() {
             key={s.href}
             href={s.href}
             className={`min-w-0 flex-1 truncate border-b-2 px-1 py-2.5 text-center text-[11px] font-semibold transition-colors sm:flex-none sm:px-4 sm:text-sm ${
-              activo ? 'border-brand-red text-brand-red' : 'border-transparent text-muted hover:text-ink'
+              activo
+                ? 'border-brand-red text-brand-red'
+                : 'border-transparent text-muted hover:text-ink'
             }`}
           >
             {s.label}

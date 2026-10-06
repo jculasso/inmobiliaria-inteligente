@@ -86,7 +86,9 @@ function leerCMap(stream: string): Map<number, string> | null {
     }
   }
   for (const bloque of stream.matchAll(/beginbfrange([\s\S]*?)endbfrange/g)) {
-    for (const r of bloque[1]!.matchAll(/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g)) {
+    for (const r of bloque[1]!.matchAll(
+      /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g,
+    )) {
       const desde = parseInt(r[1]!, 16);
       const hasta = parseInt(r[2]!, 16);
       const base = parseInt(r[3]!, 16);
