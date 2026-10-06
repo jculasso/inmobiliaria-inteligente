@@ -52,6 +52,13 @@ export interface IdsDeTenant {
    */
   usuarioSecundario: string;
   tasacionSecundaria: string;
+  /**
+   * Lo mismo para Alquileres: un documento por contrato y una firma por persona
+   * en cada documento son únicos, así que el documento y el firmante intrusos
+   * apuntan a estos.
+   */
+  contratoSecundario: string;
+  personaSecundaria: string;
   /** Parte numérica única, para no chocar con los índices únicos por tenant. */
   n: number;
 }
@@ -87,6 +94,8 @@ export function nuevosIds(n: number): IdsDeTenant {
     alqFirmaEvento: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
+    contratoSecundario: randomUUID(),
+    personaSecundaria: randomUUID(),
     n,
   };
 }
@@ -466,7 +475,8 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqLiquidacion',
     campoTenant: 'tenantId',
     campoEditable: 'periodo',
-    fila: (t, i) => ({ id: i.alqLiquidacion, tenantId: t, numero: 1, personaId: i.alqPersona, periodo: '2026-01', neto: 1, fecha: HOY, detalle: {} }),
+    // El número es único por inmobiliaria: sale de `n`.
+    fila: (t, i) => ({ id: i.alqLiquidacion, tenantId: t, numero: i.n, personaId: i.alqPersona, periodo: '2026-01', neto: 1, fecha: HOY, detalle: {} }),
   },
   {
     tabla: 'alq_concepto',
@@ -493,7 +503,8 @@ export const TABLAS: TablaBajoPrueba[] = [
     claveId: 'alqCobro',
     campoTenant: 'tenantId',
     campoEditable: 'obs',
-    fila: (t, i) => ({ id: i.alqCobro, tenantId: t, numero: 1, personaId: i.alqPersona, fecha: HOY, importe: 1, medio: 'efectivo' }),
+    // El número del recibo es único por inmobiliaria: sale de `n`.
+    fila: (t, i) => ({ id: i.alqCobro, tenantId: t, numero: i.n, personaId: i.alqPersona, fecha: HOY, importe: 1, medio: 'efectivo' }),
   },
   {
     tabla: 'alq_imputacion',
@@ -510,6 +521,8 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'proveedor',
     fila: (t, i) => ({ id: i.alqDocumento, tenantId: t, contratoId: i.alqContrato }),
+    // Un documento por contrato: la intrusa va al contrato de repuesto.
+    filaIntrusa: (t, i) => ({ id: randomUUID(), tenantId: t, contratoId: i.contratoSecundario }),
   },
   {
     tabla: 'alq_firmante',
@@ -518,6 +531,8 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'estado',
     fila: (t, i) => ({ id: i.alqFirmante, tenantId: t, documentoId: i.alqDocumento, personaId: i.alqPersona }),
+    // Una firma por persona en cada documento: la intrusa es de la persona de repuesto.
+    filaIntrusa: (t, i) => ({ id: randomUUID(), tenantId: t, documentoId: i.alqDocumento, personaId: i.personaSecundaria }),
   },
   {
     tabla: 'alq_firma_evento',
@@ -601,6 +616,12 @@ export async function sembrar(db: PrismaClient, ids: IdsDeTenant): Promise<void>
       tipoPropiedad: 'Casa',
       superficieTotal: 100,
     },
+  });
+  await db.alqPersona.create({
+    data: { id: ids.personaSecundaria, tenantId: ids.tenant, nombre: `Persona secundaria ${ids.n}`, documento: `${40000000 + ids.n}` },
+  });
+  await db.alqContrato.create({
+    data: { id: ids.contratoSecundario, tenantId: ids.tenant, codigo: `ALQ-AISL-B-${ids.n}`, propiedadId: ids.alqPropiedad, inicio: HOY, fin: HOY },
   });
 }
 
