@@ -1,12 +1,16 @@
-import type { Metadata } from 'next';
 import { Captura } from '../../components/marco';
 import { Bloque, PaginaModulo, Paso, Rol } from '../../components/pagina-modulo';
+import { metadatosDePagina } from '../../lib/metadatos';
 
-export const metadata: Metadata = {
-  title: 'Tasador — Inmobiliaria Inteligente',
-  description:
+export const metadata = metadatosDePagina({
+  ruta: '/tasador',
+  titulo: 'Tasador — Inmobiliaria Inteligente',
+  descripcion:
     'El vendedor llega a la reunión de captación con un informe fundamentado en comparables del mercado, no con una estimación de memoria.',
-};
+  tituloCompartir: 'Tasador · Inmobiliaria Inteligente',
+  descripcionCompartir:
+    'Llegue a la reunión de captación con un informe en PDF, fundamentado en comparables reales.',
+});
 
 export default function Tasador() {
   return (

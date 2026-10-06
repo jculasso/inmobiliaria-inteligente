@@ -2,6 +2,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FormularioContacto } from '../components/formulario-contacto';
 import { ANCHO, CapturaSegunPantalla, Encabezado, Kicker, Pie } from '../components/marco';
+import { metadatosDePagina } from '../lib/metadatos';
+
+export const metadata = metadatosDePagina({
+  ruta: '/',
+  titulo: 'Inmobiliaria Inteligente — la capa de conducción de su inmobiliaria',
+  descripcion:
+    'Su CRM guarda las propiedades. Inmobiliaria Inteligente le dice cómo va su negocio y qué no se está haciendo. Desarrollado junto a una inmobiliaria en operación.',
+  tituloCompartir: 'Inmobiliaria Inteligente',
+  descripcionCompartir: 'Su CRM guarda las propiedades. Nosotros le decimos cómo va su negocio.',
+});
 
 /*
  * Sitio comercial. El texto está acordado en docs/specs/sitio-comercial.md —

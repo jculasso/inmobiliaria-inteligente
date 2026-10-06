@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { enviarConsulta } from '../lib/enviar-consulta';
 
 /**
  * El único llamado a la acción del sitio.
@@ -38,17 +39,13 @@ export function FormularioContacto() {
     setEstado('enviando');
     setError(null);
     const datos = Object.fromEntries(new FormData(e.currentTarget));
-    try {
-      const r = await fetch('/api/contacto', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datos),
-      });
-      if (!r.ok)
-        throw new Error((await r.json().catch(() => null))?.mensaje ?? 'No se pudo enviar.');
+    // Sin conexión o sin respuesta, un mensaje en castellano y el botón de
+    // vuelta: ver `lib/enviar-consulta.ts`.
+    const resultado = await enviarConsulta(datos);
+    if (resultado.ok) {
       setEstado('listo');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo enviar la consulta.');
+    } else {
+      setError(resultado.mensaje);
       setEstado('inicial');
     }
   }

@@ -19,6 +19,10 @@ const figtree = Figtree({
   variable: '--font-figtree',
 });
 
+// El respaldo para una página que no defina los suyos (la de no encontrado).
+// Las páginas los arman completos con `metadatosDePagina`; acá no van ni el
+// canonical ni `og:url`: los heredaría cualquier página y quedaría marcada
+// como copia de la portada.
 export const metadata: Metadata = {
   metadataBase: new URL('https://inmobiliariainteligente.net'),
   title: 'Inmobiliaria Inteligente — la capa de conducción de su inmobiliaria',
@@ -27,9 +31,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Inmobiliaria Inteligente',
     description: 'Su CRM guarda las propiedades. Nosotros le decimos cómo va su negocio.',
+    siteName: 'Inmobiliaria Inteligente',
     locale: 'es_AR',
     type: 'website',
   },
+  twitter: { card: 'summary_large_image' },
 };
 
 export const viewport: Viewport = {
