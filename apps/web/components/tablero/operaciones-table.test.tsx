@@ -78,7 +78,62 @@ describe('OperacionesTable', () => {
     );
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(enLaTabla().getByText('Calle Falsa 123')).toBeInTheDocument();
-    expect(screen.getByText('2 de 2 operaciones')).toBeInTheDocument();
+    // Sin filtro, el total solo (como el resto de las listas: `BarraLista`).
+    expect(screen.getByText('2 operaciones')).toBeInTheDocument();
+  });
+
+  it('el estado va en una insignia: lo cerrado verde, lo en curso ámbar, nunca el color de la marca', () => {
+    // La seña iba en `brand-red`: con una marca verde se veía igual que una
+    // escritura, y en la roja de Vacker parecía un error (CONVENCIONES §13).
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
+    expect(enLaTabla().getByText('Escriturada')).toHaveClass('text-success');
+    const senada = enLaTabla().getByText('Señada');
+    expect(senada).toHaveClass('text-warning');
+    expect(senada.className).not.toMatch(/brand-red/);
+  });
+
+  it('la fecha de firma se lee como fecha, no como el ISO de la base', () => {
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={false}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
+    expect(enLaTabla().getByText('10/03/2026')).toBeInTheDocument();
+    expect(screen.queryByText('2026-03-10')).not.toBeInTheDocument();
+  });
+
+  it('los botones de cada fila dicen de qué operación son', () => {
+    // Un lector de pantalla leía «Borrar, Borrar, Borrar…» sin decir cuál.
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={OPERACIONES}
+        vendedores={[]}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
+    expect(
+      enLaTabla().getByRole('button', { name: 'Borrar la venta OP-1001 (Av. Siempre Viva 742)' }),
+    ).toBeInTheDocument();
+    expect(
+      enLaTabla().getByRole('button', { name: 'Editar la venta OP-1002 (Calle Falsa 123)' }),
+    ).toBeInTheDocument();
   });
 
   it('en el celular cada operación es una tarjeta, sin tabla que deslizar', () => {
@@ -110,9 +165,10 @@ describe('OperacionesTable', () => {
         dir="desc"
       />,
     );
-    await userEvent.type(screen.getByPlaceholderText(/Buscar/), 'Ana');
+    await userEvent.type(screen.getByRole('searchbox', { name: /Buscar/ }), 'Ana');
     expect(enLaTabla().getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(screen.queryByText('Calle Falsa 123')).not.toBeInTheDocument();
+    expect(screen.getByText('1 de 2 operaciones')).toBeInTheDocument();
   });
 
   // El vendedor y el team leader entran acá en modo lectura: ven sus

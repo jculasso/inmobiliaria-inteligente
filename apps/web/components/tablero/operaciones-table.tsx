@@ -11,11 +11,11 @@ import {
   type TipoOperacion,
   type VendedorDto,
 } from '@vacker/types';
-import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { deleteOperacion } from '../../lib/tablero-api';
-import { fmtUSD } from '../../lib/format';
-import { estadoClass, estadoLabel } from '../../lib/operacion-estado';
+import { fmtFecha, fmtUSD } from '../../lib/format';
+import { estadoLabel, estadoTono } from '../../lib/operacion-estado';
+import { AccionesFila, BarraLista, BotonNuevo, CLASE_LISTA_MOVIL, Insignia } from '../piezas';
 import { AvisoListaRecortada } from '../aviso-lista-recortada';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
@@ -96,32 +96,32 @@ export function OperacionesTable({
     router.refresh();
   }
 
+  /** Para el lector de pantalla: «Borrar la venta OP-1001 (Av. Siempre Viva 742)». */
+  const nombreFila = (op: OperacionDto) =>
+    `${tipo === 'venta' ? 'la venta' : 'el alquiler'} ${op.codigo} (${op.direccion})`;
+
   return (
     <div className="flex flex-col gap-3">
       {hayMas && <AvisoListaRecortada que={tipo === 'venta' ? 'ventas' : 'alquileres'} />}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder={
-            tipo === 'venta' ? 'Buscar por dirección, vendedor o estado…' : 'Buscar por dirección…'
-          }
-          className="h-9 w-full max-w-sm rounded-brand border border-line px-3 text-sm text-ink outline-none focus:border-brand-red"
-        />
-        <div className="flex items-center gap-3">
-          <span className="whitespace-nowrap text-xs text-muted">
-            {filtradas.length} de {operaciones.length} operaciones
-          </span>
-          {puedeEscribir && (
-            <Button variant="primary" size="sm" onClick={() => setModal('create')}>
-              ＋ {tipo === 'venta' ? 'Nueva venta' : 'Nuevo alquiler'}
-            </Button>
-          )}
-        </div>
-      </div>
+      <BarraLista
+        busqueda={busqueda}
+        onBusqueda={setBusqueda}
+        placeholder={
+          tipo === 'venta' ? 'Buscar por dirección, vendedor o estado…' : 'Buscar por dirección…'
+        }
+        visibles={filtradas.length}
+        total={operaciones.length}
+        nombre="operaciones"
+      >
+        {puedeEscribir && (
+          <BotonNuevo onClick={() => setModal('create')}>
+            {tipo === 'venta' ? 'Nueva venta' : 'Nuevo alquiler'}
+          </BotonNuevo>
+        )}
+      </BarraLista>
 
-      <div className="rounded-brand border border-line bg-white sm:hidden">
+      <div className={CLASE_LISTA_MOVIL}>
         {filtradas.length === 0 ? (
           <p className="px-4 py-6 text-center text-muted">Sin operaciones para mostrar.</p>
         ) : (
@@ -135,14 +135,10 @@ export function OperacionesTable({
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-bold text-ink">{op.direccion}</span>
                       <span className="mt-0.5 block text-[11px] text-muted">
-                        {op.codigo} · Firma {op.fechaFirma ?? '—'}
+                        {op.codigo} · Firma {fmtFecha(op.fechaFirma)}
                       </span>
                     </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${estadoClass(op.estado)}`}
-                    >
-                      {estadoLabel(op.estado)}
-                    </span>
+                    <Insignia tono={estadoTono(op.estado)}>{estadoLabel(op.estado)}</Insignia>
                   </div>
 
                   <CamposTarjeta>
@@ -159,22 +155,12 @@ export function OperacionesTable({
                   </CamposTarjeta>
 
                   {puedeEscribir && (
-                    <div className="mt-2 flex items-center justify-end gap-1 border-t border-line pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setModal(op)}
-                        className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setABorrar(op)}
-                        className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5"
-                      >
-                        🗑️ Borrar
-                      </button>
-                    </div>
+                    <AccionesFila
+                      nombre={nombreFila(op)}
+                      onEditar={() => setModal(op)}
+                      onBorrar={() => setABorrar(op)}
+                      tarjeta
+                    />
                   )}
                 </Tarjeta>
               );
@@ -278,7 +264,7 @@ export function OperacionesTable({
                     <td className="sticky left-0 z-10 border-r border-line bg-white px-2 py-2 text-muted">
                       {op.codigo}
                     </td>
-                    <td className="px-2 py-2">{op.fechaFirma ?? '—'}</td>
+                    <td className="px-2 py-2 tabular-nums">{fmtFecha(op.fechaFirma)}</td>
                     <td className="px-2 py-2">
                       <span className="block max-w-[140px] truncate" title={op.direccion}>
                         {op.direccion}
@@ -306,33 +292,15 @@ export function OperacionesTable({
                     )}
                     <td className="px-2 py-2">{fmtUSD(op.comTotal)}</td>
                     <td className="px-2 py-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoClass(op.estado)}`}
-                      >
-                        {estadoLabel(op.estado)}
-                      </span>
+                      <Insignia tono={estadoTono(op.estado)}>{estadoLabel(op.estado)}</Insignia>
                     </td>
                     {puedeEscribir && (
                       <td className="sticky right-0 border-l border-line bg-white px-2 py-2">
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setModal(op)}
-                            aria-label="Editar"
-                            className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setABorrar(op)}
-                            aria-label="Borrar"
-                            title="Borrar esta operación"
-                            className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        <AccionesFila
+                          nombre={nombreFila(op)}
+                          onEditar={() => setModal(op)}
+                          onBorrar={() => setABorrar(op)}
+                        />
                       </td>
                     )}
                   </tr>

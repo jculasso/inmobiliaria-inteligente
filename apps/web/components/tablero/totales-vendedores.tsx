@@ -7,15 +7,21 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { getResumenPeriodo, type PeriodoResumen } from '../../lib/tablero-api';
 import { getOrFetch } from '../../lib/kpi-cache';
 import { NOMBRES_MES } from '../../lib/meses';
+import { Segmentado, TituloSeccion } from '../piezas';
 import { VendedorTotalesTable } from './vendedor-totales-table';
 
-const PERIODOS: { key: PeriodoResumen; label: string }[] = [
-  { key: 'anual', label: 'Acumulado año' },
-  { key: 'trimestral', label: 'Acumulado trimestral' },
-  { key: 'mensual', label: 'Mes seleccionado' },
-];
+const PERIODOS = [
+  ['anual', 'Acumulado año'],
+  ['trimestral', 'Acumulado trimestral'],
+  ['mensual', 'Mes seleccionado'],
+] as const satisfies readonly (readonly [PeriodoResumen, string])[];
 
-const TRIMESTRES = [1, 2, 3, 4];
+const TRIMESTRES = [
+  ['1', 'Q1'],
+  ['2', 'Q2'],
+  ['3', 'Q3'],
+  ['4', 'Q4'],
+] as const;
 
 interface Props {
   anio: number;
@@ -79,6 +85,7 @@ export function TotalesVendedores({ anio, mesSeleccionado, verTodo, inicial }: P
               trimestre,
               verTodo,
             }),
+          accessToken,
         ),
       )
       .then((res) => {
@@ -101,53 +108,35 @@ export function TotalesVendedores({ anio, mesSeleccionado, verTodo, inicial }: P
         : `${NOMBRES_MES[mesSeleccionado - 1]} ${anio}`;
 
   return (
-    <Card className="p-0">
-      <div className="px-5 pt-4 pb-3">
-        <h3 className="text-base font-bold text-ink">
-          👥 Totales por vendedor · {nombrePeriodo}{' '}
-          <span className="text-xs font-normal text-muted">({items.length} vendedores)</span>
-        </h3>
-      </div>
-
-      <div className="flex flex-wrap gap-1 border-y border-line px-4 py-2">
-        {PERIODOS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            aria-pressed={periodo === p.key}
-            onClick={() => setPeriodo(p.key)}
-            className={`rounded-brand px-3 py-1.5 text-sm font-semibold transition-colors ${
-              periodo === p.key ? 'bg-ink text-white' : 'text-muted hover:bg-surface'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {periodo === 'trimestral' && (
-        <div className="flex flex-wrap gap-1 border-b border-line px-4 py-2">
-          {TRIMESTRES.map((q) => (
-            <button
-              key={q}
-              type="button"
-              aria-pressed={trimestre === q}
-              onClick={() => setTrimestre(q)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                trimestre === q ? 'bg-brand-red text-white' : 'bg-surface text-muted hover:text-ink'
-              }`}
-            >
-              Q{q}
-            </button>
-          ))}
+    <section className="flex flex-col gap-2">
+      <TituloSeccion icono="👥" detalle={`${items.length} vendedores`}>
+        {`Totales por vendedor · ${nombrePeriodo}`}
+      </TituloSeccion>
+      <Card className="p-0">
+        {/* Los mismos selectores que el resto de la app (`Segmentado`): había tres estilos distintos en esta tarjeta. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
+          <Segmentado
+            etiqueta="Período de los totales"
+            opciones={PERIODOS}
+            valor={periodo}
+            onCambio={setPeriodo}
+          />
+          {periodo === 'trimestral' && (
+            <Segmentado
+              etiqueta="Trimestre"
+              opciones={TRIMESTRES}
+              valor={String(trimestre) as (typeof TRIMESTRES)[number][0]}
+              onCambio={(q) => setTrimestre(Number(q))}
+            />
+          )}
         </div>
-      )}
 
-      {loading ? (
-        <p className="px-5 py-6 text-sm text-muted">Cargando…</p>
-      ) : (
-        <VendedorTotalesTable items={items} anio={anio} verTodo={verTodo} />
-      )}
-    </Card>
+        {loading ? (
+          <p className="px-5 py-6 text-sm text-muted">Cargando…</p>
+        ) : (
+          <VendedorTotalesTable items={items} anio={anio} verTodo={verTodo} />
+        )}
+      </Card>
+    </section>
   );
 }

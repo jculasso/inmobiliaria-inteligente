@@ -17,6 +17,7 @@ import { VentasChart } from './ventas-chart';
 import { VentasTabla } from './ventas-tabla';
 import type { FocoDrill } from '../../lib/drill';
 import { DetalleDrillModal } from './detalle-drill-modal';
+import { Segmentado } from '../piezas';
 
 const TABS: { key: PeriodoResumen; label: string; icono: string }[] = [
   { key: 'anual', label: 'Acumulado Anual', icono: '📅' },
@@ -31,6 +32,18 @@ const TRIMESTRES = [
   { q: 4, label: 'Q4 · Oct–Dic' },
 ];
 const ETIQUETAS_TRIMESTRE = TRIMESTRES.map((t) => `Q${t.q}`);
+
+// Los selectores, con el mismo aspecto que en el resto de la app (`Segmentado`).
+const OPCIONES_TABS = TABS.map(
+  (t) =>
+    [
+      t.key,
+      <>
+        <span aria-hidden>{t.icono}</span> {t.label}
+      </>,
+    ] as const,
+);
+const OPCIONES_TRIMESTRES = TRIMESTRES.map((t) => [String(t.q), t.label] as const);
 
 /** Qué se abre en la ventana de detalle: el período, y qué tarjeta se tocó. */
 interface Detalle {
@@ -144,8 +157,10 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
     setLoading(true);
     getAccessToken()
       .then((accessToken) =>
-        getOrFetch(`resumen:${anio}:${tab}:${mes}:${trimestre}:${verTodo ? 1 : 0}`, () =>
-          getResumenPeriodo(accessToken, { anio, periodo: tab, mes, trimestre, verTodo }),
+        getOrFetch(
+          `resumen:${anio}:${tab}:${mes}:${trimestre}:${verTodo ? 1 : 0}`,
+          () => getResumenPeriodo(accessToken, { anio, periodo: tab, mes, trimestre, verTodo }),
+          accessToken,
         ),
       )
       .then((res) => {
@@ -202,35 +217,23 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
 
   return (
     <Card className="p-0">
-      <div className="flex flex-wrap gap-1 border-b border-line p-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`rounded-brand px-3 py-2 text-sm font-semibold transition-colors ${
-              tab === t.key ? 'bg-brand-red text-white' : 'text-muted hover:bg-surface'
-            }`}
-          >
-            <span aria-hidden>{t.icono}</span> {t.label}
-          </button>
-        ))}
+      <div className="border-b border-line p-2">
+        <Segmentado
+          etiqueta="Período del resumen"
+          opciones={OPCIONES_TABS}
+          valor={tab}
+          onCambio={setTab}
+        />
       </div>
 
       {tab === 'trimestral' && (
-        <div className="flex flex-wrap gap-1 border-b border-line px-4 py-2">
-          {TRIMESTRES.map((t) => (
-            <button
-              key={t.q}
-              type="button"
-              onClick={() => setTrimestre(t.q)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                trimestre === t.q ? 'bg-ink text-white' : 'bg-surface text-muted hover:text-ink'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="border-b border-line px-4 py-2">
+          <Segmentado
+            etiqueta="Trimestre"
+            opciones={OPCIONES_TRIMESTRES}
+            valor={String(trimestre)}
+            onCambio={(q) => setTrimestre(Number(q))}
+          />
         </div>
       )}
 
