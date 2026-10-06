@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { CobroResumenDto, CuentaCorrienteDto, PersonaDto } from '@vacker/types';
+import type { CobroResumenDto, CuentaCorrienteDto, LiquidacionResumenDto, PersonaDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { anularCobro, generarRecibo } from '../../lib/alquileres-api';
+import { anularCobro, anularLiquidacion, generarLiquidacionPdf, generarRecibo } from '../../lib/alquileres-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
@@ -30,14 +30,26 @@ function Saldo({ saldo, moneda }: { saldo: number; moneda: 'ARS' | 'USD' }) {
  * cuenta: lo pendiente suma el saldo (regla 24). Los cobros traen su recibo y
  * se pueden anular (regla 19); lo anulado queda a la vista, tachado.
  */
-export function CuentaCorriente({ cuenta, persona, cobros }: { cuenta: CuentaCorrienteDto; persona: PersonaDto | null; cobros: CobroResumenDto[] }) {
+export function CuentaCorriente({
+  cuenta,
+  persona,
+  cobros,
+  liquidaciones = [],
+}: {
+  cuenta: CuentaCorrienteDto;
+  persona: PersonaDto | null;
+  cobros: CobroResumenDto[];
+  liquidaciones?: LiquidacionResumenDto[];
+}) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
-  const [anulando, setAnulando] = useState<CobroResumenDto | null>(null);
+  const [anulando, setAnulando] = useState<{ titulo: string; detalle: string; anular: (motivo: string) => Promise<unknown> } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const descargar = (c: { id: string; numero: number }) =>
     abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), c.id), { titulo: `Recibo ${recibo(c.numero)}`, onError: setError });
+  const descargarLiquidacion = (l: { id: string; numero: number }) =>
+    abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), l.id), { titulo: `Liquidación ${recibo(l.numero)}`, onError: setError });
 
   return (
     <div className="flex flex-col gap-4">
@@ -62,6 +74,11 @@ export function CuentaCorriente({ cuenta, persona, cobros }: { cuenta: CuentaCor
               Editar datos
             </Button>
           )}
+          <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
+            <Button variant="secondary" size="sm">
+              Liquidar
+            </Button>
+          </Link>
           <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
             <Button variant="primary" size="sm">
               Registrar cobro
@@ -176,7 +193,53 @@ export function CuentaCorriente({ cuenta, persona, cobros }: { cuenta: CuentaCor
                     Recibo
                   </button>
                   {!c.anulado && (
-                    <button type="button" onClick={() => setAnulando(c)} className="text-xs font-semibold text-muted hover:text-brand-red">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAnulando({
+                          titulo: `Anular el recibo ${recibo(c.numero)}`,
+                          detalle:
+                            'Lo que este cobro canceló vuelve a quedar pendiente, y el punitorio que se cobró con él se anula. El recibo no se borra: queda tachado, con el motivo.',
+                          anular: async (motivo) => anularCobro(await getAccessToken(), c.id, motivo),
+                        })
+                      }
+                      className="text-xs font-semibold text-muted hover:text-brand-red"
+                    >
+                      Anular
+                    </button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {liquidaciones.length > 0 && (
+        <section className="rounded-brand border border-line bg-white">
+          <h3 className="border-b border-line px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wider text-muted">Liquidaciones</h3>
+          <ul className="divide-y divide-line text-sm">
+            {liquidaciones.map((l) => (
+              <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                <span className={l.anulado ? 'text-muted line-through' : 'text-ink'}>
+                  Liquidación {recibo(l.numero)} · {fmtFecha(l.fecha)} · <span className="tabular-nums">{fmtMoneda(l.neto, l.moneda)}</span>
+                </span>
+                <span className="flex gap-3">
+                  <button type="button" onClick={() => descargarLiquidacion(l)} className="text-xs font-semibold text-brand-red hover:underline">
+                    PDF
+                  </button>
+                  {!l.anulado && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAnulando({
+                          titulo: `Anular la liquidación ${recibo(l.numero)}`,
+                          detalle: 'Lo que incluía vuelve a quedar por liquidar. La liquidación no se borra: queda tachada, con el motivo.',
+                          anular: async (motivo) => anularLiquidacion(await getAccessToken(), l.id, motivo),
+                        })
+                      }
+                      className="text-xs font-semibold text-muted hover:text-brand-red"
+                    >
                       Anular
                     </button>
                   )}
@@ -198,8 +261,8 @@ export function CuentaCorriente({ cuenta, persona, cobros }: { cuenta: CuentaCor
         />
       )}
       {anulando && (
-        <AnularCobroModal
-          cobro={anulando}
+        <AnularModal
+          {...anulando}
           onClose={() => setAnulando(null)}
           onDone={() => {
             setAnulando(null);
@@ -211,8 +274,20 @@ export function CuentaCorriente({ cuenta, persona, cobros }: { cuenta: CuentaCor
   );
 }
 
-/** Regla 19: anular un cobro revierte lo que canceló; queda tachado, con el motivo. */
-function AnularCobroModal({ cobro, onClose, onDone }: { cobro: CobroResumenDto; onClose: () => void; onDone: () => void }) {
+/** Regla 19: anular revierte el efecto y deja el documento tachado, con el motivo. */
+function AnularModal({
+  titulo,
+  detalle,
+  anular: ejecutar,
+  onClose,
+  onDone,
+}: {
+  titulo: string;
+  detalle: string;
+  anular: (motivo: string) => Promise<unknown>;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -221,7 +296,7 @@ function AnularCobroModal({ cobro, onClose, onDone }: { cobro: CobroResumenDto; 
     setError(null);
     setEnviando(true);
     try {
-      await anularCobro(await getAccessToken(), cobro.id, motivo);
+      await ejecutar(motivo);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo anular.');
@@ -230,11 +305,9 @@ function AnularCobroModal({ cobro, onClose, onDone }: { cobro: CobroResumenDto; 
   }
 
   return (
-    <Modal title={`Anular el recibo ${recibo(cobro.numero)}`} onClose={onClose}>
+    <Modal title={titulo} onClose={onClose}>
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted">
-          Lo que este cobro canceló vuelve a quedar pendiente, y el punitorio que se cobró con él se anula. El recibo no se borra: queda tachado, con el motivo.
-        </p>
+        <p className="text-sm text-muted">{detalle}</p>
         <Campo label="Motivo" requerido>
           <input className={inputClass} value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus />
         </Campo>

@@ -6,8 +6,10 @@ import {
   generarPeriodo,
   generarTramos,
   importeIndexado,
+  parteDeClave,
   partesDelMes,
   planificarCobro,
+  proponerLiquidacion,
   proponerPunitorio,
   proponerIndexacion,
   redondear2,
@@ -481,6 +483,47 @@ describe('proponerPunitorio (regla 16)', () => {
 
   it('sin tasa en el contrato, nada', () => {
     expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-15', 0).importe).toBe(0);
+  });
+});
+
+describe('proponerLiquidacion (reglas 20 a 22)', () => {
+  /* Noviembre de 2026 del contrato #5, como lo genera generarPeriodo. */
+  const parte = 'alq|c5|2026-11|2026-11-01';
+  const alquiler = { id: 'alq', tipo: 'alquiler', sentido: 'a_pagar' as const, saldo: 1_137_518, clave: `${parte}|alquiler|a_pagar|dueno`, pagoGarantizado: false };
+  const honorarios = { id: 'hon', tipo: 'honorarios', sentido: 'a_cobrar' as const, saldo: 110_111.74, clave: `${parte}|honorarios|a_cobrar|dueno`, pagoGarantizado: false };
+  const reparacion = { id: 'rep', tipo: 'reparacion', sentido: 'a_cobrar' as const, saldo: 140_699, clave: null, pagoGarantizado: false };
+
+  it('la parte de una clave es contrato, período y desde', () => {
+    expect(parteDeClave(alquiler.clave)).toBe(parte);
+    expect(parteDeClave(null)).toBeNull();
+  });
+
+  // Regla 20: neto = alquiler cobrado − honorarios − gastos suyos.
+  it('inquilino al día: alquiler menos honorarios menos la reparación', () => {
+    const p = proponerLiquidacion([alquiler, honorarios, reparacion], new Set([`${parte}#alquiler`]));
+    expect(p.aPagar.map((x) => x.id)).toEqual(['alq']);
+    expect(p.aDescontar.map((x) => x.id)).toEqual(['hon', 'rep']);
+    expect(p.neto).toBe(886_707.26);
+  });
+
+  // Regla 22: sin pago del inquilino, el alquiler y sus honorarios esperan.
+  it('sin pago del inquilino, el alquiler y sus honorarios quedan en espera', () => {
+    const p = proponerLiquidacion([alquiler, honorarios], new Set());
+    expect(p.enEspera.map((x) => x.id)).toEqual(['alq', 'hon']);
+    expect(p.aPagar).toEqual([]);
+    expect(p.neto).toBe(0);
+  });
+
+  // Regla 21.
+  it('con pago garantizado se liquida aunque el inquilino no haya pagado', () => {
+    const p = proponerLiquidacion([{ ...alquiler, pagoGarantizado: true }, honorarios], new Set());
+    expect(p.neto).toBe(1_027_406.26);
+    expect(p.enEspera).toEqual([]);
+  });
+
+  it('un reintegro a su favor se le paga', () => {
+    const reintegro = { id: 'rei', tipo: 'reparacion', sentido: 'a_pagar' as const, saldo: 50_000, clave: null, pagoGarantizado: false };
+    expect(proponerLiquidacion([reintegro], new Set()).neto).toBe(50_000);
   });
 });
 

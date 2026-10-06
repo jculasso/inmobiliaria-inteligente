@@ -10,18 +10,18 @@ import { FUENTE_MARCA } from '../tasador/informes/fuentes';
 const INK = '#1D1D1F';
 const MUTED = '#6B6B6B';
 const LINE = '#E6E6E6';
-const DANGER = '#C1121F';
+export const DANGER = '#C1121F';
 
 export const LEYENDA_NO_FACTURA = 'Documento no válido como factura';
 
-const MEDIO: Record<CobroDto['medio'], string> = {
+export const MEDIO: Record<CobroDto['medio'], string> = {
   transferencia: 'Transferencia',
   efectivo: 'Efectivo',
   cheque: 'Cheque',
   otro: 'Otro',
 };
 
-function crearEstilos(red: string) {
+export function crearEstilos(red: string) {
   return StyleSheet.create({
     page: { paddingTop: 36, paddingHorizontal: 36, paddingBottom: 52, fontSize: 9, color: INK, fontFamily: FUENTE_MARCA },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -55,10 +55,10 @@ function crearEstilos(red: string) {
   });
 }
 
-const pesos = (n: number, moneda: CobroDto['moneda']) =>
+export const pesos = (n: number, moneda: CobroDto['moneda']) =>
   `${moneda === 'USD' ? 'U$S' : '$'} ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const fecha = (iso: string) => iso.split('-').reverse().join('/');
+export const fecha = (iso: string) => iso.split('-').reverse().join('/');
 
 export function ReciboDocument({
   cobro,

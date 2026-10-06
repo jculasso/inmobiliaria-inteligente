@@ -24,6 +24,7 @@ function concepto(over: Record<string, unknown> = {}) {
     createdAt: new Date('2026-10-20T10:00:00Z'),
     periodo: '2026-11',
     origenId: null,
+    liquidacionId: null,
     descripcion: 'Alquiler noviembre 2026',
     contrato: { id: 'c5', codigo: '5', punitorioDiarioPct: dec(0.1) },
     anuladoEn: null,
@@ -69,6 +70,7 @@ function makeTx(over: { conceptos?: unknown[]; cobros?: unknown[]; cobroAAnular?
       findMany: vi.fn().mockResolvedValue(over.conceptos ?? []),
       createMany: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findFirst: vi.fn().mockResolvedValue(null),
     },
     alqCobro: {
       findMany: vi.fn().mockResolvedValue(over.cobros ?? []),
@@ -79,6 +81,7 @@ function makeTx(over: { conceptos?: unknown[]; cobros?: unknown[]; cobroAAnular?
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     alqImputacion: { createMany: vi.fn() },
+    alqLiquidacion: { findMany: vi.fn().mockResolvedValue([]) },
   };
 }
 
@@ -219,15 +222,31 @@ describe('CobrosService · punitorio (regla 16)', () => {
 
 describe('CobrosService.anular (regla 19)', () => {
   it('anula el cobro y los punitorios que nacieron con él', async () => {
-    const tx = makeTx({ cobroAAnular: { anuladoEn: null, numero: 8, imputaciones: [], conceptos: [] } });
+    const tx = makeTx({ cobroAAnular: { anuladoEn: null, numero: 8, imputaciones: [], conceptos: [], registradas: [] } });
     await new CobrosService(makeDb(tx)).anular(CTX, 'nuevo', 'Transferencia rechazada');
     expect(tx.alqCobro.updateMany.mock.calls[0]![0]).toMatchObject({ where: { id: 'nuevo', anuladoEn: null }, data: { anuladoPorId: 'u1', motivoAnulacion: 'Transferencia rechazada' } });
     expect(tx.alqConcepto.updateMany.mock.calls[0]![0]).toMatchObject({ where: { cobroId: 'nuevo', anuladoEn: null }, data: { motivoAnulacion: 'Anulación del recibo 8' } });
   });
 
   it('si su saldo a favor ya se usó en otro cobro, primero hay que anular ese', async () => {
-    const tx = makeTx({ cobroAAnular: { anuladoEn: null, numero: 7, imputaciones: [{ registradaEnCobro: { numero: 9 } }], conceptos: [] } });
+    const tx = makeTx({ cobroAAnular: { anuladoEn: null, numero: 7, imputaciones: [{ registradaEnCobro: { numero: 9 } }], conceptos: [], registradas: [] } });
     await expect(new CobrosService(makeDb(tx)).anular(CTX, 'viejo', 'x x x')).rejects.toThrow('El saldo a favor de este cobro se usó en el recibo 9: anulá ese primero.');
+    expect(tx.alqCobro.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('CobrosService.anular · liquidaciones (regla 22)', () => {
+  it('si el alquiler que canceló ya se le liquidó al dueño, primero hay que anular la liquidación', async () => {
+    const registradas = [{ concepto: { claveGeneracion: 'alq|c5|2026-11|2026-11-01|alquiler|a_cobrar|inq', tipo: 'alquiler' } }];
+    const tx = makeTx({ cobroAAnular: { anuladoEn: null, numero: 8, imputaciones: [], conceptos: [], registradas } });
+    tx.alqConcepto.findFirst.mockResolvedValue({ liquidacion: { numero: 3 } });
+    await expect(new CobrosService(makeDb(tx)).anular(CTX, 'nuevo', 'x x x')).rejects.toThrow('ya se le liquidó al propietario (liquidación 3)');
+    expect(tx.alqConcepto.findFirst.mock.calls[0]![0].where).toMatchObject({
+      sentido: 'a_pagar',
+      liquidacion: { anuladoEn: null },
+      contrato: { pagoGarantizado: false },
+      OR: [{ claveGeneracion: { startsWith: 'alq|c5|2026-11|2026-11-01|' } }],
+    });
     expect(tx.alqCobro.updateMany).not.toHaveBeenCalled();
   });
 });
@@ -268,6 +287,18 @@ describe('CobrosService.cuenta (reglas 18 y 24)', () => {
     const ars = (await new CobrosService(makeDb(escenario())).cuenta(PERSONA)).monedas.find((m) => m.moneda === 'ARS')!;
     expect(ars.movimientos.filter((m) => m.anulado)).toHaveLength(2);
     expect(ars.movimientos.at(-1)!.saldo).toBe(-85_653.06);
+  });
+
+  // Regla 20: lo liquidado ya no está pendiente, y el pago al dueño es un movimiento.
+  it('un propietario liquidado: el concepto queda saldado y la liquidación salda la cuenta', async () => {
+    const alquiler = concepto({ sentido: 'a_pagar', liquidacionId: 'liq' });
+    const honorarios = concepto({ tipo: 'honorarios', importe: dec(110_111.74), liquidacionId: 'liq' });
+    const tx = makeTx({ conceptos: [alquiler, honorarios] });
+    tx.alqLiquidacion.findMany.mockResolvedValue([{ id: uuid(), numero: 3, moneda: 'ARS', fecha: d('2026-11-12'), neto: dec(1_027_406.26), anuladoEn: null, createdAt: new Date('2026-11-12T10:00:00Z') }]);
+    const ars = (await new CobrosService(makeDb(tx)).cuenta(PERSONA)).monedas[0]!;
+    expect(ars.pendientes).toEqual([]);
+    expect(ars.saldo).toBe(0);
+    expect(ars.movimientos.at(-1)).toMatchObject({ tipo: 'liquidacion', descripcion: 'Liquidación 3', debe: 1_027_406.26 });
   });
 
   it('cada moneda es una cuenta aparte', async () => {

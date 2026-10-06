@@ -8,6 +8,8 @@ import { ConceptosService } from './conceptos.service';
 import { ContratosController } from './contratos.controller';
 import { ContratosService } from './contratos.service';
 import { IndexacionesController } from './indexaciones.controller';
+import { LiquidacionesController } from './liquidaciones.controller';
+import { LiquidacionesService } from './liquidaciones.service';
 import { IndexacionesService } from './indexaciones.service';
 import { FuentesIndices, IndicesService } from './indices.service';
 import { PersonasController } from './personas.controller';
@@ -18,7 +20,7 @@ import { ReciboService } from './recibo.service';
 
 /** Módulo Alquileres: administración de contratos de alquiler. */
 @Module({
-  controllers: [AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController],
+  controllers: [AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController, LiquidacionesController],
   providers: [
     AlquileresService,
     PersonasService,
@@ -26,6 +28,7 @@ import { ReciboService } from './recibo.service';
     ContratosService,
     ConceptosService,
     CobrosService,
+    LiquidacionesService,
     ReciboService,
     IndexacionesService,
     IndicesService,
