@@ -11,7 +11,7 @@ import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { documentoLegible } from './personas-lista';
 import { PersonaFormModal } from './persona-form-modal';
-import { Bloque, CLASE_TH, Vacio } from './piezas';
+import { Bloque, CLASE_FOCO, CLASE_TH, EncabezadoPagina, Vacio, VacioBloque } from './piezas';
 import { AnularModal } from './anular-modal';
 import { Historial } from './historial';
 import { EnviarMailModal } from './enviar-mail-modal';
@@ -20,12 +20,15 @@ import { Contactos } from './contactos';
 import { DatosPersonales, InformacionBasica, ResumenPersona, Solapas, type Solapa } from './ficha-persona';
 
 const recibo = (n: number) => String(n).padStart(6, '0');
+// Los botones de cada recibo y liquidación, con el mismo aspecto que los de las tarjetas (`AccionFila`).
+const BOTON = `rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`;
+const BOTON_ANULAR = `rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`;
 
 /** «Debe $ X», «A favor $ X» o «Al día»: el saldo dicho como lo diría una persona. */
 function Saldo({ saldo, moneda }: { saldo: number; moneda: 'ARS' | 'USD' }) {
   if (Math.abs(saldo) < 0.005) return <span className="text-success">Al día</span>;
   return saldo > 0 ? (
-    <span className="text-brand-red">Debe {fmtMoneda(saldo, moneda)}</span>
+    <span className="text-danger">Debe {fmtMoneda(saldo, moneda)}</span>
   ) : (
     <span className="text-success">A favor {fmtMoneda(-saldo, moneda)}</span>
   );
@@ -88,7 +91,7 @@ export function CuentaCorriente({
 
             <Bloque icono="📋" titulo="Pendiente · estado de cuenta">
               {m.pendientes.length === 0 && m.aFavor.length === 0 ? (
-                <p className="px-4 py-4 text-sm text-muted">Nada pendiente.</p>
+                <VacioBloque>Nada pendiente.</VacioBloque>
               ) : (
                 <ul className="divide-y divide-line text-sm">
                   {m.pendientes.map((p) => (
@@ -172,16 +175,16 @@ export function CuentaCorriente({
                   {c.registradoPor && <span className="block text-xs text-muted">Registró {c.registradoPor}</span>}
                 </span>
                 <span className="flex gap-1">
-                  <button type="button" onClick={() => descargar(c)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
-                    📄 Recibo
+                  <button type="button" onClick={() => descargar(c)} aria-label={`PDF del recibo ${recibo(c.numero)}`} className={BOTON}>
+                    📄 PDF
                   </button>
                   {!c.anulado && (
                     <button
                       type="button"
-                      onClick={() => setAEnviar({ titulo: `Mandar el recibo ${recibo(c.numero)}`, enviar: async (para) => enviarReciboPorMail(await getAccessToken(), c.id, para) })}
-                      className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                      onClick={() => setAEnviar({ titulo: `Enviar el recibo ${recibo(c.numero)} por mail`, enviar: async (para) => enviarReciboPorMail(await getAccessToken(), c.id, para) })}
+                      className={BOTON}
                     >
-                      ✉️ Mail
+                      ✉️ Enviar por mail
                     </button>
                   )}
                   {!c.anulado && (
@@ -195,7 +198,7 @@ export function CuentaCorriente({
                           anular: async (motivo) => anularCobro(await getAccessToken(), c.id, motivo),
                         })
                       }
-                      className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5"
+                      className={BOTON_ANULAR}
                     >
                       🚫 Anular
                     </button>
@@ -224,16 +227,16 @@ export function CuentaCorriente({
                   )}
                 </span>
                 <span className="flex gap-1">
-                  <button type="button" onClick={() => descargarLiquidacion(l)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
+                  <button type="button" onClick={() => descargarLiquidacion(l)} aria-label={`PDF de la liquidación ${recibo(l.numero)}`} className={BOTON}>
                     📄 PDF
                   </button>
                   {!l.anulado && (
                     <button
                       type="button"
-                      onClick={() => setAEnviar({ titulo: `Mandar la liquidación ${recibo(l.numero)}`, enviar: async (para) => enviarLiquidacionPorMail(await getAccessToken(), l.id, para) })}
-                      className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                      onClick={() => setAEnviar({ titulo: `Enviar la liquidación ${recibo(l.numero)} por mail`, enviar: async (para) => enviarLiquidacionPorMail(await getAccessToken(), l.id, para) })}
+                      className={BOTON}
                     >
-                      ✉️ Mail
+                      ✉️ Enviar por mail
                     </button>
                   )}
                   {!l.anulado && (
@@ -246,7 +249,7 @@ export function CuentaCorriente({
                           anular: async (motivo) => anularLiquidacion(await getAccessToken(), l.id, motivo),
                         })
                       }
-                      className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5"
+                      className={BOTON_ANULAR}
                     >
                       🚫 Anular
                     </button>
@@ -263,42 +266,36 @@ export function CuentaCorriente({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted">
-            <Link href="/alquileres/personas" className="hover:underline">
-              Personas
-            </Link>{' '}
-            /
-          </p>
-          <h2 className="mt-0.5 text-lg font-bold text-ink">{cuenta.persona.nombre}</h2>
-          {persona && (
+      <EncabezadoPagina
+        titulo={cuenta.persona.nombre}
+        volver={{ href: '/alquileres/personas', texto: 'Personas' }}
+        detalle={
+          persona && (
             <p className="text-sm text-muted">
               {[documentoLegible(persona.documento), persona.telefono, persona.email].filter((x) => x && x !== '—').join(' · ') || 'Sin datos de contacto'}
             </p>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {persona && (
-            <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
-              ✏️ Editar datos
-            </Button>
-          )}
-          <Button asChild variant="secondary" size="sm">
-            <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
-              🧾 Liquidar
-            </Link>
+          )
+        }
+      >
+        {persona && (
+          <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
+            ✏️ Editar datos
           </Button>
-          <Button asChild variant="primary" size="sm">
-            <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
-              ＋ Registrar cobro
-            </Link>
-          </Button>
-        </div>
-      </div>
+        )}
+        <Button asChild variant="secondary" size="sm">
+          <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
+            🧾 Liquidar
+          </Link>
+        </Button>
+        <Button asChild variant="primary" size="sm">
+          <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
+            ＋ Nuevo cobro
+          </Link>
+        </Button>
+      </EncabezadoPagina>
 
       {error && (
-        <p role="alert" className="text-sm font-semibold text-brand-red">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}

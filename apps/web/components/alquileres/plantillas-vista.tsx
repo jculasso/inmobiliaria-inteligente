@@ -2,14 +2,17 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { NOMBRE_TIPO_CONTRATO, VARIABLES_PLANTILLA, type ContratoResumenDto, type PlantillaDto, type TipoContrato } from '@vacker/types';
+import { VARIABLES_PLANTILLA, type ContratoResumenDto, type PlantillaDto, type TipoContrato } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { borrarPlantilla, guardarPlantilla, vistaPreviaPlantilla } from '../../lib/alquileres-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { Campo, inputClass } from '../form-ui';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
-import { EncabezadoPagina, Panel } from './piezas';
+import { CLASE_FOCO, EncabezadoPagina, Panel } from './piezas';
+
+/** Para qué contratos sirve una plantilla, dicho igual en la lista, en el formulario y al borrarla. */
+const PARA: Record<TipoContrato | '', string> = { '': 'Particulares y comerciales', vivienda: 'Particulares', comercial: 'Comerciales' };
 
 /**
  * Las plantillas de contrato de la inmobiliaria (entrega 15). Texto con
@@ -83,13 +86,13 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
                 <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                   <span className="font-semibold text-ink">
                     {p.nombre}
-                    <span className="font-normal text-muted"> · {p.tipoContrato ? NOMBRE_TIPO_CONTRATO[p.tipoContrato] : 'Particular y comercial'}</span>
+                    <span className="font-normal text-muted"> · {PARA[p.tipoContrato ?? '']}</span>
                   </span>
                   <span className="flex gap-1">
-                    <button type="button" onClick={() => editar(p)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
+                    <button type="button" onClick={() => editar(p)} className={`rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`}>
                       ✏️ Editar
                     </button>
-                    <button type="button" onClick={() => setABorrar(p)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
+                    <button type="button" onClick={() => setABorrar(p)} className={`rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`}>
                       🗑️ Borrar
                     </button>
                   </span>
@@ -110,9 +113,11 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
               </Campo>
               <Campo label="Para contratos">
                 <select className={inputClass} value={tipo} onChange={(e) => setTipo(e.target.value as TipoContrato | '')}>
-                  <option value="">Particulares y comerciales</option>
-                  <option value="vivienda">Particulares</option>
-                  <option value="comercial">Comerciales</option>
+                  {(['', 'vivienda', 'comercial'] as const).map((v) => (
+                    <option key={v} value={v}>
+                      {PARA[v]}
+                    </option>
+                  ))}
                 </select>
               </Campo>
             </div>
@@ -120,7 +125,7 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
               <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-muted">Variables · tocá una para insertarla</p>
               <div className="flex flex-wrap gap-1.5">
                 {VARIABLES_PLANTILLA.map(([v, desc]) => (
-                  <button key={v} type="button" title={desc} onClick={() => insertar(v)} className="rounded-full border border-line bg-white px-2 py-0.5 text-xs text-ink hover:border-brand-red">
+                  <button key={v} type="button" title={desc} onClick={() => insertar(v)} className={`rounded-full border border-line bg-white px-2 py-0.5 text-xs text-ink hover:border-brand-red ${CLASE_FOCO}`}>
                     {v}
                   </button>
                 ))}
@@ -161,7 +166,7 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
               </div>
             </div>
             {error && (
-              <p role="alert" className="text-sm font-medium text-brand-red">
+              <p role="alert" className="text-sm font-medium text-danger">
                 {error}
               </p>
             )}
@@ -173,7 +178,7 @@ export function PlantillasVista({ plantillas, modelo, contratos }: { plantillas:
         <ConfirmarBorradoModal
           titulo={`Borrar la plantilla «${aBorrar.nombre}»`}
           descripcion="Los contratos ya generados con ella no cambian: su PDF queda como está."
-          detalle={<DatoBorrado etiqueta="Para">{aBorrar.tipoContrato ? NOMBRE_TIPO_CONTRATO[aBorrar.tipoContrato] : 'Particular y comercial'}</DatoBorrado>}
+          detalle={<DatoBorrado etiqueta="Para">{PARA[aBorrar.tipoContrato ?? '']}</DatoBorrado>}
           onConfirm={async () => {
             await borrarPlantilla(await getAccessToken(), aBorrar.id);
             router.refresh();

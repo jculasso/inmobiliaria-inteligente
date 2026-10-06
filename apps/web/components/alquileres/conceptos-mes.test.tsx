@@ -88,7 +88,19 @@ describe('ConceptosMes', () => {
 
   it('lo que tiene cobros aplicados no ofrece «Anular»', () => {
     render(<ConceptosMes periodo="2026-11" conceptos={[k({ aplicado: true })]} contratos={[contrato]} />);
-    expect(within(screen.getByRole('table')).queryByRole('button', { name: 'Anular' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('table')).queryByRole('button', { name: /Anular/ })).not.toBeInTheDocument();
+  });
+
+  it('el botón de anular dice qué concepto anula', () => {
+    render(<ConceptosMes periodo="2026-11" conceptos={[k({})]} contratos={[contrato]} />);
+    expect(within(screen.getByRole('table')).getByRole('button', { name: 'Anular Alquiler noviembre 2026 de Inquilino' })).toBeInTheDocument();
+  });
+
+  it('en el teléfono también se ve lo que falta de un cobro en parte', () => {
+    render(<ConceptosMes periodo="2026-11" conceptos={[k({ estado: 'parcial', saldo: 37_518, adelantadoPorInmobiliaria: true })]} contratos={[contrato]} />);
+    const movil = screen.getAllByRole('list').find((l) => l.className.includes('sm:hidden'))!;
+    expect(within(movil).getByText('falta $ 37.518,00')).toBeInTheDocument();
+    expect(within(movil).getByText('Adelantado')).toBeInTheDocument();
   });
 
   // Reglas 10 y 11: lo que informa «Generar».

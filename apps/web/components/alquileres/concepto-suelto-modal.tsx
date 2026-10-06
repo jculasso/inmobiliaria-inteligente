@@ -125,7 +125,7 @@ export function ConceptoSueltoModal({
           <input className={inputClass} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej.: arreglo del calefón" />
         </Campo>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

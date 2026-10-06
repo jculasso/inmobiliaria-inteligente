@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CandidatoDto, CobroDto, MedioCobro, MonedaAlquiler, PreparacionCobroDto } from '@vacker/types';
 import { planificarCobro } from '@vacker/domain';
@@ -11,8 +11,9 @@ import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
-import { Bloque, EncabezadoPagina } from './piezas';
+import { Bloque, Confirmacion, EncabezadoPagina, VacioBloque } from './piezas';
 import { SelectorPersona } from './selector-persona';
+import { MEDIOS_COBRO, NOMBRE_MEDIO } from './medios';
 import { InputImporte } from '../input-importe';
 import { escribirImporte, leerImporte } from '../../lib/importe';
 
@@ -58,6 +59,8 @@ export function CobroForm({
   const [error, setError] = useState<string | null>(null);
   const [mandando, setMandando] = useState(false);
   const [hecho, setHecho] = useState<CobroDto | null>(null);
+  const cuentaAnterior = useRef<string | null>(null);
+  const deudasAnteriores = useRef<Set<string>>(new Set());
 
   // Cada vez que cambia a quién, en qué moneda o qué día, se vuelve a pedir lo
   // que debe: el punitorio depende de la fecha.
@@ -70,9 +73,22 @@ export function CobroForm({
       try {
         const p = await prepararCobro(await getAccessToken(), personaId, moneda, fecha);
         if (!vigente) return;
+        // Si solo cambió la fecha, se respeta lo que la persona ya eligió:
+        // antes se volvía a tildar todo y se perdían los motivos escritos.
+        const mismaCuenta = cuentaAnterior.current === `${personaId}|${moneda}`;
+        cuentaAnterior.current = `${personaId}|${moneda}`;
+        const conocidos = deudasAnteriores.current;
+        deudasAnteriores.current = new Set(p.deudas.map((d) => d.conceptoId));
         setPrep(p);
-        setElegidos(new Set(p.deudas.map((d) => d.conceptoId)));
-        setPunitorios(Object.fromEntries(p.deudas.filter((d) => d.punitorio).map((d) => [d.conceptoId, { importe: escribirImporte(d.punitorio!.importe), motivo: '' }])));
+        setElegidos((previos) => new Set(p.deudas.map((d) => d.conceptoId).filter((id) => !mismaCuenta || !conocidos.has(id) || previos.has(id))));
+        setPunitorios((previos) =>
+          Object.fromEntries(
+            p.deudas
+              .filter((d) => d.punitorio)
+              // El importe se recalcula con la fecha nueva; el motivo escrito queda.
+              .map((d) => [d.conceptoId, { importe: escribirImporte(d.punitorio!.importe), motivo: mismaCuenta ? (previos[d.conceptoId]?.motivo ?? '') : '' }]),
+          ),
+        );
       } catch (err) {
         if (vigente) setError(err instanceof Error ? err.message : 'No se pudo traer la cuenta de la persona.');
       } finally {
@@ -136,38 +152,40 @@ export function CobroForm({
 
   if (hecho) {
     return (
-      <div className="flex flex-col gap-3 rounded-brand border border-success/30 bg-success/5 p-5 shadow-sm">
-        <p role="status" className="text-lg font-extrabold text-ink">
-          Recibo {recibo(hecho.numero)} · {fmtMoneda(hecho.importe, hecho.moneda)} de {hecho.persona.nombre}
-        </p>
-        {hecho.aFavor > 0 && <p className="text-sm text-muted">Quedan {fmtMoneda(hecho.aFavor, hecho.moneda)} a su favor para el próximo pago.</p>}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="primary"
-            onClick={() => abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), hecho.id), { titulo: `Recibo ${recibo(hecho.numero)}`, onError: setError })}
-          >
-            📄 Descargar el recibo
-          </Button>
-          <Button variant="secondary" onClick={() => setMandando(true)}>
-            ✉️ Mandar por mail
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={`/alquileres/personas/${hecho.persona.id}`}>Ver la cuenta</Link>
-          </Button>
-          <Button variant="secondary" onClick={() => window.location.reload()}>
-            Otro cobro
-          </Button>
-        </div>
-        {error && <p role="alert" className="text-sm font-semibold text-brand-red">{error}</p>}
+      <Confirmacion
+        titulo={`Recibo ${recibo(hecho.numero)} · ${fmtMoneda(hecho.importe, hecho.moneda)} de ${hecho.persona.nombre}`}
+        detalle={
+          <>
+            {hecho.aFavor > 0 && <p className="text-sm text-muted">Quedan {fmtMoneda(hecho.aFavor, hecho.moneda)} a su favor para el próximo pago.</p>}
+            {error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
+          </>
+        }
+        volver={{ href: '/alquileres/cobros', texto: 'Volver a cobros' }}
+      >
+        <Button asChild variant="primary">
+          <Link href={`/alquileres/personas/${hecho.persona.id}`}>Ver la cuenta</Link>
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), hecho.id), { titulo: `Recibo ${recibo(hecho.numero)}`, onError: setError })}
+        >
+          📄 Abrir el recibo
+        </Button>
+        <Button variant="secondary" onClick={() => setMandando(true)}>
+          ✉️ Enviar por mail
+        </Button>
+        <Button variant="secondary" onClick={() => window.location.reload()}>
+          ＋ Otro cobro
+        </Button>
         {mandando && (
           <EnviarMailModal
-            titulo={`Mandar el recibo ${recibo(hecho.numero)}`}
+            titulo={`Enviar el recibo ${recibo(hecho.numero)} por mail`}
             personaId={hecho.persona.id}
             enviar={async (para) => enviarReciboPorMail(await getAccessToken(), hecho.id, para)}
             onClose={() => setMandando(false)}
           />
         )}
-      </div>
+      </Confirmacion>
     );
   }
 
@@ -203,7 +221,7 @@ export function CobroForm({
         <>
           <Bloque icono="📋" titulo="Lo que debe" detalle={String(prep.deudas.length)}>
             {prep.deudas.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-muted">No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}. Lo que pague queda a su favor.</p>
+              <VacioBloque>No tiene nada pendiente en {moneda === 'ARS' ? 'pesos' : 'dólares'}. Lo que pague queda a su favor.</VacioBloque>
             ) : (
               <ul className="divide-y divide-line">
                 {prep.deudas.map((d) => {
@@ -231,7 +249,8 @@ export function CobroForm({
                             {d.descripcion}
                           </span>
                           <span className="block text-xs text-muted">
-                            Venció el {fmtFecha(d.vencimiento)}
+                            {/* Se puede cobrar por adelantado: lo que todavía no venció no dice «venció». */}
+                            {d.vencimiento < hoy ? 'Venció' : 'Vence'} el {fmtFecha(d.vencimiento)}
                             {d.saldo < d.importe ? ` · ya pagó ${fmtMoneda(d.importe - d.saldo, moneda)}` : ''}
                           </span>
                         </span>
@@ -303,10 +322,11 @@ export function CobroForm({
             </Campo>
             <Campo label="Medio">
               <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
-                <option value="transferencia">Transferencia</option>
-                <option value="efectivo">Efectivo</option>
-                <option value="cheque">Cheque</option>
-                <option value="otro">Otro</option>
+                {MEDIOS_COBRO.map((v) => (
+                  <option key={v} value={v}>
+                    {NOMBRE_MEDIO[v]}
+                  </option>
+                ))}
               </select>
             </Campo>
             <Campo label="Observaciones">
@@ -328,7 +348,7 @@ export function CobroForm({
       )}
 
       {error && (
-        <p role="alert" className="text-sm font-semibold text-brand-red">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}

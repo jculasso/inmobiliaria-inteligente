@@ -9,7 +9,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { cargarLoteBoletas } from '../../lib/alquileres-api';
 import { fmtMoneda } from '../../lib/format';
 import { inputClass } from '../form-ui';
-import { Bloque } from './piezas';
+import { Bloque, VacioBloque } from './piezas';
 import { escribirImporte, leerImporte } from '../../lib/importe';
 import { InputImporte } from '../input-importe';
 
@@ -89,7 +89,7 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
       }
     >
       {planilla.filas.length === 0 ? (
-        <p className="px-4 py-4 text-sm text-muted">Todavía ninguna propiedad tiene impuestos o servicios asignados: hacelo abajo, en «Cuentas por propiedad».</p>
+        <VacioBloque>Todavía ninguna propiedad tiene impuestos o servicios asignados: hacelo abajo, en «Cuentas por propiedad».</VacioBloque>
       ) : (
         <>
           <ul className="divide-y divide-line">
@@ -106,7 +106,7 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
               </p>
             )}
             {error && (
-              <p role="alert" className="mr-auto text-sm font-medium text-brand-red">
+              <p role="alert" className="mr-auto text-sm font-medium text-danger">
                 {error}
               </p>
             )}

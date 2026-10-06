@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escribirImporte, leerImporte, leerNumero } from './importe';
+import { escribirImporte, fmtVariacion, leerImporte, leerNumero, variacionEntre } from './importe';
 import { fmtMoneda } from './format';
 
 describe('leerImporte', () => {
@@ -43,5 +43,15 @@ describe('fmtMoneda', () => {
     expect(fmtMoneda(1_500, 'USD')).toBe('U$S 1.500,00');
     expect(fmtMoneda(-50_000)).toBe('-$ 50.000,00');
     expect(fmtMoneda(-0.001)).toBe('$ 0,00');
+  });
+});
+
+describe('fmtVariacion', () => {
+  it('con signo y un decimal fijo, para que la columna quede alineada', () => {
+    expect(fmtVariacion(1.94)).toBe('+1,9%');
+    expect(fmtVariacion(10)).toBe('+10,0%');
+    expect(fmtVariacion(-0.44)).toBe('-0,4%');
+    expect(variacionEntre(100, 132.4)).toBe('+32,4%');
+    expect(fmtVariacion(null)).toBe('—');
   });
 });

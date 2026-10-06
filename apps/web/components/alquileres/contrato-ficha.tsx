@@ -11,23 +11,14 @@ import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { AnularModal } from './anular-modal';
 import { DatosContratoModal } from './datos-contrato-modal';
 import { ExtenderModal } from './extender-modal';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtFechaDe, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { EstadoContratoBadge } from './estado-contrato';
-import { Panel, Registrado } from './piezas';
-import { fmtPct } from '../../lib/importe';
+import { NOMBRE_INDICE, NOMBRE_PAPEL } from './nombres';
+import { Dato, EncabezadoPagina, Panel, Registrado } from './piezas';
+import { fmtPct, variacionEntre } from '../../lib/importe';
 
-const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
 const fmtIndice = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 4 });
-
-function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">{etiqueta}</dt>
-      <dd className="mt-0.5 text-sm text-ink">{children}</dd>
-    </div>
-  );
-}
 
 /** La ficha de un contrato, con las acciones que corresponden a su estado (reglas 2 y 3). */
 export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
@@ -42,6 +33,8 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const nombresDe = (papel: string) => contrato.partes.filter((p) => p.papel === papel).map((p) => p.nombre).join(', ') || '—';
   const [enviando, setEnviando] = useState(false);
   const m = (n: number | null) => (n == null ? '—' : fmtMoneda(n, contrato.moneda));
+  // Las columnas de los tramos en la computadora; en el teléfono, número y fechas a la izquierda e importe a la derecha.
+  const columnas = conIndice ? 'sm:grid-cols-[3rem_6rem_6rem_1fr_9rem]' : 'sm:grid-cols-[3rem_6rem_6rem_1fr]';
 
   async function cambiar(cambio: CambiarEstadoContrato) {
     setError(null);
@@ -77,67 +70,65 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted">
-            <Link href="/alquileres/contratos" className="hover:underline">
-              Contratos
-            </Link>{' '}
-            /
-          </p>
-          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-lg font-bold text-ink">
+      <EncabezadoPagina
+        volver={{ href: '/alquileres/contratos', texto: 'Contratos' }}
+        titulo={
+          <>
             Contrato {contrato.codigo} <EstadoContratoBadge estado={contrato.estado} />
-          </h2>
-          <p className="text-sm text-muted">
-            {contrato.propiedad.direccion}
-            {contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}
-            {contrato.propiedad.ciudad ? ` · ${contrato.propiedad.ciudad}` : ''}
-          </p>
-          <Registrado por={contrato.registrado.por} en={contrato.registrado.en || null} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {contrato.estado === 'borrador' && (
-            <>
-              <Button asChild variant="secondary" size="sm">
-                <Link href={`/alquileres/contratos/${contrato.id}/editar`}>
-                  ✏️ Editar
-                </Link>
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setAccion('borrar')}>
-                🗑️ Borrar
-              </Button>
-              <Button variant="primary" size="sm" onClick={() => setConfirmar('vigente')}>
-                Activar contrato
-              </Button>
-            </>
-          )}
-          {contrato.estado === 'vigente' && (
-            <>
-              <Button variant="secondary" size="sm" onClick={() => setAccion('datos')}>
-                ✏️ Editar datos
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setAccion('extender')}>
-                📆 Extender
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setConfirmar('finalizado')}>
-                Finalizar
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setConfirmar('rescindido')}>
-                Rescindir
-              </Button>
-            </>
-          )}
-          {contrato.estado !== 'borrador' && contrato.estado !== 'anulado' && (
-            <Button variant="secondary" size="sm" onClick={() => setAccion('anular')}>
-              🚫 Anular
+          </>
+        }
+        detalle={
+          <>
+            <p className="text-sm text-muted">
+              {contrato.propiedad.direccion}
+              {contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}
+              {contrato.propiedad.ciudad ? ` · ${contrato.propiedad.ciudad}` : ''}
+            </p>
+            <Registrado por={contrato.registrado.por} en={contrato.registrado.en || null} />
+          </>
+        }
+      >
+        {contrato.estado === 'borrador' && (
+          <>
+            <Button asChild variant="secondary" size="sm">
+              <Link href={`/alquileres/contratos/${contrato.id}/editar`}>
+                ✏️ Editar
+              </Link>
             </Button>
-          )}
-        </div>
-      </div>
+            <Button variant="secondary" size="sm" onClick={() => setAccion('borrar')}>
+              🗑️ Borrar
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => setConfirmar('vigente')}>
+              Activar contrato
+            </Button>
+          </>
+        )}
+        {contrato.estado === 'vigente' && (
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setAccion('datos')}>
+              ✏️ Editar datos
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setAccion('extender')}>
+              📆 Extender
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setConfirmar('finalizado')}>
+              Finalizar
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setConfirmar('rescindido')}>
+              Rescindir
+            </Button>
+          </>
+        )}
+        {contrato.estado !== 'borrador' && contrato.estado !== 'anulado' && (
+          <Button variant="secondary" size="sm" onClick={() => setAccion('anular')}>
+            🚫 Anular
+          </Button>
+        )}
+      </EncabezadoPagina>
 
       {contrato.anulado && (
-        <p role="status" className="rounded-brand border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-ink">
-          <span className="font-bold text-brand-red">Contrato anulado</span> el {fmtFecha(contrato.anulado.en.slice(0, 10))}
+        <p role="status" className="rounded-brand border border-line bg-ink/5 px-4 py-3 text-sm text-ink">
+          <span className="font-bold">Contrato anulado</span> el {fmtFechaDe(contrato.anulado.en)}
           {contrato.anulado.por ? ` por ${contrato.anulado.por}` : ''}: {contrato.anulado.motivo}
         </p>
       )}
@@ -146,7 +137,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         <ul className="flex flex-col gap-1.5">
           {contrato.partes.map((p) => (
             <li key={`${p.papel}-${p.personaId}`} className="flex flex-wrap items-baseline gap-2 text-sm">
-              <span className="w-24 text-[11px] font-bold uppercase tracking-wide text-muted">{p.papel}</span>
+              <span className="w-24 text-[11px] font-bold uppercase tracking-wide text-muted">{NOMBRE_PAPEL[p.papel]}</span>
               <span className="font-semibold text-ink">{p.nombre}</span>
               {p.papel === 'propietario' && p.porcentaje != null && p.porcentaje !== 100 && <span className="text-muted">{fmtPct(p.porcentaje)}</span>}
             </li>
@@ -180,49 +171,51 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
       </Panel>
 
       <Panel icono="📈" titulo="Tramos">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[30rem] text-sm">
-            <thead>
-              <tr className="text-left text-[10px] font-extrabold uppercase tracking-wider text-muted">
-                <th className="py-2 pr-3">N°</th>
-                <th className="py-2 pr-3">Desde</th>
-                <th className="py-2 pr-3">Hasta</th>
-                {conIndice && <th className="py-2 pr-3">Índice usado</th>}
-                <th className="py-2 text-right">Importe mensual</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contrato.tramos.map((t) => (
-                <tr key={t.numero} className="border-t border-line">
-                  <td className="py-2 pr-3 tabular-nums text-muted">{t.numero}</td>
-                  <td className="py-2 pr-3 tabular-nums">{fmtFecha(t.desde)}</td>
-                  <td className="py-2 pr-3 tabular-nums">{fmtFecha(t.hasta)}</td>
-                  {conIndice && (
-                    <td className="py-2 pr-3 text-xs tabular-nums text-muted">
-                      {t.indiceBase != null && t.indiceRequerido != null ? (
-                        <>
-                          {fmtIndice(t.indiceBase)} → {fmtIndice(t.indiceRequerido)}{' '}
-                          <span className="font-semibold text-ink">
-                            ({t.indiceRequerido >= t.indiceBase ? '+' : ''}
-                            {((t.indiceRequerido / t.indiceBase - 1) * 100).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%)
-                          </span>
-                          {t.importePropuesto != null && t.importe != null && Math.abs(t.importePropuesto - t.importe) > 0.5 && (
-                            <span className="block">Propuesto {m(t.importePropuesto)}, se confirmó otro importe</span>
-                          )}
-                        </>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                  )}
-                  <td className="py-2 text-right font-semibold tabular-nums text-ink">
-                    {t.importe == null ? <span className="text-xs font-bold text-warning">A indexar</span> : m(t.importe)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Una sola lista: en la computadora se lee como tabla; en el teléfono,
+            cada tramo es un renglón con su importe a la derecha, sin desplazar
+            de costado (antes era una tabla de 30rem en una pantalla de 22). */}
+        <div className={`hidden gap-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted sm:grid ${columnas}`} aria-hidden>
+          <span>N.º</span>
+          <span>Desde</span>
+          <span>Hasta</span>
+          {conIndice && <span>Índice usado</span>}
+          <span className="text-right">Importe mensual</span>
         </div>
+        <ol className="text-sm">
+          {contrato.tramos.map((t) => (
+            <li key={t.numero} className={`grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-t border-line py-2 sm:items-baseline ${columnas}`}>
+              <span className="tabular-nums text-muted">
+                <span className="sm:hidden">Tramo </span>
+                {t.numero}
+                <span className="text-ink sm:hidden">
+                  {' · '}
+                  {fmtFecha(t.desde)} al {fmtFecha(t.hasta)}
+                </span>
+              </span>
+              <span className="hidden tabular-nums sm:block">{fmtFecha(t.desde)}</span>
+              <span className="hidden tabular-nums sm:block">{fmtFecha(t.hasta)}</span>
+              {conIndice && (
+                <span className="col-span-2 row-start-2 text-xs tabular-nums text-muted sm:col-span-1 sm:row-start-auto">
+                  {t.indiceBase != null && t.indiceRequerido != null ? (
+                    <>
+                      <span className="sm:hidden">Índice </span>
+                      {fmtIndice(t.indiceBase)} → {fmtIndice(t.indiceRequerido)}{' '}
+                      <span className="font-semibold text-ink">({variacionEntre(t.indiceBase, t.indiceRequerido)})</span>
+                      {t.importePropuesto != null && t.importe != null && Math.abs(t.importePropuesto - t.importe) > 0.5 && (
+                        <span className="block">Propuesto {m(t.importePropuesto)}, se confirmó otro importe</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="hidden sm:inline">—</span>
+                  )}
+                </span>
+              )}
+              <span className="col-start-2 row-start-1 text-right font-semibold tabular-nums text-ink sm:col-start-auto sm:row-start-auto">
+                {t.importe == null ? <span className="text-xs font-bold text-warning">A indexar</span> : m(t.importe)}
+              </span>
+            </li>
+          ))}
+        </ol>
       </Panel>
 
       {accion === 'extender' && (
@@ -293,7 +286,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
               </Campo>
             )}
             {error && (
-              <p role="alert" className="text-sm font-medium text-brand-red">
+              <p role="alert" className="text-sm font-medium text-danger">
                 {error}
               </p>
             )}

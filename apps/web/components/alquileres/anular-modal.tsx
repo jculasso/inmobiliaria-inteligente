@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, Modal } from '@vacker/ui';
 import { Campo, inputClass } from '../form-ui';
 
-/** Regla 19: anular revierte el efecto y deja el documento tachado, con el motivo. */
-export function AnularModal({
+/**
+ * Regla 19: anular revierte el efecto y deja el documento tachado, con el
+ * motivo. `onDone` recibe lo que devolvió `anular`: conceptos lo usa para
+ * decir cuántos se anularon juntos.
+ */
+export function AnularModal<T = unknown>({
   titulo,
   detalle,
   anular: ejecutar,
@@ -13,10 +17,10 @@ export function AnularModal({
   onDone,
 }: {
   titulo: string;
-  detalle: string;
-  anular: (motivo: string) => Promise<unknown>;
+  detalle: ReactNode;
+  anular: (motivo: string) => Promise<T>;
   onClose: () => void;
-  onDone: () => void;
+  onDone: (resultado: T) => void;
 }) {
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +30,7 @@ export function AnularModal({
     setError(null);
     setEnviando(true);
     try {
-      await ejecutar(motivo);
-      onDone();
+      onDone(await ejecutar(motivo));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo anular.');
       setEnviando(false);
@@ -37,12 +40,12 @@ export function AnularModal({
   return (
     <Modal title={titulo} onClose={onClose}>
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted">{detalle}</p>
+        <div className="flex flex-col gap-1 text-sm text-muted">{detalle}</div>
         <Campo label="Motivo" requerido hint="Queda en el historial, con quién lo anuló. Al menos 3 letras.">
           <input className={inputClass} value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus />
         </Campo>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

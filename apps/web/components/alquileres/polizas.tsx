@@ -18,21 +18,20 @@ import {
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularPoliza, crearPoliza } from '../../lib/alquileres-api';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { AnularModal } from './anular-modal';
-import { Bloque, Insignia } from './piezas';
+import { AccionFila, Bloque, CLASE_FOCO, Insignia, VacioBloque } from './piezas';
 import { InputImporte } from '../input-importe';
 import { leerImporte } from '../../lib/importe';
 
-const hoy = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
 const num = (v: string) => leerImporte(v) ?? 0;
 
 /** Vigente, por vencer (60 días, como el tablero), vencida o anulada. */
 export function EstadoPoliza({ p }: { p: PolizaDto }) {
   if (p.anulada) return <Insignia tono="neutro">Anulada</Insignia>;
-  if (p.hasta < hoy()) return <Insignia tono="marca">Vencida</Insignia>;
-  if (p.hasta <= sumarDiasIso(hoy(), DIAS_TABLERO_PROXIMOS)) return <Insignia tono="aviso">Vence el {fmtFecha(p.hasta)}</Insignia>;
+  if (p.hasta < hoyIso()) return <Insignia tono="peligro">Vencida</Insignia>;
+  if (p.hasta <= sumarDiasIso(hoyIso(), DIAS_TABLERO_PROXIMOS)) return <Insignia tono="aviso">Vence el {fmtFecha(p.hasta)}</Insignia>;
   return <Insignia tono="exito">Vigente</Insignia>;
 }
 
@@ -66,20 +65,20 @@ export function Polizas({
       }
     >
       {polizas.length === 0 ? (
-        <p className="px-4 py-4 text-sm text-muted">Sin pólizas cargadas.</p>
+        <VacioBloque>Sin pólizas cargadas.</VacioBloque>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {polizas.map((p) => (
-            <li key={p.id} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 ${p.anulada ? 'opacity-60' : ''}`}>
+            <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
               <span className="min-w-0">
-                <span className="block font-semibold text-ink">
+                <span className={`block font-semibold ${p.anulada ? 'text-muted line-through' : 'text-ink'}`}>
                   {p.aseguradora}
-                  {p.numero ? ` N° ${p.numero}` : ''} <span className="font-normal text-muted">· {NOMBRE_COBERTURA[p.cobertura]}</span>
+                  {p.numero ? ` N.º ${p.numero}` : ''} <span className="font-normal text-muted">· {NOMBRE_COBERTURA[p.cobertura]}</span>
                 </span>
                 <span className="block text-xs text-muted">
                   {!contratoFijo && (
                     <>
-                      <Link href={`/alquileres/contratos/${p.contrato.id}`} className="font-semibold text-ink hover:text-brand-red">
+                      <Link href={`/alquileres/contratos/${p.contrato.id}`} className={`rounded font-semibold text-ink hover:text-brand-red ${CLASE_FOCO}`}>
                         {p.contrato.codigo}
                       </Link>{' '}
                       · {p.contrato.propiedad} ·{' '}
@@ -91,9 +90,7 @@ export function Polizas({
               <span className="flex items-center gap-2">
                 <EstadoPoliza p={p} />
                 {!p.anulada && (
-                  <button type="button" onClick={() => setAAnular(p)} aria-label={`Anular la póliza de ${p.aseguradora}`} title="Anular, con un motivo" className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5">
-                    🚫
-                  </button>
+                  <AccionFila icono="🚫" texto="Anular" etiqueta={`Anular la póliza de ${p.aseguradora}`} title="Anular, con un motivo" onClick={() => setAAnular(p)} peligro />
                 )}
               </span>
             </li>
@@ -146,11 +143,11 @@ export function PolizaModal({
   const [aseguradora, setAseguradora] = useState('');
   const [numero, setNumero] = useState('');
   const [cobertura, setCobertura] = useState<CoberturaPoliza>('incendio');
-  const [desde, setDesde] = useState(hoy());
+  const [desde, setDesde] = useState(hoyIso());
   const [hasta, setHasta] = useState('');
   const [premio, setPremio] = useState('');
   const [cuotas, setCuotas] = useState('1');
-  const [primerVencimiento, setPrimer] = useState(hoy());
+  const [primerVencimiento, setPrimer] = useState(hoyIso());
   const [aCargoDe, setACargoDe] = useState<'inquilino' | 'propietario'>('inquilino');
   const [paga, setPaga] = useState<QuienPaga>('inmobiliaria');
   const [error, setError] = useState<string | null>(null);
@@ -256,7 +253,7 @@ export function PolizaModal({
           </Campo>
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

@@ -90,7 +90,7 @@ export function DatosContratoModal({ contratoId, onClose, onSaved }: { contratoI
           </Campo>
           <p className="text-xs text-muted">Los importes, los tramos y los porcentajes no se editan en un contrato vigente: cambian al indexar o al rescindir.</p>
           {error && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}

@@ -6,7 +6,7 @@ import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { EstadoContratoBadge } from './estado-contrato';
 import { Historial } from './historial';
 import { documentoLegible } from './personas-lista';
-import { Bloque, Panel } from './piezas';
+import { Bloque, CLASE_FOCO, Dato, Panel, VacioBloque } from './piezas';
 
 export type Solapa = 'resumen' | 'basica' | 'administrativa' | 'complementarios' | 'cuenta';
 
@@ -18,31 +18,30 @@ const SOLAPAS: [Solapa, string][] = [
   ['cuenta', '📒 Cuenta corriente'],
 ];
 
-/** Las solapas de la ficha, como las de «Clientes» en Gexion y las pestañas del Tablero Comercial. */
+/**
+ * Las solapas de la ficha, como las de «Clientes» en Gexion y las pestañas del
+ * Tablero Comercial. Botones apretados o no, en un grupo: `role="tab"` promete
+ * flechas y paneles enlazados que esto no tiene, y el lector de pantalla
+ * anunciaba algo que no pasaba. En el teléfono se deslizan de costado, con el
+ * mismo degradé a la derecha que la barra del módulo para avisar que hay más.
+ */
 export function Solapas({ actual, onCambiar }: { actual: Solapa; onCambiar: (s: Solapa) => void }) {
   return (
-    <div role="tablist" className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {SOLAPAS.map(([s, texto]) => (
-        <button
-          key={s}
-          role="tab"
-          type="button"
-          aria-selected={actual === s}
-          onClick={() => onCambiar(s)}
-          className={`shrink-0 whitespace-nowrap rounded-brand px-3 py-2 text-sm font-semibold ${actual === s ? 'bg-brand-red text-white' : 'bg-white text-muted hover:text-ink'}`}
-        >
-          {texto}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-[10px] font-extrabold uppercase tracking-wide text-muted">{etiqueta}</dt>
-      <dd className="mt-0.5 break-words text-sm text-ink">{children || '—'}</dd>
+    <div className="relative">
+      <div role="group" aria-label="Solapas de la ficha" className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {SOLAPAS.map(([s, texto]) => (
+          <button
+            key={s}
+            type="button"
+            aria-pressed={actual === s}
+            onClick={() => onCambiar(s)}
+            className={`shrink-0 whitespace-nowrap rounded-brand px-3 py-2 text-sm font-semibold ${CLASE_FOCO} ${actual === s ? 'bg-brand-red text-white' : 'bg-white text-muted hover:text-ink'}`}
+          >
+            {texto}
+          </button>
+        ))}
+      </div>
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent lg:hidden" />
     </div>
   );
 }
@@ -71,12 +70,12 @@ export function ResumenPersona({ cuenta, ficha, historial }: { cuenta: CuentaCor
       </div>
       <Bloque icono="📄" titulo="Contratos" detalle={`${ficha.contratos.length}`}>
         {ficha.contratos.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted">No aparece en ningún contrato.</p>
+          <VacioBloque>No aparece en ningún contrato.</VacioBloque>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {ficha.contratos.map((c) => (
               <li key={`${c.id}-${c.papel}`}>
-                <Link href={`/alquileres/contratos/${c.id}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60">
+                <Link href={`/alquileres/contratos/${c.id}`} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60 ${CLASE_FOCO}`}>
                   <span className="min-w-0">
                     <span className="block font-semibold text-ink">
                       <span className="mr-1.5 rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-extrabold text-muted">{c.papel === 'inquilino' ? 'INQ' : c.papel === 'propietario' ? 'PROP' : 'GAR'}</span>

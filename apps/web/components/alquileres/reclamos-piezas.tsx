@@ -17,8 +17,9 @@ import { crearReclamo, listUsuariosAsignables } from '../../lib/alquileres-api';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { Insignia, type TonoInsignia } from './piezas';
 
-const TONO_ESTADO: Record<EstadoReclamo, TonoInsignia> = { abierto: 'aviso', en_curso: 'marca', resuelto: 'exito', cerrado: 'neutro' };
-const TONO_PRIORIDAD: Record<PrioridadReclamo, TonoInsignia> = { urgente: 'marca', alta: 'aviso', media: 'neutro', baja: 'neutro' };
+// «Urgente» va en rojo de urgencia, no en el color de la marca (CONVENCIONES_TECNICAS §13); «En curso» no urge: avisa.
+const TONO_ESTADO: Record<EstadoReclamo, TonoInsignia> = { abierto: 'aviso', en_curso: 'aviso', resuelto: 'exito', cerrado: 'neutro' };
+const TONO_PRIORIDAD: Record<PrioridadReclamo, TonoInsignia> = { urgente: 'peligro', alta: 'aviso', media: 'neutro', baja: 'neutro' };
 
 export const EstadoReclamoBadge = ({ estado }: { estado: EstadoReclamo }) => <Insignia tono={TONO_ESTADO[estado]}>{NOMBRE_ESTADO_RECLAMO[estado]}</Insignia>;
 export const PrioridadBadge = ({ prioridad }: { prioridad: PrioridadReclamo }) => (
@@ -143,7 +144,7 @@ export function NuevoReclamoModal({
           </Campo>
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

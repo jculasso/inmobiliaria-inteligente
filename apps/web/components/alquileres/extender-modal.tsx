@@ -10,6 +10,7 @@ import { fmtFecha } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { leerImporte } from '../../lib/importe';
 import { InputImporte } from '../input-importe';
+import { NOMBRE_INDICE } from './nombres';
 
 /**
  * Extender un contrato vigente (punto 13 de Javier, como el botón de Gexion):
@@ -61,15 +62,15 @@ export function ExtenderModal({ contrato: c, onClose, onDone }: { contrato: Cont
         </div>
         {escalonado ? (
           <Campo label="Importe mensual de la extensión" requerido>
-            <InputImporte value={importe} onChange={setImporte} />
+            <InputImporte moneda={c.moneda} value={importe} onChange={setImporte} />
           </Campo>
         ) : (
           <p className="text-sm text-muted">
-            Se suman tramos de {c.periodicidadMeses} meses que se indexan con {c.indice} como los demás.
+            Se suman tramos de {c.periodicidadMeses} meses que se indexan con {c.indice ? NOMBRE_INDICE[c.indice] : 'el índice del contrato'} como los demás.
           </p>
         )}
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

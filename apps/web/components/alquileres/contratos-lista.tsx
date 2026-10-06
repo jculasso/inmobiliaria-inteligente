@@ -17,6 +17,7 @@ import {
   BarraLista,
   BotonNuevo,
   CabezaTarjeta,
+  CLASE_FOCO,
   CLASE_LISTA_MOVIL,
   CLASE_TABLA_ANCHA,
   CLASE_TD,
@@ -26,6 +27,7 @@ import {
   CLASE_TH,
   CLASE_TR_ABRIBLE,
   EncabezadoPagina,
+  LinkFila,
   Vacio,
 } from './piezas';
 
@@ -50,13 +52,18 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
     );
   }, [visibles, busqueda]);
 
+  // Lo anulado, como en todo el módulo: insignia gris e importe tachado (regla 19: «queda tachado»).
   const importe = (c: ContratoResumenDto) =>
-    c.importeVigente == null ? <span className="text-xs font-bold text-warning">A indexar</span> : fmtMoneda(c.importeVigente, c.moneda);
+    c.importeVigente == null ? (
+      <span className="text-xs font-bold text-warning">A indexar</span>
+    ) : (
+      <span className={c.estado === 'anulado' ? 'text-muted line-through' : ''}>{fmtMoneda(c.importeVigente, c.moneda)}</span>
+    );
   const indexacion = (c: ContratoResumenDto) =>
     c.proximaIndexacion == null ? (
       '—'
     ) : (
-      <span className={c.proximaIndexacion < hoy ? 'font-semibold text-brand-red' : ''}>
+      <span className={c.proximaIndexacion < hoy ? 'font-semibold text-danger' : ''}>
         {fmtFecha(c.proximaIndexacion)}
         {c.proximaIndexacion < hoy ? ' · vencida' : ''}
       </span>
@@ -105,7 +112,7 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
             <ListaTarjetas etiqueta="Contratos">
               {filtrados.map((c) => (
                 <Tarjeta key={c.id}>
-                  <button type="button" onClick={() => abrir(c)} title={`Abrir el contrato ${c.codigo}`} className="block w-full text-left">
+                  <button type="button" onClick={() => abrir(c)} title={`Abrir el contrato ${c.codigo}`} className={`block w-full rounded text-left ${CLASE_FOCO}`}>
                     <CabezaTarjeta
                       titulo={unidad(c)}
                       detalle={`${c.codigo} · ${NOMBRE_TIPO_CONTRATO[c.tipo]} · hasta ${fmtFecha(c.fin)}`}
@@ -140,8 +147,10 @@ export function ContratosLista({ contratos, hoy }: { contratos: ContratoResumenD
               </thead>
               <tbody>
                 {filtrados.map((c) => (
-                  <tr key={c.id} onClick={() => abrir(c)} className={`${CLASE_TR_ABRIBLE} ${c.estado === 'anulado' ? 'opacity-60' : ''}`}>
-                    <td className={CLASE_TD_FIJA}>{c.codigo}</td>
+                  <tr key={c.id} onClick={() => abrir(c)} className={CLASE_TR_ABRIBLE}>
+                    <td className={CLASE_TD_FIJA}>
+                      <LinkFila href={`/alquileres/contratos/${c.id}`}>{c.codigo}</LinkFila>
+                    </td>
                     <td className={`${CLASE_TD} text-ink`}>
                       <span className="block max-w-[200px] truncate" title={unidad(c)}>
                         {unidad(c)}

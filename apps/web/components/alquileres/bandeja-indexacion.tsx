@@ -10,10 +10,10 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { confirmarIndexacion } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { EncabezadoPagina, Insignia, TituloSeccion, Vacio } from './piezas';
-import { leerImporte } from '../../lib/importe';
+import { NOMBRE_INDICE } from './nombres';
+import { leerImporte, variacionEntre } from '../../lib/importe';
 import { InputImporte } from '../input-importe';
 
-const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
 
 /** «IPC de julio de 2026» o «ICL del 01/07/2026»: el valor que se usó, nombrado como lo lee una persona. */
 function valorDe(indice: 'ICL' | 'IPC' | 'CCP', fecha: string | null): string {
@@ -23,10 +23,6 @@ function valorDe(indice: 'ICL' | 'IPC' | 'CCP', fecha: string | null): string {
 
 const fmtIndice = (v: number | null) => (v == null ? '—' : v.toLocaleString('es-AR', { maximumFractionDigits: 4 }));
 
-function variacion(anterior: number, nuevo: number): string {
-  const pct = ((nuevo / anterior - 1) * 100).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  return `${nuevo >= anterior ? '+' : ''}${pct}%`;
-}
 
 function EstadoIndices({ indices }: { indices: EstadoIndiceDto[] }) {
   return (
@@ -81,7 +77,7 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
           <Link href={`/alquileres/contratos/${t.contrato.id}`} className="hover:underline">
             {t.contrato.codigo} · {unidad}
           </Link>
-          {t.vencida && <Insignia tono="marca">Vencida</Insignia>}
+          {t.vencida && <Insignia tono="peligro">Vencida</Insignia>}
         </p>
         <p className="text-xs text-muted">
           {t.inquilinos.join(', ') || 'Sin inquilino'} · Tramo {t.numero}, desde el {fmtFecha(t.desde)} · {NOMBRE_INDICE[t.indice]}
@@ -90,7 +86,7 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
           <>
             <p className="mt-2 text-sm tabular-nums text-ink">
               <span className="text-muted">{fmtMoneda(t.importeAnterior)}</span> → <span className="font-bold">{fmtMoneda(t.importePropuesto)}</span>{' '}
-              <span className="text-xs font-semibold text-muted">{variacion(t.importeAnterior, t.importePropuesto!)}</span>
+              <span className="text-xs font-semibold text-muted">{variacionEntre(t.importeAnterior, t.importePropuesto!)}</span>
             </p>
             <p className="mt-0.5 text-xs tabular-nums text-muted">
               {valorDe(t.indice, t.fechaBase)}: {fmtIndice(t.valorBase)} → {valorDe(t.indice, t.fechaRequerida)}: {fmtIndice(t.valorRequerido)}
@@ -108,7 +104,7 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
           </p>
         )}
         {error && (
-          <p role="alert" className="mt-2 text-sm font-semibold text-brand-red">
+          <p role="alert" className="mt-2 text-sm font-medium text-danger">
             {error}
           </p>
         )}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  LIMITE_LISTA,
+  LIMITE_CONCEPTOS_MES,
   recortarAlLimite,
   type ConceptoDto,
   type ContratoResumenDto,
@@ -13,14 +13,26 @@ import {
   type ResultadoGeneracionDto,
   type TipoConcepto,
 } from '@vacker/types';
-import { mesLargo, sumarMesesIso } from '@vacker/domain';
-import { Button, KpiCard, Modal } from '@vacker/ui';
+import { mesLargo } from '@vacker/domain';
+import { Button, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularConcepto, generarPeriodo } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
-import { Campo, inputClass } from '../form-ui';
+import { AnularModal } from './anular-modal';
 import { ConceptoSueltoModal } from './concepto-suelto-modal';
-import { CLASE_TD, CLASE_TD_ACCIONES, CLASE_TH, CLASE_TH_ACCIONES, EncabezadoPagina, Insignia, TituloSeccion, type TonoInsignia } from './piezas';
+import {
+  AccionFila,
+  CLASE_FOCO,
+  CLASE_TD,
+  CLASE_TD_ACCIONES,
+  CLASE_TH,
+  CLASE_TH_ACCIONES,
+  EncabezadoPagina,
+  Insignia,
+  NavegadorMes,
+  TituloSeccion,
+  type TonoInsignia,
+} from './piezas';
 
 const NOMBRE_TIPO: Record<TipoConcepto, string> = {
   alquiler: 'Alquiler',
@@ -41,9 +53,6 @@ const NOMBRE_TIPO: Record<TipoConcepto, string> = {
 };
 
 const mesDe = (periodo: string) => mesLargo(`${periodo}-01`);
-/** «Diciembre de 2026»: mayúscula solo al principio (`capitalize` daría «Diciembre De»). */
-const titulo = (periodo: string) => mesDe(periodo).replace(/^./, (l) => l.toUpperCase());
-const correr = (periodo: string, n: number) => sumarMesesIso(`${periodo}-01`, n).slice(0, 7);
 const lo = (c: ConceptoDto) => c.descripcion ?? NOMBRE_TIPO[c.tipo];
 
 /** Lo que muestran las tarjetas de arriba: qué entra, qué sale y qué gana la inmobiliaria, por moneda. */
@@ -67,14 +76,13 @@ function totales(conceptos: ConceptoDto[]) {
   ];
 }
 
-
 const ESTADO: Record<EstadoConcepto, { texto: string; tono: TonoInsignia }> = {
-  pendiente: { texto: 'Pendiente', tono: 'neutro' },
+  pendiente: { texto: 'Pendiente', tono: 'aviso' },
   parcial: { texto: 'Cobrado en parte', tono: 'aviso' },
   cobrado: { texto: 'Cobrado', tono: 'exito' },
   pagado: { texto: 'Pagado', tono: 'exito' },
   liquidado: { texto: 'Liquidado', tono: 'exito' },
-  anulado: { texto: 'Anulado', tono: 'marca' },
+  anulado: { texto: 'Anulado', tono: 'neutro' },
 };
 
 /**
@@ -127,7 +135,7 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
     <section className="overflow-hidden rounded-brand border border-line bg-white shadow-sm" aria-label={g.contrato ? `Contrato ${g.contrato.codigo}` : 'Sin contrato'}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line bg-surface/40 px-4 py-3">
         {g.contrato ? (
-          <Link href={`/alquileres/contratos/${g.contrato.id}`} className="text-sm font-bold text-ink hover:text-brand-red hover:underline">
+          <Link href={`/alquileres/contratos/${g.contrato.id}`} className={`rounded text-sm font-bold text-ink hover:text-brand-red hover:underline ${CLASE_FOCO}`}>
             <span aria-hidden>🏠 </span>
             {g.contrato.codigo} · {g.contrato.direccion}
           </Link>
@@ -160,21 +168,22 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
                 <span className="block text-xs text-muted">
                   {aQuien(c)} {c.persona.nombre} · vence {fmtFecha(c.vencimiento)}
                 </span>
+                {c.registrado?.por && !c.anulado && <span className="block text-xs text-muted">Cargó {c.registrado.por}</span>}
               </span>
-              <span className="shrink-0 text-right">
+              <span className="flex shrink-0 flex-col items-end gap-1 text-right">
                 <span className={`block whitespace-nowrap font-semibold tabular-nums ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
                   {c.sentido === 'a_pagar' ? 'A pagar ' : 'A cobrar '}
                   {fmtMoneda(c.importe, c.moneda)}
                 </span>
                 <Insignia tono={ESTADO[c.estado].tono}>{ESTADO[c.estado].texto}</Insignia>
+                {c.adelantadoPorInmobiliaria && !c.anulado && <Insignia tono="aviso">Adelantado</Insignia>}
+                {c.estado === 'parcial' && <span className="text-xs text-muted">falta {fmtMoneda(c.saldo, c.moneda)}</span>}
               </span>
             </div>
             {c.anulado && <p className="mt-1 text-xs text-muted">Anulado{c.anulado.por ? ` por ${c.anulado.por}` : ''}: {c.anulado.motivo}</p>}
             {anulable(c) && (
               <div className="mt-1 flex justify-end">
-                <button type="button" onClick={() => onAnular(c)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
-                  🚫 Anular
-                </button>
+                <AccionFila icono="🚫" texto="Anular" etiqueta={`Anular ${lo(c)}`} onClick={() => onAnular(c)} tarjeta peligro />
               </div>
             )}
           </li>
@@ -228,15 +237,7 @@ function GrupoContrato({ grupo: g, onAnular }: { grupo: Grupo; onAnular: (c: Con
                 </td>
                 <td className={CLASE_TD_ACCIONES}>
                   {anulable(c) && (
-                    <button
-                      type="button"
-                      onClick={() => onAnular(c)}
-                      aria-label="Anular"
-                      title="Anular este concepto"
-                      className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5"
-                    >
-                      🚫
-                    </button>
+                    <AccionFila icono="🚫" texto="Anular" etiqueta={`Anular ${lo(c)} de ${c.persona.nombre}`} title="Anular este concepto" onClick={() => onAnular(c)} peligro />
                   )}
                 </td>
               </tr>
@@ -261,7 +262,7 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
   const [generando, setGenerando] = useState(false);
   const [suelto, setSuelto] = useState(false);
   const [anulando, setAnulando] = useState<ConceptoDto | null>(null);
-  const { visibles, hayMas } = recortarAlLimite(conceptos);
+  const { visibles, hayMas } = recortarAlLimite(conceptos, LIMITE_CONCEPTOS_MES);
   const grupos = agrupar(visibles);
 
   async function generar() {
@@ -281,15 +282,7 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoPagina titulo="Conceptos">
-        <div className="flex items-center gap-1 rounded-brand border border-line bg-white">
-          <Link href={`?periodo=${correr(periodo, -1)}`} aria-label="Mes anterior" className="px-2.5 py-1 text-lg text-muted hover:text-ink">
-            ‹
-          </Link>
-          <span className="min-w-[9.5rem] text-center text-sm font-bold text-ink">{titulo(periodo)}</span>
-          <Link href={`?periodo=${correr(periodo, 1)}`} aria-label="Mes siguiente" className="px-2.5 py-1 text-lg text-muted hover:text-ink">
-            ›
-          </Link>
-        </div>
+        <NavegadorMes periodo={periodo} />
         <Button variant="secondary" size="sm" onClick={() => setSuelto(true)}>
           ＋ Gasto suelto
         </Button>
@@ -299,7 +292,7 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
       </EncabezadoPagina>
 
       {error && (
-        <p role="alert" className="rounded-brand border border-brand-red/30 bg-brand-red/5 px-3 py-2 text-sm text-ink">
+        <p role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}
@@ -353,7 +346,7 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
 
           {hayMas && (
             <p role="status" className="text-sm text-muted">
-              Se muestran los primeros {LIMITE_LISTA} conceptos.
+              Se muestran los primeros {LIMITE_CONCEPTOS_MES} conceptos.
             </p>
           )}
 
@@ -381,7 +374,19 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
       )}
       {anulando && (
         <AnularModal
-          concepto={anulando}
+          titulo="Anular el concepto"
+          detalle={
+            <>
+              <p className="text-ink">
+                {lo(anulando)} · {anulando.persona.nombre} · {fmtMoneda(anulando.importe, anulando.moneda)}
+              </p>
+              <p>
+                No se borra: queda tachado, con el motivo, quién y cuándo.
+                {anulando.generado ? ' Generar el mes de nuevo no lo vuelve a crear.' : ''}
+              </p>
+            </>
+          }
+          anular={async (motivo) => (await anularConcepto(await getAccessToken(), anulando.id, motivo)).anulados}
           onClose={() => setAnulando(null)}
           onDone={(n) => {
             setAnulando(null);
@@ -391,54 +396,5 @@ export function ConceptosMes({ periodo, conceptos, contratos }: { periodo: strin
         />
       )}
     </div>
-  );
-}
-
-/** Regla 19: no se borra, se anula con motivo. Queda a la vista, tachado. */
-function AnularModal({ concepto, onClose, onDone }: { concepto: ConceptoDto; onClose: () => void; onDone: (n: number) => void }) {
-  const [motivo, setMotivo] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-
-  async function anular() {
-    setError(null);
-    setEnviando(true);
-    try {
-      const r = await anularConcepto(await getAccessToken(), concepto.id, motivo);
-      onDone(r.anulados);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo anular.');
-      setEnviando(false);
-    }
-  }
-
-  return (
-    <Modal title="Anular el concepto" onClose={onClose}>
-      <div className="flex flex-col gap-3">
-        <p className="text-sm text-ink">
-          {lo(concepto)} · {concepto.persona.nombre} · {fmtMoneda(concepto.importe, concepto.moneda)}
-        </p>
-        <p className="text-sm text-muted">
-          No se borra: queda tachado, con el motivo, quién y cuándo.
-          {concepto.generado ? ' Generar el mes de nuevo no lo vuelve a crear.' : ''}
-        </p>
-        <Campo label="Motivo" requerido>
-          <input className={inputClass} value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus />
-        </Campo>
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
-            {error}
-          </p>
-        )}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button variant="primary" onClick={anular} disabled={enviando || motivo.trim().length < 3}>
-            {enviando ? 'Anulando…' : 'Anular'}
-          </Button>
-        </div>
-      </div>
-    </Modal>
   );
 }

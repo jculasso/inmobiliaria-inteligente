@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ContratoDto, ReclamoResumenDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
-import { fmtFecha } from '../../lib/format';
-import { Bloque } from './piezas';
+import { fmtFechaDe } from '../../lib/format';
+import { Bloque, CLASE_FOCO, VacioBloque } from './piezas';
 import { EstadoReclamoBadge, NuevoReclamoModal, PrioridadBadge } from './reclamos-piezas';
 
 /** Los reclamos de un contrato, en su ficha, con el botón para abrir uno. */
@@ -27,18 +27,18 @@ export function ReclamosDelContrato({ contrato, reclamos }: { contrato: Contrato
       }
     >
       {reclamos.length === 0 ? (
-        <p className="px-4 py-4 text-sm text-muted">Sin reclamos.</p>
+        <VacioBloque>Sin reclamos.</VacioBloque>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {reclamos.map((r) => (
             <li key={r.id}>
-              <Link href={`/alquileres/reclamos/${r.id}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60">
+              <Link href={`/alquileres/reclamos/${r.id}`} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface/60 ${CLASE_FOCO}`}>
                 <span className="min-w-0">
                   <span className="block font-semibold text-ink">
                     {r.numero} · {r.asunto}
                   </span>
                   <span className="block text-xs text-muted">
-                    {fmtFecha(r.abierto.slice(0, 10))} · {r.asignadoA ?? 'sin asignar'}
+                    {fmtFechaDe(r.abierto)} · {r.asignadoA ?? 'sin asignar'}
                   </span>
                 </span>
                 <span className="flex gap-1">

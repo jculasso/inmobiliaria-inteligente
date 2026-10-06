@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { mesLargo, sumarMesesIso } from '@vacker/domain';
+import { mesLargo } from '@vacker/domain';
 import {
   CATALOGO_SUGERIDO,
   CuentaServicioInputSchema,
@@ -24,35 +24,46 @@ import {
 import { Button, KpiCard, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularBoleta, borrarCuentaServicio, borrarServicio, cargarServiciosSugeridos, guardarCuentaServicio, guardarServicio, pagarBoleta } from '../../lib/alquileres-api';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { AnularModal } from './anular-modal';
 import { PlanillaBoletas } from './boletas-planilla';
 import { Polizas } from './polizas';
-import { AccionesFila, Bloque, CabezaTarjeta, CLASE_TD, CLASE_TD_ACCIONES, CLASE_TH, CLASE_TH_ACCIONES, EncabezadoPagina, Insignia } from './piezas';
+import { MEDIOS_COBRO, NOMBRE_MEDIO } from './medios';
+import {
+  AccionesFila,
+  AccionFila,
+  Bloque,
+  CabezaTarjeta,
+  CLASE_FOCO,
+  CLASE_TD,
+  CLASE_TD_ACCIONES,
+  CLASE_TH,
+  CLASE_TH_ACCIONES,
+  EncabezadoPagina,
+  Insignia,
+  NavegadorMes,
+  Segmentado,
+  VacioBloque,
+} from './piezas';
 
 const ICONO_CLASE: Record<ClaseServicio | 'poliza', string> = { impuesto: '🏛️', servicio: '💡', expensa: '🏢', poliza: '🛡️' };
-const MEDIOS: [MedioCobro, string][] = [
-  ['transferencia', 'Transferencia'],
-  ['efectivo', 'Efectivo'],
-  ['cheque', 'Cheque'],
-  ['otro', 'Otro'],
-];
-const hoy = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
-const correr = (periodo: string, n: number) => sumarMesesIso(`${periodo}-01`, n).slice(0, 7);
 const quienPaga = (p: QuienPaga) => NOMBRE_QUIEN_PAGA[p].toLowerCase();
 
 function EstadoBoleta({ b }: { b: BoletaDto }) {
   if (b.estado === 'anulada') return <Insignia tono="neutro">Anulada</Insignia>;
   if (b.estado === 'pagada') return <Insignia tono="exito">{b.paga === 'inmobiliaria' ? 'Pagada' : 'Comprobante'} {b.pagadaEl ? fmtFecha(b.pagadaEl) : ''}</Insignia>;
-  if (b.vencimiento < hoy()) return <Insignia tono="marca">Vencida</Insignia>;
+  if (b.vencimiento < hoyIso()) return <Insignia tono="peligro">Vencida</Insignia>;
   return <Insignia tono="aviso">{b.paga === 'inmobiliaria' ? 'A pagar' : 'Falta comprobante'}</Insignia>;
 }
 
 /** «Pagar» si la paga la inmobiliaria; si la paga una parte, que presentó el comprobante. */
-const accion = (b: BoletaDto) => (b.paga === 'inmobiliaria' ? '💸 Pagar' : '✅ Comprobante');
+const accionDe = (b: BoletaDto) =>
+  b.paga === 'inmobiliaria'
+    ? { icono: '💸', texto: 'Pagar', etiqueta: `Pagar ${b.nombre}`, title: 'Registrar el pago' }
+    : { icono: '✅', texto: 'Comprobante', etiqueta: `Registrar el comprobante de ${b.nombre}`, title: 'La parte presentó el comprobante' };
 
 /**
  * Impuestos, servicios y pólizas (entrega 19): las boletas del mes y lo que
@@ -90,7 +101,7 @@ export function ImpuestosVista({
   const lista = ver === 'control' ? control : boletas;
   const vivas = boletas.filter((b) => b.estado !== 'anulada');
   const aPagarInmo = control.filter((b) => b.paga === 'inmobiliaria');
-  const vencidas = control.filter((b) => b.vencimiento < hoy());
+  const vencidas = control.filter((b) => b.vencimiento < hoyIso());
   const sinComprobante = vivas.filter((b) => b.estado === 'pendiente' && b.paga !== 'inmobiliaria');
   const listo = () => {
     setAPagar(null);
@@ -101,15 +112,7 @@ export function ImpuestosVista({
   return (
     <div className="flex flex-col gap-5">
       <EncabezadoPagina titulo="Impuestos y servicios">
-        <div className="flex items-center gap-1 rounded-brand border border-line bg-white">
-          <Link href={`?periodo=${correr(periodo, -1)}`} aria-label="Mes anterior" className="px-2.5 py-1 text-lg text-muted hover:text-ink">
-            ‹
-          </Link>
-          <span className="min-w-[9.5rem] text-center text-sm font-bold text-ink">{mes.replace(/^./, (l) => l.toUpperCase())}</span>
-          <Link href={`?periodo=${correr(periodo, 1)}`} aria-label="Mes siguiente" className="px-2.5 py-1 text-lg text-muted hover:text-ink">
-            ›
-          </Link>
-        </div>
+        <NavegadorMes periodo={periodo} />
         <Button variant="primary" size="sm" onClick={() => setCargando((v) => !v)} aria-expanded={cargando}>
           {cargando ? 'Cerrar la planilla' : '📝 Cargar boletas'}
         </Button>
@@ -123,7 +126,7 @@ export function ImpuestosVista({
           icon="💸"
           tone={aPagarInmo.length ? 'warning' : 'success'}
         />
-        <KpiCard label="Vencidas sin pagar" value={String(vencidas.length)} sub="de cualquier mes" icon="⏰" tone={vencidas.length ? 'brand' : 'success'} />
+        <KpiCard label="Vencidas sin pagar" value={String(vencidas.length)} sub="de cualquier mes" icon="⏰" tone={vencidas.length ? 'danger' : 'success'} />
         <KpiCard label={`Cargadas de ${mes.split(' ')[0]}`} value={fmtMoneda(vivas.reduce((s, b) => s + (b.moneda === 'ARS' ? b.importe : 0), 0), 'ARS')} sub={`${vivas.length} boletas`} icon="🧾" />
         <KpiCard label="Falta el comprobante" value={String(sinComprobante.length)} sub="las pagan las partes" icon="📎" tone={sinComprobante.length ? 'warning' : 'success'} />
       </div>
@@ -135,22 +138,19 @@ export function ImpuestosVista({
         titulo="Boletas"
         detalle={`${lista.length}`}
         acciones={
-          <div role="group" aria-label="Qué boletas" className="flex gap-1 rounded-brand border border-line bg-white p-1">
-            {(['mes', 'control'] as const).map((v) => (
-              <Link
-                key={v}
-                href={`?periodo=${periodo}${v === 'control' ? '&ver=control' : ''}`}
-                aria-current={ver === v ? 'page' : undefined}
-                className={`rounded-brand px-3 py-1 text-xs font-semibold ${ver === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
-              >
-                {v === 'mes' ? `De ${mes.split(' ')[0]}` : 'Para controlar'}
-              </Link>
-            ))}
-          </div>
+          <Segmentado
+            etiqueta="Qué boletas"
+            opciones={[
+              ['mes', `De ${mes.split(' ')[0]}`],
+              ['control', 'Para controlar'],
+            ]}
+            valor={ver}
+            hrefDe={(v) => `?periodo=${periodo}${v === 'control' ? '&ver=control' : ''}`}
+          />
         }
       >
         {lista.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted">{ver === 'control' ? 'Nada vencido ni por vencer en los próximos 7 días.' : `Todavía no hay boletas de ${mes}: «📝 Cargar boletas».`}</p>
+          <VacioBloque>{ver === 'control' ? 'Nada vencido ni por vencer en los próximos 7 días.' : `Todavía no hay boletas de ${mes}: «📝 Cargar boletas».`}</VacioBloque>
         ) : (
           <>
             <div className="sm:hidden">
@@ -159,7 +159,9 @@ export function ImpuestosVista({
                   <Tarjeta key={b.id}>
                     <CabezaTarjeta titulo={`${ICONO_CLASE[b.clase]} ${b.nombre}${b.cuota ? ` ${b.cuota}` : ''}`} detalle={b.propiedad} insignia={<EstadoBoleta b={b} />} />
                     <CamposTarjeta>
-                      <CampoTarjeta etiqueta="Importe">{fmtMoneda(b.importe, b.moneda)}</CampoTarjeta>
+                      <CampoTarjeta etiqueta="Importe">
+                        <span className={b.estado === 'anulada' ? 'text-muted line-through' : ''}>{fmtMoneda(b.importe, b.moneda)}</span>
+                      </CampoTarjeta>
                       <CampoTarjeta etiqueta="Vence">{fmtFecha(b.vencimiento)}</CampoTarjeta>
                       <CampoTarjeta etiqueta="La debe / paga">
                         {b.aCargoDe} / {quienPaga(b.paga)}
@@ -167,16 +169,13 @@ export function ImpuestosVista({
                       <CampoTarjeta etiqueta="Contrato">{b.contrato?.codigo ?? 'sin contrato'}</CampoTarjeta>
                     </CamposTarjeta>
                     {b.estado === 'pendiente' && (
-                      <div className="mt-2 flex justify-end gap-1 border-t border-line pt-2">
-                        <button type="button" onClick={() => setAPagar(b)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
-                          {accion(b)}
-                        </button>
-                        {!b.aplicada && (
-                          <button type="button" onClick={() => setAAnular(b)} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
-                            🚫 Anular
-                          </button>
-                        )}
-                      </div>
+                      <AccionesFila
+                        tarjeta
+                        nombre={b.nombre}
+                        extra={<AccionFila tarjeta {...accionDe(b)} onClick={() => setAPagar(b)} />}
+                        onBorrar={b.aplicada ? undefined : () => setAAnular(b)}
+                        anula
+                      />
                     )}
                   </Tarjeta>
                 ))}
@@ -197,7 +196,7 @@ export function ImpuestosVista({
                 </thead>
                 <tbody>
                   {lista.map((b) => (
-                    <tr key={b.id} className={`border-b border-line last:border-0 ${b.estado === 'anulada' ? 'opacity-60' : ''}`}>
+                    <tr key={b.id} className="border-b border-line last:border-0">
                       <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(b.vencimiento)}</td>
                       <td className="px-3 py-2 text-ink">
                         <span aria-hidden>{ICONO_CLASE[b.clase]} </span>
@@ -214,7 +213,7 @@ export function ImpuestosVista({
                       <td className="px-3 py-2 text-muted">
                         {b.propiedad}
                         {b.contrato && (
-                          <Link href={`/alquileres/contratos/${b.contrato.id}`} className="block text-xs font-semibold text-ink hover:text-brand-red">
+                          <Link href={`/alquileres/contratos/${b.contrato.id}`} className={`block w-fit rounded text-xs font-semibold text-ink hover:text-brand-red ${CLASE_FOCO}`}>
                             {b.contrato.codigo}
                           </Link>
                         )}
@@ -222,28 +221,18 @@ export function ImpuestosVista({
                       <td className={`${CLASE_TD} text-muted`}>
                         {b.aCargoDe} · {quienPaga(b.paga)}
                       </td>
-                      <td className={`${CLASE_TD} text-right font-semibold tabular-nums text-ink`}>{fmtMoneda(b.importe, b.moneda)}</td>
+                      <td className={`${CLASE_TD} text-right font-semibold tabular-nums ${b.estado === 'anulada' ? 'text-muted line-through' : 'text-ink'}`}>{fmtMoneda(b.importe, b.moneda)}</td>
                       <td className={CLASE_TD}>
                         <EstadoBoleta b={b} />
                       </td>
                       <td className={CLASE_TD_ACCIONES}>
                         {b.estado === 'pendiente' && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setAPagar(b)}
-                              aria-label={b.paga === 'inmobiliaria' ? `Pagar ${b.nombre}` : `Registrar el comprobante de ${b.nombre}`}
-                              title={b.paga === 'inmobiliaria' ? 'Registrar el pago' : 'La parte presentó el comprobante'}
-                              className="rounded px-1.5 py-0.5 text-base hover:bg-surface"
-                            >
-                              {accion(b).split(' ')[0]}
-                            </button>
-                            {!b.aplicada && (
-                              <button type="button" onClick={() => setAAnular(b)} aria-label={`Anular ${b.nombre}`} title="Anular, con un motivo" className="rounded px-1.5 py-0.5 text-base hover:bg-brand-red/5">
-                                🚫
-                              </button>
-                            )}
-                          </div>
+                          <AccionesFila
+                            nombre={b.nombre}
+                            extra={<AccionFila {...accionDe(b)} onClick={() => setAPagar(b)} />}
+                            onBorrar={b.aplicada ? undefined : () => setAAnular(b)}
+                            anula
+                          />
                         )}
                       </td>
                     </tr>
@@ -274,7 +263,7 @@ export function ImpuestosVista({
 }
 
 function PagarBoletaModal({ boleta: b, onClose, onDone }: { boleta: BoletaDto; onClose: () => void; onDone: () => void }) {
-  const [fecha, setFecha] = useState(hoy());
+  const [fecha, setFecha] = useState(hoyIso());
   const [medio, setMedio] = useState<MedioCobro>('transferencia');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -290,9 +279,9 @@ function PagarBoletaModal({ boleta: b, onClose, onDone }: { boleta: BoletaDto; o
           {inmo && (
             <Campo label="Medio">
               <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
-                {MEDIOS.map(([v, l]) => (
+                {MEDIOS_COBRO.map((v) => (
                   <option key={v} value={v}>
-                    {l}
+                    {NOMBRE_MEDIO[v]}
                   </option>
                 ))}
               </select>
@@ -300,7 +289,7 @@ function PagarBoletaModal({ boleta: b, onClose, onDone }: { boleta: BoletaDto; o
           )}
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}
@@ -349,7 +338,7 @@ function CuentasPorPropiedad({ cuentas, servicios, propiedades }: { cuentas: Cue
       }
     >
       {cuentas.length === 0 ? (
-        <p className="px-4 py-4 text-sm text-muted">{servicios.length ? 'Ninguna propiedad tiene impuestos o servicios asignados todavía.' : 'Primero armá el catálogo, abajo.'}</p>
+        <VacioBloque>{servicios.length ? 'Ninguna propiedad tiene impuestos o servicios asignados todavía.' : 'Primero armá el catálogo, abajo.'}</VacioBloque>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {[...grupos.values()].map((g) => (
@@ -489,7 +478,7 @@ function CuentaModal({
           </Campo>
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}
@@ -625,7 +614,7 @@ function ServicioModal({ servicio: s, onClose, onDone }: { servicio: ServicioDto
           </Campo>
         </div>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

@@ -19,7 +19,7 @@ const PERSONA = '11111111-1111-4111-8111-111111111111';
 describe('Ficha de la persona (punto 14)', () => {
   it('un CBU mal copiado no se guarda: lo dice antes de ir a la API', async () => {
     render(<CuentasBancarias personaId={PERSONA} cuentas={[]} />);
-    fireEvent.click(screen.getByRole('button', { name: /Cargar/ }));
+    fireEvent.click(screen.getByRole('button', { name: '＋ Agregar cuentas' }));
     fireEvent.click(screen.getByRole('button', { name: '＋ Agregar cuenta' }));
     fireEvent.change(screen.getByLabelText(/^Banco/), { target: { value: 'Nación' } });
     fireEvent.change(screen.getByLabelText(/^CBU/), { target: { value: '0110599520000001234567' } });
@@ -31,7 +31,7 @@ describe('Ficha de la persona (punto 14)', () => {
   it('con alias válido se guarda, y la primera queda principal', async () => {
     guardarCuentasBancarias.mockResolvedValueOnce([]);
     render(<CuentasBancarias personaId={PERSONA} cuentas={[]} />);
-    fireEvent.click(screen.getByRole('button', { name: /Cargar/ }));
+    fireEvent.click(screen.getByRole('button', { name: '＋ Agregar cuentas' }));
     fireEvent.click(screen.getByRole('button', { name: '＋ Agregar cuenta' }));
     fireEvent.change(screen.getByLabelText(/^Banco/), { target: { value: 'Nación' } });
     fireEvent.change(screen.getByLabelText(/^Alias/), { target: { value: 'casa.mar.sol' } });
@@ -48,7 +48,7 @@ describe('Ficha de la persona (punto 14)', () => {
       contratos: [],
     } as unknown as PersonaFichaDto);
     const enviar = vi.fn().mockResolvedValue({ enviado: true });
-    render(<EnviarMailModal titulo="Mandar la liquidación 000007" personaId={PERSONA} enviar={enviar} onClose={vi.fn()} />);
+    render(<EnviarMailModal titulo="Enviar la liquidación 000007 por mail" personaId={PERSONA} enviar={enviar} onClose={vi.fn()} />);
     const dialogo = within(await screen.findByRole('dialog'));
     expect(await dialogo.findByLabelText(/juan@mail.com/)).toBeChecked();
     fireEvent.click(dialogo.getByLabelText(/sofia@estudio.com/));

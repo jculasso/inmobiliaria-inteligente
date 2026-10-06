@@ -1,12 +1,15 @@
 import { Card } from './card';
 
-export type KpiTone = 'default' | 'success' | 'warning' | 'brand';
+export type KpiTone = 'default' | 'success' | 'warning' | 'brand' | 'danger';
 
+// `danger` es lo vencido o urgente: `brand` lo pisa cada inmobiliaria y con una
+// marca verde «vencidas» se vería en orden (CONVENCIONES_TECNICAS §13).
 const TONE_BG: Record<KpiTone, string> = {
   default: '',
   success: 'bg-success/5',
   warning: 'bg-warning/5',
   brand: 'bg-brand-red/5',
+  danger: 'bg-danger/5',
 };
 
 export interface KpiCardProps {

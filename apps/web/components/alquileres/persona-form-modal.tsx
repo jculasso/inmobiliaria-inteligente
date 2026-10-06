@@ -147,7 +147,7 @@ export function PersonaFormModal({
           <textarea className={textareaClass} value={obs} onChange={(e) => setObs(e.target.value)} />
         </Campo>
         {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         )}

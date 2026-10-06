@@ -54,3 +54,29 @@ export function fmtMoneda(n: number | null | undefined, moneda: 'ARS' | 'USD' = 
 export function hoyIso(): string {
   return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
 }
+
+const ZONA_AR = 'America/Argentina/Buenos_Aires';
+
+/**
+ * Un momento (`2026-10-06T23:30:00Z`) con su hora, en la de Argentina:
+ * «06/10/2026 20:30». Había cinco copias de este formateador y una no decía la
+ * zona: en un navegador con otra hora, la firma mostraba otro día.
+ */
+export function fmtFechaHora(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  // `hourCycle: 'h23'`: sin eso, es-AR sale «11:30 p. m.», que no es como se lee una hora acá.
+  const hora = new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: ZONA_AR });
+  return `${fmtFechaDe(iso)} ${hora}`;
+}
+
+/**
+ * El día de un momento, en Argentina: «06/10/2026». No es `fmtFecha(ts.slice(0, 10))`:
+ * esa parte es el día en UTC, y algo registrado después de las 21 h aparecía
+ * con la fecha de mañana. Un día calendario suelto («2026-10-06») va directo a
+ * `fmtFecha`, que no lo corre.
+ */
+export function fmtFechaDe(isoTimestamp: string | null | undefined): string {
+  if (!isoTimestamp) return '—';
+  if (!isoTimestamp.includes('T')) return fmtFecha(isoTimestamp);
+  return new Date(isoTimestamp).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: ZONA_AR });
+}

@@ -113,7 +113,7 @@ export function EnviarMailModal({
             <input className={inputClass} type="email" multiple value={otro} onChange={(e) => setOtro(e.target.value)} />
           </Campo>
           {error && (
-            <p role="alert" className="text-sm font-medium text-brand-red">
+            <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}

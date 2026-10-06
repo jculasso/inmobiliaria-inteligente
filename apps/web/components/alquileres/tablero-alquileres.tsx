@@ -10,7 +10,7 @@ import { fmtFecha, fmtK, fmtMoneda, fmtNum } from '../../lib/format';
 import { ABREV_MES, NOMBRES_MES, periodosTranscurridos } from '../../lib/meses';
 import { PeriodosChart } from '../tablero/periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from '../tablero/periodos-tabla';
-import { CLASE_TH, EncabezadoPagina, TituloSeccion } from './piezas';
+import { CLASE_FOCO, CLASE_TH, EncabezadoPagina, Segmentado, TituloSeccion } from './piezas';
 
 /** Las columnas que puede mostrar el detalle de un número. */
 type Columna = 'contrato' | 'propiedad' | 'inquilino' | 'propietario' | 'alquiler' | 'indexa' | 'vence' | 'detalle' | 'fecha' | 'dias' | 'importe' | 'estado';
@@ -84,7 +84,7 @@ function direccion(pathname: string, hoy: string, anio: number, tipo: FiltroTipo
 function FiltroAnioAlquileres({ t, anio, cambiar }: { t: TableroAlquileresDto; anio: number; cambiar: (anio: number) => void }) {
   const hoy = Number(t.hoy.slice(0, 4));
   return (
-    <select aria-label="Año" value={anio} onChange={(e) => cambiar(Number(e.target.value))} className="h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink">
+    <select aria-label="Año" value={anio} onChange={(e) => cambiar(Number(e.target.value))} className={`h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink ${CLASE_FOCO}`}>
       {[hoy, hoy - 1, hoy - 2].map((a) => (
         <option key={a} value={a}>
           {a}
@@ -107,21 +107,7 @@ const TIPOS: [FiltroTipoContrato, string][] = [
  * 6/10/2026).
  */
 function FiltroTipo({ tipo, cambiar }: { tipo: FiltroTipoContrato; cambiar: (tipo: FiltroTipoContrato) => void }) {
-  return (
-    <div role="group" aria-label="Tipo de contrato" className="flex gap-1 rounded-brand border border-line bg-white p-1">
-      {TIPOS.map(([v, texto]) => (
-        <button
-          key={v}
-          type="button"
-          aria-pressed={tipo === v}
-          onClick={() => cambiar(v)}
-          className={`rounded-brand px-3 py-1 text-sm font-semibold transition-colors ${tipo === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
-        >
-          {texto}
-        </button>
-      ))}
-    </div>
-  );
+  return <Segmentado etiqueta="Tipo de contrato" opciones={TIPOS} valor={tipo} onCambio={cambiar} />;
 }
 
 /**
@@ -142,7 +128,7 @@ function RepartoTipo({ porTipo, onElegir }: { porTipo: TableroAlquileresDto['car
       <ul className="mt-3 flex flex-col gap-3">
         {porTipo.map((x) => (
           <li key={x.tipo}>
-            <button type="button" onClick={() => onElegir(x.tipo)} className="group w-full rounded-brand text-left" title={`Ver solo ${x.tipo === 'vivienda' ? 'particulares' : 'comerciales'}`}>
+            <button type="button" onClick={() => onElegir(x.tipo)} className={`group w-full rounded-brand text-left ${CLASE_FOCO}`} title={`Ver solo ${x.tipo === 'vivienda' ? 'particulares' : 'comerciales'}`}>
               <span className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
                 <span className="font-semibold text-ink group-hover:text-brand-red">
                   {x.tipo === 'vivienda' ? 'Particulares' : 'Comerciales'}{' '}
@@ -559,7 +545,7 @@ export function TableroAlquileres({ tableros, tipoInicial = 'todos' }: { tablero
                       type="button"
                       onClick={abrir(x.titulo, x.ind, x.columnas, { total: x.total, accion: x.accion })}
                       disabled={x.ind.valor === 0}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm enabled:hover:bg-surface/60 disabled:cursor-default"
+                      className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm enabled:hover:bg-surface/60 disabled:cursor-default ${CLASE_FOCO}`}
                     >
                       <span className={x.ind.valor === 0 ? 'text-muted' : 'text-ink'}>
                         <span aria-hidden className="mr-1.5">
@@ -612,7 +598,7 @@ function Celda({ f, col, etiqueta, hoy }: { f: FilaTablero; col: Columna; etique
     case 'indexa':
       if (!f.indexa) return <span className="text-muted">—</span>;
       return f.indexa < hoy ? (
-        <span className="font-semibold text-brand-red">
+        <span className="font-semibold text-danger">
           {fmtFecha(f.indexa)} <span className="text-[11px] font-bold uppercase">vencida</span>
         </span>
       ) : (
@@ -678,7 +664,7 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
               return (
                 <li key={f.id} className="rounded-brand border border-line text-sm">
                   {f.href ? (
-                    <Link href={f.href} className="block p-3 hover:bg-surface/60">
+                    <Link href={f.href} className={`block p-3 hover:bg-surface/60 ${CLASE_FOCO}`}>
                       {cuerpo}
                     </Link>
                   ) : (
@@ -708,7 +694,7 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
                         className={`px-3 py-2 align-top ${SIN_CORTE.includes(c) ? 'whitespace-nowrap' : ''} ${DERECHA.includes(c) ? 'text-right tabular-nums' : ''} ${c === 'importe' || i === 0 ? 'font-semibold text-ink' : 'text-muted'}`}
                       >
                         {i === 0 && f.href ? (
-                          <Link href={f.href} onClick={(e) => e.stopPropagation()} className="hover:text-brand-red">
+                          <Link href={f.href} onClick={(e) => e.stopPropagation()} className={`hover:text-brand-red ${CLASE_FOCO}`}>
                             <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
                           </Link>
                         ) : (
@@ -742,7 +728,7 @@ function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose
                 <span />
               )}
               {accion && (
-                <Link href={accion.href} className="ml-auto rounded-brand bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-dark">
+                <Link href={accion.href} className={`ml-auto rounded-brand bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-dark ${CLASE_FOCO}`}>
                   {accion.texto} →
                 </Link>
               )}
