@@ -19,6 +19,16 @@ const PREVIEW_VERCEL =
   /^https:\/\/inmobiliaria-inteligente-(web|sitio)(-[a-z0-9-]+)?\.vercel\.app$/;
 
 /**
+ * Las previews que Vercel firma con el equipo al final: el nombre del proyecto
+ * lo recorta o lo saca (`inmobiliaria-inteligente-gtopaw0g5-…`,
+ * `inmobiliaria-inteligente-we-git-3630fc-…`), pero el sufijo
+ * `-inmobiliaria-inteligente.vercel.app` es el del equipo y no lo puede usar
+ * otro. Sin esto, las previews de la web abrían y no cargaban ningún dato.
+ */
+const PREVIEW_VERCEL_EQUIPO =
+  /^https:\/\/inmobiliaria-inteligente-[a-z0-9-]+-inmobiliaria-inteligente\.vercel\.app$/;
+
+/**
  * Un origen del browser es propio: dominio de producción, una preview de
  * Vercel de este proyecto, localhost de desarrollo, o algo listado en
  * CORS_ORIGINS.
@@ -28,6 +38,7 @@ export function esOrigenPermitido(origin: string): boolean {
   return (
     origin === 'https://app.inmobiliariainteligente.net' ||
     PREVIEW_VERCEL.test(origin) ||
+    PREVIEW_VERCEL_EQUIPO.test(origin) ||
     /^http:\/\/localhost:\d+$/.test(origin)
   );
 }

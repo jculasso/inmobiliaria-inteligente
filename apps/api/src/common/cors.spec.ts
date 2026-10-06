@@ -35,6 +35,22 @@ describe('CORS · orígenes', () => {
     await expect(permitido('http://localhost:3000')).resolves.toBe(true);
   });
 
+  // Los nombres reales que arma Vercel para la web (PR #226): sin «-web», o
+  // recortado a «-we», y con el equipo al final.
+  it('acepta las previews que Vercel firma con el equipo', async () => {
+    await expect(
+      permitido('https://inmobiliaria-inteligente-gtopaw0g5-inmobiliaria-inteligente.vercel.app'),
+    ).resolves.toBe(true);
+    await expect(
+      permitido(
+        'https://inmobiliaria-inteligente-we-git-3630fc-inmobiliaria-inteligente.vercel.app',
+      ),
+    ).resolves.toBe(true);
+    await expect(
+      permitido('https://inmobiliaria-inteligente-x-inmobiliaria-inteligente.vercel.app.evil.com'),
+    ).resolves.toBe(false);
+  });
+
   // Cualquiera publica un proyecto en vercel.app en un minuto: aceptar
   // cualquier subdominio equivalía a no tener lista.
   it('rechaza un *.vercel.app que no es de este proyecto', async () => {
