@@ -1,47 +1,82 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import type { TodoEventosDto, TodoVista } from '@vacker/types';
 import { getAccessToken } from '../../lib/supabase/client';
+import { hoyIso } from '../../lib/format';
 import {
   desconectarTodo,
   getTodoConnectUrl,
   getTodoEstado,
   getTodoEventos,
 } from '../../lib/todo-api';
+import { CLASE_FOCO, MensajeError, Segmentado } from '../piezas';
 import { CalendarioTodo } from './todo-calendar';
 
 const TZ = 'America/Argentina/Buenos_Aires';
-const VISTAS: { key: TodoVista; label: string }[] = [
-  { key: 'dia', label: 'Día' },
-  { key: 'semana', label: 'Semana' },
-  { key: 'mes', label: 'Mes' },
+const VISTAS: readonly (readonly [TodoVista, string])[] = [
+  ['dia', 'Día'],
+  ['semana', 'Semana'],
+  ['mes', 'Mes'],
 ];
+
+/** Lo que se le dice a la persona cuando Google no terminó de conectar (`?google=error`). */
+export const MENSAJE_GOOGLE_ERROR =
+  'No se pudo conectar tu Google Calendar. Probá de nuevo; si vuelve a fallar, avisale a la administración de tu inmobiliaria.';
 
 type Estado = 'cargando' | 'desconectado' | 'conectado';
 
 export function TodoView() {
+  const router = useRouter();
+  const pathname = usePathname();
   const params = useSearchParams();
-  const googleParam = params.get('google');
+  // El resultado de la vuelta de Google se lee UNA vez y se saca de la
+  // dirección: si quedaba, recargar volvía a mostrar «quedó conectado» (o el
+  // error) días después.
+  const [avisoGoogle] = useState<'conectado' | 'error' | null>(() => {
+    const g = params.get('google');
+    return g === 'conectado' || g === 'error' ? g : null;
+  });
   const [estado, setEstado] = useState<Estado>('cargando');
   const [googleEmail, setGoogleEmail] = useState<string | null>(null);
   const [vista, setVista] = useState<TodoVista>('semana');
-  const [fecha, setFecha] = useState<string>(() => hoyArg());
+  const [fecha, setFecha] = useState<string>(() => hoyIso());
   const [data, setData] = useState<TodoEventosDto | null>(null);
   const [cargandoEventos, setCargandoEventos] = useState(false);
-  const [error, setError] = useState<string | null>(
-    googleParam === 'error' ? 'No se pudo conectar tu Google. Reintentá.' : null,
-  );
+  const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  /** Para qué vista y fecha son los eventos que hay en pantalla. */
+  const cargadoPara = useRef<string | null>(null);
+  const vistaFecha = useRef({ vista, fecha });
+  vistaFecha.current = { vista, fecha };
 
+  useEffect(() => {
+    if (params.get('google')) router.replace(pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * El estado de la conexión y los eventos, EN PARALELO: antes se pedía el
+   * estado, se esperaba, y recién después los eventos — dos idas y vueltas a
+   * Render en cada entrada. Si no está conectado, los eventos fallan y se
+   * descartan.
+   */
   const cargarEstado = useCallback(async () => {
     try {
       const token = await getAccessToken();
-      const e = await getTodoEstado(token);
-      setEstado(e.conectado ? 'conectado' : 'desconectado');
+      const { vista: v, fecha: f } = vistaFecha.current;
+      const [e, eventos] = await Promise.all([
+        getTodoEstado(token),
+        getTodoEventos(token, v, f).catch(() => null),
+      ]);
       setGoogleEmail(e.googleEmail);
+      if (e.conectado && eventos) {
+        setData(eventos);
+        cargadoPara.current = `${v}|${f}`;
+      }
+      setEstado(e.conectado ? 'conectado' : 'desconectado');
     } catch (err) {
       setEstado('desconectado');
       setError(mensaje(err));
@@ -52,12 +87,38 @@ export function TodoView() {
     void cargarEstado();
   }, [cargarEstado]);
 
+  /*
+   * Instalada como app (PWA), «Conectar Google» abre Google y la app queda en
+   * segundo plano con «Redirigiendo…» clavado: al volver no hay recarga. Al
+   * volver a verse (o al salir del caché de «atrás») se libera el botón y se
+   * vuelve a mirar si la conexión quedó hecha.
+   */
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible') return;
+      setOcupado(false);
+      void cargarEstado();
+    };
+    const alMostrar = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      setOcupado(false);
+      void cargarEstado();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('pageshow', alMostrar);
+    return () => {
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('pageshow', alMostrar);
+    };
+  }, [cargarEstado]);
+
   const cargarEventos = useCallback(async () => {
     setCargandoEventos(true);
     setError(null);
     try {
       const token = await getAccessToken();
       setData(await getTodoEventos(token, vista, fecha));
+      cargadoPara.current = `${vista}|${fecha}`;
     } catch (err) {
       setError(mensaje(err));
     } finally {
@@ -66,8 +127,11 @@ export function TodoView() {
   }, [vista, fecha]);
 
   useEffect(() => {
-    if (estado === 'conectado') void cargarEventos();
-  }, [estado, cargarEventos]);
+    // Los de esta vista ya llegaron junto con el estado: no se piden otra vez.
+    if (estado === 'conectado' && cargadoPara.current !== `${vista}|${fecha}`) {
+      void cargarEventos();
+    }
+  }, [estado, vista, fecha, cargarEventos]);
 
   async function conectar() {
     setOcupado(true);
@@ -87,6 +151,7 @@ export function TodoView() {
       const token = await getAccessToken();
       await desconectarTodo(token);
       setData(null);
+      cargadoPara.current = null;
       await cargarEstado();
     } catch (err) {
       setError(mensaje(err));
@@ -110,10 +175,13 @@ export function TodoView() {
           Vas a ver acá tus eventos del calendario (solo lectura), en vistas por día, semana y mes.
           No modificamos nada de tu agenda.
         </p>
-        {error && <p className="mt-3 text-sm font-medium text-brand-red">{error}</p>}
+        {avisoGoogle === 'error' && (
+          <MensajeError className="mx-auto mt-3 max-w-md">{MENSAJE_GOOGLE_ERROR}</MensajeError>
+        )}
+        <MensajeError className="mt-3">{error}</MensajeError>
         <div className="mt-5">
           <Button variant="primary" onClick={conectar} disabled={ocupado}>
-            {ocupado ? 'Redirigiendo…' : 'Conectar Google'}
+            {ocupado ? 'Redirigiendo…' : avisoGoogle === 'error' ? 'Reintentar' : 'Conectar Google'}
           </Button>
         </div>
       </div>
@@ -123,40 +191,28 @@ export function TodoView() {
   // Conectado
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {googleParam === 'conectado' && (
+      {avisoGoogle === 'conectado' && (
         <p className="rounded-brand bg-success/10 px-3 py-2 text-sm font-medium text-success">
           ✓ Tu Google Calendar quedó conectado.
         </p>
       )}
+      {avisoGoogle === 'error' && <MensajeError>{MENSAJE_GOOGLE_ERROR}</MensajeError>}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-brand border border-line bg-white p-1">
-          {VISTAS.map((v) => (
-            <button
-              key={v.key}
-              type="button"
-              onClick={() => setVista(v.key)}
-              className={`rounded-[12px] px-3 py-1.5 text-sm font-semibold transition-colors ${
-                vista === v.key ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'
-              }`}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
+        <Segmentado etiqueta="Qué vista" opciones={VISTAS} valor={vista} onCambio={setVista} />
 
         <div className="flex items-center gap-2">
           <button
             type="button"
             aria-label="Anterior"
             onClick={() => setFecha((f) => desplazar(f, vista, -1))}
-            className="flex h-9 w-9 items-center justify-center rounded-brand border border-line text-ink hover:bg-surface"
+            className={`flex h-10 w-10 items-center justify-center rounded-brand border border-line text-ink hover:bg-surface ${CLASE_FOCO}`}
           >
             ‹
           </button>
           <button
             type="button"
-            onClick={() => setFecha(hoyArg())}
-            className="rounded-brand border border-line px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface"
+            onClick={() => setFecha(hoyIso())}
+            className={`h-10 rounded-brand border border-line px-3 text-sm font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`}
           >
             Hoy
           </button>
@@ -164,46 +220,45 @@ export function TodoView() {
             type="button"
             aria-label="Siguiente"
             onClick={() => setFecha((f) => desplazar(f, vista, 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-brand border border-line text-ink hover:bg-surface"
+            className={`flex h-10 w-10 items-center justify-center rounded-brand border border-line text-ink hover:bg-surface ${CLASE_FOCO}`}
           >
             ›
           </button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-ink">{capFirst(labelRango(vista, fecha))}</h2>
         {googleEmail && (
-          <span className="text-xs text-muted">
-            {googleEmail} ·{' '}
-            <button
-              type="button"
-              onClick={desconectar}
-              disabled={ocupado}
-              className="font-semibold text-brand-red hover:underline"
-            >
-              desconectar
-            </button>
+          <span className="flex min-w-0 items-center gap-2 text-xs text-muted">
+            <span className="truncate">{googleEmail}</span>
+            <Button variant="secondary" size="sm" onClick={desconectar} disabled={ocupado}>
+              Desconectar
+            </Button>
           </span>
         )}
       </div>
 
-      {error && <p className="text-sm font-medium text-brand-red">{error}</p>}
+      <MensajeError>{error}</MensajeError>
 
       {cargandoEventos ? (
         <p className="text-sm text-muted">Cargando eventos…</p>
       ) : (
-        <CalendarioTodo vista={vista} fecha={fecha} data={data} />
+        <CalendarioTodo
+          vista={vista}
+          fecha={fecha}
+          data={data}
+          onIrADia={(d) => {
+            setFecha(d);
+            setVista('dia');
+          }}
+        />
       )}
     </div>
   );
 }
 
 // --- helpers de fecha (Argentina, offset fijo -03:00) ---
-
-function hoyArg(): string {
-  return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
-}
 
 function desplazar(fecha: string, vista: TodoVista, dir: number): string {
   if (vista === 'mes') {
