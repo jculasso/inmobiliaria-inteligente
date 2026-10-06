@@ -71,7 +71,7 @@ export class TableroAlquileresService {
       this.indexaciones.bandeja(hoy, DIAS_TABLERO_PROXIMOS),
       this.liquidaciones.pendientes(),
     ]);
-    const { contratos: todos, delMes: delMesTodos, mora, evolucion, ingresos, reclamos } = datos;
+    const { contratos: todos, delMes: delMesTodos, mora, evolucion, ingresos, reclamos, polizas, boletas } = datos;
 
     // El filtro Particulares / Comerciales (punto 8 de Javier) mira todo el
     // tablero. Lo que crece con la historia ya viene filtrado de la base; lo
@@ -294,11 +294,38 @@ export class TableroAlquileresService {
               importe: null,
             })),
         ),
+        // Entrega 19: las pólizas de los vigentes que vencen y lo que paga la inmobiliaria.
+        polizas: porCantidad(
+          polizas
+            .filter((p) => p.contrato.estado === 'vigente' && delTipo.has(p.contratoId))
+            .map((p) => ({
+              id: p.id,
+              href: `/alquileres/contratos/${p.contratoId}`,
+              contrato: p.contrato.codigo,
+              persona: null,
+              detalle: `Póliza ${p.aseguradora}${p.numero ? ` N° ${p.numero}` : ''} · ${fromDate(p.hasta)! < hoy ? 'vencida' : 'vence'} el ${fechaCorta(fromDate(p.hasta)!)}`,
+              fecha: fromDate(p.hasta),
+              importe: null,
+            })),
+        ),
+        boletas: porCantidad(
+          boletas
+            .filter((b) => tipo === 'todos' || (b.contratoId != null && delTipo.has(b.contratoId)))
+            .map((b) => ({
+              id: b.id,
+              href: '/alquileres/impuestos?ver=control',
+              contrato: b.contratoId ? (todos.find((c) => c.id === b.contratoId)?.codigo ?? null) : null,
+              persona: null,
+              detalle: `${b.cuenta ? b.cuenta.servicio.nombre : `Póliza ${b.poliza?.aseguradora ?? ''}`}${b.cuota ? ` cuota ${b.cuota}` : ''} · ${fromDate(b.vencimiento)! < hoy ? 'vencida' : 'vence'} el ${fechaCorta(fromDate(b.vencimiento)!)}`,
+              fecha: fromDate(b.vencimiento),
+              importe: decToNum(b.importe),
+            })),
+        ),
       },
     };
   }
 
-  /** Cinco consultas, en una transacción: todas ven la misma foto de la base. */
+  /** Ocho consultas, siempre las mismas, en una transacción: todas ven la misma foto de la base. */
   private async leer(tx: Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0], hoy: string, mes: string, anio: number, tipo: FiltroTipoContrato) {
     // El filtro por tipo en lo que se agrega en la base (punto 8).
     const delTipo = tipo === 'todos' ? Prisma.empty : Prisma.sql`AND c.tipo = ${tipo}`;
@@ -306,7 +333,7 @@ export class TableroAlquileresService {
     const hastaEvolucion = `${anio}-12`;
     const desdeIngresos = `${anio - 1}-01-01`;
     const hastaIngresos = `${anio + 1}-01-01`;
-    const [contratos, delMes, mora, evolucion, ingresos, reclamos] = await Promise.all([
+    const [contratos, delMes, mora, evolucion, ingresos, reclamos, polizas, boletas] = await Promise.all([
       tx.alqContrato.findMany({
         where: { estado: { notIn: ['borrador', 'anulado'] } },
         select: {
@@ -415,7 +442,17 @@ export class TableroAlquileresService {
         select: { id: true, asunto: true, prioridad: true, contratoId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
+      tx.alqPoliza.findMany({
+        where: { anuladoEn: null, hasta: { lte: toDate(sumarDiasIso(hoy, DIAS_TABLERO_PROXIMOS))! } },
+        select: { id: true, contratoId: true, aseguradora: true, numero: true, hasta: true, contrato: { select: { codigo: true, estado: true } } },
+        orderBy: { hasta: 'asc' },
+      }),
+      tx.alqBoleta.findMany({
+        where: { paga: 'inmobiliaria', pagadaEl: null, anuladoEn: null, vencimiento: { lte: toDate(sumarDiasIso(hoy, 7))! } },
+        select: { id: true, contratoId: true, cuota: true, vencimiento: true, importe: true, cuenta: { select: { servicio: { select: { nombre: true } } } }, poliza: { select: { aseguradora: true } } },
+        orderBy: { vencimiento: 'asc' },
+      }),
     ]);
-    return { contratos, delMes, mora, evolucion, ingresos, reclamos };
+    return { contratos, delMes, mora, evolucion, ingresos, reclamos, polizas, boletas };
   }
 }

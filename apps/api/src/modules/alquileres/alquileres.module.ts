@@ -9,6 +9,8 @@ import { ConceptosService } from './conceptos.service';
 import { ContratosController } from './contratos.controller';
 import { ProveedoresService } from './proveedores.service';
 import { ProveedoresController } from './proveedores.controller';
+import { ImpuestosService } from './impuestos.service';
+import { ImpuestosController } from './impuestos.controller';
 import { PlantillasService } from './plantillas.service';
 import { PlantillasController } from './plantillas.controller';
 import { ReclamosService } from './reclamos.service';
@@ -39,7 +41,7 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
 
 /** Módulo Alquileres: administración de contratos de alquiler. */
 @Module({
-  controllers: [IndicesController, ProveedoresController, PlantillasController, ReclamosController, AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController, LiquidacionesController, TableroAlquileresController, FirmaController, FirmaAvisosController],
+  controllers: [IndicesController, ProveedoresController, ImpuestosController, PlantillasController, ReclamosController, AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController, LiquidacionesController, TableroAlquileresController, FirmaController, FirmaAvisosController],
   providers: [
     AlquileresService,
     PersonasService,
@@ -52,6 +54,7 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
     ContratoCompletoService,
     PlantillasService,
     ProveedoresService,
+    ImpuestosService,
     ReclamosService,
     ConceptosService,
     CobrosService,

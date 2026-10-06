@@ -268,7 +268,7 @@ function aParaGenerar(c: FilaContrato): ContratoParaGenerar {
 }
 
 /** A quién se le carga un importe del lado de un papel: el inquilino titular, o los propietarios por porcentaje. */
-function repartoDe(
+export function repartoDe(
   partes: { personaId: string; papel: string; porcentaje: Prisma.Decimal | null }[],
   papel: 'inquilino' | 'propietario',
   importe: number,

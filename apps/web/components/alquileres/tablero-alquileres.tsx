@@ -329,6 +329,8 @@ export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDt
     ['⚠️', 'Inquilinos con deuda de más de 30 días', t.tareas.deudores],
     ['✍️', 'Contratos vigentes sin el firmado cargado', t.tareas.sinFirmar],
     ['🛠️', 'Reclamos abiertos', t.tareas.reclamos],
+    ['🛡️', `Pólizas vencidas o que vencen en ${DIAS_TABLERO_PROXIMOS} días`, t.tareas.polizas],
+    ['💸', 'Boletas que paga la inmobiliaria, vencidas o a 7 días', t.tareas.boletas],
   ];
 
   return (

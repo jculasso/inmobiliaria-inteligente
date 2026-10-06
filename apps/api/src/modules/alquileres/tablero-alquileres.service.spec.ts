@@ -80,6 +80,17 @@ function servicio(over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unkn
   const tx = {
     alqContrato: { findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]) },
     alqReclamo: { findMany: vi.fn().mockResolvedValue([{ id: 'r1', asunto: 'Pérdida de agua', prioridad: 'alta', contratoId: 'c5', createdAt: new Date('2026-10-10T12:00:00Z') }]) },
+    alqPoliza: {
+      findMany: vi.fn().mockResolvedValue([
+        { id: 'p1', contratoId: 'c5', aseguradora: 'Sancor', numero: '123', hasta: d('2026-11-30'), contrato: { codigo: '5', estado: 'vigente' } },
+        { id: 'p2', contratoId: 'c9', aseguradora: 'Otra', numero: null, hasta: d('2026-10-01'), contrato: { codigo: '9', estado: 'finalizado' } },
+      ]),
+    },
+    alqBoleta: {
+      findMany: vi.fn().mockResolvedValue([
+        { id: 'b1', contratoId: 'c5', cuota: '3/6', vencimiento: d('2026-10-10'), importe: dec(45_000), cuenta: { servicio: { nombre: 'API' } }, poliza: null },
+      ]),
+    },
     alqConcepto: { findMany: vi.fn().mockResolvedValue(over.delMes ?? [alquilerDelMes('5', 1_137_518, 1_137_518), alquilerDelMes('6', 400_000, 150_000)]) },
     $queryRaw: vi.fn(async (_t: TemplateStringsArray, ...v: unknown[]) => {
       valores.push(v);
@@ -130,6 +141,8 @@ function indicadores(t: TableroAlquileresDto): [string, Indicador, 'importe' | '
     ['deudores', t.tareas.deudores, 'cantidad'],
     ['sin firmar', t.tareas.sinFirmar, 'cantidad'],
     ['reclamos', t.tareas.reclamos, 'cantidad'],
+    ['polizas', t.tareas.polizas, 'cantidad'],
+    ['boletas', t.tareas.boletas, 'cantidad'],
   ];
 }
 
@@ -203,6 +216,13 @@ describe('TableroAlquileresService', () => {
       ['5', 'Falta cargar el contrato firmado'],
       ['7', 'Falta completar la firma'],
     ]);
+  });
+
+  // Entrega 19.
+  it('pólizas de los vigentes que vencen en 60 días y boletas que paga la inmobiliaria', async () => {
+    const t = (await servicio().tablero(HOY)).tareas;
+    expect(t.polizas.filas.map((f) => [f.contrato, f.detalle, f.href])).toEqual([['5', 'Póliza Sancor N° 123 · vence el 30/11/2026', '/alquileres/contratos/c5']]);
+    expect(t.boletas.filas.map((f) => [f.contrato, f.detalle, f.importe])).toEqual([['5', 'API cuota 3/6 · vencida el 10/10/2026', 45_000]]);
   });
 
   it('cada fila lleva a la ficha o a la cuenta', async () => {
