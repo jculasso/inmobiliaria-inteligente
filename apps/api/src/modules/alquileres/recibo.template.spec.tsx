@@ -46,3 +46,40 @@ describe('Recibo (regla 23)', () => {
     expect(await texto(cobro({ anulado: { en: '2026-11-06T10:00:00Z', motivo: 'Transferencia rechazada' } }))).toContain('Transferencia rechazada');
   });
 });
+
+describe('Liquidación en PDF (regla 23)', () => {
+  it('lista lo cobrado, cada descuento y el neto, con la leyenda', async () => {
+    const { LiquidacionDocument } = await import('./liquidacion.template');
+    const linea = (descripcion: string, importe: number, tipo: 'alquiler' | 'honorarios') => ({
+      conceptoId: crypto.randomUUID(),
+      contrato: { id: crypto.randomUUID(), codigo: '5' },
+      tipo,
+      descripcion,
+      importe,
+    });
+    const buffer = await renderToBuffer(
+      <LiquidacionDocument
+        liquidacion={{
+          id: crypto.randomUUID(),
+          numero: 3,
+          persona: { id: crypto.randomUUID(), nombre: 'Juan Propietario' },
+          fecha: '2026-11-12',
+          moneda: 'ARS',
+          medio: 'transferencia',
+          aPagar: [linea('Alquiler noviembre 2026', 1_137_518, 'alquiler')],
+          aDescontar: [linea('Honorarios noviembre 2026', 110_111.74, 'honorarios')],
+          neto: 1_027_406.26,
+          anulado: null,
+        }}
+        tenantNombre="Alteva Propiedades"
+        logoUrl={null}
+        colorPrimario={null}
+      />,
+    );
+    const t = textoDePdf(buffer);
+    expect(t).toContain('LIQUIDACIÓN N° 000003');
+    expect(t).toContain('Honorarios noviembre 2026');
+    expect(t).toContain('$ 1.027.406,26');
+    expect(t).toContain(LEYENDA_NO_FACTURA);
+  });
+});

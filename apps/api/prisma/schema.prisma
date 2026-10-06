@@ -849,11 +849,16 @@ model AlqImputacion {
 model AlqLiquidacion {
   id              String    @id @default(uuid()) @db.Uuid
   tenantId        String    @map("tenant_id") @db.Uuid
+  /// Número correlativo por inmobiliaria.
+  numero          Int
   personaId       String    @map("persona_id") @db.Uuid
   periodo         String // YYYY-MM
   moneda          String    @default("ARS")
   neto            Decimal   @db.Decimal(14, 2)
   fecha           DateTime  @db.Date
+  medio           String    @default("transferencia") // transferencia | efectivo | cheque | otro
+  /// Cada concepto con su importe, tal como se liquidó (ver la migración).
+  detalle         Json
   creadoPorId     String?   @map("creado_por_id") @db.Uuid
   anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(6)
   anuladoPorId    String?   @map("anulado_por_id") @db.Uuid
@@ -864,6 +869,7 @@ model AlqLiquidacion {
   persona   AlqPersona    @relation(fields: [personaId], references: [id], onDelete: Restrict)
   conceptos AlqConcepto[]
 
+  @@unique([tenantId, numero])
   @@index([tenantId])
   @@index([tenantId, personaId])
   @@map("alq_liquidacion")

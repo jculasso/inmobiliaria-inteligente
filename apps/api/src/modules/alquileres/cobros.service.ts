@@ -14,7 +14,7 @@ import {
   type SentidoConcepto,
   type TipoConcepto,
 } from '@vacker/types';
-import { planificarCobro, proponerPunitorio, redondear2 } from '@vacker/domain';
+import { parteDeClave, planificarCobro, proponerPunitorio, redondear2 } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
@@ -242,6 +242,7 @@ export class CobrosService {
           conceptos: {
             select: { imputaciones: { where: { ...IMPUTACION_ACTIVA, cobroId: { not: id } }, select: { id: true } } },
           },
+          registradas: { select: { concepto: { select: { claveGeneracion: true, tipo: true } } } },
         },
       });
       if (!c) throw new NotFoundException('El cobro no existe.');
@@ -252,6 +253,30 @@ export class CobrosService {
       }
       if (c.conceptos.some((k) => k.imputaciones.length > 0)) {
         throw new BadRequestException('Un punitorio de este cobro tiene pagos de otro cobro: anulá ese primero.');
+      }
+      // Si lo que canceló ya se le liquidó al propietario, anular dejaría al
+      // dueño cobrado de un alquiler que el inquilino no pagó (regla 22).
+      const partes = [
+        ...new Set(
+          c.registradas
+            .filter((i) => i.concepto.tipo === 'alquiler' || i.concepto.tipo === 'iva')
+            .map((i) => parteDeClave(i.concepto.claveGeneracion))
+            .filter((x): x is string => x !== null),
+        ),
+      ];
+      if (partes.length) {
+        const liquidado = await tx.alqConcepto.findFirst({
+          where: {
+            sentido: 'a_pagar',
+            liquidacion: { anuladoEn: null },
+            contrato: { pagoGarantizado: false },
+            OR: partes.map((p) => ({ claveGeneracion: { startsWith: `${p}|` } })),
+          },
+          select: { liquidacion: { select: { numero: true } } },
+        });
+        if (liquidado?.liquidacion) {
+          throw new BadRequestException(`Lo que canceló este cobro ya se le liquidó al propietario (liquidación ${liquidado.liquidacion.numero}): anulá esa primero.`);
+        }
       }
       const ahora = new Date();
       const { count } = await tx.alqCobro.updateMany({
@@ -272,12 +297,17 @@ export class CobrosService {
     return this.db.withTenant(async (tx) => {
       const persona = await this.persona(tx, personaId);
       const { conceptos, cobros, creditos } = await this.estado(tx, personaId);
-      const monedas = [...new Set([...conceptos.map((c) => c.moneda), ...cobros.map((c) => c.moneda)])].sort() as MonedaAlquiler[];
+      // Lo que se le pagó al propietario (regla 20): salda lo que se le debía.
+      const liquidaciones = (
+        await tx.alqLiquidacion.findMany({ where: { personaId }, select: { id: true, numero: true, moneda: true, fecha: true, neto: true, anuladoEn: true, createdAt: true } })
+      ).map((l) => ({ id: l.id, numero: l.numero, moneda: l.moneda, fecha: fromDate(l.fecha)!, neto: decToNum(l.neto), anulado: l.anuladoEn != null, createdAt: l.createdAt }));
+      const monedas = [...new Set([...conceptos.map((c) => c.moneda), ...cobros.map((c) => c.moneda), ...liquidaciones.map((l) => l.moneda)])].sort() as MonedaAlquiler[];
       return {
         persona,
         monedas: monedas.map((moneda) => {
           const ks = conceptos.filter((c) => c.moneda === moneda);
           const cs = cobros.filter((c) => c.moneda === moneda);
+          const ls = liquidaciones.filter((l) => l.moneda === moneda);
           const movimientos = [
             ...ks.map((k) => ({
               id: k.id,
@@ -302,6 +332,18 @@ export class CobrosService {
               haber: c.importe,
               anulado: c.anulado,
               numero: c.numero,
+            })),
+            ...ls.map((l) => ({
+              id: l.id,
+              tipo: 'liquidacion' as const,
+              fecha: l.fecha,
+              orden: l.createdAt.getTime(),
+              descripcion: `Liquidación ${l.numero}`,
+              contrato: null,
+              debe: l.neto,
+              haber: 0,
+              anulado: l.anulado,
+              numero: l.numero,
             })),
           ].sort((a, b) => (a.fecha === b.fecha ? a.orden - b.orden : a.fecha < b.fecha ? -1 : 1));
           let saldo = 0;
@@ -362,11 +404,13 @@ export class CobrosService {
       const imputado = k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0);
       return {
         id: k.id,
+        liquidado: k.liquidacionId != null,
         tipo: k.tipo,
         sentido: k.sentido,
         moneda: k.moneda,
         importe,
-        saldo: redondear2(importe - imputado),
+        // Liquidado = saldado con el propietario (regla 20): no queda nada pendiente.
+        saldo: k.liquidacionId ? 0 : redondear2(importe - imputado),
         vencimiento: fromDate(k.vencimiento)!,
         createdAt: k.createdAt,
         periodo: k.periodo,

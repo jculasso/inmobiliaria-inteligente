@@ -593,3 +593,82 @@ export function proponerPunitorio(saldo: number, desde: string, fecha: string, t
   const dias = Math.max(0, diasInclusive(desde, fecha) - 1);
   return { dias, importe: dias === 0 || tasaDiariaPct <= 0 ? 0 : redondear2((saldo * tasaDiariaPct * dias) / 100) };
 }
+
+// --- Liquidación al propietario (reglas 20 a 22) -----------------------------------
+
+/**
+ * La parte del mes de un concepto generado: `alq|contrato|periodo|desde`. El
+ * alquiler a cobrar al inquilino, el alquiler a pagar a cada propietario y sus
+ * honorarios de la misma parte la comparten; es lo que los une.
+ */
+export function parteDeClave(clave: string | null): string | null {
+  if (!clave?.startsWith('alq|')) return null;
+  return clave.split('|').slice(0, 4).join('|');
+}
+
+/** Un concepto pendiente de un propietario, como lo mira la liquidación. */
+export interface ConceptoALiquidar {
+  id: string;
+  tipo: string;
+  sentido: 'a_cobrar' | 'a_pagar';
+  saldo: number;
+  clave: string | null;
+  pagoGarantizado: boolean;
+}
+
+export interface PropuestaLiquidacion {
+  /** Lo que se le paga: alquileres (y su IVA) ya cobrados al inquilino, reintegros. */
+  aPagar: ConceptoALiquidar[];
+  /** Lo que se le descuenta: honorarios de esos alquileres, gastos suyos. */
+  aDescontar: ConceptoALiquidar[];
+  /** En espera: el inquilino todavía no pagó esa parte (regla 22). */
+  enEspera: ConceptoALiquidar[];
+  neto: number;
+}
+
+const QUE_ESPERAN_AL_INQUILINO = ['alquiler', 'iva'];
+
+/**
+ * Reglas 20 a 22: qué entra en la liquidación de un propietario.
+ *
+ * - Su alquiler (y el IVA del alquiler) entra si el inquilino ya pagó del todo
+ *   esa misma parte del mes, o si el contrato tiene pago garantizado (regla
+ *   21). Si no, queda en espera (regla 22), como en Gexion.
+ * - Los honorarios de una parte se descuentan junto con su alquiler: si el
+ *   alquiler espera, sus honorarios también.
+ * - Lo demás que debe el propietario (una reparación, un impuesto) se
+ *   descuenta; lo que se le debe (un reintegro) se le paga.
+ *
+ * `partesPagadas` son las partes cuyo alquiler a cobrar al inquilino ya no
+ * tiene saldo, con el tipo: `alq|c|2026-11|2026-11-01#alquiler`.
+ */
+export function proponerLiquidacion(conceptos: ConceptoALiquidar[], partesPagadas: Set<string>): PropuestaLiquidacion {
+  const aPagar: ConceptoALiquidar[] = [];
+  const aDescontar: ConceptoALiquidar[] = [];
+  const enEspera: ConceptoALiquidar[] = [];
+  const partesLiberadas = new Set<string>();
+
+  for (const c of conceptos.filter((x) => x.sentido === 'a_pagar')) {
+    const parte = parteDeClave(c.clave);
+    if (parte && QUE_ESPERAN_AL_INQUILINO.includes(c.tipo)) {
+      if (c.pagoGarantizado || partesPagadas.has(`${parte}#${c.tipo}`)) {
+        aPagar.push(c);
+        if (c.tipo === 'alquiler') partesLiberadas.add(parte);
+      } else {
+        enEspera.push(c);
+      }
+    } else {
+      aPagar.push(c);
+    }
+  }
+  for (const c of conceptos.filter((x) => x.sentido === 'a_cobrar')) {
+    const parte = parteDeClave(c.clave);
+    if (c.tipo === 'honorarios' && parte) {
+      (partesLiberadas.has(parte) ? aDescontar : enEspera).push(c);
+    } else {
+      aDescontar.push(c);
+    }
+  }
+  const suma = (xs: ConceptoALiquidar[]) => xs.reduce((s, x) => s + aCentavos(x.saldo), 0);
+  return { aPagar, aDescontar, enEspera, neto: (suma(aPagar) - suma(aDescontar)) / 100 };
+}
