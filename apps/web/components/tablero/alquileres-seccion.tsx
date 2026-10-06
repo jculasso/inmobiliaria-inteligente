@@ -126,14 +126,17 @@ function tarjetas(
 export function AlquileresSeccion({
   anio,
   mesSeleccionado,
+  inicial,
 }: {
   anio: number;
   mesSeleccionado: number;
+  /** Los doce meses, si ya vinieron con la página: no se vuelven a pedir. */
+  inicial?: AlquileresMes[];
 }) {
   const [tab, setTab] = useState<Tab>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
   const [mes, setMes] = useState(mesSeleccionado);
-  const [meses, setMeses] = useState<AlquileresMes[] | null>(null);
+  const [meses, setMeses] = useState<AlquileresMes[] | null>(inicial ?? null);
   const [error, setError] = useState(false);
   const [lista, setLista] = useState<{
     titulo: string;
@@ -147,6 +150,7 @@ export function AlquileresSeccion({
   }, [mesSeleccionado]);
 
   useEffect(() => {
+    if (inicial) return;
     let cancelado = false;
     setError(false);
     getAccessToken()
@@ -163,7 +167,7 @@ export function AlquileresSeccion({
     return () => {
       cancelado = true;
     };
-  }, [anio]);
+  }, [anio, inicial]);
 
   const calculo = useMemo(() => {
     if (!meses) return null;

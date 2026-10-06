@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AccionActualizadaSchema,
   CandidataDtoSchema,
   ProtocoloDtoSchema,
   ProtocoloKpisSchema,
@@ -8,6 +9,7 @@ import {
   ReporteSemanalSchema,
   ResultadoEnvioSchema,
   type ArchivarProtocolo,
+  type ProtocoloDto,
   type IniciarProtocolo,
   type ProtocoloFiltro,
   type UpdateAccion,
@@ -59,17 +61,34 @@ export async function updateProtocolo(accessToken: string, id: string, dto: Upda
   });
 }
 
+/**
+ * Tildar una acción. Pide la respuesta liviana (`?liviana=1`: la acción, la
+ * versión nueva y los derivados) y la aplica sobre la ficha que la pantalla ya
+ * tiene: antes la API devolvía la ficha entera, con sus 29 acciones, en cada
+ * tilde (revisión de performance del 6/10/2026). Si la API todavía es la
+ * anterior y devuelve la ficha entera, se usa esa.
+ */
 export async function updateAccion(
   accessToken: string,
-  id: string,
+  actual: ProtocoloDto,
   accionId: string,
   dto: UpdateAccion,
-) {
-  return apiFetch(`/protocolo/${id}/acciones/${accionId}`, ProtocoloDtoSchema, {
-    accessToken,
-    method: 'PATCH',
-    body: dto,
-  });
+): Promise<ProtocoloDto> {
+  const r = await apiFetch(
+    `/protocolo/${actual.id}/acciones/${accionId}`,
+    z.union([AccionActualizadaSchema, ProtocoloDtoSchema]),
+    { accessToken, method: 'PATCH', body: dto, searchParams: { liviana: 1 } },
+  );
+  if (!('accion' in r)) return r;
+  return {
+    ...actual,
+    version: r.version,
+    avance: r.avance,
+    semanaActual: r.semanaActual,
+    alertas: r.alertas,
+    proximaAccion: r.proximaAccion,
+    acciones: actual.acciones.map((a) => (a.id === r.accion.id ? r.accion : a)),
+  };
 }
 
 export async function archivarProtocolo(accessToken: string, id: string, dto: ArchivarProtocolo) {

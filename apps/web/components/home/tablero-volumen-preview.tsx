@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { etiquetaDeAlcance, type AlcanceModulo } from '../../lib/rbac';
 import { fmtUSD } from '../../lib/format';
 import { getAccessToken } from '../../lib/supabase/client';
-import { getKpisResumen } from '../../lib/tablero-api';
+import { getResumenRango } from '../../lib/tablero-api';
 import { CLASE_FOCO } from '../piezas';
 
 /**
@@ -31,9 +31,10 @@ export function TableroVolumenPreview({ anio, alcance }: { anio: number; alcance
       // mismo. Sin `verTodo`, el backend devuelve solo lo del usuario y la card
       // mostraba un número propio rotulado "Total" — una cifra que no era la
       // que el rótulo prometía.
-      .then((token) => getKpisResumen(token, { anio, verTodo: alcance !== 'propio' }))
+      // El rango del año alcanza para un número: el resumen completo eran el doble de consultas.
+      .then((token) => getResumenRango(token, anio, 1, 12, alcance !== 'propio'))
       .then((r) => {
-        if (!cancelado) setVolumen(r.anual.volumen);
+        if (!cancelado) setVolumen(r.agregado.volumen);
       })
       .catch(() => {
         // Stat opcional: si falla no rompe la Home, pero lo dice.

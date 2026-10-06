@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  DashboardTasadorSchema,
+  type DashboardTasador,
   RankingCaptacionItemSchema,
   ResumenTasadorKpiSchema,
   TasacionDtoSchema,
@@ -11,22 +13,12 @@ import {
   type TasadorKpiFiltro,
   type UpdateTasacion,
 } from '@vacker/types';
-import { apiFetch, apiFetchPdf, apiFetchForm } from './api-client';
+import { ApiError, apiFetch, apiFetchPdf, apiFetchForm } from './api-client';
 
-export async function listTasaciones(accessToken: string, filtro: TasacionFiltro) {
-  return apiFetch('/tasador/tasaciones', z.array(TasacionDtoSchema), {
-    accessToken,
-    searchParams: {
-      anio: filtro.anio,
-      mes: filtro.mes,
-      estado: filtro.estado,
-      agenteId: filtro.agenteId,
-      verTodo: filtro.verTodo ? 1 : undefined,
-    },
-  });
-}
-
-/** Igual que `listTasaciones` pero liviano (sin comparables/fotos/análisis) — para el dashboard. */
+/**
+ * Las tasaciones, livianas (sin comparables, fotos ni análisis). La lista
+ * completa con todo eso se sacó de la API el 6/10/2026: ninguna pantalla la usaba.
+ */
 export async function listTasacionesResumen(accessToken: string, filtro: TasacionFiltro) {
   return apiFetch('/tasador/tasaciones/resumen', z.array(TasacionResumenDtoSchema), {
     accessToken,
@@ -149,6 +141,27 @@ export async function getRankingCaptaciones(accessToken: string, filtro: Tasador
 }
 
 /** Agregados de los 12 meses del año en una sola llamada de red. */
+/**
+ * La portada del Tasador en un pedido: resumen y ranking del año y los doce
+ * meses. Si la API todavía no lo tiene (404: la web nueva sale unos minutos
+ * antes), devuelve `null` y la página pide como antes.
+ */
+export async function getDashboardTasador(
+  accessToken: string,
+  anio: number,
+  verTodo?: boolean,
+): Promise<DashboardTasador | null> {
+  try {
+    return await apiFetch('/tasador/kpis/dashboard', DashboardTasadorSchema, {
+      accessToken,
+      searchParams: { anio, periodo: 'anual', verTodo: verTodo ? 1 : undefined },
+    });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function getKpisMensualTasador(accessToken: string, anio: number, verTodo?: boolean) {
   return apiFetch('/tasador/kpis/mensual', z.array(ResumenTasadorKpiSchema), {
     accessToken,

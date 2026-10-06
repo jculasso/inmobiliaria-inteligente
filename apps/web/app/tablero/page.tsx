@@ -1,4 +1,4 @@
-import { getKpisResumen, getResumenRango } from '../../lib/tablero-api';
+import { getDashboardTablero, getKpisResumen, getResumenRango } from '../../lib/tablero-api';
 import { sesionServidor } from '../../lib/server-principal';
 import { puedeVerTodo } from '../../lib/rbac';
 import { puedeVerAlquileres } from '@vacker/types';
@@ -26,17 +26,21 @@ export default async function TableroDashboardPage({
   const mes = params.mes ? Number(params.mes) : hoy.getMonth() + 1;
   const verTodo = params.verTodo === '1';
 
-  // Se piden en paralelo: el resumen del mes seleccionado (KPIs de arriba) y
-  // el acumulado anual (año completo), que es el tab por defecto de
-  // ResumenAcumulado — evita que lo vuelva a pedir al montar con los valores
-  // por defecto (mismo dato, un round-trip menos en el hop más lento del
-  // stack). Y en paralelo con `/me`: el rol solo decide qué se MUESTRA (el
-  // interruptor «ver todo», la sección de alquileres), no qué se pide.
-  const [principal, resumen, resumenAnual] = await Promise.all([
+  // Todo de la portada en UN pedido (resumen del mes, año, doce meses y
+  // alquileres), en paralelo con `/me`: el rol solo decide qué se MUESTRA (el
+  // interruptor «ver todo», la sección de alquileres), no qué se pide. Si la
+  // API todavía no tiene ese pedido, se piden resumen y año como antes y los
+  // componentes traen el resto al montar.
+  const [principal, dashboard] = await Promise.all([
     s.principal,
-    getKpisResumen(s.accessToken, { anio, mes, verTodo }),
-    getResumenRango(s.accessToken, anio, 1, 12, verTodo),
+    getDashboardTablero(s.accessToken, { anio, mes, verTodo }),
   ]);
+  const [resumen, resumenAnual] = dashboard
+    ? [dashboard.resumen, dashboard.anual]
+    : await Promise.all([
+        getKpisResumen(s.accessToken, { anio, mes, verTodo }),
+        getResumenRango(s.accessToken, anio, 1, 12, verTodo),
+      ]);
   if (!principal) return null;
   const verAlquileres = puedeVerAlquileres(principal.roles);
   // Los componentes de abajo guardan su propio estado (qué pestaña, qué
@@ -68,6 +72,7 @@ export default async function TableroDashboardPage({
           mesSeleccionado={mes}
           verTodo={verTodo}
           inicial={resumenAnual}
+          mensualInicial={dashboard?.mensual}
         />
       </section>
 
@@ -95,7 +100,12 @@ export default async function TableroDashboardPage({
           <TituloSeccion icono="🔑" detalle="de toda la inmobiliaria, por fecha de firma">
             Alquileres
           </TituloSeccion>
-          <AlquileresSeccion anio={anio} mesSeleccionado={mes} />
+          <AlquileresSeccion
+            key={clave}
+            anio={anio}
+            mesSeleccionado={mes}
+            inicial={dashboard?.alquileres ?? undefined}
+          />
         </section>
       )}
     </div>

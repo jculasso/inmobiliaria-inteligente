@@ -6,7 +6,6 @@ import {
   generarInformeReporte,
   getKpisResumenTasador,
   getRankingCaptaciones,
-  listTasaciones,
   listTasacionesResumen,
   updateTasacion,
 } from './tasador-api';
@@ -88,17 +87,16 @@ afterEach(() => {
 });
 
 describe('tasador-api', () => {
-  it('listTasaciones pide /tasador/tasaciones con los filtros como query params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [TASACION] });
+  it('listTasacionesResumen pide /tasador/tasaciones/resumen con los filtros como query params', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await listTasaciones('token', { anio: 2026, estado: 'En proceso' });
+    await listTasacionesResumen('token', { anio: 2026, estado: 'En proceso' });
 
     const [url] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe(
-      'http://localhost:3001/tasador/tasaciones?anio=2026&estado=En+proceso',
+    expect(String(url)).toContain(
+      'http://localhost:3001/tasador/tasaciones/resumen?anio=2026&estado=En+proceso',
     );
-    expect(result).toEqual([TASACION]);
   });
 
   it('createTasacion hace POST con el body', async () => {
