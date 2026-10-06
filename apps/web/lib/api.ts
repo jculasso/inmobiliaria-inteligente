@@ -19,8 +19,14 @@ export const getMe = cache(async (accessToken: string): Promise<AuthPrincipal> =
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: 'no-store',
   });
-  if (!res.ok) {
+  // Solo 401/403 dicen algo de la cuenta. Un 502/503 es Render despertando o
+  // desplegando: eso va a la pantalla de «reintentar», no a «tu cuenta no
+  // está habilitada» (revisión PWA del 6/10/2026).
+  if (res.status === 401 || res.status === 403) {
     throw new MeError(`GET /me devolvió ${res.status}`);
+  }
+  if (!res.ok) {
+    throw new Error(`GET /me devolvió ${res.status}`);
   }
 
   const body: unknown = await res.json();

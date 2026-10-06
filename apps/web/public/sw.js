@@ -16,7 +16,7 @@
  *    Cuando no hay conexión, las navegaciones muestran la pantalla offline.
  */
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE_ESTATICOS = `estaticos-${VERSION}`;
 const OFFLINE_URL = '/offline';
 
@@ -24,9 +24,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_ESTATICOS).then((cache) => cache.addAll([OFFLINE_URL, '/icons/icon-192.png'])),
   );
-  // Toma el control apenas se instala: sin esto habría que cerrar todas las
-  // pestañas para estrenar una versión nueva.
-  self.skipWaiting();
+  // NO se activa sola: queda esperando hasta que la persona toca
+  // «Actualizar» (mensaje ACTUALIZAR, abajo). Activarse sola recargaba la
+  // página en medio de un formulario (revisión PWA del 6/10/2026).
 });
 
 self.addEventListener('activate', (event) => {

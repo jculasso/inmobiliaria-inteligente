@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { config } from './middleware';
+import { PUBLIC_PATHS, config } from './middleware';
 
 /**
  * El matcher del middleware decide qué URL exige sesión.
@@ -46,3 +46,12 @@ describe('matcher del middleware', () => {
     expect(exigeSesion(ruta)).toBe(true);
   });
 });
+
+// `/offline` pasa por el matcher pero no exige sesión: está en PUBLIC_PATHS.
+// Sin esto, el service worker guardaba el login como pantalla «sin conexión».
+describe('rutas públicas', () => {
+  it('la pantalla sin conexión y el login no piden sesión', () => {
+    expect(PUBLIC_PATHS).toEqual(expect.arrayContaining(['/', '/offline']));
+  });
+});
+

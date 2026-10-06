@@ -6,7 +6,7 @@ import { supabaseEnv } from './lib/supabase/env';
 // tiene que ser pública porque se guarda en caché al instalar la app, cuando
 // puede no haber sesión — y porque justamente se muestra sin conexión, que es
 // cuando el chequeo de sesión tampoco podría hacerse.
-const PUBLIC_PATHS = ['/', '/offline'];
+export const PUBLIC_PATHS = ['/', '/offline'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

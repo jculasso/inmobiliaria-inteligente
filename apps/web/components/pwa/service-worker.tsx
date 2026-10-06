@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Registra el service worker y avisa cuando hay una versión nueva esperando.
@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
  */
 export function ServiceWorker() {
   const [esperando, setEsperando] = useState<ServiceWorker | null>(null);
+  const pidioActualizar = useRef(false);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -43,10 +44,12 @@ export function ServiceWorker() {
         // Que falle el registro no puede romper la app: se sigue usando online.
       });
 
-    // Cuando el service worker nuevo toma el control, se recarga una sola vez.
+    // Se recarga solo si la persona pidió actualizar: el primer service worker
+    // también dispara `controllerchange` (al tomar una página que no tenía),
+    // y recargar ahí le borraba lo que estuviera escribiendo.
     let recargando = false;
     const onControllerChange = () => {
-      if (recargando) return;
+      if (recargando || !pidioActualizar.current) return;
       recargando = true;
       window.location.reload();
     };
@@ -63,12 +66,15 @@ export function ServiceWorker() {
   return (
     <div
       role="status"
-      className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-md items-center gap-3 rounded-brand bg-ink px-4 py-3 text-white shadow-lg sm:inset-x-auto sm:right-4"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-3 rounded-brand bg-ink px-4 py-3 text-white shadow-lg sm:inset-x-auto sm:right-4"
     >
       <span className="min-w-0 flex-1 text-sm font-medium">Hay una versión nueva disponible.</span>
       <button
         type="button"
-        onClick={() => esperando.postMessage('ACTUALIZAR')}
+        onClick={() => {
+          pidioActualizar.current = true;
+          esperando.postMessage('ACTUALIZAR');
+        }}
         className="shrink-0 rounded-brand bg-white px-3 py-1.5 text-sm font-bold text-ink hover:bg-surface"
       >
         Actualizar

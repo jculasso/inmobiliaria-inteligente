@@ -48,6 +48,11 @@ export const viewport: Viewport = {
   // El azul de la plataforma, no el rojo de Vacker: pinta la barra del
   // navegador en el celular y es una sola app para todas las inmobiliarias.
   themeColor: '#173F6B',
+  // Ocupa toda la pantalla en los iPhone con muesca; lo de abajo (modales,
+  // avisos) se corre con `env(safe-area-inset-bottom)` para no quedar bajo la
+  // barra de inicio. Con `statusBarStyle: 'default'`, el contenido sigue
+  // empezando debajo de la barra de estado.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

@@ -28,6 +28,22 @@ interface ApiErrorBody {
   error?: { code?: string; message?: string; details?: unknown };
 }
 
+/**
+ * `fetch` con un error que se entiende. Sin conexión, el navegador rechaza con
+ * «Load failed» o «Failed to fetch», en inglés, y eso llegaba tal cual a la
+ * pantalla. `limiteMs` corta una espera eterna (un PDF con la API dormida).
+ */
+async function pedir(url: string | URL, init: RequestInit, limiteMs?: number): Promise<Response> {
+  try {
+    return await fetch(url, limiteMs ? { ...init, signal: AbortSignal.timeout(limiteMs) } : init);
+  } catch (err) {
+    if (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new ApiError('El servidor tardó demasiado en responder. Probá de nuevo en un momento.');
+    }
+    throw new ApiError('No hay conexión con el servidor. Revisá internet y probá de nuevo.');
+  }
+}
+
 /** Detalle de validación por campo (forma que emite ZodValidationPipe). */
 function esDetalleCampo(x: unknown): x is { path?: string; message: string } {
   return typeof x === 'object' && x !== null && typeof (x as { message?: unknown }).message === 'string';
@@ -70,7 +86,7 @@ export async function apiFetch<T>(
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
 
-  const res = await fetch(url, {
+  const res = await pedir(url, {
     method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -118,7 +134,7 @@ export async function apiFetchForm<T>(
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(`${apiUrl}${path}`, {
+  const res = await pedir(`${apiUrl}${path}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}` },
     body: formData,
@@ -170,12 +186,12 @@ export async function apiFetchPdf(
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
 
-  const res = await fetch(url, {
+  const res = await pedir(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     cache: 'no-store',
-  });
+  }, 120_000); // un PDF tarda; más de dos minutos es que algo se colgó
 
   if (!res.ok) {
     const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
@@ -220,7 +236,7 @@ export async function apiFetchZip(
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) throw new ApiError('Falta NEXT_PUBLIC_API_URL en el entorno.');
 
-  const res = await fetch(new URL(`${apiUrl}${path}`), {
+  const res = await pedir(new URL(`${apiUrl}${path}`), {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: 'no-store',

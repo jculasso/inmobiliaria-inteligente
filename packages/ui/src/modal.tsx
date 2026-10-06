@@ -88,7 +88,8 @@ export function Modal({
           </button>
         </div>
 
-        <div className="overflow-y-auto overflow-x-hidden p-5 sm:p-6">{children}</div>
+        {/* Abajo, el margen de la barra de inicio del iPhone: la hoja nace pegada al borde. */}
+        <div className="overflow-y-auto overflow-x-hidden p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6">{children}</div>
       </div>
     </div>
   );
