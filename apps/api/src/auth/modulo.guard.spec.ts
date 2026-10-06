@@ -9,6 +9,7 @@ import {
   configPorDefecto,
 } from '@vacker/types';
 import { ModuloGuard } from './modulo.guard';
+import { IS_PUBLIC_KEY } from './decorators';
 import type { AuthPrincipal } from './auth-principal';
 
 function makeContext(principal?: AuthPrincipal): ExecutionContext {
@@ -19,8 +20,10 @@ function makeContext(principal?: AuthPrincipal): ExecutionContext {
   } as unknown as ExecutionContext;
 }
 
-function makeReflector(required: ModuloKey | undefined): Reflector {
-  return { getAllAndOverride: () => required } as unknown as Reflector;
+function makeReflector(required: ModuloKey | undefined, publico = false): Reflector {
+  return {
+    getAllAndOverride: (key: string) => (key === IS_PUBLIC_KEY ? publico : required),
+  } as unknown as Reflector;
 }
 
 function principal(modulos: Partial<ModulosTenant>): AuthPrincipal {
@@ -69,5 +72,10 @@ describe('ModuloGuard', () => {
     const conPlanAlto = principal({ tasador: false });
     conPlanAlto.tenant.plan = 'enterprise';
     expect(() => guard.canActivate(makeContext(conPlanAlto))).toThrow(ForbiddenException);
+  });
+
+  it('deja pasar un endpoint público aunque su controller declare módulo (callback de Google)', () => {
+    const guard = new ModuloGuard(makeReflector('todo', true));
+    expect(guard.canActivate(makeContext())).toBe(true);
   });
 });
