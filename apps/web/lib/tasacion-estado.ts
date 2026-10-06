@@ -1,4 +1,5 @@
-import type { TasacionDto } from '@vacker/types';
+import type { EstadoTasacion, TasacionDto } from '@vacker/types';
+import type { TonoInsignia } from '../components/piezas';
 
 /** Texto de detalle bajo el badge de estado (exclusividad al captar, motivo al no captar). */
 export function detalleEstado(
@@ -13,8 +14,19 @@ export function detalleEstado(
   return null;
 }
 
-export function estadoClass(estado: string): string {
-  if (estado === 'Captada') return 'bg-success/10 text-success';
-  if (estado === 'No captada') return 'bg-brand-red/10 text-brand-red';
-  return 'bg-surface text-muted';
+/**
+ * El tono de la `Insignia` de cada estado, el mismo criterio que las ventas:
+ * lo logrado `exito`, lo que espera respuesta `aviso`, lo perdido `peligro` y
+ * lo que recién arranca `neutro`. «No captada» iba con el color de la marca:
+ * en una inmobiliaria verde, una captación perdida se veía verde (§13).
+ */
+export const TONO_ESTADO_TASACION: Record<EstadoTasacion, TonoInsignia> = {
+  'En proceso': 'neutro',
+  Presentada: 'aviso',
+  Captada: 'exito',
+  'No captada': 'peligro',
+};
+
+export function tonoEstadoTasacion(estado: string): TonoInsignia {
+  return TONO_ESTADO_TASACION[estado as EstadoTasacion] ?? 'neutro';
 }

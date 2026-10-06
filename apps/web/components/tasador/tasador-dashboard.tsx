@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type {
   AuthPrincipal,
   RankingCaptacionItem,
@@ -24,6 +24,14 @@ import { RankingCaptacionesCards } from './ranking-captaciones-cards';
 import { TasacionFila } from './tasacion-fila';
 import { TasacionesDrillModal } from './tasaciones-drill-modal';
 import { TendenciaBars, type TendenciaBar } from './tendencia-bars';
+import {
+  BotonNuevo,
+  CLASE_FOCO,
+  EncabezadoPagina,
+  MensajeError,
+  Segmentado,
+  TituloSeccion,
+} from '../piezas';
 
 const MESES_ABBR = [
   'Ene',
@@ -48,6 +56,12 @@ const DESCRIPCION_ALCANCE: Partial<Record<string, string>> = {
 };
 
 type Vista = 'mensual' | 'trimestral' | 'anual';
+
+const VISTAS: readonly (readonly [Vista, string])[] = [
+  ['mensual', 'Mensual'],
+  ['trimestral', 'Trimestral'],
+  ['anual', 'Anual acumuladas'],
+];
 
 interface Drill {
   titulo: string;
@@ -84,7 +98,6 @@ export function TasadorDashboard({
   inicial: InicialTasador;
   verTodo?: boolean;
 }) {
-  const router = useRouter();
   const anio = useMemo(() => new Date().getFullYear(), []);
 
   // Datos ya agregados en el servidor (1 query cada uno) y traídos por SSR —
@@ -183,28 +196,28 @@ export function TasadorDashboard({
   }
 
   const distribucionEstado = resumenAnual?.distribucionEstado ?? [];
+  // Se trae el año entero (lo usan los drill-downs de cada período) y acá se
+  // muestran las 10 más recientes.
   const ultimasTasaciones = (tasaciones ?? []).slice(0, 10);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-ink">Dashboard de tasaciones</h2>
+      <EncabezadoPagina
+        titulo="Dashboard de tasaciones"
+        detalle={
           <p className="mt-1 max-w-xl text-sm text-muted">
             Resumen de la actividad de tasación y seguimiento de captación. Hacé clic en un período
             para ver sus tasaciones.
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {puedeVerTodo(principal.roles) && <ToggleVerTodo />}
-          <Button variant="primary" onClick={() => router.push('/tasador/tasaciones/nueva')}>
-            ＋ Nueva tasación
-          </Button>
-          <Button variant="secondary" onClick={() => router.push('/tasador/reporte')}>
-            ⤓ Reporte de tasaciones
-          </Button>
-        </div>
-      </div>
+        }
+      >
+        {puedeVerTodo(principal.roles) && <ToggleVerTodo />}
+        <BotonNuevo href="/tasador/tasaciones/nueva">Nueva tasación</BotonNuevo>
+        {/* Es ir a otra pantalla, no una descarga: sin «⤓». */}
+        <Button asChild variant="secondary" size="sm">
+          <Link href="/tasador/reporte">Reporte de tasaciones</Link>
+        </Button>
+      </EncabezadoPagina>
 
       {rol && (
         <div className="flex flex-wrap items-center gap-2 rounded-brand border border-line border-l-4 border-l-brand-red bg-white px-3.5 py-2.5 text-xs text-ink">
@@ -218,11 +231,7 @@ export function TasadorDashboard({
         </div>
       )}
 
-      {error && (
-        <p role="alert" className="text-sm font-medium text-brand-red">
-          {error}
-        </p>
-      )}
+      <MensajeError>{error}</MensajeError>
 
       {total === 0 ? (
         <div className="rounded-brand border border-dashed border-line bg-white p-14 text-center">
@@ -232,12 +241,8 @@ export function TasadorDashboard({
             Al generar tu primer informe, acá vas a ver el resumen mensual y trimestral, los estados
             y las últimas tasaciones.
           </p>
-          <Button
-            variant="primary"
-            className="mt-4"
-            onClick={() => router.push('/tasador/tasaciones/nueva')}
-          >
-            Crear primera tasación
+          <Button asChild variant="primary" className="mt-4">
+            <Link href="/tasador/tasaciones/nueva">Crear primera tasación</Link>
           </Button>
         </div>
       ) : (
@@ -287,27 +292,13 @@ export function TasadorDashboard({
             />
           </div>
 
-          <div className="inline-flex w-full flex-wrap gap-1 rounded-[10px] bg-surface p-1 shadow-[inset_0_0_0_1px_var(--color-line)] sm:w-fit sm:flex-nowrap">
-            {(
-              [
-                ['mensual', 'Mensual'],
-                ['trimestral', 'Trimestral'],
-                ['anual', 'Anual acumuladas'],
-              ] as [Vista, string][]
-            ).map(([v, label]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setVista(v)}
-                className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
-                  vista === v
-                    ? 'bg-white text-brand-red shadow-sm'
-                    : 'text-muted hover:text-brand-red'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="w-fit">
+            <Segmentado
+              etiqueta="Agrupar las tasaciones"
+              opciones={VISTAS}
+              valor={vista}
+              onCambio={setVista}
+            />
           </div>
 
           {/* `min-w-0` en las celdas: por defecto una grilla no achica sus
@@ -315,9 +306,11 @@ export function TasadorDashboard({
               barras se salía de la pantalla en vez de comprimirse. */}
           <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
             <Card className="min-w-0">
-              <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">
-                Tasaciones · {vista === 'anual' ? 'anual acumuladas' : vista}
-              </p>
+              <div className="mb-4">
+                <TituloSeccion icono="📊" detalle={vista === 'anual' ? 'anual acumuladas' : vista}>
+                  Tasaciones
+                </TituloSeccion>
+              </div>
               <TendenciaBars
                 datos={buckets}
                 seleccionado={null}
@@ -331,9 +324,9 @@ export function TasadorDashboard({
               />
             </Card>
             <Card className="min-w-0">
-              <p className="mb-4 text-xs font-bold uppercase tracking-wide text-muted">
-                Ranking de captaciones por vendedor
-              </p>
+              <div className="mb-4">
+                <TituloSeccion icono="🏆">Ranking de captaciones por vendedor</TituloSeccion>
+              </div>
               <RankingCaptacionesCards
                 ranking={rankingAnual ?? []}
                 seleccionado={null}
@@ -364,17 +357,14 @@ export function TasadorDashboard({
           </Card>
 
           <Card className="px-5 py-4">
-            <div className="flex items-center justify-between pb-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted">
-                Últimas tasaciones
-              </p>
-              <button
-                type="button"
-                onClick={() => router.push('/tasador/tasaciones')}
-                className="text-xs font-bold text-brand-red hover:underline"
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+              <TituloSeccion icono="🕒">Últimas tasaciones</TituloSeccion>
+              <Link
+                href="/tasador/tasaciones"
+                className={`inline-flex h-10 items-center rounded text-xs font-bold text-brand-red hover:underline ${CLASE_FOCO}`}
               >
                 Ver historial completo →
-              </button>
+              </Link>
             </div>
             <div className="flex flex-col">
               {ultimasTasaciones.length === 0 ? (

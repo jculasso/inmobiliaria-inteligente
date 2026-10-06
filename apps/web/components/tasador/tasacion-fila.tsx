@@ -1,22 +1,47 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { TasacionResumenDto } from '@vacker/types';
 import { fmtFecha, fmtNum, fmtUSD } from '../../lib/format';
-import { detalleEstado, estadoClass } from '../../lib/tasacion-estado';
+import { detalleEstado, tonoEstadoTasacion } from '../../lib/tasacion-estado';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
+import { AccionFila, AccionesFila, CLASE_FOCO, Insignia } from '../piezas';
 
 interface Props {
   tasacion: TasacionResumenDto;
   /** Click en el badge de estado (abre el modal de cambio de estado). */
   onEstado: () => void;
-  /** Generar/ver el informe PDF. */
+  /** Generar el informe PDF. */
   onVer: () => void;
-  /** Muestra el spinner "Generando…" en el botón Ver. */
+  /** Mientras se genera el PDF de esta fila. */
   generando?: boolean;
   /** Si viene, se muestra el botón de borrar (vista de gestión / historial). */
   onBorrar?: () => Promise<void>;
+}
+
+/**
+ * Editar es ir a otra página: un link de verdad (se abre en otra pestaña, se
+ * llega con Tab), con la misma pinta que los botones de `AccionesFila`.
+ */
+function LinkEditar({ href, nombre, tarjeta }: { href: string; nombre: string; tarjeta: boolean }) {
+  return tarjeta ? (
+    <Link
+      href={href}
+      className={`rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`}
+    >
+      ✏️ Editar
+    </Link>
+  ) : (
+    <Link
+      href={href}
+      aria-label={`Editar ${nombre}`}
+      title="Editar"
+      className={`rounded px-1.5 py-0.5 text-base hover:bg-surface ${CLASE_FOCO}`}
+    >
+      ✏️
+    </Link>
+  );
 }
 
 /**
@@ -24,9 +49,47 @@ interface Props {
  * historial, para que ambas vistas se vean igual y no se desincronicen.
  */
 export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar }: Props) {
-  const router = useRouter();
   const det = detalleEstado(t);
   const [aBorrar, setABorrar] = useState(false);
+  const nombre = `la tasación de ${t.direccion}`;
+  const href = `/tasador/tasaciones/${t.id}/editar`;
+
+  // Las acciones como en el resto de la app (pedido de Javier del 6/10/2026:
+  // «todo tiene que quedar homogéneo»): en el teléfono con texto, en
+  // escritorio solo el ícono con el nombre completo para el lector de pantalla.
+  const acciones = (tarjeta: boolean) => (
+    <AccionesFila
+      nombre={nombre}
+      tarjeta={tarjeta}
+      onBorrar={onBorrar ? () => setABorrar(true) : undefined}
+      extra={
+        <>
+          {generando ? (
+            <span
+              role="status"
+              className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-muted"
+            >
+              <span
+                aria-hidden
+                className="h-3 w-3 animate-spin rounded-full border-2 border-brand-red border-t-transparent"
+              />
+              Generando…
+            </span>
+          ) : (
+            <AccionFila
+              icono="📄"
+              texto="PDF"
+              etiqueta={`Descargar el PDF de ${nombre}`}
+              title="Descargar el PDF"
+              onClick={onVer}
+              tarjeta={tarjeta}
+            />
+          )}
+          <LinkEditar href={href} nombre={nombre} tarjeta={tarjeta} />
+        </>
+      }
+    />
+  );
 
   return (
     <div className="grid grid-cols-1 gap-2 border-t border-surface py-3 first:border-t-0 sm:grid-cols-[2fr_92px_1fr_130px_auto] sm:items-center sm:gap-3.5">
@@ -56,60 +119,20 @@ export function TasacionFila({ tasacion: t, onEstado, onVer, generando, onBorrar
         <div className="text-xs text-muted sm:whitespace-nowrap">{fmtFecha(t.fecha)}</div>
         <div className="text-sm font-bold text-brand-red">{fmtUSD(t.valorRecomendado)}</div>
       </div>
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1 sm:flex-col">
         <button
           type="button"
           onClick={onEstado}
-          className={`w-full rounded-full px-2 py-1 text-center text-xs font-bold ${estadoClass(t.estado)}`}
+          aria-label={`Cambiar el estado de ${nombre} (${t.estado})`}
+          title="Cambiar el estado"
+          className={`rounded-full ${CLASE_FOCO}`}
         >
-          {t.estado}
+          <Insignia tono={tonoEstadoTasacion(t.estado)}>{t.estado} ▾</Insignia>
         </button>
-        {det && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${estadoClass(t.estado)}`}
-          >
-            {det}
-          </span>
-        )}
+        {det && <span className="text-[10.5px] font-semibold text-muted">{det}</span>}
       </div>
-      <div className="flex items-center justify-end gap-1.5">
-        <button
-          type="button"
-          onClick={() => router.push(`/tasador/tasaciones/${t.id}/editar`)}
-          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
-        >
-          Editar
-        </button>
-        <button
-          type="button"
-          onClick={onVer}
-          disabled={generando}
-          aria-busy={generando}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40 disabled:cursor-progress disabled:opacity-70"
-        >
-          {generando ? (
-            <>
-              <span
-                aria-hidden
-                className="h-3 w-3 animate-spin rounded-full border-2 border-brand-red border-t-transparent"
-              />
-              Generando…
-            </>
-          ) : (
-            'Ver'
-          )}
-        </button>
-        {onBorrar && (
-          <button
-            type="button"
-            onClick={() => setABorrar(true)}
-            title="Borrar esta tasación"
-            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-brand-red hover:border-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
-          >
-            Borrar
-          </button>
-        )}
-      </div>
+      <div className="sm:hidden">{acciones(true)}</div>
+      <div className="hidden justify-end sm:flex">{acciones(false)}</div>
 
       {aBorrar && onBorrar && (
         <ConfirmarBorradoModal

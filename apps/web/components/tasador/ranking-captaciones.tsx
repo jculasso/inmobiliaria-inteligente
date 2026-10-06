@@ -4,6 +4,7 @@ import type { RankingCaptacionItem } from '@vacker/types';
 import { Avatar } from '@vacker/ui';
 import { fmtNum } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
+import { CLASE_FOCO, CLASE_TH, TituloSeccion } from '../piezas';
 
 interface Props {
   ranking: RankingCaptacionItem[];
@@ -11,8 +12,14 @@ interface Props {
   onSelectAgente?: (usuarioId: string, nombre: string) => void;
 }
 
-function fmtPct(v: number): string {
-  return `${(v * 100).toFixed(0)}%`;
+/**
+ * Una proporción (0..1) como porcentaje redondeado: 0,4 → «40%». No se llama
+ * `fmtPct` a propósito: ese nombre es el de `lib/importe`, que recibe el
+ * porcentaje ya hecho (8,5 → «8,5%»), y el mismo nombre con otra entrada
+ * multiplicaba o no por cien según de dónde se importara.
+ */
+function fmtProporcion(v: number): string {
+  return `${Math.round(v * 100)}%`;
 }
 
 function medalla(i: number): string {
@@ -23,12 +30,11 @@ function medalla(i: number): string {
 export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Props) {
   return (
     <div>
-      <p className="mb-2 text-sm font-bold text-ink">
-        🏆 Ranking de captaciones{' '}
-        <span className="text-xs font-normal text-muted">
-          ({ranking.length} agentes · {periodoLabel})
-        </span>
-      </p>
+      <div className="mb-2">
+        <TituloSeccion icono="🏆" detalle={`${ranking.length} agentes · ${periodoLabel}`}>
+          Ranking de captaciones
+        </TituloSeccion>
+      </div>
       <div className="rounded-brand border border-line bg-white sm:hidden">
         {ranking.length === 0 ? (
           <p className="px-4 py-6 text-center text-muted">Sin datos para mostrar.</p>
@@ -52,13 +58,15 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
                   <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">
                     {r.nombre}
                   </span>
-                  <span className="shrink-0 text-xs font-bold text-muted">{fmtPct(r.peso)}</span>
+                  <span className="shrink-0 text-xs font-bold text-muted">
+                    {fmtProporcion(r.peso)}
+                  </span>
                 </div>
                 <CamposTarjeta>
                   <CampoTarjeta etiqueta="Captadas">{fmtNum(r.captadas)}</CampoTarjeta>
                   <CampoTarjeta etiqueta="Total">{fmtNum(r.total)}</CampoTarjeta>
                   <CampoTarjeta etiqueta="Tasa de captación">
-                    {fmtPct(r.tasaCaptacion)}
+                    {fmtProporcion(r.tasaCaptacion)}
                   </CampoTarjeta>
                 </CamposTarjeta>
               </Tarjeta>
@@ -70,12 +78,12 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
       <div className="hidden overflow-x-auto overscroll-x-contain rounded-brand border border-line bg-white sm:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-2">Agente</th>
-              <th className="px-4 py-2">Captadas</th>
-              <th className="px-4 py-2">Total</th>
-              <th className="px-4 py-2">Tasa</th>
-              <th className="px-4 py-2">Participación</th>
+            <tr>
+              <th className={CLASE_TH}>Agente</th>
+              <th className={CLASE_TH}>Captadas</th>
+              <th className={CLASE_TH}>Total</th>
+              <th className={CLASE_TH}>Tasa</th>
+              <th className={CLASE_TH}>Participación</th>
             </tr>
           </thead>
           <tbody>
@@ -93,7 +101,7 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
                       <button
                         type="button"
                         onClick={() => onSelectAgente(r.usuarioId, r.nombre)}
-                        className="flex items-center gap-2 font-medium text-ink hover:text-brand-red hover:underline"
+                        className={`flex items-center gap-2 rounded font-medium text-ink hover:text-brand-red hover:underline ${CLASE_FOCO}`}
                       >
                         <span aria-hidden>{medalla(i)}</span>
                         <Avatar nombre={r.nombre} fotoUrl={r.fotoUrl} size="sm" />
@@ -109,7 +117,7 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
                   </td>
                   <td className="px-4 py-2">{fmtNum(r.captadas)}</td>
                   <td className="px-4 py-2 text-muted">{fmtNum(r.total)}</td>
-                  <td className="px-4 py-2">{fmtPct(r.tasaCaptacion)}</td>
+                  <td className="px-4 py-2">{fmtProporcion(r.tasaCaptacion)}</td>
                   <td className="px-4 py-2">
                     <span className="flex items-center gap-2">
                       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface">
@@ -118,7 +126,7 @@ export function RankingCaptaciones({ ranking, periodoLabel, onSelectAgente }: Pr
                           style={{ width: `${r.peso * 100}%` }}
                         />
                       </span>
-                      <span className="text-muted">{fmtPct(r.peso)}</span>
+                      <span className="text-muted">{fmtProporcion(r.peso)}</span>
                     </span>
                   </td>
                 </tr>

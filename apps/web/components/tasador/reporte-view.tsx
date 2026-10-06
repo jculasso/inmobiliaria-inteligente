@@ -8,7 +8,7 @@ import type {
   TasacionResumenDto,
   TasadorKpiFiltro,
 } from '@vacker/types';
-import { EstadoTasacionSchema, ESTADO_TASACION_COLOR } from '@vacker/types';
+import { EstadoTasacionSchema } from '@vacker/types';
 import { Button, Card, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import {
@@ -19,17 +19,25 @@ import {
 } from '../../lib/tasador-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtUSD } from '../../lib/format';
-import { detalleEstado } from '../../lib/tasacion-estado';
+import { detalleEstado, tonoEstadoTasacion } from '../../lib/tasacion-estado';
+import {
+  CLASE_FOCO,
+  CLASE_TH,
+  EncabezadoPagina,
+  Insignia,
+  MensajeError,
+  Segmentado,
+} from '../piezas';
 import { ToggleVerTodo } from '../tablero/toggle-ver-todo';
 import { EstadoDistribucion } from './estado-distribucion';
 import { RankingCaptaciones } from './ranking-captaciones';
 
 type Periodo = 'anual' | 'trimestral' | 'mensual';
 
-const PERIODOS: { key: Periodo; label: string }[] = [
-  { key: 'anual', label: 'Anual' },
-  { key: 'trimestral', label: 'Trimestral' },
-  { key: 'mensual', label: 'Mensual' },
+const PERIODOS: readonly (readonly [Periodo, string])[] = [
+  ['anual', 'Anual'],
+  ['trimestral', 'Trimestral'],
+  ['mensual', 'Mensual'],
 ];
 
 const MESES = [
@@ -148,66 +156,48 @@ export function ReporteView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-ink">Reporte de tasaciones</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          {puedeVerTodo && <ToggleVerTodo />}
-          <div className="flex gap-1 rounded-brand border border-line p-1">
-            {PERIODOS.map((p) => (
-              <button
-                key={p.key}
-                type="button"
-                onClick={() => setPeriodo(p.key)}
-                className={`rounded-brand px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  periodo === p.key ? 'bg-brand-red text-white' : 'text-muted hover:bg-surface'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          {periodo === 'trimestral' && (
-            <select
-              value={trimestre}
-              onChange={(e) => setTrimestre(Number(e.target.value))}
-              className="h-9 rounded-brand border border-line px-2 text-sm"
-            >
-              {[1, 2, 3, 4].map((q) => (
-                <option key={q} value={q}>
-                  Trimestre {q}
-                </option>
-              ))}
-            </select>
-          )}
-          {periodo === 'mensual' && (
-            <select
-              value={mes}
-              onChange={(e) => setMes(Number(e.target.value))}
-              className="h-9 rounded-brand border border-line px-2 text-sm"
-            >
-              {MESES.map((m, i) => (
-                <option key={m} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          )}
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleGenerarPdf}
-            disabled={generando || loading}
+      <EncabezadoPagina titulo="Reporte de tasaciones">
+        {puedeVerTodo && <ToggleVerTodo />}
+        <Segmentado etiqueta="Período" opciones={PERIODOS} valor={periodo} onCambio={setPeriodo} />
+        {periodo === 'trimestral' && (
+          <select
+            aria-label="Trimestre"
+            value={trimestre}
+            onChange={(e) => setTrimestre(Number(e.target.value))}
+            className="h-9 rounded-brand border border-line px-2 text-sm"
           >
-            {generando ? 'Generando…' : '🖨 Guardar PDF'}
-          </Button>
-        </div>
-      </div>
+            {[1, 2, 3, 4].map((q) => (
+              <option key={q} value={q}>
+                Trimestre {q}
+              </option>
+            ))}
+          </select>
+        )}
+        {periodo === 'mensual' && (
+          <select
+            aria-label="Mes"
+            value={mes}
+            onChange={(e) => setMes(Number(e.target.value))}
+            className="h-9 rounded-brand border border-line px-2 text-sm"
+          >
+            {MESES.map((m, i) => (
+              <option key={m} value={i + 1}>
+                {m}
+              </option>
+            ))}
+          </select>
+        )}
+        <Button
+          type="button"
+          variant="primary"
+          onClick={handleGenerarPdf}
+          disabled={generando || loading}
+        >
+          {generando ? 'Generando…' : '📄 Descargar PDF'}
+        </Button>
+      </EncabezadoPagina>
 
-      {error && (
-        <p role="alert" className="text-sm font-medium text-brand-red">
-          {error}
-        </p>
-      )}
+      <MensajeError>{error}</MensajeError>
 
       {!resumen ? (
         <p className="py-6 text-sm text-muted">Cargando…</p>
@@ -257,7 +247,8 @@ export function ReporteView({
                   key={op}
                   type="button"
                   onClick={() => setFiltroEstado(op)}
-                  className={`rounded-full border px-2.5 py-1 text-xs ${
+                  aria-pressed={filtroEstado === op}
+                  className={`${CLASE_FOCO} rounded-full border px-3 py-1.5 text-xs ${
                     filtroEstado === op
                       ? 'border-brand-red bg-brand-red/10 text-brand-red'
                       : 'border-line text-muted hover:border-brand-red/40'
@@ -273,14 +264,14 @@ export function ReporteView({
             <div className="overflow-x-auto overscroll-x-contain">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                    <th className="px-4 py-2">Fecha</th>
-                    <th className="px-4 py-2">Propiedad</th>
-                    <th className="px-4 py-2">Cliente</th>
-                    <th className="px-4 py-2">Vendedor</th>
-                    <th className="px-4 py-2">Estado</th>
-                    <th className="px-4 py-2">Detalle</th>
-                    <th className="px-4 py-2 text-right">Valor</th>
+                  <tr>
+                    <th className={CLASE_TH}>Fecha</th>
+                    <th className={CLASE_TH}>Propiedad</th>
+                    <th className={CLASE_TH}>Cliente</th>
+                    <th className={CLASE_TH}>Vendedor</th>
+                    <th className={CLASE_TH}>Estado</th>
+                    <th className={CLASE_TH}>Detalle</th>
+                    <th className={`${CLASE_TH} text-right`}>Valor</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,15 +298,7 @@ export function ReporteView({
                         <td className="px-4 py-2">{t.cliente}</td>
                         <td className="px-4 py-2">{t.agente.nombre}</td>
                         <td className="px-4 py-2">
-                          <span
-                            className="rounded-full px-2 py-0.5 text-xs font-semibold"
-                            style={{
-                              background: `${ESTADO_TASACION_COLOR[t.estado]}22`,
-                              color: ESTADO_TASACION_COLOR[t.estado],
-                            }}
-                          >
-                            {t.estado}
-                          </span>
+                          <Insignia tono={tonoEstadoTasacion(t.estado)}>{t.estado}</Insignia>
                         </td>
                         <td className="px-4 py-2 text-xs text-muted">{detalleEstado(t) ?? '—'}</td>
                         <td className="px-4 py-2 text-right font-semibold text-brand-red">

@@ -242,7 +242,7 @@ function SeccionPills({
           onClick={() => setAgregando(true)}
           className="self-start rounded-full border border-dashed border-line px-3 py-1.5 text-xs font-semibold text-muted hover:border-brand-red/40 hover:text-ink"
         >
-          + {etiquetaAgregar}
+          ＋ {etiquetaAgregar}
         </button>
       )}
     </div>
