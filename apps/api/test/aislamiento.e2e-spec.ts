@@ -256,4 +256,27 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     expect(estado!.tenant_guc === null || estado!.tenant_guc === '').toBe(true);
     expect(estado!.rol).not.toBe('authenticated');
   });
+
+  /**
+   * Auditoría de seguridad del 6/10/2026: Postgres controla las claves
+   * foráneas SIN RLS, así que la base aceptaba una fila de A que apuntara a
+   * un contrato de B. Con las claves (tenant_id, x_id) se rechaza, aunque el
+   * código se olvidara de buscar el id con RLS antes de usarlo.
+   */
+  it('desde el tenant A, una fila que apunta a un contrato del B es rechazada por la base', async () => {
+    const hoy = new Date('2026-10-06T00:00:00Z');
+    await expect(
+      tenantPrisma.withTenant(
+        (tx) => tx.alqPoliza.create({ data: { tenantId: idsA.tenant, contratoId: idsB.alqContrato, aseguradora: 'Intrusa', desde: hoy, hasta: hoy, premio: 1 } }),
+        ctxA,
+      ),
+    ).rejects.toThrow();
+    // Y la misma fila hacia su propio contrato entra: el rechazo es por cruzar inmobiliarias.
+    const propia = await tenantPrisma.withTenant(
+      (tx) => tx.alqPoliza.create({ data: { tenantId: idsA.tenant, contratoId: idsA.alqContrato, aseguradora: 'Propia', desde: hoy, hasta: hoy, premio: 1 } }),
+      ctxA,
+    );
+    await siembra.alqPoliza.delete({ where: { id: propia.id } });
+  });
 });
+

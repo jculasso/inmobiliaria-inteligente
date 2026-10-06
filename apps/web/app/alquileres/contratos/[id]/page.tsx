@@ -17,13 +17,16 @@ export default async function ContratoPage({ params }: { params: Promise<{ id: s
   const ctx = await requireServerPrincipal();
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
   const { id } = await params;
-  const [contrato, { documento }, historial, completo] = await Promise.all([
+  // Todo junto: ninguna de estas depende de otra (antes iban en dos tandas seguidas).
+  const [contrato, { documento }, historial, completo, plantillas, reclamos, polizas] = await Promise.all([
     getContrato(ctx.accessToken, id),
     getDocumentoContrato(ctx.accessToken, id),
     getHistorialContrato(ctx.accessToken, id),
     getContratoCompleto(ctx.accessToken, id),
+    listPlantillas(ctx.accessToken),
+    listReclamos(ctx.accessToken, { estado: 'todos', contratoId: id }),
+    listPolizas(ctx.accessToken, id),
   ]);
-  const [plantillas, reclamos, polizas] = await Promise.all([listPlantillas(ctx.accessToken), listReclamos(ctx.accessToken, { estado: 'todos', contratoId: id }), listPolizas(ctx.accessToken, id)]);
   const garantes = contrato.partes.filter((p) => p.papel === 'garante').map((p) => ({ personaId: p.personaId, nombre: p.nombre }));
   return (
     <div className="flex flex-col gap-4">

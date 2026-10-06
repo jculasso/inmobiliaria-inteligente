@@ -263,7 +263,7 @@ export class CobrosService {
           conceptos: {
             select: { imputaciones: { where: { ...IMPUTACION_ACTIVA, cobroId: { not: id } }, select: { id: true } } },
           },
-          registradas: { select: { concepto: { select: { claveGeneracion: true, tipo: true } } } },
+          registradas: { select: { concepto: { select: { claveGeneracion: true, tipo: true, contratoId: true } } } },
         },
       });
       if (!c) throw new NotFoundException('El cobro no existe.');
@@ -291,6 +291,8 @@ export class CobrosService {
             sentido: 'a_pagar',
             liquidacion: { anuladoEn: null },
             contrato: { pagoGarantizado: false },
+            // Por contrato primero: el prefijo de la clave no usa índice, el contrato sí.
+            contratoId: { in: [...new Set(c.registradas.map((i) => i.concepto.contratoId).filter((x): x is string => !!x))] },
             OR: partes.map((p) => ({ claveGeneracion: { startsWith: `${p}|` } })),
           },
           select: { liquidacion: { select: { numero: true } } },

@@ -63,19 +63,20 @@ const mora = (id: string, vencimiento: string, saldo: number, persona = 'inq5') 
   codigo: '5',
   persona_id: persona,
   nombre: 'Inquilina',
+  tipo_contrato: 'vivienda',
 });
 
 /** Los valores interpolados de cada `$queryRaw`, por servicio creado. */
 const rawCalls: unknown[][][] = [];
 
-function servicio(over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unknown[] } = {}) {
+function servicio(over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unknown[]; evolucion?: unknown[] } = {}) {
   const valores: unknown[][] = [];
   rawCalls.push(valores);
   // En el orden en que el servicio consulta: morosidad, evolución, ingresos.
   const respuestas: unknown[] = [
     over.mora ?? [mora('m1', '2026-10-05', 250_000), mora('m2', '2026-08-05', 100_000)],
-    [{ periodo: '2026-10', moneda: 'ARS', emitido: dec(1_537_518), cobrado: dec(1_287_518) }],
-    [{ mes: '2026-10', moneda: 'ARS', honorarios: dec(110_111.74), gastos: dec(27_527.94), punitorios: null }],
+    over.evolucion ?? [{ periodo: '2026-10', moneda: 'ARS', tipo_contrato: 'vivienda', emitido: dec(1_537_518), cobrado: dec(1_287_518) }],
+    [{ mes: '2026-10', moneda: 'ARS', tipo_contrato: 'vivienda', honorarios: dec(110_111.74), gastos: dec(27_527.94), punitorios: null }],
   ];
   const tx = {
     alqContrato: { findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]) },
@@ -279,19 +280,27 @@ describe('TableroAlquileresService', () => {
       ]);
     });
 
-    it('filtrado, el resto del tablero mira solo ese tipo, también en la base', async () => {
+    // Javier, 6/10/2026: el filtro tardaba porque cada toque volvía a leer todo.
+    it('una sola lectura arma los tres cortes', async () => {
       const antes = rawCalls.length;
-      const t = await servicio({ contratos: cartera() }).tablero(HOY, 2026, 'comercial');
-      expect(t.tipo).toBe('comercial');
-      expect(t.cartera.vigentes.filas.map((f) => f.contrato)).toEqual(['3']);
-      // Las tres consultas que agregan historia llevan el filtro.
-      expect(rawCalls[antes]!.map((v) => v.flat().some((x) => JSON.stringify(x ?? '').includes('comercial')))).toEqual([true, true, true]);
+      const t = await servicio({ contratos: cartera() }).tableros(HOY, 2026);
+      expect(rawCalls.length - antes).toBe(1);
+      expect(rawCalls.at(-1)!.length).toBe(3);
+      expect(t.comercial.tipo).toBe('comercial');
+      expect(t.comercial.cartera.vigentes.filas.map((f) => f.contrato)).toEqual(['3']);
+      expect(t.todos.cartera.vigentes.filas.length).toBeGreaterThan(t.comercial.cartera.vigentes.filas.length);
     });
 
-    it('sin filtro, ninguna consulta lleva el tipo', async () => {
-      const antes = rawCalls.length;
-      await servicio({ contratos: cartera() }).tablero(HOY, 2026);
-      expect(rawCalls[antes]!.map((v) => v.flat().some((x) => JSON.stringify(x ?? '').includes('comercial')))).toEqual([false, false, false]);
+    it('lo agregado en la base viene por tipo: con «todos» se suma, filtrado queda el suyo', async () => {
+      const evolucion = [
+        { periodo: '2026-10', moneda: 'ARS', tipo_contrato: 'vivienda', emitido: dec(1_000_000), cobrado: dec(800_000) },
+        { periodo: '2026-10', moneda: 'ARS', tipo_contrato: 'comercial', emitido: dec(500_000), cobrado: dec(500_000) },
+      ];
+      const t = await servicio({ contratos: cartera(), evolucion }).tableros(HOY, 2026);
+      expect(t.todos.evolucion).toEqual([{ mes: '2026-10', moneda: 'ARS', emitido: 1_500_000, cobrado: 1_300_000 }]);
+      expect(t.comercial.evolucion).toEqual([{ mes: '2026-10', moneda: 'ARS', emitido: 500_000, cobrado: 500_000 }]);
+      expect(t.vivienda.morosidad[0]!.total.valor).toBe(350_000);
+      expect(t.comercial.morosidad).toEqual([]);
     });
 
     it('contratos nuevos por el mes en que empiezan, con el alquiler inicial, y los del año anterior', async () => {

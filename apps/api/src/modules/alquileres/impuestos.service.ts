@@ -107,7 +107,8 @@ export function conceptosDeBoleta(
 
 /** Lo cargado a las partes por estas boletas que ya se cobró, pagó o liquidó. */
 const APLICADO = { anuladoEn: null, OR: [{ liquidacionId: { not: null } }, { imputaciones: { some: IMPUTACION_ACTIVA } }] } satisfies Prisma.AlqConceptoWhereInput;
-const deBoletas = (ids: string[]) => ({ OR: ids.map((id) => ({ claveGeneracion: { startsWith: `bol|${id}|` } })) }) satisfies Prisma.AlqConceptoWhereInput;
+// Por `clave_origen` (columna generada con índice): el prefijo de la clave no usa índice.
+const deBoletas = (ids: string[]) => ({ claveOrigen: { in: ids } }) satisfies Prisma.AlqConceptoWhereInput;
 
 /**
  * Impuestos, servicios y pólizas (entrega 19). El catálogo de la inmobiliaria

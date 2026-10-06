@@ -21,4 +21,12 @@ export class TableroAlquileresController {
   obtener(@Query(new ZodValidationPipe(TableroAlquileresQuerySchema)) q: TableroAlquileresQuery) {
     return this.tablero.tablero(undefined, q.anio, q.tipo);
   }
+
+  @Get('completo')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Los tres cortes del tablero —todos, particulares y comerciales— de una sola lectura' })
+  @ApiQuery({ name: 'anio', required: false, example: 2026 })
+  completo(@Query(new ZodValidationPipe(TableroAlquileresQuerySchema)) q: TableroAlquileresQuery) {
+    return this.tablero.tableros(undefined, q.anio);
+  }
 }

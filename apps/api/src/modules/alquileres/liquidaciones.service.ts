@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
   LIMITE_LISTA_CON_SONDA,
   LineaLiquidacionSchema,
@@ -246,14 +247,29 @@ export class LiquidacionesService {
    * otra propiedad no ve descontado su propio alquiler.
    */
   private async pendientesDe(tx: Tx, filtro: { personaId?: string; moneda?: MonedaAlquiler }): Promise<Pendiente[]> {
+    // Primero, en la base, solo lo que importa: de un propietario EN su
+    // contrato y con saldo. Antes se traía todo lo no liquidado —con los
+    // gastos de los inquilinos, que nunca se liquidan y se acumulan para
+    // siempre— y se filtraba acá (revisión de performance del 6/10/2026).
+    const tipos = ['honorarios', ...SUELTOS];
+    const ids = (
+      await tx.$queryRaw<{ id: string }[]>`
+        SELECT k.id FROM alq_concepto k
+         WHERE k.anulado_en IS NULL AND k.liquidacion_id IS NULL AND k.contrato_id IS NOT NULL
+           AND (k.sentido = 'a_pagar' OR (k.sentido = 'a_cobrar' AND k.tipo = ANY(${tipos})))
+           ${filtro.personaId ? Prisma.sql`AND k.persona_id = ${filtro.personaId}::uuid` : Prisma.empty}
+           ${filtro.moneda ? Prisma.sql`AND k.moneda = ${filtro.moneda}` : Prisma.empty}
+           AND EXISTS (SELECT 1 FROM alq_contrato_parte pp
+                        WHERE pp.contrato_id = k.contrato_id AND pp.persona_id = k.persona_id AND pp.papel = 'propietario')
+           AND k.importe > COALESCE((
+                 SELECT SUM(im.importe) FROM alq_imputacion im
+                   JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
+                   JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
+                  WHERE im.concepto_id = k.id), 0)`
+    ).map((r) => r.id);
+    if (ids.length === 0) return [];
     const filas = await tx.alqConcepto.findMany({
-      where: {
-        ...filtro,
-        anuladoEn: null,
-        liquidacionId: null,
-        contratoId: { not: null },
-        OR: [{ sentido: 'a_pagar' }, { sentido: 'a_cobrar', tipo: { in: ['honorarios', ...SUELTOS] } }],
-      },
+      where: { id: { in: ids } },
       include: {
         // La propiedad y los inquilinos viajan en la misma consulta: la
         // liquidación los muestra en cada línea y no cuesta un viaje más.
@@ -299,8 +315,10 @@ export class LiquidacionesService {
   private async partesPagadas(tx: Tx, pendientes: Pendiente[]): Promise<Set<string>> {
     const contratos = [...new Set(pendientes.filter((c) => c.sentido === 'a_pagar' && parteDeClave(c.clave)).map((c) => c.contrato.id))];
     if (contratos.length === 0) return new Set();
+    // Solo los meses en juego: antes venían todos los alquileres de la historia de esos contratos.
+    const periodos = [...new Set(pendientes.map((c) => parteDeClave(c.clave)?.split('|')[2]).filter((x): x is string => !!x))];
     const delInquilino = await tx.alqConcepto.findMany({
-      where: { contratoId: { in: contratos }, sentido: 'a_cobrar', tipo: { in: ['alquiler', 'iva'] }, anuladoEn: null, claveGeneracion: { not: null } },
+      where: { contratoId: { in: contratos }, periodo: { in: periodos }, sentido: 'a_cobrar', tipo: { in: ['alquiler', 'iva'] }, anuladoEn: null, claveGeneracion: { not: null } },
       select: { tipo: true, importe: true, claveGeneracion: true, imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } } },
     });
     const pagadas = new Set<string>();

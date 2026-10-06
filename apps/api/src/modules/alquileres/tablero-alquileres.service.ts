@@ -12,7 +12,7 @@ import {
   type TableroAlquileresDto,
   type TramoMora,
 } from '@vacker/types';
-import { diasInclusive, redondear2, sumarDiasIso, tramoDeMora } from '@vacker/domain';
+import { alquilerDeHoy, diasInclusive, proximoCambio, redondear2, sumarDiasIso, tramoDeMora } from '@vacker/domain';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
@@ -28,6 +28,25 @@ const aPersona = (id: string) => `/alquileres/personas/${id}`;
 function porImporte(filas: FilaTablero[]): Indicador {
   return { valor: redondear2(filas.reduce((s, f) => s + (f.importe ?? 0), 0)), filas };
 }
+/**
+ * Suma filas agregadas que vienen separadas por tipo de contrato: con «todos»,
+ * particulares y comerciales del mismo mes y moneda van juntos.
+ */
+function sumarPor<T extends object, K extends keyof T>(filas: T[], clave: (f: T) => string, campos: K[]): (Omit<T, K> & Record<K, number>)[] {
+  const juntos = new Map<string, Omit<T, K> & Record<K, number>>();
+  for (const f of filas) {
+    const k = clave(f);
+    const previo = juntos.get(k);
+    const fila = previo ?? ({ ...f } as Omit<T, K> & Record<K, number>);
+    for (const c of campos) {
+      const v = f[c] == null ? 0 : decToNum(f[c] as unknown as Prisma.Decimal);
+      (fila as Record<K, number>)[c] = previo ? redondear2((previo as Record<K, number>)[c] + v) : v;
+    }
+    juntos.set(k, fila);
+  }
+  return [...juntos.values()];
+}
+
 function porCantidad(filas: FilaTablero[]): Indicador {
   return { valor: filas.length, filas };
 }
@@ -43,6 +62,7 @@ interface FilaMora {
   codigo: string | null;
   persona_id: string;
   nombre: string;
+  tipo_contrato: string | null;
 }
 
 /**
@@ -68,17 +88,45 @@ export class TableroAlquileresService {
    * cobranza del mes, morosidad, tareas— es siempre a hoy.
    */
   async tablero(hoy = hoyArgentina(), anio = Number(hoy.slice(0, 4)), tipo: FiltroTipoContrato = 'todos'): Promise<TableroAlquileresDto> {
+    return (await this.tableros(hoy, anio))[tipo];
+  }
+
+  /**
+   * Los tres cortes —todos, particulares y comerciales— de una sola lectura.
+   * El filtro tardaba cinco o seis segundos por toque porque cada uno volvía a
+   * leer todo (Javier, 6/10/2026: «parece que no está funcionando»); ahora la
+   * pantalla los trae juntos y cambiar de filtro no pide nada. Lo que se
+   * agrega en la base viene separado por tipo y se suma acá.
+   */
+  async tableros(hoy = hoyArgentina(), anio = Number(hoy.slice(0, 4))): Promise<Record<FiltroTipoContrato, TableroAlquileresDto>> {
     const mes = hoy.slice(0, 7);
-    const [datos, bandejaTodas, aLiquidarTodos] = await Promise.all([
-      this.db.withTenant((tx) => this.leer(tx, hoy, mes, anio, tipo)),
+    const [datos, bandeja, aLiquidar] = await Promise.all([
+      this.db.withTenant((tx) => this.leer(tx, hoy, mes, anio)),
       this.indexaciones.bandeja(hoy, DIAS_TABLERO_PROXIMOS),
       this.liquidaciones.pendientes(),
     ]);
-    const { contratos: todos, delMes: delMesTodos, mora, evolucion, ingresos, reclamos, polizas, boletas } = datos;
+    const armar = (tipo: FiltroTipoContrato) => this.armar(datos, bandeja, aLiquidar, hoy, mes, anio, tipo);
+    return { todos: armar('todos'), vivienda: armar('vivienda'), comercial: armar('comercial') };
+  }
+
+  private armar(
+    datos: Awaited<ReturnType<TableroAlquileresService['leer']>>,
+    bandejaTodas: Awaited<ReturnType<IndexacionesService['bandeja']>>,
+    aLiquidarTodos: Awaited<ReturnType<LiquidacionesService['pendientes']>>,
+    hoy: string,
+    mes: string,
+    anio: number,
+    tipo: FiltroTipoContrato,
+  ): TableroAlquileresDto {
+    const { contratos: todos, delMes: delMesTodos, reclamos, polizas, boletas } = datos;
+    const delTipoSql = <T extends { tipo_contrato: string | null }>(xs: T[]) => (tipo === 'todos' ? xs : xs.filter((x) => x.tipo_contrato === tipo));
+    const mora = delTipoSql(datos.mora);
+    // Evolución e ingresos vienen por tipo: con «todos» se suman los dos.
+    const evolucion = sumarPor(delTipoSql(datos.evolucion), (e) => `${e.periodo}|${e.moneda}`, ['emitido', 'cobrado']);
+    const ingresos = sumarPor(delTipoSql(datos.ingresos), (i) => `${i.mes}|${i.moneda}`, ['honorarios', 'gastos', 'punitorios', 'comisiones']);
 
     // El filtro Particulares / Comerciales (punto 8 de Javier) mira todo el
-    // tablero. Lo que crece con la historia ya viene filtrado de la base; lo
-    // demás se filtra acá, sobre los contratos de la inmobiliaria.
+    // tablero: lo leído se filtra acá, sobre los contratos de la inmobiliaria.
     const contratos = tipo === 'todos' ? todos : todos.filter((c) => c.tipo === tipo);
     const delTipo = new Set(contratos.map((c) => c.id));
     const delMes = tipo === 'todos' ? delMesTodos : delMesTodos.filter((k) => k.contratoId != null && delTipo.has(k.contratoId));
@@ -92,16 +140,10 @@ export class TableroAlquileresService {
     const porId = new Map(todos.map((c) => [c.id, c]));
     const nombresDe = (c: C, papel: string) => c.partes.filter((p) => p.papel === papel).map((p) => p.persona.nombre).join(', ') || null;
     const direccionDe = (c: C) => [c.propiedad.direccion, c.propiedad.unidad].filter(Boolean).join(' ');
-    const importeDeHoy = (c: C) => {
-      const conImporte = c.tramos.filter((t) => t.importe != null && fromDate(t.desde)! <= hoy);
-      return conImporte.length ? decToNum(conImporte.at(-1)!.importe) : null;
-    };
-    // La próxima indexación o escalón: el primer tramo sin importe (si ya
-    // empezó, está vencida) o el primero que todavía no empezó.
-    const proximaIndexacion = (c: C) => {
-      const t = c.tramos.find((x) => x.numero > 1 && (x.importe == null || fromDate(x.desde)! > hoy));
-      return t ? fromDate(t.desde) : null;
-    };
+    const tramosDe = (c: C) => c.tramos.map((t) => ({ numero: t.numero, desde: fromDate(t.desde)!, importe: t.importe == null ? null : decToNum(t.importe) }));
+    // Las mismas definiciones que la lista de contratos (@vacker/domain).
+    const importeDeHoy = (c: C) => alquilerDeHoy(tramosDe(c), hoy);
+    const proximaIndexacion = (c: C) => proximoCambio(tramosDe(c), hoy);
     const terminaEl = (c: C) => fromDate(c.rescindidoEl ?? c.fin)!;
     const vacia = { detalle: '', fecha: null, importe: null, dias: null, estado: null };
     const datosDe = (c: C | undefined) =>
@@ -208,10 +250,12 @@ export class TableroAlquileresService {
         importe: t.importePropuesto,
         estado: t.estado === 'pendiente_indice' ? `Espera ${t.falta.join(' y ') || 'el índice'}` : t.vencida ? 'Lista para confirmar (vencida)' : 'Lista para confirmar',
       });
-    const vencenEntre = (desde: number, hasta: number) =>
+    // La primera ventana arranca sin piso: un contrato que ya terminó y sigue
+    // «vigente» (nadie lo finalizó ni lo renovó) también hay que atenderlo.
+    const vencenEntre = (desde: number | null, hasta: number) =>
       vigentes.filter((c) => {
         const fin = fromDate(c.fin)!;
-        return fin > sumarDiasIso(hoy, desde) && fin <= sumarDiasIso(hoy, hasta);
+        return (desde == null || fin > sumarDiasIso(hoy, desde)) && fin <= sumarDiasIso(hoy, hasta);
       });
     const filaVence = (c: C) => filaContrato(c, { dias: diasHasta(fromDate(c.fin)!) });
     const depositos = contratos.filter((c) => {
@@ -292,20 +336,20 @@ export class TableroAlquileresService {
       },
       cobranza,
       morosidad,
-      evolucion: evolucion.map((e) => ({ mes: e.periodo, moneda: e.moneda as MonedaAlquiler, emitido: decToNum(e.emitido), cobrado: decToNum(e.cobrado) })),
+      evolucion: evolucion.map((e) => ({ mes: e.periodo, moneda: e.moneda as MonedaAlquiler, emitido: e.emitido, cobrado: e.cobrado })),
       ingresos: ingresos.map((i) => ({
         mes: i.mes,
         moneda: i.moneda as MonedaAlquiler,
-        honorarios: decToNum(i.honorarios),
-        gastos: decToNum(i.gastos),
-        punitorios: decToNum(i.punitorios),
-        comisiones: i.comisiones == null ? 0 : decToNum(i.comisiones),
+        honorarios: i.honorarios,
+        gastos: i.gastos,
+        punitorios: i.punitorios,
+        comisiones: i.comisiones,
       })),
       tareas: {
         indexacionesVencidas: porCantidad(bandeja.tramos.filter((t) => t.vencida).map(filaIndexacion)),
         indexacionesProximas: porCantidad(bandeja.tramos.filter((t) => !t.vencida).map(filaIndexacion)),
         vencen: [
-          { dias: 30 as const, indicador: porCantidad(vencenEntre(0, 30).map(filaVence)) },
+          { dias: 30 as const, indicador: porCantidad(vencenEntre(null, 30).map(filaVence)) },
           { dias: 60 as const, indicador: porCantidad(vencenEntre(30, 60).map(filaVence)) },
           { dias: 90 as const, indicador: porCantidad(vencenEntre(60, 90).map(filaVence)) },
         ],
@@ -361,7 +405,7 @@ export class TableroAlquileresService {
         // Entrega 19: las pólizas de los vigentes que vencen y lo que paga la inmobiliaria.
         polizas: porCantidad(
           polizas
-            .filter((p) => p.contrato.estado === 'vigente' && delTipo.has(p.contratoId))
+            .filter((p) => p.contrato.estado === 'vigente' && delTipo.has(p.contratoId) && fromDate(p.hasta)! <= sumarDiasIso(hoy, DIAS_TABLERO_PROXIMOS))
             .map((p) => {
               const hastaP = fromDate(p.hasta)!;
               return filaDe(p.contratoId, {
@@ -396,9 +440,7 @@ export class TableroAlquileresService {
   }
 
   /** Ocho consultas, siempre las mismas, en una transacción: todas ven la misma foto de la base. */
-  private async leer(tx: Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0], hoy: string, mes: string, anio: number, tipo: FiltroTipoContrato) {
-    // El filtro por tipo en lo que se agrega en la base (punto 8).
-    const delTipo = tipo === 'todos' ? Prisma.empty : Prisma.sql`AND c.tipo = ${tipo}`;
+  private async leer(tx: Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0], hoy: string, mes: string, anio: number) {
     const desdeEvolucion = `${anio}-01`;
     const hastaEvolucion = `${anio}-12`;
     // El año elegido y el anterior, para el gráfico, y siempre el mes en
@@ -406,9 +448,118 @@ export class TableroAlquileresService {
     const anioHoy = Number(hoy.slice(0, 4));
     const desdeIngresos = `${Math.min(anio - 1, anioHoy)}-01-01`;
     const hastaIngresos = `${Math.max(anio, anioHoy) + 1}-01-01`;
-    const [contratos, delMes, mora, evolucion, ingresos, reclamos, polizas, boletas] = await Promise.all([
-      tx.alqContrato.findMany({
-        where: { estado: { notIn: ['borrador', 'anulado'] } },
+    const [delMes, mora, evolucion, ingresos, reclamos, polizas, boletas] = await Promise.all([
+      // Los alquileres del mes, del lado del inquilino.
+      tx.alqConcepto.findMany({
+        where: { periodo: mes, tipo: 'alquiler', sentido: 'a_cobrar', anuladoEn: null },
+        select: {
+          id: true,
+          contratoId: true,
+          moneda: true,
+          importe: true,
+          vencimiento: true,
+          descripcion: true,
+          persona: { select: { id: true, nombre: true } },
+          imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
+        },
+        orderBy: { vencimiento: 'asc' },
+      }),
+      // Deuda vencida de inquilinos: solo lo que tiene saldo. Lo de un
+      // propietario en su contrato se descuenta al liquidar, no es mora.
+      tx.$queryRaw<FilaMora[]>`
+        SELECT k.id, k.moneda, k.vencimiento, k.descripcion, k.tipo,
+               k.importe - COALESCE(SUM(im.importe) FILTER (WHERE co.anulado_en IS NULL AND re.anulado_en IS NULL), 0) AS saldo,
+               c.id AS contrato_id, c.codigo, c.tipo AS tipo_contrato, p.id AS persona_id, p.nombre
+          FROM alq_concepto k
+          JOIN alq_persona p ON p.id = k.persona_id
+          LEFT JOIN alq_contrato c ON c.id = k.contrato_id
+          LEFT JOIN alq_imputacion im ON im.concepto_id = k.id
+          LEFT JOIN alq_cobro co ON co.id = im.cobro_id
+          LEFT JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id
+         WHERE k.sentido = 'a_cobrar' AND k.anulado_en IS NULL AND k.liquidacion_id IS NULL
+           AND k.tipo <> 'honorarios' AND k.vencimiento < ${toDate(hoy)}
+           AND NOT EXISTS (SELECT 1 FROM alq_contrato_parte pp
+                            WHERE pp.contrato_id = k.contrato_id AND pp.persona_id = k.persona_id AND pp.papel = 'propietario')
+         GROUP BY k.id, c.id, p.id
+        HAVING k.importe - COALESCE(SUM(im.importe) FILTER (WHERE co.anulado_en IS NULL AND re.anulado_en IS NULL), 0) > 0
+         ORDER BY k.vencimiento`,
+      // Regla 29: lo emitido de cada mes y lo cobrado al cierre de ese mes.
+      tx.$queryRaw<{ periodo: string; moneda: string; tipo_contrato: string | null; emitido: Prisma.Decimal; cobrado: Prisma.Decimal }[]>`
+        SELECT k.periodo, k.moneda, c.tipo AS tipo_contrato, SUM(k.importe) AS emitido, COALESCE(SUM(x.cobrado), 0) AS cobrado
+          FROM alq_concepto k
+          JOIN alq_contrato c ON c.id = k.contrato_id
+          LEFT JOIN LATERAL (
+            SELECT SUM(im.importe) AS cobrado
+              FROM alq_imputacion im
+              JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
+              JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
+             WHERE im.concepto_id = k.id
+               AND re.fecha < (to_date(k.periodo, 'YYYY-MM') + INTERVAL '1 month')
+          ) x ON true
+         WHERE k.tipo = 'alquiler' AND k.sentido = 'a_cobrar' AND k.anulado_en IS NULL
+           AND k.periodo BETWEEN ${desdeEvolucion} AND ${hastaEvolucion}
+         GROUP BY k.periodo, k.moneda, c.tipo
+         ORDER BY k.periodo, k.moneda`,
+      // Regla 30: gastos y punitorios cobrados (por la fecha del cobro) y
+      // honorarios descontados (por la fecha de la liquidación).
+      tx.$queryRaw<{ mes: string; moneda: string; tipo_contrato: string | null; honorarios: Prisma.Decimal; gastos: Prisma.Decimal; punitorios: Prisma.Decimal; comisiones: Prisma.Decimal | null }[]>`
+        SELECT mes, moneda, tipo_contrato,
+               SUM(importe) FILTER (WHERE tipo = 'honorarios') AS honorarios,
+               SUM(importe) FILTER (WHERE tipo = 'gastos_adm') AS gastos,
+               SUM(importe) FILTER (WHERE tipo = 'punitorio') AS punitorios,
+               SUM(importe) FILTER (WHERE tipo IN ('comision', 'informe')) AS comisiones
+          FROM (
+            SELECT to_char(re.fecha, 'YYYY-MM') AS mes, k.moneda, c.tipo AS tipo_contrato, k.tipo, im.importe
+              FROM alq_imputacion im
+              JOIN alq_concepto k ON k.id = im.concepto_id
+              JOIN alq_contrato c ON c.id = k.contrato_id
+              JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
+              JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
+             WHERE k.tipo IN ('gastos_adm', 'punitorio', 'comision', 'informe') AND re.fecha >= ${toDate(desdeIngresos)} AND re.fecha < ${toDate(hastaIngresos)}
+                UNION ALL
+            SELECT to_char(l.fecha, 'YYYY-MM'), k.moneda, c.tipo, k.tipo, k.importe
+              FROM alq_concepto k
+              JOIN alq_contrato c ON c.id = k.contrato_id
+              JOIN alq_liquidacion l ON l.id = k.liquidacion_id AND l.anulado_en IS NULL
+             WHERE k.tipo = 'honorarios' AND l.fecha >= ${toDate(desdeIngresos)} AND l.fecha < ${toDate(hastaIngresos)}
+              ) movimientos
+         GROUP BY mes, moneda, tipo_contrato
+         ORDER BY mes, moneda`,
+      // Reclamos abiertos o en curso (entrega 15).
+      tx.alqReclamo.findMany({
+        where: { estado: { in: ['abierto', 'en_curso'] } },
+        select: { id: true, asunto: true, prioridad: true, contratoId: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      // La última póliza de cada contrato vigente: una vieja ya renovada no
+      // es una póliza vencida (antes quedaba «Vencida» para siempre).
+      tx.alqPoliza.findMany({
+        where: { anuladoEn: null, contrato: { estado: 'vigente' } },
+        distinct: ['contratoId'],
+        orderBy: [{ contratoId: 'asc' }, { hasta: 'desc' }],
+        select: { id: true, contratoId: true, aseguradora: true, numero: true, hasta: true, contrato: { select: { codigo: true, estado: true } } },
+      }),
+      tx.alqBoleta.findMany({
+        where: { paga: 'inmobiliaria', pagadaEl: null, anuladoEn: null, vencimiento: { lte: toDate(sumarDiasIso(hoy, 7))! } },
+        select: { id: true, contratoId: true, cuota: true, vencimiento: true, importe: true, cuenta: { select: { servicio: { select: { nombre: true } } } }, poliza: { select: { aseguradora: true } } },
+        orderBy: { vencimiento: 'asc' },
+      }),
+    ]);
+    const nombrados = [...new Set([...delMes, ...reclamos, ...boletas].map((x) => x.contratoId).concat(mora.map((m) => m.contrato_id)).filter((x): x is string => !!x))];
+    const contratos = await tx.alqContrato.findMany({
+        // No todos los de la historia (un tercio se renueva por año): los vigentes,
+        // los que empezaron desde el año anterior al elegido (contratos nuevos y
+        // su comparación), los que deben el depósito y los que nombran las
+        // deudas, reclamos y boletas de arriba.
+        where: {
+          estado: { notIn: ['borrador', 'anulado'] },
+          OR: [
+            { estado: 'vigente' },
+            { inicio: { gte: toDate(`${anio - 1}-01-01`)! } },
+            { depositoImporte: { gt: 0 }, depositoDevolucion: null },
+            { id: { in: nombrados } },
+          ],
+        },
         select: {
           id: true,
           codigo: true,
@@ -427,105 +578,7 @@ export class TableroAlquileresService {
           documentos: { select: { estadoFirma: true } },
         },
         orderBy: [{ codigoNum: 'asc' }, { codigo: 'asc' }],
-      }),
-      // Los alquileres del mes, del lado del inquilino.
-      tx.alqConcepto.findMany({
-        where: { periodo: mes, tipo: 'alquiler', sentido: 'a_cobrar', anuladoEn: null },
-        select: {
-          id: true,
-          contratoId: true,
-          moneda: true,
-          importe: true,
-          vencimiento: true,
-          descripcion: true,
-          persona: { select: { id: true, nombre: true } },
-          contrato: { select: { codigo: true } },
-          imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
-        },
-        orderBy: { vencimiento: 'asc' },
-      }),
-      // Deuda vencida de inquilinos: solo lo que tiene saldo. Lo de un
-      // propietario en su contrato se descuenta al liquidar, no es mora.
-      tx.$queryRaw<FilaMora[]>`
-        SELECT k.id, k.moneda, k.vencimiento, k.descripcion, k.tipo,
-               k.importe - COALESCE(SUM(im.importe) FILTER (WHERE co.anulado_en IS NULL AND re.anulado_en IS NULL), 0) AS saldo,
-               c.id AS contrato_id, c.codigo, p.id AS persona_id, p.nombre
-          FROM alq_concepto k
-          JOIN alq_persona p ON p.id = k.persona_id
-          LEFT JOIN alq_contrato c ON c.id = k.contrato_id
-          LEFT JOIN alq_imputacion im ON im.concepto_id = k.id
-          LEFT JOIN alq_cobro co ON co.id = im.cobro_id
-          LEFT JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id
-         WHERE k.sentido = 'a_cobrar' AND k.anulado_en IS NULL AND k.liquidacion_id IS NULL
-           AND k.tipo <> 'honorarios' AND k.vencimiento < ${toDate(hoy)}
-           ${delTipo}
-           AND NOT EXISTS (SELECT 1 FROM alq_contrato_parte pp
-                            WHERE pp.contrato_id = k.contrato_id AND pp.persona_id = k.persona_id AND pp.papel = 'propietario')
-         GROUP BY k.id, c.id, p.id
-        HAVING k.importe - COALESCE(SUM(im.importe) FILTER (WHERE co.anulado_en IS NULL AND re.anulado_en IS NULL), 0) > 0
-         ORDER BY k.vencimiento`,
-      // Regla 29: lo emitido de cada mes y lo cobrado al cierre de ese mes.
-      tx.$queryRaw<{ periodo: string; moneda: string; emitido: Prisma.Decimal; cobrado: Prisma.Decimal }[]>`
-        SELECT k.periodo, k.moneda, SUM(k.importe) AS emitido, COALESCE(SUM(x.cobrado), 0) AS cobrado
-          FROM alq_concepto k
-          JOIN alq_contrato c ON c.id = k.contrato_id
-          LEFT JOIN LATERAL (
-            SELECT SUM(im.importe) AS cobrado
-              FROM alq_imputacion im
-              JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
-              JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
-             WHERE im.concepto_id = k.id
-               AND re.fecha < (to_date(k.periodo, 'YYYY-MM') + INTERVAL '1 month')
-          ) x ON true
-         WHERE k.tipo = 'alquiler' AND k.sentido = 'a_cobrar' AND k.anulado_en IS NULL
-           AND k.periodo BETWEEN ${desdeEvolucion} AND ${hastaEvolucion}
-           ${delTipo}
-         GROUP BY k.periodo, k.moneda
-         ORDER BY k.periodo, k.moneda`,
-      // Regla 30: gastos y punitorios cobrados (por la fecha del cobro) y
-      // honorarios descontados (por la fecha de la liquidación).
-      tx.$queryRaw<{ mes: string; moneda: string; honorarios: Prisma.Decimal; gastos: Prisma.Decimal; punitorios: Prisma.Decimal; comisiones: Prisma.Decimal | null }[]>`
-        SELECT mes, moneda,
-               SUM(importe) FILTER (WHERE tipo = 'honorarios') AS honorarios,
-               SUM(importe) FILTER (WHERE tipo = 'gastos_adm') AS gastos,
-               SUM(importe) FILTER (WHERE tipo = 'punitorio') AS punitorios,
-               SUM(importe) FILTER (WHERE tipo IN ('comision', 'informe')) AS comisiones
-          FROM (
-            SELECT to_char(re.fecha, 'YYYY-MM') AS mes, k.moneda, k.tipo, im.importe
-              FROM alq_imputacion im
-              JOIN alq_concepto k ON k.id = im.concepto_id
-              JOIN alq_contrato c ON c.id = k.contrato_id
-              JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
-              JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
-             WHERE k.tipo IN ('gastos_adm', 'punitorio', 'comision', 'informe') AND re.fecha >= ${toDate(desdeIngresos)} AND re.fecha < ${toDate(hastaIngresos)}
-               ${delTipo}
-            UNION ALL
-            SELECT to_char(l.fecha, 'YYYY-MM'), k.moneda, k.tipo, k.importe
-              FROM alq_concepto k
-              JOIN alq_contrato c ON c.id = k.contrato_id
-              JOIN alq_liquidacion l ON l.id = k.liquidacion_id AND l.anulado_en IS NULL
-             WHERE k.tipo = 'honorarios' AND l.fecha >= ${toDate(desdeIngresos)} AND l.fecha < ${toDate(hastaIngresos)}
-               ${delTipo}
-          ) movimientos
-         GROUP BY mes, moneda
-         ORDER BY mes, moneda`,
-      // Reclamos abiertos o en curso (entrega 15).
-      tx.alqReclamo.findMany({
-        where: { estado: { in: ['abierto', 'en_curso'] } },
-        select: { id: true, asunto: true, prioridad: true, contratoId: true, createdAt: true },
-        orderBy: { createdAt: 'asc' },
-      }),
-      tx.alqPoliza.findMany({
-        where: { anuladoEn: null, hasta: { lte: toDate(sumarDiasIso(hoy, DIAS_TABLERO_PROXIMOS))! } },
-        select: { id: true, contratoId: true, aseguradora: true, numero: true, hasta: true, contrato: { select: { codigo: true, estado: true } } },
-        orderBy: { hasta: 'asc' },
-      }),
-      tx.alqBoleta.findMany({
-        where: { paga: 'inmobiliaria', pagadaEl: null, anuladoEn: null, vencimiento: { lte: toDate(sumarDiasIso(hoy, 7))! } },
-        select: { id: true, contratoId: true, cuota: true, vencimiento: true, importe: true, cuenta: { select: { servicio: { select: { nombre: true } } } }, poliza: { select: { aseguradora: true } } },
-        orderBy: { vencimiento: 'asc' },
-      }),
-    ]);
+      });
     return { contratos, delMes, mora, evolucion, ingresos, reclamos, polizas, boletas };
   }
 }

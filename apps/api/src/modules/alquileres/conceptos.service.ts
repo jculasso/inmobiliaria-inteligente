@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
-  LIMITE_LISTA_CON_SONDA,
+  LIMITE_CONCEPTOS_MES,
   TenantConfigSchema,
   type ConceptoDto,
   type ConceptoSuelto,
@@ -125,7 +125,7 @@ export class ConceptosService {
         where: { OR: [{ periodo }, { periodo: null, vencimiento: { gte: toDate(desde)!, lte: toDate(hasta)! } }] },
         include: INCLUIR_CONCEPTO,
         orderBy: [{ contrato: { codigo: 'asc' } }, { vencimiento: 'asc' }, { createdAt: 'asc' }],
-        take: LIMITE_LISTA_CON_SONDA,
+        take: LIMITE_CONCEPTOS_MES + 1,
       });
       const nombres = await nombresDeUsuarios(tx, filas.flatMap((f) => [f.creadoPorId, f.anuladoPorId]));
       return filas.map((f) => aDto(f, nombres));

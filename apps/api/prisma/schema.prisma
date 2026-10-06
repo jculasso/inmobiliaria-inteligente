@@ -3,7 +3,12 @@
 // Aislamiento multi-tenant garantizado por RLS (ver migración SQL de policies).
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Una relación anidada (`include`) se trae en la MISMA consulta, con JOIN
+  // LATERAL, y no en una consulta más por relación. Dentro de una transacción
+  // las consultas van de a una: el tablero hacía unas veinte idas y vueltas a
+  // São Paulo (revisión de performance del 6/10/2026).
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -803,6 +808,10 @@ model AlqConcepto {
   origenId                  String?   @map("origen_id") @db.Uuid
   descripcion               String?
   claveGeneracion           String?   @map("clave_generacion")
+  /// De dónde salió: el segundo tramo de la clave (la boleta, el comprobante,
+  /// el contrato). Columna GENERADA en la base; con índice, para buscar por
+  /// origen sin recorrer todos los conceptos con un LIKE.
+  claveOrigen               String?   @map("clave_origen")
   /// El cobro que lo creó: los punitorios nacen al cobrar (regla 16).
   cobroId                   String?   @map("cobro_id") @db.Uuid
   creadoPorId               String?   @map("creado_por_id") @db.Uuid
@@ -823,8 +832,12 @@ model AlqConcepto {
   @@index([tenantId])
   @@index([tenantId, personaId])
   @@index([tenantId, periodo])
+  @@index([tenantId, vencimiento])
+  @@index([tenantId, claveOrigen])
   @@index([contratoId])
   @@index([cobroId])
+  @@index([liquidacionId])
+  @@index([origenId])
   @@map("alq_concepto")
 }
 
@@ -857,6 +870,7 @@ model AlqCobro {
 
   @@unique([tenantId, numero])
   @@index([tenantId])
+  @@index([tenantId, fecha])
   @@index([tenantId, personaId])
   @@map("alq_cobro")
 }

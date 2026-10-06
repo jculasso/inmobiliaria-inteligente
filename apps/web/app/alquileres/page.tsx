@@ -1,6 +1,6 @@
 import { FiltroTipoContratoSchema, puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../lib/server-principal';
-import { getResumenAlquileres, getTableroAlquileres } from '../../lib/alquileres-api';
+import { getResumenAlquileres, getTablerosAlquileres } from '../../lib/alquileres-api';
 import { ComoEmpezar } from '../../components/alquileres/como-empezar';
 import { TableroAlquileres } from '../../components/alquileres/tablero-alquileres';
 
@@ -13,13 +13,14 @@ export default async function AlquileresPage({ searchParams }: { searchParams: P
   // la API, que respondería 403: Next renderiza layout y página en paralelo.
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
 
-  const resumen = await getResumenAlquileres(ctx.accessToken);
+  const params = await searchParams;
+  const anio = Number(params.anio) || undefined;
+  const tipo = FiltroTipoContratoSchema.catch('todos').parse(params.tipo);
+  // En paralelo: antes el tablero esperaba al resumen y eran dos esperas seguidas.
+  const [resumen, tableros] = await Promise.all([getResumenAlquileres(ctx.accessToken), getTablerosAlquileres(ctx.accessToken, anio)]);
 
   // Regla 32: una inmobiliaria que recién prende el módulo no ve tarjetas en
   // cero, que se leen como un error. Ve cómo empezar.
   if (resumen.contratos === 0) return <ComoEmpezar resumen={resumen} />;
-  const params = await searchParams;
-  const anio = Number(params.anio) || undefined;
-  const tipo = FiltroTipoContratoSchema.catch('todos').parse(params.tipo);
-  return <TableroAlquileres tablero={await getTableroAlquileres(ctx.accessToken, anio, tipo)} />;
+  return <TableroAlquileres key={tableros.todos.anio} tableros={tableros} tipoInicial={tipo} />;
 }
