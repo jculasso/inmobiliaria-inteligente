@@ -20,6 +20,7 @@ import { ctxDe } from '../tablero/tablero.util';
 import { CobrosService } from './cobros.service';
 import { EnviosService } from './envios.service';
 import { ReciboService } from './recibo.service';
+import { Costoso } from '../../common/limite-solicitudes';
 
 const ListarCobrosSchema = z.object({ personaId: z.string().uuid().optional() });
 
@@ -83,6 +84,7 @@ export class CobrosController {
   // POST y no GET porque genera un documento; el front abre la pestaña dentro
   // del click y le manda el token (ver abrir-pdf.ts).
   @Post('cobros/:id/recibo')
+  @Costoso()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Recibo del cobro en PDF' })
   async recibo(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
@@ -98,6 +100,7 @@ export class CobrosController {
   }
 
   @Post('cobros/:id/enviar')
+  @Costoso(5)
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Manda el recibo por mail (Resend); queda en el historial' })

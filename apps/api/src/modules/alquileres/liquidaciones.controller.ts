@@ -20,6 +20,7 @@ import { ctxDe } from '../tablero/tablero.util';
 import { LiquidacionesService } from './liquidaciones.service';
 import { EnviosService } from './envios.service';
 import { ReciboService } from './recibo.service';
+import { Costoso } from '../../common/limite-solicitudes';
 
 const ListarSchema = z.object({ personaId: z.string().uuid().optional() });
 
@@ -86,6 +87,7 @@ export class LiquidacionesController {
   }
 
   @Post(':id/pdf')
+  @Costoso()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'La liquidación en PDF' })
   async pdf(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
@@ -94,6 +96,7 @@ export class LiquidacionesController {
   }
 
   @Post(':id/enviar')
+  @Costoso(5)
   @HttpCode(200)
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({

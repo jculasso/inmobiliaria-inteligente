@@ -13,6 +13,7 @@ import { pdfResponse } from '../../common/pdf-response';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero/tablero.util';
 import { PlantillasService } from './plantillas.service';
+import { Costoso } from '../../common/limite-solicitudes';
 
 /** Las plantillas de contrato de la inmobiliaria (entrega 15). */
 @ApiTags('alquileres')
@@ -64,6 +65,7 @@ export class PlantillasController {
   }
 
   @Post('vista-previa')
+  @Costoso()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'El PDF de un texto con los datos de un contrato, para ver cómo queda' })
   async vistaPrevia(

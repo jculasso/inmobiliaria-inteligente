@@ -6,6 +6,7 @@ import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ctxDe } from '../tablero/tablero.util';
 import { ExportacionService } from './exportacion.service';
 import { zipResponse } from '../../common/zip-response';
+import { Costoso } from '../../common/limite-solicitudes';
 
 @ApiTags('exportacion')
 @ApiBearerAuth()
@@ -19,6 +20,7 @@ export class ExportacionController {
   // NO lleva @Modulo(): los datos son de la inmobiliaria, no de un módulo
   // contratado. Poder llevárselos no puede depender de qué tenga contratado.
   @Post()
+  @Costoso(3)
   @Roles(...ROLES_EXPORTACION)
   @ApiOperation({ summary: 'Descarga todos los datos de la inmobiliaria en planillas' })
   async exportar(@CurrentUser() user: AuthPrincipal) {

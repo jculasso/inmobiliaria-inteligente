@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -6,7 +7,16 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
 import { corsOptions } from './common/cors';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Render pone un proxy delante: sin esto, `req.ip` es la IP del proxy y el
+  // límite de pedidos por IP (endpoints públicos) metería a todo el mundo en
+  // el mismo balde. Se confía en UN salto —el proxy de Render— y no en todos
+  // (`true`): con `true`, cualquiera manda su propio `X-Forwarded-For` y elige
+  // con qué IP se lo cuenta. Si delante se suma otra capa (un CDN), subir
+  // TRUST_PROXY_SALTOS. También hace que `req.secure` diga la verdad, que es lo
+  // que decide la cookie `Secure` del flujo de Google.
+  app.set('trust proxy', saltosDeProxy());
 
   app.enableCors(corsOptions);
 
@@ -40,6 +50,12 @@ async function bootstrap(): Promise<void> {
   const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
   await app.listen(port);
   console.log(`[api] escuchando en http://localhost:${port}  ·  docs en /docs`);
+}
+
+/** Cuántos proxies hay delante de la API (`TRUST_PROXY_SALTOS`, 1 por defecto: Render). */
+function saltosDeProxy(): number {
+  const n = Number(process.env.TRUST_PROXY_SALTOS);
+  return Number.isInteger(n) && n >= 0 ? n : 1;
 }
 
 void bootstrap();

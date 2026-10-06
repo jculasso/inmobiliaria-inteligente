@@ -8,6 +8,7 @@ import { ctxDe } from '../../tablero/tablero.util';
 import { InformeProtocoloService } from './informe-protocolo.service';
 import { ReporteSemanalPdfService } from './reporte-semanal-pdf.service';
 import { ReporteSemanalMailService } from './reporte-semanal-mail.service';
+import { Costoso } from '../../../common/limite-solicitudes';
 
 @ApiTags('protocolo')
 @ApiBearerAuth()
@@ -28,6 +29,7 @@ export class InformeProtocoloController {
   }
 
   @Post('reporte-semanal/enviar')
+  @Costoso(5)
   @Roles(...ROLES_REPORTE_PROTOCOLO)
   @ApiOperation({ summary: 'Manda el reporte semanal por mail a quienes lo tengan marcado' })
   enviarReporteSemanal(@CurrentUser() user: AuthPrincipal) {
@@ -37,6 +39,7 @@ export class InformeProtocoloController {
   // POST y no GET porque genera un documento; además el front abre la pestaña
   // dentro del click y le manda el token (ver abrir-pdf.ts).
   @Post('reporte-semanal/pdf')
+  @Costoso()
   @Roles(...ROLES_REPORTE_PROTOCOLO)
   @ApiOperation({ summary: 'Reporte semanal en PDF, para imprimir o adjuntar' })
   async generarReporteSemanal(@CurrentUser() user: AuthPrincipal) {
@@ -45,6 +48,7 @@ export class InformeProtocoloController {
   }
 
   @Post(':id/informe')
+  @Costoso()
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
   @ApiOperation({ summary: 'Genera el informe de comercialización y devuelve el PDF' })
   async generar(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
