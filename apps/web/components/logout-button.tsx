@@ -1,22 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import { createClient } from '../lib/supabase/client';
 
 /** `redirectTo`: adónde ir tras cerrar sesión. Default `/` (Home). El panel de
  * admin lo pasa como `/admin` para volver a su propio login (no a la Home). */
 export function LogoutButton({ redirectTo = '/' }: { redirectTo?: string }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
     setLoading(true);
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push(redirectTo);
-    router.refresh();
+    // Solo este dispositivo: salir en el celular no cierra la computadora.
+    // Si la red falla, se borra igual la sesión local —en un celular
+    // compartido, «Cerrar sesión» tiene que cerrar siempre— y se navega con
+    // recarga completa, para que nada de la sesión quede en memoria.
+    const { error } = await supabase.auth.signOut({ scope: 'local' }).catch((e: unknown) => ({ error: e }));
+    if (error) await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    window.location.assign(redirectTo);
   }
 
   return (

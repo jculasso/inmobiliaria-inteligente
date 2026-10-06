@@ -1,13 +1,13 @@
 {
+  "id": "/",
   "name": "Inmobiliaria Inteligente",
   "short_name": "Inmobiliaria",
-  "description": "Tablero comercial, tasador, agenda y protocolo de comercialización.",
+  "description": "Tablero comercial, tasador, agenda, protocolo de comercialización y administración de alquileres.",
   "lang": "es-AR",
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
   "background_color": "#F4F5F7",
   "theme_color": "#173F6B",
   "icons": [

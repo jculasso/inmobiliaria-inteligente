@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import type { DocumentoContratoDto, EstadoFirma, EstadoFirmante } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
+import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { cambiarFirma, cargarContratoFirmado, cargarDocumentoContrato, enviarAFirmar, urlDocumento } from '../../lib/alquileres-api';
 import { inputClass } from '../form-ui';
 import { Panel } from './piezas';
@@ -55,18 +56,21 @@ export function FirmaContrato({ contratoId, documento: inicial }: { contratoId: 
     }
   }
 
-  async function abrir(esFirmado: boolean) {
+  // Por la misma pestaña que los recibos: con «← Volver», «Descargar» y su
+  // nombre. Ir directo al link firmado dejaba, instalada como app, una
+  // pestaña sin salida (revisión PWA del 6/10/2026).
+  function abrir(esFirmado: boolean) {
     if (!doc) return;
-    // La pestaña se abre en el click (si no, el navegador la bloquea) y se le pone el link al llegar.
-    const ventana = window.open('', '_blank');
-    try {
-      const { url } = await urlDocumento(await getAccessToken(), doc.id, esFirmado);
-      if (ventana) ventana.location.href = url;
-      else window.location.href = url;
-    } catch (err) {
-      ventana?.close();
-      setError(err instanceof Error ? err.message : 'No se pudo abrir el PDF.');
-    }
+    const nombre = `Contrato ${esFirmado ? 'firmado' : 'para firmar'}`;
+    void abrirPdfEnPestana(
+      async () => {
+        const { url } = await urlDocumento(await getAccessToken(), doc.id, esFirmado);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('No se pudo bajar el PDF.');
+        return { blob: await res.blob(), nombre };
+      },
+      { titulo: nombre, onError: setError },
+    );
   }
 
   const elegirArchivo = (input: HTMLInputElement | null, subir: (f: File) => Promise<DocumentoContratoDto>) => {

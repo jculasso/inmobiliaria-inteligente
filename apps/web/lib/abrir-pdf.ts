@@ -70,6 +70,8 @@ export async function abrirPdfEnPestana(
 </header>
 <iframe src="${url}" title="${esc(nombre)}"></iframe>`);
     win.document.close();
+    // Se libera la memoria del PDF cuando se cierra su pestaña.
+    win.addEventListener?.('pagehide', () => URL.revokeObjectURL(url));
 
     // "Enviar" abre el menú de compartir del sistema con el ARCHIVO. Es lo que
     // se quiere para mandárselo al cliente: compartir desde el navegador
@@ -160,7 +162,10 @@ export function abrirPestanaEnEspera(titulo: string): Window | null {
       `<!doctype html><meta charset="utf-8"><title>${esc(titulo)}…</title>` +
         '<div style="font-family:system-ui,sans-serif;display:flex;height:100vh;margin:0;align-items:center;justify-content:center;text-align:center;color:#1D1D1F">' +
         `<div><div style="font-size:15px;font-weight:700">${esc(titulo)}…</div>` +
-        '<div style="font-size:13px;color:#6B6B6B;margin-top:6px">Puede tardar unos segundos.</div></div></div>',
+        '<div style="font-size:13px;color:#6B6B6B;margin-top:6px">Puede tardar unos segundos.</div>' +
+        // Instalada como app no hay barra del navegador: también mientras espera hay salida.
+        '<button type="button" onclick="window.close()" style="margin-top:18px;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:10px;border:1px solid #E6E6E6;background:#fff;color:#1D1D1F">← Volver</button>' +
+        '</div></div>',
     );
   }
   return win;

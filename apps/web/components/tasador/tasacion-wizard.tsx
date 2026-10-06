@@ -617,7 +617,7 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
             pantalla y la pantalla parecía no hacer nada. Reportado el
             30/07/2026: "no me dejaba pasar, no daba ningún mensaje". El mensaje
             estaba; no se veía. */}
-        <div className="sticky bottom-0 border-t border-line bg-white">
+        <div className="sticky bottom-0 border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
           {error && (
             <div
               role="alert"
