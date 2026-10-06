@@ -77,7 +77,7 @@ export default function OfflinePage() {
             href="/"
             style={{ ...boton, background: '#fff', color: '#1D1D1F', border: '1px solid #E6E6E6' }}
           >
-            Ir al inicio
+            Volver al inicio
           </a>
         </div>
       </div>
