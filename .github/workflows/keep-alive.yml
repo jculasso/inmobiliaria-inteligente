@@ -27,6 +27,8 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    # Corre cada 5 minutos: si se colgara, se acumularían corridas.
+    timeout-minutes: 5
     steps:
       # --max-time generoso: el primer ping tras dormirse puede tardar bastante
       # más que un "cold start" típico (confirmado: un intento con 30s cortó

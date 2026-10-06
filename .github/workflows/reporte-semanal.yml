@@ -17,20 +17,30 @@ jobs:
   enviar:
     name: Enviar el reporte a cada inmobiliaria
     runs-on: ubuntu-latest
+    # Despertar (hasta ~2 min con reintentos) + enviar (hasta 3 min): 10 corta
+    # un cuelgue sin quedar justo.
+    timeout-minutes: 10
     steps:
       # La API vive en el free tier de Render y se duerme: el primer request
       # después de dormir tarda 50s o más. Por eso el timeout es generoso y hay
       # reintentos — sin esto la tarea fallaba justamente los lunes temprano,
-      # que es cuando lleva más rato sin tráfico.
+      # que es cuando lleva más rato sin tráfico. Reintentar /health no tiene
+      # efectos: es un GET.
       - name: Despertar la API
         run: curl -fsS --max-time 120 --retry 3 --retry-delay 15 https://api.inmobiliariainteligente.net/health
 
+      # El POST va SIN --retry: no es idempotente. Si la API manda los mails y
+      # la respuesta se corta (timeout, 502 del proxy), un reintento manda el
+      # reporte por segunda vez a toda la dirección. Mejor una corrida roja que
+      # se mira y se relanza a mano que un mail duplicado.
+      #
+      # Solo se imprimen CONTEOS. El repositorio es público y los logs de
+      # Actions también: la respuesta trae el nombre de cada inmobiliaria y el
+      # motivo de cada falla, y eso no puede quedar a la vista de cualquiera.
+      # El detalle está en los logs de Render.
       - name: Enviar los reportes
         run: |
-          respuesta=$(curl -fsS --max-time 180 --retry 2 --retry-delay 20 \
+          respuesta=$(curl -fsS --max-time 180 \
             -X POST https://api.inmobiliariainteligente.net/tareas/reporte-semanal \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}")
-          echo "$respuesta"
-          # El resumen queda en el log de la corrida: sin esto, saber a quién le
-          # llegó exige entrar a Render a leer los logs de la API.
-          echo "$respuesta" | python3 -c "import json,sys; d=json.load(sys.stdin); print(f\"{d['enviados']}/{d['tenants']} inmobiliarias con envío\"); [print(f\"  - {x['tenant']}: {'enviado a '+str(x['destinatarios']) if x['enviado'] else x.get('motivo','no se mandó')}\") for x in d['detalle']]"
+          echo "$respuesta" | python3 -c "import json,sys; d=json.load(sys.stdin); fallas=sum(1 for x in d['detalle'] if not x['enviado']); print(f\"{d['enviados']}/{d['tenants']} inmobiliarias con envío, {fallas} sin envío (detalle en los logs de Render)\")"

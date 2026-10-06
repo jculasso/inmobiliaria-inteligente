@@ -17,6 +17,9 @@ jobs:
   importar:
     name: Traer ICL e IPC
     runs-on: ubuntu-latest
+    # Despertar la API (hasta ~2 min) + importar (hasta 3): 10 alcanza y corta
+    # un cuelgue antes de que consuma minutos de Actions durante horas.
+    timeout-minutes: 10
     steps:
       # La API duerme en el free tier de Render: el primer request tarda.
       - name: Despertar la API
