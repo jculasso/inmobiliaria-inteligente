@@ -2,6 +2,7 @@
 // docs/prototipos/tasador_de_propiedades.html.
 import { z } from 'zod';
 import { BoolQuerySchema, IsoDateSchema, TipoOperacionSchema } from './tablero';
+import { LIMITE_LISTA } from './limites';
 
 export const TipoPropiedadSchema = z.enum([
   'Departamento',
@@ -445,6 +446,12 @@ export const TasacionFiltroSchema = z.object({
   agenteId: z.string().uuid().optional(),
   /** "Ver solo lo mío": un CEO/Team Leader ve solo sus propias tasaciones. */
   verTodo: BoolQuerySchema,
+  /**
+   * Solo las últimas N (las más recientes por fecha). Para la tabla de
+   * «últimas tasaciones» del dashboard, que pedía el año entero —hasta 501
+   * filas— para mostrar unas pocas. Sin esto, el tope general con su sonda.
+   */
+  limite: z.coerce.number().int().min(1).max(LIMITE_LISTA).optional(),
 });
 export type TasacionFiltro = z.infer<typeof TasacionFiltroSchema>;
 
@@ -616,3 +623,16 @@ export const RankingCaptacionItemSchema = z.object({
   peso: z.number(),
 });
 export type RankingCaptacionItem = z.infer<typeof RankingCaptacionItemSchema>;
+
+/**
+ * La portada del Tasador en un pedido (`GET /tasador/kpis/dashboard`): el
+ * resumen y el ranking del período pedido y los doce meses del año, de UNA
+ * consulta. La pantalla los pedía en tres (resumen, ranking, mensual), cada
+ * uno con su transacción y las mismas tasaciones del año.
+ */
+export const DashboardTasadorSchema = z.object({
+  resumen: ResumenTasadorKpiSchema,
+  ranking: z.array(RankingCaptacionItemSchema),
+  mensual: z.array(ResumenTasadorKpiSchema).length(12),
+});
+export type DashboardTasador = z.infer<typeof DashboardTasadorSchema>;

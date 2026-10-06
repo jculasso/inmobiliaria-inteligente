@@ -128,24 +128,14 @@ export class TasacionesService {
     return dto;
   }
 
-  /** Lista tasaciones del tenant, acotadas por el scope del rol y los filtros. */
-  async list(filtro: TasacionFiltro, ctx: TenantContext) {
-    return this.db.withTenant(async (tx) => {
-      const where = await this.whereDe(filtro, ctx, tx);
-      const rows = await tx.tasacion.findMany({
-        where,
-        include: tasacionInclude,
-        orderBy: [{ fecha: 'desc' }],
-        take: LIMITE_LISTA_CON_SONDA,
-      });
-      return rows.map(toDto);
-    });
-  }
-
   /**
-   * Igual que `list()` pero con un `select` liviano (sin comparables, fotos,
-   * análisis ni estrategia comercial) — para vistas de resumen (dashboard)
-   * que no necesitan la fila completa.
+   * El listado de tasaciones, con un `select` liviano (sin comparables, fotos,
+   * análisis ni estrategia comercial). Es el ÚNICO listado: el `GET
+   * /tasador/tasaciones` que devolvía la fila completa —comparables y fotos
+   * de hasta 501 tasaciones— no lo usaba ninguna pantalla y se quitó el
+   * 6/10/2026. La ficha completa se pide de a una (`getOne`).
+   *
+   * `limite` pide solo las últimas N, exactas y sin fila de sonda.
    */
   async listResumen(filtro: TasacionFiltro, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
@@ -154,13 +144,13 @@ export class TasacionesService {
         where,
         select: tasacionResumenSelect,
         orderBy: [{ fecha: 'desc' }],
-        take: LIMITE_LISTA_CON_SONDA,
+        take: filtro.limite ?? LIMITE_LISTA_CON_SONDA,
       });
       return rows.map(toResumenDto);
     });
   }
 
-  /** Arma el `where` de listado (filtros + alcance por rol) — compartido por `list()` y `listResumen()`. */
+  /** Arma el `where` de listado (filtros + alcance por rol) — lo usa `listResumen()`. */
   private async whereDe(
     filtro: TasacionFiltro,
     ctx: TenantContext,

@@ -31,6 +31,17 @@ export class KpisController {
     return this.kpis.resumen(filtro, ctxDe(user));
   }
 
+  /** La portada del Tasador en un solo pedido; los endpoints sueltos siguen vivos. */
+  @Get('dashboard')
+  @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
+  @ApiOperation({ summary: 'Portada del Tasador: resumen + ranking del período + 12 meses' })
+  dashboard(
+    @Query(new ZodValidationPipe(TasadorKpiFiltroSchema)) filtro: TasadorKpiFiltro,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.kpis.dashboard(filtro, ctxDe(user));
+  }
+
   @Get('ranking')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
   @ApiOperation({ summary: 'Ranking de agentes por captaciones' })

@@ -68,7 +68,7 @@ function ctx(clase: object, handler: (...args: never[]) => unknown): ExecutionCo
 
 const ME = () => ctx(MeController, MeController.prototype.me);
 const CAMBIAR_CLAVE = () => ctx(PasswordController, PasswordController.prototype.cambiar);
-const TASACIONES = () => ctx(TasacionesController, TasacionesController.prototype.list);
+const TASACIONES = () => ctx(TasacionesController, TasacionesController.prototype.listResumen);
 const ADMIN = () => ctx(AdminTenantsController, AdminTenantsController.prototype.list);
 
 describe('AuthGuard · inmobiliaria suspendida', () => {
