@@ -17,10 +17,12 @@ import { PersonasService } from './personas.service';
 import { PropiedadesAlquilerController } from './propiedades.controller';
 import { PropiedadesAlquilerService } from './propiedades.service';
 import { ReciboService } from './recibo.service';
+import { TableroAlquileresController } from './tablero-alquileres.controller';
+import { TableroAlquileresService } from './tablero-alquileres.service';
 
 /** Módulo Alquileres: administración de contratos de alquiler. */
 @Module({
-  controllers: [AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController, LiquidacionesController],
+  controllers: [AlquileresController, PersonasController, PropiedadesAlquilerController, ContratosController, IndexacionesController, ConceptosController, CobrosController, LiquidacionesController, TableroAlquileresController],
   providers: [
     AlquileresService,
     PersonasService,
@@ -29,6 +31,7 @@ import { ReciboService } from './recibo.service';
     ConceptosService,
     CobrosService,
     LiquidacionesService,
+    TableroAlquileresService,
     ReciboService,
     IndexacionesService,
     IndicesService,

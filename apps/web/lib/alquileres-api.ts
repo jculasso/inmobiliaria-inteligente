@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   BandejaIndexacionDtoSchema,
+  TableroAlquileresDtoSchema,
   LiquidacionDtoSchema,
   LiquidacionResumenDtoSchema,
   PendienteLiquidarDtoSchema,
@@ -166,4 +167,9 @@ export async function anularLiquidacion(accessToken: string, id: string, motivo:
 /** La liquidación en PDF (regla 23). */
 export async function generarLiquidacionPdf(accessToken: string, id: string) {
   return apiFetchPdf(`/alquileres/liquidaciones/${id}/pdf`, { accessToken });
+}
+
+/** El tablero del módulo (reglas 26 a 32). */
+export async function getTableroAlquileres(accessToken: string) {
+  return apiFetch('/alquileres/tablero', TableroAlquileresDtoSchema, { accessToken });
 }

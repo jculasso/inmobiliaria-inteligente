@@ -1,8 +1,8 @@
 import { puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../lib/server-principal';
-import { getResumenAlquileres } from '../../lib/alquileres-api';
+import { getResumenAlquileres, getTableroAlquileres } from '../../lib/alquileres-api';
 import { ComoEmpezar } from '../../components/alquileres/como-empezar';
-import { ResumenCartera } from '../../components/alquileres/resumen-cartera';
+import { TableroAlquileres } from '../../components/alquileres/tablero-alquileres';
 
 export const metadata = { title: 'Alquileres' };
 
@@ -17,5 +17,6 @@ export default async function AlquileresPage() {
 
   // Regla 32: una inmobiliaria que recién prende el módulo no ve tarjetas en
   // cero, que se leen como un error. Ve cómo empezar.
-  return resumen.contratos === 0 ? <ComoEmpezar resumen={resumen} /> : <ResumenCartera resumen={resumen} />;
+  if (resumen.contratos === 0) return <ComoEmpezar resumen={resumen} />;
+  return <TableroAlquileres tablero={await getTableroAlquileres(ctx.accessToken)} />;
 }
