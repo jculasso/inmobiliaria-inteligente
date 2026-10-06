@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type {
   ComparableInput,
@@ -33,6 +33,7 @@ import {
   PlazoEstimadoSchema,
   SERVICIOS,
   TipoPropiedadSchema,
+  UpdateTasacionSchema,
 } from '@vacker/types';
 import { z } from 'zod';
 import {
@@ -47,6 +48,9 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createTasacion, generarInforme, updateTasacion } from '../../lib/tasador-api';
 import { abrirPdfEnPestana, abrirPestanaEnEspera } from '../../lib/abrir-pdf';
+import { hoyIso } from '../../lib/format';
+import { escribirImporte, leerImporte, leerNumero } from '../../lib/importe';
+import { MensajeError } from '../piezas';
 import { Seccion1Datos } from './wizard/seccion-1-datos';
 import { Seccion2Caracteristicas } from './wizard/seccion-2-caracteristicas';
 import { Seccion3Analisis } from './wizard/seccion-3-analisis';
@@ -54,6 +58,21 @@ import { Seccion4Comparables } from './wizard/seccion-4-comparables';
 import { Seccion5Valores } from './wizard/seccion-5-valores';
 import { Seccion6Estrategia } from './wizard/seccion-6-estrategia';
 import { SECCIONES, WizardSidebar } from './wizard/wizard-sidebar';
+import {
+  borrarBorrador,
+  guardarBorrador,
+  leerBorrador,
+  type BorradorTasacion,
+} from './wizard/borrador';
+
+/**
+ * Cuánto se espera desde el último cambio para guardar solo. Corto como para
+ * que un iPhone que descarga la pestaña al abrir la cámara no se lleve casi
+ * nada; largo como para no mandar un pedido por cada letra.
+ */
+export const AUTOGUARDADO_MS = 2500;
+
+const MENSAJE_SALIR = 'Hay cambios sin guardar en la tasación. ¿Salir y descartarlos?';
 
 /**
  * Un valor de enum "legacy" que ya no existe en el schema (p.ej. estadoInmueble
@@ -74,6 +93,12 @@ function opcionesValidas<T extends string>(
   return (values ?? []).filter((v): v is T => schema.safeParse(v).success);
 }
 
+/** Un importe escrito («185.000,00») como número; lo ilegible no se manda. */
+function importe(texto: string): number | null {
+  const n = leerImporte(texto);
+  return n == null || Number.isNaN(n) ? null : n;
+}
+
 interface Props {
   tasacion?: TasacionDto;
   /**
@@ -86,138 +111,164 @@ interface Props {
    * mientras el servidor guarda el suyo, y los dos números no coincidirían.
    */
   coeficientes: Coeficientes;
+  /** Al crear: de quién es el borrador local (ver `wizard/borrador.ts`). */
+  usuarioId?: string;
 }
 
-export function TasacionWizard({ tasacion, coeficientes }: Props) {
+/**
+ * El wizard de tasación. Esta capa solo recupera el borrador de una tasación
+ * nueva: `sessionStorage` no existe en el servidor, así que se lee después de
+ * montar y el formulario se vuelve a montar con lo recuperado.
+ */
+export function TasacionWizard(props: Props) {
+  const { tasacion, usuarioId } = props;
+  const [borrador, setBorrador] = useState<BorradorTasacion | null>(null);
+
+  useEffect(() => {
+    if (tasacion || !usuarioId) return;
+    setBorrador(leerBorrador(usuarioId));
+  }, [tasacion, usuarioId]);
+
+  return (
+    <FormularioTasacion
+      key={borrador ? 'borrador' : 'nueva'}
+      {...props}
+      borrador={borrador}
+      onDescartarBorrador={() => {
+        borrarBorrador();
+        setBorrador(null);
+      }}
+    />
+  );
+}
+
+function FormularioTasacion({
+  tasacion,
+  coeficientes,
+  usuarioId,
+  borrador,
+  onDescartarBorrador,
+}: Props & { borrador: BorradorTasacion | null; onDescartarBorrador: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Lo que se carga: la tasación guardada o, en una nueva, el borrador recuperado.
+  const ini: Partial<TasacionDto> | undefined = tasacion ?? borrador?.datos;
   const [tasacionId, setTasacionId] = useState<string | null>(tasacion?.id ?? null);
-  const seccionInicial = Number(searchParams.get('seccion'));
+  /** El id para el código asíncrono: el estado de un render viejo todavía no lo tiene. */
+  const idRef = useRef<string | null>(tasacion?.id ?? null);
+  const seccionInicial = Number(searchParams.get('seccion')) || borrador?.seccion || 1;
   const [seccionActiva, setSeccionActiva] = useState(
     seccionInicial >= 1 && seccionInicial <= SECCIONES.length ? seccionInicial : 1,
   );
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
-
-  // El `?seccion=` sólo sirve para sobrevivir el remount tras crear (router.replace
-  // navega de /nueva a /[id]/editar, una página distinta) — se limpia una vez leído
-  // para que recargar la página no quede pegado en esa sección.
-  useEffect(() => {
-    if (searchParams.get('seccion') && tasacionId) {
-      router.replace(`/tasador/tasaciones/${tasacionId}/editar`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const [generandoInforme, setGenerandoInforme] = useState(false);
 
   // Sección 1
-  const [cliente, setCliente] = useState(tasacion?.cliente ?? '');
-  const [fecha, setFecha] = useState(tasacion?.fecha ?? new Date().toISOString().slice(0, 10));
-  const [direccion, setDireccion] = useState(tasacion?.direccion ?? '');
-  const [barrio, setBarrio] = useState(tasacion?.barrio ?? '');
-  const [ciudad, setCiudad] = useState(tasacion?.ciudad ?? '');
-  const [tipoOperacion, setTipoOperacion] = useState<TipoOperacion>(
-    tasacion?.tipoOperacion ?? 'venta',
-  );
+  const [cliente, setCliente] = useState(ini?.cliente ?? '');
+  // `hoyIso` y no `toISOString`: después de las 21 h, en UTC ya es mañana.
+  const [fecha, setFecha] = useState(ini?.fecha ?? hoyIso());
+  const [direccion, setDireccion] = useState(ini?.direccion ?? '');
+  const [barrio, setBarrio] = useState(ini?.barrio ?? '');
+  const [ciudad, setCiudad] = useState(ini?.ciudad ?? '');
+  const [tipoOperacion, setTipoOperacion] = useState<TipoOperacion>(ini?.tipoOperacion ?? 'venta');
 
   // Sección 2
   const [tipoPropiedad, setTipoPropiedad] = useState<TipoPropiedad>(
-    opcionValida(TipoPropiedadSchema, tasacion?.tipoPropiedad) || 'Departamento',
+    opcionValida(TipoPropiedadSchema, ini?.tipoPropiedad) || 'Departamento',
   );
-  const [supCubierta, setSupCubierta] = useState(String(tasacion?.supCubierta ?? ''));
-  const [supSemicubierta, setSupSemicubierta] = useState(String(tasacion?.supSemicubierta ?? ''));
-  const [supDescubierta, setSupDescubierta] = useState(String(tasacion?.supDescubierta ?? ''));
-  const [supTerreno, setSupTerreno] = useState(String(tasacion?.supTerreno ?? ''));
-  const [dormitorios, setDormitorios] = useState(String(tasacion?.dormitorios ?? ''));
-  const [banos, setBanos] = useState(String(tasacion?.banos ?? ''));
-  const [toilette, setToilette] = useState(String(tasacion?.toilette ?? ''));
-  const [ambientes, setAmbientes] = useState(String(tasacion?.ambientes ?? ''));
-  const [antiguedad, setAntiguedad] = useState(String(tasacion?.antiguedad ?? ''));
+  // `|| ''` en las tres primeras: el guardado manda 0 cuando están vacías, y
+  // un borrador recuperado no tiene que mostrar «0» donde no se escribió nada.
+  const [supCubierta, setSupCubierta] = useState(String(ini?.supCubierta || ''));
+  const [supSemicubierta, setSupSemicubierta] = useState(String(ini?.supSemicubierta || ''));
+  const [supDescubierta, setSupDescubierta] = useState(String(ini?.supDescubierta || ''));
+  const [supTerreno, setSupTerreno] = useState(String(ini?.supTerreno ?? ''));
+  const [dormitorios, setDormitorios] = useState(String(ini?.dormitorios ?? ''));
+  const [banos, setBanos] = useState(String(ini?.banos ?? ''));
+  const [toilette, setToilette] = useState(String(ini?.toilette ?? ''));
+  const [ambientes, setAmbientes] = useState(String(ini?.ambientes ?? ''));
+  const [antiguedad, setAntiguedad] = useState(String(ini?.antiguedad ?? ''));
   const [estadoInmueble, setEstadoInmueble] = useState<EstadoInmueble | ''>(
-    opcionValida(EstadoInmuebleSchema, tasacion?.estadoInmueble),
+    opcionValida(EstadoInmuebleSchema, ini?.estadoInmueble),
   );
   const [disposicion, setDisposicion] = useState<Disposicion | ''>(
-    opcionValida(DisposicionSchema, tasacion?.disposicion),
+    opcionValida(DisposicionSchema, ini?.disposicion),
   );
   const [orientacion, setOrientacion] = useState<Orientacion | ''>(
-    opcionValida(OrientacionSchema, tasacion?.orientacion),
+    opcionValida(OrientacionSchema, ini?.orientacion),
   );
-  const [cochera, setCochera] = useState(tasacion?.cochera ?? false);
-  const [balcon, setBalcon] = useState(tasacion?.balcon ?? false);
-  const [terraza, setTerraza] = useState(tasacion?.terraza ?? false);
-  const [patio, setPatio] = useState(tasacion?.patio ?? false);
-  const [lavadero, setLavadero] = useState(tasacion?.lavadero ?? false);
-  const [piscina, setPiscina] = useState(tasacion?.piscina ?? false);
-  const [altillo, setAltillo] = useState(tasacion?.altillo ?? false);
-  const [baulera, setBaulera] = useState(tasacion?.baulera ?? false);
-  const [biblioteca, setBiblioteca] = useState(tasacion?.biblioteca ?? false);
-  const [escritorio, setEscritorio] = useState(tasacion?.escritorio ?? false);
-  const [jardin, setJardin] = useState(tasacion?.jardin ?? false);
-  const [vestidor, setVestidor] = useState(tasacion?.vestidor ?? false);
-  const [servicios, setServicios] = useState<string[]>(tasacion?.servicios ?? []);
-  const [tieneAmenities, setTieneAmenities] = useState(tasacion?.tieneAmenities ?? false);
-  const [amenities, setAmenities] = useState<string[]>(tasacion?.amenities ?? []);
-  const [detalleAmenities, setDetalleAmenities] = useState(tasacion?.detalleAmenities ?? '');
-  const [expensas, setExpensas] = useState(String(tasacion?.expensas ?? ''));
+  const [cochera, setCochera] = useState(ini?.cochera ?? false);
+  const [balcon, setBalcon] = useState(ini?.balcon ?? false);
+  const [terraza, setTerraza] = useState(ini?.terraza ?? false);
+  const [patio, setPatio] = useState(ini?.patio ?? false);
+  const [lavadero, setLavadero] = useState(ini?.lavadero ?? false);
+  const [piscina, setPiscina] = useState(ini?.piscina ?? false);
+  const [altillo, setAltillo] = useState(ini?.altillo ?? false);
+  const [baulera, setBaulera] = useState(ini?.baulera ?? false);
+  const [biblioteca, setBiblioteca] = useState(ini?.biblioteca ?? false);
+  const [escritorio, setEscritorio] = useState(ini?.escritorio ?? false);
+  const [jardin, setJardin] = useState(ini?.jardin ?? false);
+  const [vestidor, setVestidor] = useState(ini?.vestidor ?? false);
+  const [servicios, setServicios] = useState<string[]>(ini?.servicios ?? []);
+  const [tieneAmenities, setTieneAmenities] = useState(ini?.tieneAmenities ?? false);
+  const [amenities, setAmenities] = useState<string[]>(ini?.amenities ?? []);
+  const [detalleAmenities, setDetalleAmenities] = useState(ini?.detalleAmenities ?? '');
+  const [expensas, setExpensas] = useState(String(ini?.expensas ?? ''));
   const [aptoCredito, setAptoCredito] = useState<AptoCredito | ''>(
-    opcionValida(AptoCreditoSchema, tasacion?.aptoCredito),
+    opcionValida(AptoCreditoSchema, ini?.aptoCredito),
   );
   const [documentacion, setDocumentacion] = useState<Documentacion | ''>(
-    opcionValida(DocumentacionSchema, tasacion?.documentacion),
+    opcionValida(DocumentacionSchema, ini?.documentacion),
   );
-  const [fotos, setFotos] = useState<TasacionFotoDto[]>(tasacion?.fotos ?? []);
+  const [fotos, setFotos] = useState<TasacionFotoDto[]>(ini?.fotos ?? []);
 
   // Sección 3
   // Sin `opcionesValidas` a propósito, a diferencia del resto de la pantalla.
   // Acá el tasador puede escribir la suya, y filtrar contra una lista cerrada
   // borraría en silencio lo que escribió la primera vez que reabra la tasación.
   // También conserva las de una tipología que después se cambió.
-  const [fortalezas, setFortalezas] = useState<string[]>(
-    tasacion?.analisisComercial?.fortalezas ?? [],
-  );
-  const [aspectos, setAspectos] = useState<string[]>(tasacion?.analisisComercial?.aspectos ?? []);
+  const [fortalezas, setFortalezas] = useState<string[]>(ini?.analisisComercial?.fortalezas ?? []);
+  const [aspectos, setAspectos] = useState<string[]>(ini?.analisisComercial?.aspectos ?? []);
   const [demanda, setDemanda] = useState<Nivel | ''>(
-    opcionValida(NivelSchema, tasacion?.analisisComercial?.demanda),
+    opcionValida(NivelSchema, ini?.analisisComercial?.demanda),
   );
   const [competencia, setCompetencia] = useState<Nivel | ''>(
-    opcionValida(NivelSchema, tasacion?.analisisComercial?.competencia),
+    opcionValida(NivelSchema, ini?.analisisComercial?.competencia),
   );
   const [perfilComprador, setPerfilComprador] = useState<PerfilComprador | ''>(
-    opcionValida(PerfilCompradorSchema, tasacion?.analisisComercial?.perfilComprador),
+    opcionValida(PerfilCompradorSchema, ini?.analisisComercial?.perfilComprador),
   );
   const [observacionesComerciales, setObservacionesComerciales] = useState(
-    tasacion?.analisisComercial?.observacionesComerciales ?? '',
+    ini?.analisisComercial?.observacionesComerciales ?? '',
   );
 
   // Sección 4
   const [comparables, setComparables] = useState<ComparableInput[]>(
-    tasacion?.comparables.map(({ usdM2: _usdM2, ...c }) => c) ?? [],
+    (ini?.comparables ?? []).map(({ usdM2: _usdM2, ...c }) => c),
   );
 
-  // Sección 5
-  const [valorMinimo, setValorMinimo] = useState(String(tasacion?.valorMinimo ?? ''));
-  const [valorRecomendado, setValorRecomendado] = useState(
-    String(tasacion?.valorRecomendado ?? ''),
-  );
+  // Sección 5 — los importes viven como se escriben («185.000,00»).
+  const [valorMinimo, setValorMinimo] = useState(escribirImporte(ini?.valorMinimo));
+  const [valorRecomendado, setValorRecomendado] = useState(escribirImporte(ini?.valorRecomendado));
   const [valorAspiracional, setValorAspiracional] = useState(
-    String(tasacion?.valorAspiracional ?? ''),
+    escribirImporte(ini?.valorAspiracional),
   );
   const [margenNegociacion, setMargenNegociacion] = useState(
-    String(tasacion?.margenNegociacion ?? ''),
+    ini?.margenNegociacion == null ? '' : String(ini.margenNegociacion).replace('.', ','),
   );
   const [escenarioRecomendado, setEscenarioRecomendado] = useState<Escenario | ''>(
-    opcionValida(EscenarioSchema, tasacion?.escenarioRecomendado),
+    opcionValida(EscenarioSchema, ini?.escenarioRecomendado),
   );
   const [plazoEstimado, setPlazoEstimado] = useState<PlazoEstimado | ''>(
-    opcionValida(PlazoEstimadoSchema, tasacion?.plazoEstimado),
+    opcionValida(PlazoEstimadoSchema, ini?.plazoEstimado),
   );
 
   // Sección 6
   const [estrategia, setEstrategia] = useState<string[]>(
-    opcionesValidas(EstrategiaAccionSchema, tasacion?.estrategiaComercial?.estrategia),
+    opcionesValidas(EstrategiaAccionSchema, ini?.estrategiaComercial?.estrategia),
   );
   const [observacionesEstrategia, setObservacionesEstrategia] = useState(
-    tasacion?.estrategiaComercial?.observacionesEstrategia ?? '',
+    ini?.estrategiaComercial?.observacionesEstrategia ?? '',
   );
 
   /*
@@ -285,9 +336,9 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
     if (!sugerencia) return;
     const sinTocar = valorMinimo === '' && valorRecomendado === '' && valorAspiracional === '';
     if (!sinTocar) return;
-    setValorMinimo(String(Math.round(sugerencia.minimo)));
-    setValorRecomendado(String(Math.round(sugerencia.recomendado)));
-    setValorAspiracional(String(Math.round(sugerencia.aspiracional)));
+    setValorMinimo(escribirImporte(Math.round(sugerencia.minimo)));
+    setValorRecomendado(escribirImporte(Math.round(sugerencia.recomendado)));
+    setValorAspiracional(escribirImporte(Math.round(sugerencia.aspiracional)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sugerencia]);
 
@@ -363,11 +414,13 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   }
 
   function datosSeccion5() {
+    const margen = leerNumero(margenNegociacion);
     return {
-      valorMinimo: valorMinimo ? Number(valorMinimo) : null,
-      valorRecomendado: valorRecomendado ? Number(valorRecomendado) : null,
-      valorAspiracional: valorAspiracional ? Number(valorAspiracional) : null,
-      margenNegociacion: margenNegociacion ? Number(margenNegociacion) : null,
+      // `leerImporte` y no `Number`: «185.000» son ciento ochenta y cinco mil, no 185.
+      valorMinimo: importe(valorMinimo),
+      valorRecomendado: importe(valorRecomendado),
+      valorAspiracional: importe(valorAspiracional),
+      margenNegociacion: margen == null || Number.isNaN(margen) ? null : margen,
       escenarioRecomendado: escenarioRecomendado || null,
       plazoEstimado: plazoEstimado || null,
     };
@@ -394,9 +447,7 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
   /**
    * Todas las secciones juntas — se usa al generar el informe o finalizar,
    * momentos en los que hace falta que TODO lo cargado esté guardado sin
-   * importar cuál sea la sección activa (si el usuario saltó de "Comparables"
-   * directo a "Estrategia", por ejemplo, "Valores" nunca se guardó porque
-   * `guardarSeccionActiva` solo manda los datos de la sección activa).
+   * importar cuál sea la sección activa.
    */
   function datosCompletos() {
     return {
@@ -409,119 +460,319 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
     };
   }
 
+  // --- Qué falta guardar ---------------------------------------------------
+  //
+  // Cada sección tiene su «firma» (lo que mandaría a la API, en texto). Una
+  // sección está sin guardar si su firma no es la del último guardado que
+  // salió bien. Así el autoguardado manda solo lo que cambió, y lo que se
+  // escribió MIENTRAS volvía la respuesta sigue marcado como pendiente.
+  const firmas = SECCIONES.map((s) => JSON.stringify(datosDeSeccion(s.id)));
+  const guardadas = useRef<string[] | null>(null);
+  if (guardadas.current === null) guardadas.current = firmas;
+  const [, setGuardadoN] = useState(0);
+  const sucias = SECCIONES.map((s) => s.id).filter(
+    (n) => firmas[n - 1] !== guardadas.current![n - 1],
+  );
+  // En una nueva, «sin guardar» es haber escrito algo (o traer un borrador).
+  const firmaTotal = firmas.join('|');
+  const firmaVacia = useRef(borrador ? '' : firmaTotal);
+  const hayCambios = tasacionId ? sucias.length > 0 : firmaTotal !== firmaVacia.current;
+
+  function marcarGuardadas(secciones: number[], firmasEnviadas: string[]) {
+    const g = [...guardadas.current!];
+    for (const n of secciones) g[n - 1] = firmasEnviadas[n - 1]!;
+    guardadas.current = g;
+    setGuardadoN((v) => v + 1);
+  }
+
+  type Modo = 'paso' | 'todo' | 'auto';
+
   /**
-   * Guarda la sección activa: crea la tasación en la sección 1 (primer guardado) o
-   * hace un PATCH parcial. `destino` es la sección a la que se quiere navegar después —
-   * si esta llamada crea la tasación, `router.replace` cambia de página (/nueva → /[id]/editar)
-   * y el componente se remonta, así que el destino viaja en la URL (`?seccion=`) para
-   * sobrevivir el remount; si ya existía la tasación, no hay remount y el destino se
-   * aplica localmente en el caller.
+   * Guarda. `paso`: lo pendiente, al cambiar de sección. `todo`: todas las
+   * secciones en un PATCH, al terminar (si alguien saltó de «Comparables» a
+   * «Estrategia», «Valores» también tiene que quedar). `auto`: lo pendiente,
+   * en silencio y solo si la API lo va a aceptar — dos comparables de seis
+   * no son un error mientras se están cargando.
+   *
+   * Tira el error de la API; quien llama decide cómo mostrarlo.
    */
-  async function guardarSeccionActiva(destino: number): Promise<boolean> {
-    if (seccionActiva === 1 && (!cliente.trim() || !fecha || !direccion.trim())) {
+  async function persistir(modo: Modo): Promise<boolean> {
+    const id = idRef.current;
+    const enviadas = firmas;
+    if (!id) {
+      // Sin tasación todavía no hay dónde guardar: el borrador local cubre.
+      if (modo === 'auto') return false;
+      if (!cliente.trim() || !fecha || !direccion.trim()) {
+        setError('Completá cliente, fecha y dirección antes de continuar.');
+        return false;
+      }
+      const datos = modo === 'todo' ? datosCompletos() : { ...datosSeccion1(), ...datosSeccion2() };
+      const creada = await createTasacion(await getAccessToken(), datos);
+      idRef.current = creada.id;
+      setTasacionId(creada.id);
+      marcarGuardadas(modo === 'todo' ? SECCIONES.map((s) => s.id) : [1, 2], enviadas);
+      borrarBorrador();
+      return true;
+    }
+
+    const pendientes = SECCIONES.map((s) => s.id).filter(
+      (n) => enviadas[n - 1] !== guardadas.current![n - 1],
+    );
+    const secciones = modo === 'todo' ? SECCIONES.map((s) => s.id) : pendientes;
+    if (secciones.includes(1) && (!cliente.trim() || !fecha || !direccion.trim())) {
+      if (modo === 'auto') return false;
       setError('Completá cliente, fecha y dirección antes de continuar.');
       return false;
     }
+    if (secciones.length === 0) return true;
+    const datos =
+      modo === 'todo'
+        ? datosCompletos()
+        : Object.assign({}, ...secciones.map((n) => datosDeSeccion(n)));
+    if (modo === 'auto' && !UpdateTasacionSchema.safeParse(datos).success) return false;
+    await updateTasacion(await getAccessToken(), id, datos);
+    marcarGuardadas(secciones, enviadas);
+    return true;
+  }
 
-    setError(null);
+  // --- Un guardado a la vez ------------------------------------------------
+  //
+  // Un toque doble en «Siguiente» (o en el número de paso) con la red lenta
+  // mandaba dos pedidos, y en una tasación nueva la creaba dos veces. La ref
+  // corta el segundo en el mismo instante, antes de que React vuelva a pintar
+  // el botón deshabilitado.
+  const manualEnCurso = useRef(false);
+  const autoEnCurso = useRef<Promise<void> | null>(null);
+  const [estadoAuto, setEstadoAuto] = useState<'quieto' | 'guardando' | 'error'>('quieto');
+  const [errorAuto, setErrorAuto] = useState<string | null>(null);
+
+  async function accionManual<T>(fn: () => Promise<T>): Promise<T | undefined> {
+    if (manualEnCurso.current) return undefined;
+    manualEnCurso.current = true;
     setGuardando(true);
     try {
-      const accessToken = await getAccessToken();
-      if (!tasacionId) {
-        const creada = await createTasacion(accessToken, {
-          ...datosSeccion1(),
-          ...datosSeccion2(),
-        });
-        setTasacionId(creada.id);
-        router.replace(`/tasador/tasaciones/${creada.id}/editar?seccion=${destino}`);
-      } else {
-        await updateTasacion(accessToken, tasacionId, datosDeSeccion(seccionActiva));
-      }
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la sección.');
-      return false;
+      // Si el autoguardado está en vuelo, se espera: lo que ya mandó no se manda otra vez.
+      if (autoEnCurso.current) await autoEnCurso.current;
+      return await fn();
     } finally {
+      manualEnCurso.current = false;
       setGuardando(false);
     }
   }
 
-  /** Guarda TODAS las secciones en un solo PATCH — ver `datosCompletos()`. */
-  async function guardarTodo(): Promise<boolean> {
-    if (!cliente.trim() || !fecha || !direccion.trim()) {
-      setError('Completá cliente, fecha y dirección antes de continuar.');
-      return false;
-    }
-
+  /** El guardado de un botón: el error se muestra pegado a los botones. */
+  async function guardarManual(modo: 'paso' | 'todo'): Promise<boolean> {
     setError(null);
-    setGuardando(true);
     try {
-      const accessToken = await getAccessToken();
-      if (!tasacionId) {
-        const creada = await createTasacion(accessToken, datosCompletos());
-        setTasacionId(creada.id);
-        router.replace(`/tasador/tasaciones/${creada.id}/editar`);
-      } else {
-        await updateTasacion(accessToken, tasacionId, datosCompletos());
-      }
-      return true;
+      return await persistir(modo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la tasación.');
       return false;
-    } finally {
-      setGuardando(false);
     }
   }
 
+  // El autoguardado corre desde timers y eventos del documento: siempre con
+  // las funciones del último render, que son las que ven el estado actual.
+  const persistirRef = useRef(persistir);
+  persistirRef.current = persistir;
+  const autoguardar = () => {
+    if (manualEnCurso.current || autoEnCurso.current || !idRef.current) return;
+    setEstadoAuto('guardando');
+    autoEnCurso.current = persistirRef
+      .current('auto')
+      .then(() => {
+        setEstadoAuto('quieto');
+        setErrorAuto(null);
+      })
+      .catch((err: unknown) => {
+        setEstadoAuto('error');
+        setErrorAuto(err instanceof Error ? err.message : 'No se pudo guardar.');
+      })
+      .finally(() => {
+        autoEnCurso.current = null;
+      });
+  };
+  const autoguardarRef = useRef(autoguardar);
+  autoguardarRef.current = autoguardar;
+
+  // Unos segundos después del último cambio, se guarda lo pendiente.
+  const firmaPendiente = sucias.map((n) => firmas[n - 1]).join('|');
+  useEffect(() => {
+    if (!tasacionId || !firmaPendiente) return;
+    const t = window.setTimeout(() => autoguardarRef.current(), AUTOGUARDADO_MS);
+    return () => window.clearTimeout(t);
+  }, [tasacionId, firmaPendiente]);
+
+  // Al salir de la app (otra app, bloquear el teléfono, abrir la cámara) se
+  // guarda YA: el sistema puede descargar la pestaña y no volver a cargarla.
+  useEffect(() => {
+    const alOcultar = () => {
+      if (document.visibilityState === 'hidden') autoguardarRef.current();
+    };
+    document.addEventListener('visibilitychange', alOcultar);
+    return () => document.removeEventListener('visibilitychange', alOcultar);
+  }, []);
+
+  // Una tasación nueva todavía no existe: lo cargado va al borrador local.
+  useEffect(() => {
+    if (tasacionId || !usuarioId || !hayCambios) return;
+    guardarBorrador({
+      usuarioId,
+      seccion: seccionActiva,
+      datos: datosCompletos() as unknown as Partial<TasacionDto>,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasacionId, usuarioId, hayCambios, firmaTotal, seccionActiva]);
+
+  // Salir con cambios sin guardar pregunta: recargar o cerrar la pestaña (el
+  // navegador muestra su aviso) y los links de la app (pestañas del módulo,
+  // el inicio). Con el autoguardado, casi nunca llega a preguntar.
+  const hayCambiosRef = useRef(hayCambios);
+  hayCambiosRef.current = hayCambios;
+  useEffect(() => {
+    const alDescargar = (e: BeforeUnloadEvent) => {
+      if (!hayCambiosRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    const alClic = (e: MouseEvent) => {
+      if (!hayCambiosRef.current || e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+      const destino = new URL(a.href, window.location.href);
+      if (destino.origin !== window.location.origin) return;
+      if (destino.pathname === window.location.pathname) return;
+      if (window.confirm(MENSAJE_SALIR)) {
+        if (!idRef.current) borrarBorrador();
+        hayCambiosRef.current = false;
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener('beforeunload', alDescargar);
+    // En captura: antes de que el <Link> de Next navegue.
+    document.addEventListener('click', alClic, true);
+    return () => {
+      window.removeEventListener('beforeunload', alDescargar);
+      document.removeEventListener('click', alClic, true);
+    };
+  }, []);
+
+  // La sección va en la dirección (`?seccion=3`): recargar —o que el iPhone
+  // recargue solo al volver a la app— deja en el mismo paso, no en el 1.
+  // `history.replaceState` y no `router.replace`: el router volvería a pedir
+  // la página al servidor en cada paso, y crear la tasación cambia /nueva por
+  // /[id]/editar sin volver a montar el formulario (antes se remontaba y lo
+  // escrito en el medio se perdía).
+  useEffect(() => {
+    const base = tasacionId
+      ? `/tasador/tasaciones/${tasacionId}/editar`
+      : '/tasador/tasaciones/nueva';
+    const url = `${base}?seccion=${seccionActiva}`;
+    if (`${window.location.pathname}${window.location.search}` !== url) {
+      window.history.replaceState(null, '', url);
+    }
+  }, [tasacionId, seccionActiva]);
+
   async function irA(seccion: number) {
     if (seccion === seccionActiva) return;
-    const habiaId = !!tasacionId;
-    const ok = await guardarSeccionActiva(seccion);
-    if (ok && habiaId) setSeccionActiva(seccion);
+    const ok = await accionManual(() => guardarManual('paso'));
+    if (ok) setSeccionActiva(seccion);
   }
 
   async function handleSiguiente() {
     if (seccionActiva >= SECCIONES.length) return;
-    const habiaId = !!tasacionId;
-    const ok = await guardarSeccionActiva(seccionActiva + 1);
-    if (ok && habiaId) setSeccionActiva(seccionActiva + 1);
+    const destino = seccionActiva + 1;
+    const ok = await accionManual(() => guardarManual('paso'));
+    if (ok) setSeccionActiva(destino);
   }
 
   function handleAnterior() {
     setError(null);
     if (seccionActiva > 1) setSeccionActiva(seccionActiva - 1);
+    // Volver no espera al guardado, pero tampoco lo deja para después.
+    autoguardar();
   }
 
   async function handleGenerarInforme() {
+    if (manualEnCurso.current) return;
     // La pestaña se abre ANTES de guardar: para cuando termina el guardado, el
     // navegador ya no considera que la acción viene del click y la bloquearía.
     const ventana = abrirPestanaEnEspera('Generando el informe');
-    const ok = await guardarTodo();
-    if (!ok || !tasacionId) {
+    let fallo = false;
+    const listo = await accionManual(async () => {
+      const ok = await guardarManual('todo');
+      const id = idRef.current;
+      if (!ok || !id) return false;
+      setGenerandoInforme(true);
+      try {
+        await abrirPdfEnPestana(async () => generarInforme(await getAccessToken(), id), {
+          titulo: 'Generando el informe',
+          onError: (m) => {
+            fallo = true;
+            setError(m);
+          },
+          ventana,
+        });
+      } finally {
+        setGenerandoInforme(false);
+      }
+      return true;
+    });
+    if (!listo) {
       ventana?.close();
       return;
     }
-    setGenerandoInforme(true);
-    await abrirPdfEnPestana(async () => generarInforme(await getAccessToken(), tasacionId), {
-      titulo: 'Generando el informe',
-      onError: setError,
-      ventana,
-    });
-    setGenerandoInforme(false);
-    router.push('/tasador/tasaciones');
+    // Si el PDF falló, se queda acá: yéndose, el error no lo veía nadie.
+    if (!fallo) router.push('/tasador/tasaciones');
   }
 
   async function handleFinalizar() {
-    const ok = await guardarTodo();
+    const ok = await accionManual(() => guardarManual('todo'));
     if (ok) router.push('/tasador/tasaciones');
   }
 
-  return (
-    <div className="flex flex-col overflow-hidden rounded-brand border border-line bg-white lg:min-h-[calc(100vh-8rem)] lg:flex-row">
-      <WizardSidebar activa={seccionActiva} onCambiar={irA} />
+  function handleCancelar() {
+    if (hayCambios && !window.confirm(MENSAJE_SALIR)) return;
+    if (!tasacionId) borrarBorrador();
+    hayCambiosRef.current = false;
+    router.push('/tasador/tasaciones');
+  }
 
-      <div className="flex flex-1 flex-col">
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+  const ocupado = guardando || generandoInforme;
+  const estadoGuardado = !tasacionId
+    ? hayCambios
+      ? 'Sin guardar todavía'
+      : null
+    : estadoAuto === 'guardando'
+      ? 'Guardando…'
+      : sucias.length === 0
+        ? '✓ Guardado'
+        : 'Sin guardar';
+
+  return (
+    // `overflow-clip` y no `overflow-hidden`: recorta las esquinas igual, pero
+    // no vuelve a la tarjeta un contenedor de scroll. Con `hidden`, la barra de
+    // abajo quedaba «pegada» a una caja que no se desplaza —o sea, nunca se
+    // pegaba— y en el teléfono «Siguiente» quedaba al final de la sección.
+    <div className="flex flex-col overflow-clip rounded-brand border border-line bg-white lg:min-h-[calc(100vh-8rem)] lg:flex-row">
+      <WizardSidebar activa={seccionActiva} onCambiar={irA} deshabilitada={ocupado} />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex-1 overflow-x-hidden p-4 sm:p-6">
+          {borrador && !tasacionId && (
+            <div
+              role="status"
+              className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-brand border border-line bg-surface px-3 py-2 text-sm text-ink"
+            >
+              <span>Recuperamos lo que estabas cargando en esta tasación nueva.</span>
+              <Button type="button" variant="secondary" size="sm" onClick={onDescartarBorrador}>
+                Empezar de cero
+              </Button>
+            </div>
+          )}
           {seccionActiva === 1 && (
             <Seccion1Datos
               cliente={cliente}
@@ -609,6 +860,7 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
               tasacionId={tasacionId}
               fotos={fotos}
               setFotos={setFotos}
+              onAntesDeElegirFoto={autoguardar}
             />
           )}
           {seccionActiva === 3 && (
@@ -670,30 +922,34 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
             pantalla y la pantalla parecía no hacer nada. Reportado el
             30/07/2026: "no me dejaba pasar, no daba ningún mensaje". El mensaje
             estaba; no se veía. */}
-        <div className="sticky bottom-0 border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
+        <div className="sticky bottom-0 z-10 border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
           {error && (
-            <div
-              role="alert"
-              className="border-b border-brand-red/20 bg-brand-red/5 px-4 py-2.5 text-xs font-semibold text-brand-red sm:px-6"
-            >
-              {error}
+            <div className="border-b border-danger/20 bg-danger/5 px-4 py-2.5 sm:px-6">
+              <MensajeError className="text-xs font-semibold">{error}</MensajeError>
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => router.push('/tasador/tasaciones')}
-            >
-              Cancelar
-            </Button>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <Button type="button" variant="secondary" onClick={handleCancelar} disabled={ocupado}>
+                Cancelar
+              </Button>
+              {estadoAuto === 'error' && sucias.length > 0 ? (
+                <MensajeError className="text-xs">No se guardó solo: {errorAuto}</MensajeError>
+              ) : (
+                estadoGuardado && (
+                  <span aria-live="polite" className="text-xs text-muted">
+                    {estadoGuardado}
+                  </span>
+                )
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {seccionActiva > 1 && (
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={handleAnterior}
-                  disabled={guardando}
+                  disabled={ocupado}
                 >
                   ← Anterior
                 </Button>
@@ -703,7 +959,7 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
                   type="button"
                   variant="primary"
                   onClick={handleSiguiente}
-                  disabled={guardando}
+                  disabled={ocupado}
                 >
                   {guardando ? 'Guardando…' : 'Siguiente →'}
                 </Button>
@@ -713,17 +969,17 @@ export function TasacionWizard({ tasacion, coeficientes }: Props) {
                     type="button"
                     variant="secondary"
                     onClick={handleFinalizar}
-                    disabled={guardando}
+                    disabled={ocupado}
                   >
-                    {guardando ? 'Guardando…' : 'Guardar y salir'}
+                    {guardando && !generandoInforme ? 'Guardando…' : 'Guardar y salir'}
                   </Button>
                   <Button
                     type="button"
                     variant="primary"
                     onClick={handleGenerarInforme}
-                    disabled={generandoInforme}
+                    disabled={ocupado}
                   >
-                    {generandoInforme ? 'Generando…' : 'Generar informe (PDF)'}
+                    {generandoInforme ? 'Generando…' : '📄 Generar informe (PDF)'}
                   </Button>
                 </>
               )}

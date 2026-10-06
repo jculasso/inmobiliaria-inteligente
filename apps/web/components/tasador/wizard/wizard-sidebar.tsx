@@ -1,5 +1,7 @@
 'use client';
 
+import { CLASE_FOCO } from '../../piezas';
+
 export const SECCIONES = [
   { id: 1, nombre: 'Datos del informe' },
   { id: 2, nombre: 'Características' },
@@ -12,6 +14,11 @@ export const SECCIONES = [
 interface Props {
   activa: number;
   onCambiar: (seccion: number) => void;
+  /**
+   * Mientras se guarda: cambiar de paso guarda la sección, y un segundo toque
+   * con el primero en vuelo mandaba otro pedido (o creaba la tasación dos veces).
+   */
+  deshabilitada?: boolean;
 }
 
 /**
@@ -21,7 +28,7 @@ interface Props {
  * botones: en una sección larga el mensaje quedaba fuera de pantalla y el
  * wizard parecía no responder.
  */
-export function WizardSidebar({ activa, onCambiar }: Props) {
+export function WizardSidebar({ activa, onCambiar, deshabilitada = false }: Props) {
   const progreso = (activa / SECCIONES.length) * 100;
 
   return (
@@ -51,9 +58,10 @@ export function WizardSidebar({ activa, onCambiar }: Props) {
             key={s.id}
             type="button"
             onClick={() => onCambiar(s.id)}
+            disabled={deshabilitada}
             aria-label={s.nombre}
             aria-current={activa === s.id ? 'step' : undefined}
-            className={`flex flex-1 items-center justify-center gap-2.5 rounded-brand px-1 py-2.5 text-sm transition-colors lg:flex-none lg:justify-start lg:px-3 lg:text-left ${
+            className={`flex flex-1 items-center justify-center gap-2.5 rounded-brand px-1 py-2.5 text-sm transition-colors disabled:cursor-progress disabled:opacity-60 lg:flex-none ${CLASE_FOCO} lg:justify-start lg:px-3 lg:text-left ${
               activa === s.id
                 ? 'bg-brand-red/10 font-semibold text-brand-red'
                 : 'text-ink hover:bg-surface'

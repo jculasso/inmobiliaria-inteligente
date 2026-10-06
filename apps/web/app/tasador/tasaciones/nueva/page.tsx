@@ -9,6 +9,7 @@ export default async function NuevaTasacionPage() {
   const { coefSemicubierta, coefDescubierta } = ctx.principal.tenant.config;
   return (
     <TasacionWizard
+      usuarioId={ctx.principal.userId}
       coeficientes={{ semicubierta: coefSemicubierta, descubierta: coefDescubierta }}
     />
   );
