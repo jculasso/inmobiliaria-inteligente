@@ -9,7 +9,7 @@ import { ReporteSemanalPdfService } from './reporte-semanal-pdf.service';
 import { armarMailDelReporte } from './reporte-semanal.mail';
 
 /** Remitente. La inmobiliaria va en la parte local y en el nombre visible. */
-const DOMINIO_ENVIO = 'avisos.inmobiliariainteligente.net';
+export const DOMINIO_ENVIO = 'avisos.inmobiliariainteligente.net';
 
 export interface ResultadoEnvio {
   enviado: boolean;

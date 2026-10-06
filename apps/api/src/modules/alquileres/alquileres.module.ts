@@ -7,6 +7,7 @@ import { CobrosService } from './cobros.service';
 import { ConceptosController } from './conceptos.controller';
 import { ConceptosService } from './conceptos.service';
 import { ContratosController } from './contratos.controller';
+import { EnviosService } from './envios.service';
 import { IndicesConsultaService } from './indices-consulta.service';
 import { IndicesController } from './indices.controller';
 import { CandidatosService } from './candidatos.service';
@@ -40,6 +41,7 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
     HistorialService,
     CandidatosService,
     IndicesConsultaService,
+    EnviosService,
     ConceptosService,
     CobrosService,
     LiquidacionesService,

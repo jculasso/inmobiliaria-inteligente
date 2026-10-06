@@ -68,6 +68,7 @@ function makeTx(over: { delDueno?: unknown[]; delInquilino?: unknown[]; marcados
       ),
       updateMany: vi.fn(async (args: { where: { id?: { in: string[] } } }) => ({ count: over.marcados ?? args.where.id?.in.length ?? 0 })),
     },
+    alqCuentaBancaria: { findFirst: vi.fn().mockResolvedValue({ banco: 'Nación', cbu: null, alias: 'casa.mar.sol', titular: 'Propietario' }) },
     alqLiquidacion: {
       aggregate: vi.fn().mockResolvedValue({ _max: { numero: 2 } }),
       create: vi.fn().mockResolvedValue({ id: 'liq' }),
@@ -84,6 +85,7 @@ function makeDb(tx: ReturnType<typeof makeTx>): TenantPrismaService {
     return {
       id: 'liq',
       numero: data?.numero ?? 3,
+      personaId: DUENO,
       persona: { id: DUENO, nombre: 'Propietario' },
       fecha: new Date('2026-11-12T00:00:00Z'),
       moneda: 'ARS',
@@ -182,6 +184,14 @@ describe('LiquidacionesService (reglas 20 a 22)', () => {
   it('cada línea lleva la propiedad y los inquilinos de su contrato', async () => {
     const r = await new LiquidacionesService(makeDb(makeTx())).liquidar(CTX, input());
     expect(r.aPagar[0]!.contrato).toEqual({ id: C5, codigo: '5', propiedad: 'Córdoba 1452 3° B', inquilinos: ['Inquilina'] });
+  });
+
+  // Punto 14: la liquidación dice a dónde se le transfiere.
+  it('trae la cuenta principal del propietario en la moneda de la liquidación', async () => {
+    const tx = makeTx();
+    const r = await new LiquidacionesService(makeDb(tx)).liquidar(CTX, input());
+    expect(r.cuentaDestino).toEqual({ banco: 'Nación', cbu: null, alias: 'casa.mar.sol', titular: 'Propietario' });
+    expect(tx.alqCuentaBancaria.findFirst.mock.calls[0]![0].where).toEqual({ personaId: DUENO, moneda: 'ARS' });
   });
 
   it('una liquidación guardada antes, sin propiedad ni inquilinos, se sigue leyendo', async () => {

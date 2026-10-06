@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonaInputSchema } from '@vacker/types';
@@ -92,5 +93,55 @@ describe('PersonasService', () => {
     const tx = makeTx();
     await new PersonasService(makeDb(tx)).crear(CTX, ANA);
     expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({ entidad: 'persona', accion: 'alta', usuarioId: 'u1', usuarioNombre: 'Lucía Operadora' });
+  });
+});
+
+describe('PersonasService · ficha, cuentas y contactos (punto 14)', () => {
+  const CTX2 = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
+  function txFicha() {
+    return {
+      ...mocksDeHistorial(),
+      alqPersona: { findUnique: vi.fn().mockResolvedValue({ id: 'p1', nombre: 'Juan Propietario', fechaNacimiento: new Date('1970-05-04T00:00:00Z') }) },
+      alqCuentaBancaria: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn(), createMany: vi.fn() },
+      alqContacto: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn(), createMany: vi.fn() },
+      alqContratoParte: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            papel: 'propietario',
+            contrato: {
+              id: 'c1',
+              codigo: 'ALT-0001',
+              estado: 'vigente',
+              tipo: 'vivienda',
+              moneda: 'ARS',
+              inicio: new Date('2025-03-01T00:00:00Z'),
+              fin: new Date('2027-02-28T00:00:00Z'),
+              propiedad: { direccion: 'Bv. Oroño 1452', unidad: '4° B' },
+              tramos: [{ desde: new Date('2025-03-01T00:00:00Z'), importe: new Prisma.Decimal(450_000) }],
+            },
+          },
+        ]),
+      },
+    };
+  }
+
+  it('la ficha trae los datos, con la fecha como texto, y sus contratos con el papel y el importe de hoy', async () => {
+    const tx = txFicha();
+    const f = await new PersonasService(makeDb(tx)).ficha('p1');
+    expect(f.persona.fechaNacimiento).toBe('1970-05-04');
+    expect(f.contratos).toEqual([
+      { id: 'c1', codigo: 'ALT-0001', papel: 'propietario', estado: 'vigente', tipo: 'vivienda', propiedad: 'Bv. Oroño 1452 4° B', inicio: '2025-03-01', fin: '2027-02-28', moneda: 'ARS', importeVigente: 450_000 },
+    ]);
+  });
+
+  it('las cuentas se guardan juntas, con una sola principal, y queda en el historial', async () => {
+    const tx = txFicha();
+    await new PersonasService(makeDb(tx)).guardarCuentas(CTX2, 'p1', [
+      { banco: 'Nación', tipo: 'caja_ahorro', moneda: 'ARS', numero: null, cbu: null, alias: 'casa.mar.sol', titular: null, cuitTitular: null, principal: false },
+      { banco: 'Galicia', tipo: 'caja_ahorro', moneda: 'USD', numero: null, cbu: null, alias: 'dolar.ahorro', titular: null, cuitTitular: null, principal: false },
+    ]);
+    expect(tx.alqCuentaBancaria.deleteMany).toHaveBeenCalledWith({ where: { personaId: 'p1' } });
+    expect(tx.alqCuentaBancaria.createMany.mock.calls[0]![0].data.map((c: { principal: boolean }) => c.principal)).toEqual([true, false]);
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0].resumen).toBe('Cuentas bancarias de Juan Propietario: Nación (casa.mar.sol), Galicia (dolar.ahorro)');
   });
 });

@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { CobroResumenDto, CuentaCorrienteDto, EventoDto, LiquidacionResumenDto, PersonaDto } from '@vacker/types';
+import type { CobroResumenDto, CuentaCorrienteDto, EventoDto, LiquidacionResumenDto, PersonaDto, PersonaFichaDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { anularCobro, anularLiquidacion, generarLiquidacionPdf, generarRecibo } from '../../lib/alquileres-api';
+import { anularCobro, anularLiquidacion, enviarLiquidacionPorMail, enviarReciboPorMail, generarLiquidacionPdf, generarRecibo } from '../../lib/alquileres-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { documentoLegible } from './personas-lista';
@@ -14,6 +14,10 @@ import { PersonaFormModal } from './persona-form-modal';
 import { Bloque, CLASE_TH, Vacio } from './piezas';
 import { AnularModal } from './anular-modal';
 import { Historial } from './historial';
+import { EnviarMailModal } from './enviar-mail-modal';
+import { CuentasBancarias } from './cuentas-bancarias';
+import { Contactos } from './contactos';
+import { DatosPersonales, InformacionBasica, ResumenPersona, Solapas, type Solapa } from './ficha-persona';
 
 const recibo = (n: number) => String(n).padStart(6, '0');
 
@@ -38,14 +42,19 @@ export function CuentaCorriente({
   cobros,
   liquidaciones = [],
   historial,
+  ficha,
 }: {
   cuenta: CuentaCorrienteDto;
   persona: PersonaDto | null;
   cobros: CobroResumenDto[];
   liquidaciones?: LiquidacionResumenDto[];
   historial?: EventoDto[];
+  /** Con la ficha, la pantalla se arma con las solapas de «Clientes» de Gexion (punto 14). */
+  ficha?: PersonaFichaDto;
 }) {
   const router = useRouter();
+  const [solapa, setSolapa] = useState<Solapa>('resumen');
+  const [aEnviar, setAEnviar] = useState<{ titulo: string; enviar: (para: string[]) => Promise<unknown> } | null>(null);
   const [editando, setEditando] = useState(false);
   const [anulando, setAnulando] = useState<{ titulo: string; detalle: string; anular: (motivo: string) => Promise<unknown> } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,48 +64,10 @@ export function CuentaCorriente({
   const descargarLiquidacion = (l: { id: string; numero: number }) =>
     abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), l.id), { titulo: `Liquidación ${recibo(l.numero)}`, onError: setError });
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted">
-            <Link href="/alquileres/personas" className="hover:underline">
-              Personas
-            </Link>{' '}
-            /
-          </p>
-          <h2 className="mt-0.5 text-lg font-bold text-ink">{cuenta.persona.nombre}</h2>
-          {persona && (
-            <p className="text-sm text-muted">
-              {[documentoLegible(persona.documento), persona.telefono, persona.email].filter((x) => x && x !== '—').join(' · ') || 'Sin datos de contacto'}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {persona && (
-            <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
-              ✏️ Editar datos
-            </Button>
-          )}
-          <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
-            <Button variant="secondary" size="sm">
-              🧾 Liquidar
-            </Button>
-          </Link>
-          <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
-            <Button variant="primary" size="sm">
-              ＋ Registrar cobro
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {error && (
-        <p role="alert" className="text-sm font-semibold text-brand-red">
-          {error}
-        </p>
-      )}
-
+  // La cuenta corriente propiamente dicha: saldo, pendiente, movimientos,
+  // recibos y liquidaciones. Con la ficha, es una de sus solapas.
+  const cuentaCorriente = (
+    <>
       {cuenta.monedas.length === 0 ? (
         <Vacio>Todavía no tiene movimientos.</Vacio>
       ) : (
@@ -207,6 +178,15 @@ export function CuentaCorriente({
                   {!c.anulado && (
                     <button
                       type="button"
+                      onClick={() => setAEnviar({ titulo: `Mandar el recibo ${recibo(c.numero)}`, enviar: async (para) => enviarReciboPorMail(await getAccessToken(), c.id, para) })}
+                      className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                    >
+                      ✉️ Mail
+                    </button>
+                  )}
+                  {!c.anulado && (
+                    <button
+                      type="button"
                       onClick={() =>
                         setAnulando({
                           titulo: `Anular el recibo ${recibo(c.numero)}`,
@@ -250,6 +230,15 @@ export function CuentaCorriente({
                   {!l.anulado && (
                     <button
                       type="button"
+                      onClick={() => setAEnviar({ titulo: `Mandar la liquidación ${recibo(l.numero)}`, enviar: async (para) => enviarLiquidacionPorMail(await getAccessToken(), l.id, para) })}
+                      className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface"
+                    >
+                      ✉️ Mail
+                    </button>
+                  )}
+                  {!l.anulado && (
+                    <button
+                      type="button"
                       onClick={() =>
                         setAnulando({
                           titulo: `Anular la liquidación ${recibo(l.numero)}`,
@@ -269,9 +258,9 @@ export function CuentaCorriente({
         </Bloque>
       )}
 
-      {editando && persona && (
+      {editando && (ficha?.persona ?? persona) && (
         <PersonaFormModal
-          persona={persona}
+          persona={ficha?.persona ?? persona ?? undefined}
           onClose={() => setEditando(false)}
           onSaved={() => {
             setEditando(false);
@@ -279,7 +268,83 @@ export function CuentaCorriente({
           }}
         />
       )}
-      {historial && <Historial eventos={historial} />}
+    </>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted">
+            <Link href="/alquileres/personas" className="hover:underline">
+              Personas
+            </Link>{' '}
+            /
+          </p>
+          <h2 className="mt-0.5 text-lg font-bold text-ink">{cuenta.persona.nombre}</h2>
+          {persona && (
+            <p className="text-sm text-muted">
+              {[documentoLegible(persona.documento), persona.telefono, persona.email].filter((x) => x && x !== '—').join(' · ') || 'Sin datos de contacto'}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {persona && (
+            <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
+              ✏️ Editar datos
+            </Button>
+          )}
+          <Link href={`/alquileres/liquidaciones/nueva?persona=${cuenta.persona.id}`}>
+            <Button variant="secondary" size="sm">
+              🧾 Liquidar
+            </Button>
+          </Link>
+          <Link href={`/alquileres/cobros/nuevo?persona=${cuenta.persona.id}`}>
+            <Button variant="primary" size="sm">
+              ＋ Registrar cobro
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {error && (
+        <p role="alert" className="text-sm font-semibold text-brand-red">
+          {error}
+        </p>
+      )}
+
+      {ficha ? (
+        <>
+          <Solapas actual={solapa} onCambiar={setSolapa} />
+          {solapa === 'resumen' && <ResumenPersona cuenta={cuenta} ficha={ficha} historial={historial ?? []} />}
+          {solapa === 'basica' && <InformacionBasica persona={ficha.persona} onEditar={() => setEditando(true)} />}
+          {solapa === 'administrativa' && <CuentasBancarias personaId={ficha.persona.id} cuentas={ficha.cuentas} />}
+          {solapa === 'complementarios' && (
+            <>
+              <DatosPersonales persona={ficha.persona} onEditar={() => setEditando(true)} />
+              <Contactos personaId={ficha.persona.id} contactos={ficha.contactos} />
+            </>
+          )}
+          {solapa === 'cuenta' && cuentaCorriente}
+        </>
+      ) : (
+        <>
+          {cuentaCorriente}
+          {historial && <Historial eventos={historial} />}
+        </>
+      )}
+
+
+
+      {aEnviar && (
+        <EnviarMailModal
+          titulo={aEnviar.titulo}
+          personaId={cuenta.persona.id}
+          enviar={aEnviar.enviar}
+          onClose={() => setAEnviar(null)}
+          onEnviado={() => router.refresh()}
+        />
+      )}
 
       {anulando && (
         <AnularModal

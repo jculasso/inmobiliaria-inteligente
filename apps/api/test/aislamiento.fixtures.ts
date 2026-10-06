@@ -42,6 +42,8 @@ export interface IdsDeTenant {
   alqFirmante: string;
   alqFirmaEvento: string;
   alqEvento: string;
+  alqCuentaBancaria: string;
+  alqContacto: string;
   /**
    * Un segundo usuario y una segunda tasación por inmobiliaria.
    *
@@ -94,6 +96,8 @@ export function nuevosIds(n: number): IdsDeTenant {
     alqFirmante: randomUUID(),
     alqFirmaEvento: randomUUID(),
     alqEvento: randomUUID(),
+    alqCuentaBancaria: randomUUID(),
+    alqContacto: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
     contratoSecundario: randomUUID(),
@@ -551,6 +555,22 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'resumen',
     fila: (t, i) => ({ id: i.alqEvento, tenantId: t, entidad: 'contrato', entidadId: i.alqContrato, contratoId: i.alqContrato, accion: 'alta', resumen: `Alta ${i.n}` }),
+  },
+  {
+    tabla: 'alq_cuenta_bancaria',
+    modelo: 'alqCuentaBancaria',
+    claveId: 'alqCuentaBancaria',
+    campoTenant: 'tenantId',
+    campoEditable: 'banco',
+    fila: (t, i) => ({ id: i.alqCuentaBancaria, tenantId: t, personaId: i.alqPersona, banco: `Banco ${i.n}`, alias: `cuenta.${i.n}` }),
+  },
+  {
+    tabla: 'alq_contacto',
+    modelo: 'alqContacto',
+    claveId: 'alqContacto',
+    campoTenant: 'tenantId',
+    campoEditable: 'nombre',
+    fila: (t, i) => ({ id: i.alqContacto, tenantId: t, personaId: i.alqPersona, nombre: `Contacto ${i.n}` }),
   },
 ];
 

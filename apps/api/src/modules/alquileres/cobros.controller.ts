@@ -4,7 +4,9 @@ import {
   AnularCobroSchema,
   CobroInputSchema,
   PrepararCobroSchema,
+  EnviarPorMailSchema,
   ROLES_ADMINISTRACION_ALQUILERES,
+  type EnviarPorMail,
   type AnularCobro,
   type Cobro,
   type PrepararCobro,
@@ -16,6 +18,7 @@ import { pdfResponse } from '../../common/pdf-response';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero/tablero.util';
 import { CobrosService } from './cobros.service';
+import { EnviosService } from './envios.service';
 import { ReciboService } from './recibo.service';
 
 const ListarCobrosSchema = z.object({ personaId: z.string().uuid().optional() });
@@ -27,6 +30,7 @@ const ListarCobrosSchema = z.object({ personaId: z.string().uuid().optional() })
 @Modulo('alquileres')
 export class CobrosController {
   constructor(
+    private readonly envios: EnviosService,
     private readonly cobros: CobrosService,
     private readonly recibos: ReciboService,
   ) {}
@@ -82,5 +86,13 @@ export class CobrosController {
   @ApiOperation({ summary: 'Cuenta corriente por moneda y estado de cuenta de una persona' })
   cuenta(@Param('id', ParseUUIDPipe) id: string) {
     return this.cobros.cuenta(id);
+  }
+
+  @Post('cobros/:id/enviar')
+  @HttpCode(200)
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Manda el recibo por mail (Resend); queda en el historial' })
+  enviar(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(EnviarPorMailSchema)) body: EnviarPorMail, @CurrentUser() user: AuthPrincipal) {
+    return this.envios.recibo(ctxDe(user), id, body.para);
   }
 }

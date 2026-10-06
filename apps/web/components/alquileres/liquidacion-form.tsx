@@ -14,7 +14,8 @@ import {
 } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarLiquidacionPdf, liquidar, prepararLiquidacion } from '../../lib/alquileres-api';
+import { generarLiquidacionPdf, liquidar, prepararLiquidacion, enviarLiquidacionPorMail } from '../../lib/alquileres-api';
+import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
@@ -102,6 +103,7 @@ export function LiquidacionForm({
   const [cargando, setCargando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mandando, setMandando] = useState(false);
   const [hecha, setHecha] = useState<LiquidacionDto | null>(null);
 
   useEffect(() => {
@@ -151,6 +153,9 @@ export function LiquidacionForm({
           >
             Descargar la liquidación
           </Button>
+          <Button variant="secondary" onClick={() => setMandando(true)}>
+            ✉️ Mandar por mail
+          </Button>
           <Link href={`/alquileres/personas/${hecha.persona.id}`}>
             <Button variant="secondary">Ver la cuenta</Button>
           </Link>
@@ -159,6 +164,14 @@ export function LiquidacionForm({
           </Link>
         </div>
         {error && <p role="alert" className="text-sm font-semibold text-brand-red">{error}</p>}
+        {mandando && (
+          <EnviarMailModal
+            titulo={`Mandar la liquidación ${numero(hecha.numero)}`}
+            personaId={hecha.persona.id}
+            enviar={async (para) => enviarLiquidacionPorMail(await getAccessToken(), hecha.id, para)}
+            onClose={() => setMandando(false)}
+          />
+        )}
       </div>
     );
   }

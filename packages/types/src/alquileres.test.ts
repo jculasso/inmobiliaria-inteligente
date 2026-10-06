@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PersonaInputSchema, PropiedadAlquilerInputSchema, agruparPorContrato, normalizarDocumento } from './alquileres';
+import { CuentaBancariaInputSchema, PersonaInputSchema, PropiedadAlquilerInputSchema, agruparPorContrato, cbuValido, cuitValido, normalizarDocumento } from './alquileres';
 
 describe('normalizarDocumento', () => {
   /*
@@ -73,5 +73,37 @@ describe('agruparPorContrato', () => {
       ['a', 1, 1, 0, 900.05],
       ['b', 1, 0, 1, 500],
     ]);
+  });
+});
+
+describe('CUIT, CBU y alias (punto 14)', () => {
+  it('el CUIT con su dígito verificador', () => {
+    expect(cuitValido('20123456786')).toBe(true);
+    expect(cuitValido('20123456787')).toBe(false);
+    expect(cuitValido('2012345678')).toBe(false);
+  });
+
+  it('el CBU con sus dos dígitos verificadores', () => {
+    // Arma un CBU válido con la misma cuenta que pide el BCRA.
+    const dv = (d: string, p: number[]) => String((10 - (p.reduce((s, x, i) => s + x * Number(d[i]), 0) % 10)) % 10);
+    const b1 = '0110599';
+    const b2 = '2000000123456';
+    const cbu = b1 + dv(b1, [7, 1, 3, 9, 7, 1, 3]) + b2 + dv(b2, [3, 9, 7, 1, 3, 9, 7, 1, 3, 9, 7, 1, 3]);
+    expect(cbuValido(cbu)).toBe(true);
+    // Un dígito cambiado en la cuenta: no cierra.
+    expect(cbuValido(cbu.slice(0, 15) + ((Number(cbu[15]) + 1) % 10) + cbu.slice(16))).toBe(false);
+    expect(cbuValido('123')).toBe(false);
+  });
+
+  it('una cuenta necesita CBU o alias, y los valida', () => {
+    expect(CuentaBancariaInputSchema.safeParse({ banco: 'Nación' }).success).toBe(false);
+    expect(CuentaBancariaInputSchema.safeParse({ banco: 'Nación', alias: 'casa.mar.sol' }).success).toBe(true);
+    expect(CuentaBancariaInputSchema.safeParse({ banco: 'Nación', alias: 'ab' }).success).toBe(false);
+    expect(CuentaBancariaInputSchema.safeParse({ banco: 'Nación', cbu: '0110599520000001234567' }).success).toBe(false);
+  });
+
+  it('la persona rechaza un CUIT mal tipeado', () => {
+    expect(PersonaInputSchema.safeParse({ nombre: 'Ana', cuit: '20-12345678-7' }).success).toBe(false);
+    expect(PersonaInputSchema.parse({ nombre: 'Ana', cuit: '20-12345678-6' }).cuit).toBe('20123456786');
   });
 });
