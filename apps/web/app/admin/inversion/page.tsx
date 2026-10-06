@@ -72,15 +72,15 @@ export default function InversionPage() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Tarjeta titulo="Base de datos">
             <p>Supabase, plan gratis, en San Pablo.</p>
-            <p className="font-semibold text-brand-red">Sin backups automáticos.</p>
+            <p className="font-semibold text-danger">Sin backups automáticos.</p>
           </Tarjeta>
           <Tarjeta titulo="API">
             <p>Render, plan gratis, fuera de la región.</p>
-            <p className="font-semibold text-brand-red">Se duerme por inactividad.</p>
+            <p className="font-semibold text-danger">Se duerme por inactividad.</p>
           </Tarjeta>
           <Tarjeta titulo="Web">
             <p>Vercel, plan Hobby.</p>
-            <p className="font-semibold text-brand-red">Solo uso no comercial.</p>
+            <p className="font-semibold text-danger">Solo uso no comercial.</p>
           </Tarjeta>
         </div>
       </Seccion>

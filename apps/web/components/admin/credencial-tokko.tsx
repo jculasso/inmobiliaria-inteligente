@@ -10,6 +10,8 @@ import {
   guardarCredencialTenant,
   probarCredencialTenant,
 } from '../../lib/admin-api';
+import { fmtFechaHora } from '../../lib/format';
+import { CLASE_FOCO, MensajeError } from '../piezas';
 
 /**
  * Carga de la clave de API de Tokko de una inmobiliaria, en el panel de
@@ -95,12 +97,13 @@ export function CredencialTokko({
           </p>
           {estado.actualizadoEl && (
             <p className="mt-0.5 text-xs text-muted">
-              Última actualización: {new Date(estado.actualizadoEl).toLocaleString('es-AR')}
+              {/* En la hora de Argentina: sin zona, en una compu con otra hora decía otro día. */}
+              Última actualización: {fmtFechaHora(estado.actualizadoEl)}
             </p>
           )}
         </div>
       ) : (
-        <div className="rounded-brand border border-line border-l-[3px] border-l-amber-500 bg-amber-50 p-3">
+        <div className="rounded-brand border border-line border-l-[3px] border-l-warning bg-warning/5 p-3">
           <p className="text-sm font-semibold text-ink">Todavía no hay una clave cargada.</p>
         </div>
       )}
@@ -143,9 +146,9 @@ export function CredencialTokko({
           <button
             type="button"
             onClick={quitar}
-            className="text-xs font-semibold text-brand-red hover:underline"
+            className={`rounded px-1 text-xs font-semibold text-danger hover:underline ${CLASE_FOCO}`}
           >
-            Quitar
+            Borrar la clave
           </button>
         )}
       </div>
@@ -154,7 +157,7 @@ export function CredencialTokko({
         <div
           role="status"
           className={`rounded-brand border border-line border-l-[3px] p-3 text-sm ${
-            prueba.ok ? 'border-l-success bg-success/5' : 'border-l-brand-red bg-brand-red/5'
+            prueba.ok ? 'border-l-success bg-success/5' : 'border-l-danger bg-danger/5'
           }`}
         >
           {prueba.ok ? (
@@ -169,7 +172,7 @@ export function CredencialTokko({
         </div>
       )}
 
-      {error && <p className="text-sm text-brand-red">{error}</p>}
+      <MensajeError>{error}</MensajeError>
     </Card>
   );
 }

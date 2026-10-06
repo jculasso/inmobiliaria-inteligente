@@ -5,6 +5,7 @@ import type { UsuarioAdminDto } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { resetPasswordUsuario } from '../../lib/admin-api';
+import { MensajeError } from '../piezas';
 
 interface Props {
   tenantId: string;
@@ -48,11 +49,7 @@ export function ResetPasswordModal({ tenantId, usuario, onClose, onSaved }: Prop
           />
         </label>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
-            {error}
-          </p>
-        )}
+        <MensajeError>{error}</MensajeError>
 
         <div className="mt-2 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
