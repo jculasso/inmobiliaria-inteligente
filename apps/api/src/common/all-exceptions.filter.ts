@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Response } from 'express';
-import { UPLOAD_MAX_BYTES } from './upload';
 
 const STATUS_CODE: Record<number, string> = {
   400: 'bad_request',
@@ -89,7 +88,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // este caso el usuario recibía un 500 genérico en vez de saber que el
       // archivo pesa de más.
       status = HttpStatus.PAYLOAD_TOO_LARGE;
-      message = `El archivo supera el máximo permitido (${UPLOAD_MAX_BYTES / 1024 / 1024} MB).`;
+      // Sin número: el tope cambia según qué se sube (fotos 5 MB, contratos 15 MB).
+      message = 'El archivo es más grande de lo permitido.';
     } else if (
       exception instanceof Prisma.PrismaClientUnknownRequestError &&
       exception.message.includes('numeric field overflow')

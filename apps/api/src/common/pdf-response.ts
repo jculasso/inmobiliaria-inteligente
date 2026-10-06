@@ -11,7 +11,8 @@ import { StreamableFile } from '@nestjs/common';
  * registrar auditoría) ocurre después de responder.
  */
 export function pdfResponse(buffer: Buffer, nombreArchivo: string): StreamableFile {
-  const ascii = nombreArchivo.replace(/[^\x20-\x7E]/g, '_');
+  // Sin comillas ni barras: cortarían el encabezado.
+  const ascii = nombreArchivo.replace(/[^\x20-\x7E]|["\\]/g, '_');
   return new StreamableFile(buffer, {
     type: 'application/pdf',
     // `filename*` lleva el nombre real (con acentos); `filename` queda como

@@ -36,8 +36,8 @@ function armar(r = fila()) {
       update: vi.fn(),
     },
     alqReclamoNota: { create: vi.fn() },
-    alqContrato: { findMany: vi.fn().mockResolvedValue([{ id: 'c5', codigo: 'ALT-0005', propiedad: { direccion: 'Mendoza 3340', unidad: '2° C' } }]) },
-    alqPersona: { findMany: vi.fn().mockResolvedValue([{ id: 'p1', nombre: 'Ana Inquilina' }]) },
+    alqContrato: { count: vi.fn().mockResolvedValue(1), findMany: vi.fn().mockResolvedValue([{ id: 'c5', codigo: 'ALT-0005', propiedad: { direccion: 'Mendoza 3340', unidad: '2° C' } }]) },
+    alqPersona: { count: vi.fn().mockResolvedValue(1), findMany: vi.fn().mockResolvedValue([{ id: 'p1', nombre: 'Ana Inquilina' }]) },
     alqContratoParte: { findFirst: vi.fn().mockResolvedValue({ personaId: 'p1' }) },
   };
   const db = { withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)) } as unknown as TenantPrismaService;
@@ -66,4 +66,16 @@ describe('ReclamosService (entrega 15)', () => {
     expect((await servicio.listar({ estado: 'abiertos' })).map((r) => r.prioridad)).toEqual(['urgente', 'baja']);
     expect(tx.alqReclamo.findMany.mock.calls[0]![0].where).toEqual({ estado: { in: ['abierto', 'en_curso'] } });
   });
+
+  // Auditoría del 6/10/2026: el reclamo no tiene claves foráneas; un id de otra inmobiliaria se guardaba igual.
+  it('un contrato o un usuario que no es de la inmobiliaria se rechaza', async () => {
+    const { tx, servicio } = armar();
+    tx.alqContrato.count.mockResolvedValueOnce(0);
+    await expect(
+      servicio.crear(CTX, { asunto: 'Pérdida', descripcion: null, tipo: 'mantenimiento', prioridad: 'alta', contratoId: 'otro', personaId: null, asignadoAId: null }),
+    ).rejects.toThrow('El contrato no existe.');
+    tx.usuario.count.mockResolvedValueOnce(0);
+    await expect(servicio.cambiar(CTX, 'r1', { asignadoAId: 'ajeno', nota: null })).rejects.toThrow('El usuario asignado no existe.');
+  });
 });
+

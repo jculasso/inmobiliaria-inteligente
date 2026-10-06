@@ -746,5 +746,6 @@ export function importeEnLetras(n: number, moneda: 'ARS' | 'USD'): string {
  * a la vista entre corchetes, para que se note antes de mandar a firmar.
  */
 export function completarPlantilla(cuerpo: string, valores: Record<string, string>): string {
-  return cuerpo.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, clave: string) => valores[clave] ?? `[falta: ${clave}]`);
+  // `Object.hasOwn`: «{{constructor}}» no tiene que imprimir el código de una función.
+  return cuerpo.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, clave: string) => (Object.hasOwn(valores, clave) ? valores[clave]! : `[falta: ${clave}]`));
 }

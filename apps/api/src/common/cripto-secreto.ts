@@ -54,7 +54,7 @@ export function desencriptarSecreto(
   if (!ivB64 || !tagB64 || !dataB64) {
     throw new Error('Secreto cifrado con formato inválido.');
   }
-  const decipher = createDecipheriv(ALGO, key, Buffer.from(ivB64, 'base64'));
+  const decipher = createDecipheriv(ALGO, key, Buffer.from(ivB64, 'base64'), { authTagLength: 16 });
   decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
   return Buffer.concat([decipher.update(Buffer.from(dataB64, 'base64')), decipher.final()]).toString('utf8');
 }

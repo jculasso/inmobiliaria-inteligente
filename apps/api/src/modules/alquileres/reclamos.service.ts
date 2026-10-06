@@ -49,6 +49,7 @@ export class ReclamosService {
 
   async crear(ctx: TenantContext, dto: Reclamo): Promise<ReclamoDto> {
     return this.db.withTenant(async (tx) => {
+      await referenciasDeLaInmobiliaria(tx, { contratoId: dto.contratoId, personaId: dto.personaId, asignadoAId: dto.asignadoAId });
       // Si viene el contrato y no la persona, el reclamo es de su inquilino.
       let personaId = dto.personaId;
       if (!personaId && dto.contratoId) {
@@ -82,6 +83,7 @@ export class ReclamosService {
         data.prioridad = cambio.prioridad;
       }
       if (cambio.asignadoAId !== undefined && cambio.asignadoAId !== r.asignadoAId) {
+        await referenciasDeLaInmobiliaria(tx, { asignadoAId: cambio.asignadoAId });
         const n = cambio.asignadoAId ? (await nombresDeUsuarios(tx, [cambio.asignadoAId])).get(cambio.asignadoAId) : null;
         partes.push(cambio.asignadoAId ? `Asignado a ${n ?? 'otro usuario'}.` : 'Sin asignar.');
         data.asignadoAId = cambio.asignadoAId;
@@ -158,4 +160,20 @@ export class ReclamosService {
       };
     });
   }
+}
+
+/**
+ * Los ids que llegan del pedido tienen que ser de esta inmobiliaria. El
+ * reclamo no tiene claves foráneas, así que la base no lo frenaría: se buscan
+ * acá, con RLS, y lo que no aparece no existe (auditoría del 6/10/2026).
+ */
+async function referenciasDeLaInmobiliaria(tx: Tx, ids: { contratoId?: string | null; personaId?: string | null; asignadoAId?: string | null }): Promise<void> {
+  const [contrato, persona, usuario] = await Promise.all([
+    ids.contratoId ? tx.alqContrato.count({ where: { id: ids.contratoId } }) : 1,
+    ids.personaId ? tx.alqPersona.count({ where: { id: ids.personaId } }) : 1,
+    ids.asignadoAId ? tx.usuario.count({ where: { id: ids.asignadoAId } }) : 1,
+  ]);
+  if (!contrato) throw new NotFoundException('El contrato no existe.');
+  if (!persona) throw new NotFoundException('La persona no existe.');
+  if (!usuario) throw new NotFoundException('El usuario asignado no existe.');
 }

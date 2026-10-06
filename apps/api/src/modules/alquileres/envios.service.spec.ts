@@ -39,7 +39,7 @@ describe('EnviosService (punto 14: recibos y liquidaciones por mail)', () => {
     const [mail, clave] = enviarMail.mock.calls[0]!;
     expect(clave).toBe('re_clave');
     expect(mail).toMatchObject({
-      de: 'Alteva Propiedades <alteva-propiedades@avisos.inmobiliariainteligente.net>',
+      de: '"Alteva Propiedades" <alteva-propiedades@avisos.inmobiliariainteligente.net>',
       para: ['ana@mail.com'],
       responderA: 'lucia@alteva.com',
       asunto: 'Recibo 000124 · Alteva Propiedades',
@@ -60,5 +60,17 @@ describe('EnviosService (punto 14: recibos y liquidaciones por mail)', () => {
     const { tx, servicio } = armar();
     await expect(servicio.recibo(CTX, 'c1', ['ana@mail.com'])).rejects.toThrow('Falta configurar RESEND_API_KEY');
     expect(tx.alqEvento.createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('limitarEnvios (auditoría de seguridad del 6/10/2026)', () => {
+  it('corta al pasar el tope de la hora, por inmobiliaria', async () => {
+    const { limitarEnvios, TOPE_MAILS_POR_HORA } = await import('./envios.service');
+    const t0 = 1_000_000_000_000;
+    for (let i = 0; i < TOPE_MAILS_POR_HORA; i++) limitarEnvios('tenant-tope', t0 + i);
+    expect(() => limitarEnvios('tenant-tope', t0 + 500)).toThrow(/en la última hora/);
+    // Otra inmobiliaria no se ve afectada, y pasada la hora vuelve a andar.
+    expect(() => limitarEnvios('otra-inmobiliaria', t0 + 500)).not.toThrow();
+    expect(() => limitarEnvios('tenant-tope', t0 + 3_700_000)).not.toThrow();
   });
 });

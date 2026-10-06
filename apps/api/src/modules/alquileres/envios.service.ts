@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { EnvioMailDto } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
@@ -83,6 +83,7 @@ export class EnviosService {
       evento: { entidad: 'cobro' | 'liquidacion'; entidadId: string; personaId: string; resumen: string };
     },
   ): Promise<EnvioMailDto> {
+    limitarEnvios(ctx.tenantId);
     const { tenant, operador } = await this.db.withTenant(async (tx) => {
       const [tenant, operador] = await Promise.all([
         tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { nombre: true } }),
@@ -94,7 +95,8 @@ export class EnviosService {
     try {
       const { id } = await enviarMail(
         {
-          de: `${tenant.nombre} <${slugDeTenant(tenant.nombre)}@${DOMINIO_ENVIO}>`,
+          // Entre comillas: una coma o unos «<>» en el nombre romperían el remitente.
+          de: `"${tenant.nombre.replace(/["\\<>]/g, '')}" <${slugDeTenant(tenant.nombre)}@${DOMINIO_ENVIO}>`,
           para: m.para,
           // Si contestan, la respuesta le llega a quien lo mandó, no al dominio de la plataforma.
           responderA: operador?.email,
@@ -115,3 +117,22 @@ export class EnviosService {
     return { enviado: true, para: m.para };
   }
 }
+
+/**
+ * Tope de mails por inmobiliaria y por hora. Todas salen del mismo dominio:
+ * una cuenta comprometida mandando en bucle arruinaría la entrega de todas
+ * (auditoría de seguridad del 6/10/2026). En memoria: alcanza mientras la API
+ * corre en una sola instancia; un reinicio solo lo vuelve a cero.
+ */
+export const TOPE_MAILS_POR_HORA = 200;
+const enviados = new Map<string, number[]>();
+export function limitarEnvios(tenantId: string, ahora = Date.now()): void {
+  const hace1h = ahora - 3_600_000;
+  const recientes = (enviados.get(tenantId) ?? []).filter((t) => t > hace1h);
+  if (recientes.length >= TOPE_MAILS_POR_HORA) {
+    throw new HttpException(`Se mandaron ${TOPE_MAILS_POR_HORA} mails en la última hora: probá de nuevo más tarde.`, HttpStatus.TOO_MANY_REQUESTS);
+  }
+  recientes.push(ahora);
+  enviados.set(tenantId, recientes);
+}
+

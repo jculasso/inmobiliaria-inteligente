@@ -71,8 +71,8 @@ export class VendedoresController {
   @Delete(':id')
   @Roles('direccion', 'admin_tenant')
   @ApiOperation({ summary: 'Baja lógica (marca inactivo)' })
-  desactivar(@Param('id', ParseUUIDPipe) id: string) {
-    return this.vendedores.desactivar(id);
+  desactivar(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
+    return this.vendedores.desactivar(id, ctxDe(user));
   }
 
   @Put(':id/objetivo')

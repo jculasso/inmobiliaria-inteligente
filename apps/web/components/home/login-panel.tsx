@@ -7,10 +7,19 @@ import { createClient } from '../../lib/supabase/client';
 import { OlvideClave } from './olvide-clave';
 
 /** Ruta a la que volver tras loguear (ver middleware.ts: ?redirect= es el destino original, ej. /admin, antes de rebotar a la Home). Solo se acepta un path relativo propio, para no habilitar un open redirect. */
-function destinoTrasLogin(searchParams: URLSearchParams): string | null {
+export function destinoTrasLogin(searchParams: URLSearchParams): string | null {
   const redirect = searchParams.get('redirect');
-  if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) return redirect;
-  return null;
+  if (!redirect || !redirect.startsWith('/')) return null;
+  // Se resuelve como lo resolvería el navegador: «/\otro.com» o un tab en
+  // el medio se convierten en «//otro.com», que es OTRO sitio. Solo vale si
+  // el resultado sigue en este mismo origen (auditoría del 6/10/2026).
+  try {
+    const url = new URL(redirect, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
 }
 
 /** Formulario de login embebido en la Home (ver components/home-view.tsx, modo invitado). */

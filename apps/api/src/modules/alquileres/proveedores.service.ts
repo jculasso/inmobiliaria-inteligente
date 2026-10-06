@@ -104,7 +104,10 @@ export class ProveedoresService {
    * inmobiliaria, repartido por porcentajes, que se le descuenta en la
    * liquidación. A cargo del inquilino: concepto que se le cobra.
    */
-  async cargarComprobante(ctx: TenantContext, dto: Comprobante): Promise<ComprobanteDto> {
+  async cargarComprobante(ctx: TenantContext, entrada: Comprobante): Promise<ComprobanteDto> {
+    // Un gasto de la inmobiliaria no es de ningún contrato: un id que viniera
+    // igual se guardaba sin verificar (auditoría del 6/10/2026).
+    const dto = entrada.aCargoDe === 'inmobiliaria' ? { ...entrada, contratoId: null } : entrada;
     return this.db.withTenant(async (tx) => {
       const prov = await tx.alqProveedor.findUnique({ where: { id: dto.proveedorId }, select: { nombre: true, rubro: true } });
       if (!prov) throw new NotFoundException('El proveedor no existe.');

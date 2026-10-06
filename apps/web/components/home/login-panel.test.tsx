@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LoginPanel } from './login-panel';
+import { LoginPanel, destinoTrasLogin } from './login-panel';
 
 const push = vi.fn();
 const refresh = vi.fn();
@@ -154,5 +154,16 @@ describe('LoginPanel', () => {
       render(<LoginPanel />);
       expect(screen.queryByRole('button', { name: 'No soy yo' })).not.toBeInTheDocument();
     });
+  });
+});
+// Auditoría de seguridad del 6/10/2026: «/\evil.com» pasaba el chequeo y el navegador lo leía como «//evil.com».
+describe('destinoTrasLogin', () => {
+  const destino = (r: string) => destinoTrasLogin(new URLSearchParams({ redirect: r }));
+  it('acepta solo rutas de este sitio', () => {
+    expect(destino('/admin')).toBe('/admin');
+    expect(destino('/alquileres?tipo=comercial')).toBe('/alquileres?tipo=comercial');
+  });
+  it('rechaza todo lo que el navegador convierte en otro sitio', () => {
+    for (const r of ['//evil.com', '/\\evil.com', '/\t/evil.com', 'https://evil.com', 'evil.com']) expect(destino(r)).toBeNull();
   });
 });

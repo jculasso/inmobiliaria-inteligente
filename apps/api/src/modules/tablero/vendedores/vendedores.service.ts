@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { RolAsignableSchema, type CreateVendedor, type ObjetivoInput, type UpdateVendedor } from '@vacker/types';
 import type { TenantContext } from '../../../prisma/tenant-context';
@@ -8,6 +8,7 @@ import { SupabaseAdminService } from '../../../admin/supabase-admin.service';
 import { SupabaseStorageService } from '../../../common/supabase-storage.service';
 import {
   assertAvatarValido,
+  tipoDe,
   pathDesdeUrl,
   rutaAvatar,
   AVATAR_BUCKET,
@@ -76,8 +77,12 @@ export class VendedoresService {
 
   async update(id: string, dto: UpdateVendedor, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const actual = await tx.usuario.findUnique({ where: { id } });
+      const actual = await tx.usuario.findUnique({ where: { id }, include: { roles: { select: { rol: true } } } });
       if (!actual) throw new NotFoundException('Usuario no encontrado.');
+      assertPuedeAdministrar(actual.roles.map((r) => r.rol), ctx);
+      if (dto.roles?.includes('admin_tenant') && !ctx.roles.includes('admin_tenant') && !actual.roles.some((r) => r.rol === 'admin_tenant')) {
+        throw new ForbiddenException('Solo un administrador de la inmobiliaria puede dar el rol de administrador.');
+      }
       if (dto.email !== undefined && dto.email !== actual.email) {
         await this.assertEmailLibre(tx, dto.email, id);
         // El email también vive en Supabase Auth, que es contra lo que se
@@ -125,10 +130,11 @@ export class VendedoresService {
   }
 
   /** Baja lógica: marca el usuario como inactivo (no se borra por integridad histórica). */
-  async desactivar(id: string) {
+  async desactivar(id: string, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
-      const actual = await tx.usuario.findUnique({ where: { id } });
+      const actual = await tx.usuario.findUnique({ where: { id }, include: { roles: { select: { rol: true } } } });
       if (!actual) throw new NotFoundException('Usuario no encontrado.');
+      assertPuedeAdministrar(actual.roles.map((r) => r.rol), ctx);
       await tx.usuario.update({ where: { id }, data: { estado: 'inactivo' } });
       return { id, estado: 'inactivo' as const };
     });
@@ -195,7 +201,7 @@ export class VendedoresService {
         AVATAR_BUCKET,
         rutaAvatar(ctx.tenantId, id, file),
         file.buffer,
-        file.mimetype,
+        tipoDe(file),
       );
       const row = await tx.usuario.update({
         where: { id },
@@ -258,4 +264,24 @@ function toDto(row: VendedorRow) {
       objPuntas: o.objPuntas,
     })),
   };
+}
+
+/**
+ * Nadie edita ni da de baja a quien está por encima suyo (auditoría de
+ * seguridad del 6/10/2026). Sin esto, un usuario de dirección podía cambiarle
+ * el email a la cuenta de plataforma —que vive en una inmobiliaria como
+ * cualquier usuario—, pedir «olvidé mi clave» y entrar como administrador de
+ * TODAS las inmobiliarias.
+ *
+ * - La cuenta de plataforma no se toca desde una inmobiliaria: se administra
+ *   desde el panel de plataforma.
+ * - A un administrador de la inmobiliaria solo lo edita otro administrador.
+ */
+export function assertPuedeAdministrar(rolesDelOtro: string[], ctx: Pick<TenantContext, 'roles'>): void {
+  if (rolesDelOtro.includes('admin_plataforma')) {
+    throw new ForbiddenException('Esta cuenta la administra la plataforma: no se puede editar desde acá.');
+  }
+  if (rolesDelOtro.includes('admin_tenant') && !ctx.roles.includes('admin_tenant')) {
+    throw new ForbiddenException('A un administrador de la inmobiliaria solo lo edita otro administrador.');
+  }
 }
