@@ -79,12 +79,12 @@ cada cosa. Se revisa al cerrar cada entrega.
 | 10 ✅ | A | **Gráfica unificada y teléfono**: todas las pantallas del módulo con las piezas del Tablero Comercial; Particular/Comercial | 1 | — |
 | 11 ✅ | A | **Listas claras**: lápiz y papelera en cada fila (borrar lo que no tiene historia, anular lo demás; en un contrato vigente se edita solo lo que no toca plata); numeración ALT-0001 / VAC-0001 con orden numérico; buscador INQ/PROP en cobros y liquidaciones; conceptos agrupados por contrato con estado y columnas «A cobrar» / «A pagar» | 2, 4, 5, 6 | sí |
 | 12 ✅ | B | **Tablero completo e índices**: contratos nuevos del año, por trimestre y acumulado mensual; selector Todos/Particulares/Comerciales; por finalizar, depósitos y pólizas a 60 días; indexaciones a 60 días; escalones por iniciar; pestaña «Índices»; los valores usados en cada tramo | 3, 8 | — |
-| 13 | C | **Personas completas**: ficha con solapas (resumen, información básica, gestión administrativa, datos complementarios, cuenta corriente); condición de IVA y CUIT; cuentas bancarias con CBU y alias (validados); contactos adicionales; datos personales; **envío de recibos y liquidaciones por mail** (Resend, a la dirección de la persona, con el PDF adjunto) | 14 | sí |
-| 14 | C | **Contrato completo**: garantías con su ficha e informe; depósito en garantía que se entrega al propietario y su devolución; extender contrato; cargos al firmar parametrizables (comisión: 5% del valor total + IVA en 2 cuotas por defecto, editable; informes de garantía; **sellado**: alícuota y reparto entre las partes, parametrizables) | 7, 11, 12, 13 | sí |
-| 15 | C | **Contrato desde plantilla y reclamos**: plantillas de contrato por inmobiliaria con los datos del contrato (partes, propiedad, importes, tramos, garantías) que generan el PDF que después se firma; **reclamos** por persona o propiedad (asunto, tipo, prioridad, estado, asignado a, historial) | — | sí |
+| 13 ✅ | C | **Personas completas**: ficha con solapas (resumen, información básica, gestión administrativa, datos complementarios, cuenta corriente); condición de IVA y CUIT; cuentas bancarias con CBU y alias (validados); contactos adicionales; datos personales; **envío de recibos y liquidaciones por mail** (Resend, a la dirección de la persona, con el PDF adjunto) | 14 | sí |
+| 14 ✅ | C | **Contrato completo**: garantías con su ficha e informe; depósito en garantía que se entrega al propietario y su devolución; extender contrato; cargos al firmar parametrizables (comisión: 5% del valor total + IVA en 2 cuotas por defecto, editable; informes de garantía; **sellado**: alícuota y reparto entre las partes, parametrizables) | 7, 11, 12, 13 | sí |
+| 15 ✅ | C | **Contrato desde plantilla y reclamos**: plantillas de contrato por inmobiliaria con los datos del contrato (partes, propiedad, importes, tramos, garantías) que generan el PDF que después se firma; **reclamos** por persona o propiedad (asunto, tipo, prioridad, estado, asignado a, historial) | — | sí |
 | 16 | D | **Caja y bancos**: cuentas (cajas por moneda, bancos); cada cobro, liquidación y pago mueve una cuenta; ingresos y egresos manuales; cierre de caja; cheques | 15 | sí |
 | 17 | D | **Conciliación bancaria**: importar extractos en Excel y CSV (formato recordado por banco), sugerir el par de cada movimiento, marcar conciliados | 15 | sí |
-| 18 | E | **Proveedores**: plomero, electricista, pintor (y aseguradoras, entes); su comprobante; el pago sale de una cuenta y, en el mismo paso, se le carga al propietario como adelantado y se le descuenta en la próxima liquidación; reportes de pendientes y por tipo de gasto | 15 | sí |
+| 18 ✅ | E | **Proveedores**: plomero, electricista, pintor (y aseguradoras, entes); su comprobante; el pago (fecha y medio; la cuenta de la que sale llega con la 16) y, en el mismo paso, se le carga al propietario como adelantado y se le descuenta en la próxima liquidación; reportes de pendientes y por tipo de gasto | 15 | sí |
 | 19 | E | **Impuestos, servicios y pólizas**: catálogo por inmobiliaria (API, TGI, EPE, gas, agua); cuáles aplican a cada propiedad, con su número de cuenta; boletas en cuotas con su contraparte; carga de varios juntos y copiando el mes anterior; control de lo que paga la inmobiliaria; pólizas con cuotas y vencimientos | 9, 10 | sí |
 | 20 | — | **Migración de Vacker** desde Gexion, con fecha de corte parametrizable y ensayo previo | — | — |
 | 21 | — | **Facturación electrónica**, después de la marcha blanca | — | sí |
@@ -138,7 +138,7 @@ Relevado el 6/10/2026 en la cuenta de Vacker, sin copiar datos personales.
 | Clientes: datos, IVA, cuentas bancarias, contactos | Entrega 13 |
 | Fondos: movimientos, cierre de caja, cheques | Entrega 16 |
 | Movimientos bancarios y conciliación | Entrega 17 |
-| Proveedores, comprobantes, pagos, tipos de gasto | Entrega 18 |
+| Proveedores, comprobantes, pagos, tipos de gasto | ✅ Entrega 18 |
 | Impuestos y servicios (catálogo, cuotas, contraparte, control) | Entrega 19 |
 | Cargas múltiples y desde el período anterior | Entrega 19 |
 | Pólizas de seguro | Entrega 19 |

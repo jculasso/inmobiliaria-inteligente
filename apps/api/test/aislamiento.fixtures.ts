@@ -48,6 +48,8 @@ export interface IdsDeTenant {
   alqPlantilla: string;
   alqReclamo: string;
   alqReclamoNota: string;
+  alqProveedor: string;
+  alqComprobante: string;
   /**
    * Un segundo usuario y una segunda tasación por inmobiliaria.
    *
@@ -106,6 +108,8 @@ export function nuevosIds(n: number): IdsDeTenant {
     alqPlantilla: randomUUID(),
     alqReclamo: randomUUID(),
     alqReclamoNota: randomUUID(),
+    alqProveedor: randomUUID(),
+    alqComprobante: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
     contratoSecundario: randomUUID(),
@@ -612,6 +616,22 @@ export const TABLAS: TablaBajoPrueba[] = [
     campoTenant: 'tenantId',
     campoEditable: 'texto',
     fila: (t, i) => ({ id: i.alqReclamoNota, tenantId: t, reclamoId: i.alqReclamo, texto: `Nota ${i.n}` }),
+  },
+  {
+    tabla: 'alq_proveedor',
+    modelo: 'alqProveedor',
+    claveId: 'alqProveedor',
+    campoTenant: 'tenantId',
+    campoEditable: 'nombre',
+    fila: (t, i) => ({ id: i.alqProveedor, tenantId: t, nombre: `Plomero ${i.n}`, rubro: 'plomero' }),
+  },
+  {
+    tabla: 'alq_comprobante',
+    modelo: 'alqComprobante',
+    claveId: 'alqComprobante',
+    campoTenant: 'tenantId',
+    campoEditable: 'descripcion',
+    fila: (t, i) => ({ id: i.alqComprobante, tenantId: t, proveedorId: i.alqProveedor, fecha: HOY, descripcion: `Arreglo ${i.n}`, importe: 1000 }),
   },
 ];
 

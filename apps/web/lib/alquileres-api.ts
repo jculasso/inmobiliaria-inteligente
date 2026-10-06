@@ -22,6 +22,12 @@ import {
   type ConceptoSueltoInput,
   ContratoDtoSchema,
   CandidatoDtoSchema,
+  ComprobanteDtoSchema,
+  GastosReporteDtoSchema,
+  ProveedorDtoSchema,
+  type ComprobanteInput,
+  type MedioCobro,
+  type ProveedorInput,
   PlantillaDtoSchema,
   ReclamoDtoSchema,
   ReclamoResumenDtoSchema,
@@ -382,4 +388,41 @@ export async function cambiarReclamo(accessToken: string, id: string, cambio: Pa
 
 export async function listUsuariosAsignables(accessToken: string) {
   return apiFetch('/alquileres/reclamos/usuarios', z.array(UsuarioMiniSchema), { accessToken });
+}
+
+// --- Entrega 18: proveedores y comprobantes ------------------------------------
+
+export async function listProveedores(accessToken: string) {
+  return apiFetch('/alquileres/proveedores', z.array(ProveedorDtoSchema), { accessToken });
+}
+
+export async function guardarProveedor(accessToken: string, id: string | null, dto: ProveedorInput) {
+  return id
+    ? apiFetch(`/alquileres/proveedores/${id}`, z.object({ id: z.string() }), { accessToken, method: 'PATCH', body: dto })
+    : apiFetch('/alquileres/proveedores', z.object({ id: z.string() }), { accessToken, method: 'POST', body: dto });
+}
+
+export async function borrarProveedor(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/proveedores/${id}`, z.object({ id: z.string() }), { accessToken, method: 'DELETE' });
+}
+
+export async function listComprobantes(accessToken: string, q: { estado?: 'pendientes' | 'todos'; proveedorId?: string; contratoId?: string } = {}) {
+  const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]);
+  return apiFetch(`/alquileres/comprobantes${p.toString() ? `?${p}` : ''}`, z.array(ComprobanteDtoSchema), { accessToken });
+}
+
+export async function getReporteGastos(accessToken: string, anio: number) {
+  return apiFetch(`/alquileres/comprobantes/reporte?anio=${anio}`, GastosReporteDtoSchema, { accessToken });
+}
+
+export async function cargarComprobante(accessToken: string, dto: ComprobanteInput) {
+  return apiFetch('/alquileres/comprobantes', ComprobanteDtoSchema, { accessToken, method: 'POST', body: dto });
+}
+
+export async function pagarComprobante(accessToken: string, id: string, fecha: string, medio: MedioCobro) {
+  return apiFetch(`/alquileres/comprobantes/${id}/pagar`, ComprobanteDtoSchema, { accessToken, method: 'POST', body: { fecha, medio } });
+}
+
+export async function anularComprobante(accessToken: string, id: string, motivo: string) {
+  return apiFetch(`/alquileres/comprobantes/${id}/anular`, ComprobanteDtoSchema, { accessToken, method: 'POST', body: { motivo } });
 }

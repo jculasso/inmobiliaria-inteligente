@@ -500,7 +500,7 @@ export type ContratoDatos = z.infer<typeof ContratoDatosSchema>;
 
 // --- Historial (pedido de Javier del 6/10/2026: quién registró cada cosa) --------
 
-export const EntidadEventoSchema = z.enum(['contrato', 'persona', 'propiedad', 'concepto', 'cobro', 'liquidacion', 'tramo', 'documento', 'reclamo']);
+export const EntidadEventoSchema = z.enum(['contrato', 'persona', 'propiedad', 'concepto', 'cobro', 'liquidacion', 'tramo', 'documento', 'reclamo', 'proveedor', 'comprobante']);
 export type EntidadEvento = z.infer<typeof EntidadEventoSchema>;
 
 export const AccionEventoSchema = z.enum(['alta', 'edicion', 'estado', 'anulacion', 'borrado', 'indexacion', 'generacion', 'documento', 'envio']);
@@ -1475,3 +1475,145 @@ export const ReclamosQuerySchema = z.object({
   contratoId: z.string().uuid().optional(),
   personaId: z.string().uuid().optional(),
 });
+
+// --- Proveedores (entrega 18) ------------------------------------------------------------
+
+/**
+ * Javier, 6/10/2026: «los proveedores son plomero, electricista, pintor; les
+ * paga la inmobiliaria y se lo retiene al propietario».
+ */
+export const RubroProveedorSchema = z.enum(['plomero', 'electricista', 'pintor', 'gasista', 'cerrajero', 'albanil', 'aseguradora', 'ente', 'otro']);
+export type RubroProveedor = z.infer<typeof RubroProveedorSchema>;
+export const NOMBRE_RUBRO: Record<RubroProveedor, string> = {
+  plomero: 'Plomero',
+  electricista: 'Electricista',
+  pintor: 'Pintor',
+  gasista: 'Gasista',
+  cerrajero: 'Cerrajero',
+  albanil: 'Albañil',
+  aseguradora: 'Aseguradora',
+  ente: 'Ente / impuestos',
+  otro: 'Otro',
+};
+export const ICONO_RUBRO: Record<RubroProveedor, string> = {
+  plomero: '🚰',
+  electricista: '💡',
+  pintor: '🎨',
+  gasista: '🔥',
+  cerrajero: '🔑',
+  albanil: '🧱',
+  aseguradora: '🛡️',
+  ente: '🏛️',
+  otro: '🧰',
+};
+
+export const ProveedorInputSchema = z.object({
+  nombre: z.string().trim().min(1, 'Falta el nombre.').max(120),
+  rubro: RubroProveedorSchema,
+  cuit: z
+    .string()
+    .nullish()
+    .transform(normalizarDocumento)
+    .refine((d) => d === null || cuitValido(d), 'El CUIT no es válido: revisá los 11 números.'),
+  telefono: textoOpcional,
+  email: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v ? v.toLowerCase() : null))
+    .refine((v) => v === null || z.string().email().safeParse(v).success, 'El email no es válido.'),
+  alias: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v ? v.toLowerCase() : null))
+    .refine((v) => v === null || aliasValido(v), 'El alias tiene de 6 a 20 caracteres.'),
+  cbu: z
+    .string()
+    .nullish()
+    .transform(normalizarDocumento)
+    .refine((v) => v === null || cbuValido(v), 'El CBU no es válido.'),
+  obs: textoOpcional,
+});
+export type ProveedorInput = z.input<typeof ProveedorInputSchema>;
+export type ProveedorAlquiler = z.output<typeof ProveedorInputSchema>;
+export const ProveedorDtoSchema = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  rubro: RubroProveedorSchema,
+  cuit: z.string().nullable(),
+  telefono: z.string().nullable(),
+  email: z.string().nullable(),
+  alias: z.string().nullable(),
+  cbu: z.string().nullable(),
+  obs: z.string().nullable(),
+  /** Lo que se le debe (comprobantes sin pagar), en pesos. */
+  pendiente: z.number(),
+  comprobantes: z.number().int(),
+});
+export type ProveedorDto = z.infer<typeof ProveedorDtoSchema>;
+
+export const TipoComprobanteSchema = z.enum(['factura_a', 'factura_b', 'factura_c', 'recibo', 'ticket', 'otro']);
+export const NOMBRE_TIPO_COMPROBANTE: Record<z.infer<typeof TipoComprobanteSchema>, string> = {
+  factura_a: 'Factura A',
+  factura_b: 'Factura B',
+  factura_c: 'Factura C',
+  recibo: 'Recibo',
+  ticket: 'Ticket',
+  otro: 'Otro',
+};
+/** Quién termina pagando el gasto: se le carga al propietario o al inquilino, o es de la inmobiliaria. */
+export const ACargoDeSchema = z.enum(['propietario', 'inquilino', 'inmobiliaria']);
+export type ACargoDe = z.infer<typeof ACargoDeSchema>;
+
+export const ComprobanteInputSchema = z
+  .object({
+    proveedorId: z.string().uuid({ message: 'Elegí el proveedor.' }),
+    contratoId: z.string().uuid().nullish().transform((v) => v ?? null),
+    fecha: FechaIso,
+    tipoComprobante: TipoComprobanteSchema.default('factura_c'),
+    numero: textoOpcional,
+    descripcion: z.string().trim().min(3, 'Contá qué se hizo.').max(300),
+    importe: z.number().positive('El importe tiene que ser mayor a cero.'),
+    moneda: MonedaAlquilerSchema.default('ARS'),
+    aCargoDe: ACargoDeSchema.default('propietario'),
+    /** Si ya se le pagó al proveedor al cargarlo. */
+    pagado: z.boolean().default(false),
+    medio: MedioCobroSchema.default('transferencia'),
+  })
+  .refine((c) => c.aCargoDe === 'inmobiliaria' || c.contratoId, { message: 'Para cargárselo al propietario o al inquilino, elegí el contrato.', path: ['contratoId'] });
+export type ComprobanteInput = z.input<typeof ComprobanteInputSchema>;
+export type Comprobante = z.output<typeof ComprobanteInputSchema>;
+export const ComprobanteDtoSchema = z.object({
+  id: z.string().uuid(),
+  proveedor: z.object({ id: z.string().uuid(), nombre: z.string(), rubro: RubroProveedorSchema }),
+  contrato: z.object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() }).nullable(),
+  fecha: FechaIso,
+  tipoComprobante: TipoComprobanteSchema,
+  numero: z.string().nullable(),
+  descripcion: z.string(),
+  importe: z.number(),
+  moneda: MonedaAlquilerSchema,
+  aCargoDe: ACargoDeSchema,
+  estado: z.enum(['pendiente', 'pagado', 'anulado']),
+  pagadoEl: FechaIso.nullable(),
+  medio: MedioCobroSchema.nullable(),
+  registradoPor: z.string().nullable(),
+  /** Lo cargado a la parte ya se cobró o liquidó: no se puede anular. */
+  aplicado: z.boolean(),
+});
+export type ComprobanteDto = z.infer<typeof ComprobanteDtoSchema>;
+export const PagarComprobanteSchema = z.object({ fecha: FechaIso, medio: MedioCobroSchema.default('transferencia') });
+export const ComprobantesQuerySchema = z.object({
+  estado: z.enum(['pendientes', 'todos']).default('todos'),
+  proveedorId: z.string().uuid().optional(),
+  contratoId: z.string().uuid().optional(),
+});
+export const GastosReporteDtoSchema = z.object({
+  anio: z.number().int(),
+  porRubro: z.array(z.object({ rubro: RubroProveedorSchema, importe: z.number(), cantidad: z.number().int() })),
+  porACargo: z.array(z.object({ aCargoDe: ACargoDeSchema, importe: z.number() })),
+  porMes: z.array(z.number()),
+  pendiente: z.number(),
+});
+export type GastosReporteDto = z.infer<typeof GastosReporteDtoSchema>;
