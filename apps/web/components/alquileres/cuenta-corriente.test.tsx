@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
-import type { CuentaCorrienteDto } from '@vacker/types';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import type { CuentaCorrienteDto, PersonaDto, PersonaFichaDto } from '@vacker/types';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn() }));
@@ -30,9 +30,9 @@ const cuenta = (saldo: number): CuentaCorrienteDto => ({
 describe('CuentaCorriente', () => {
   it('el saldo dicho en palabras: debe, a favor o al día', () => {
     const { rerender } = render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
-    expect(screen.getByText('Debe $ 137.518')).toBeInTheDocument();
+    expect(screen.getByText('Debe $ 137.518,00')).toBeInTheDocument();
     rerender(<CuentaCorriente cuenta={cuenta(-5_000)} persona={null} cobros={[]} />);
-    expect(screen.getByText('A favor $ 5.000')).toBeInTheDocument();
+    expect(screen.getByText('A favor $ 5.000,00')).toBeInTheDocument();
     rerender(<CuentaCorriente cuenta={cuenta(0)} persona={null} cobros={[]} />);
     expect(screen.getByText('Al día')).toBeInTheDocument();
   });
@@ -41,13 +41,23 @@ describe('CuentaCorriente', () => {
   it('lo pendiente muestra lo que falta y cierra con el total del saldo', () => {
     render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
     const pendiente = screen.getByText(/Pendiente · estado de cuenta/).closest('section')!;
-    expect(within(pendiente).getByText(/de \$ 1\.137\.518/)).toBeInTheDocument();
-    expect(within(pendiente).getByText('Total').parentElement).toHaveTextContent('$ 137.518');
+    expect(within(pendiente).getByText(/de \$ 1\.137\.518,00/)).toBeInTheDocument();
+    expect(within(pendiente).getByText('Total').parentElement).toHaveTextContent('$ 137.518,00');
   });
 
   // Regla 19: lo anulado se ve, tachado.
   it('un cobro anulado queda tachado en los movimientos', () => {
     render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
     expect(screen.getByText(/Cobro · recibo 9/).closest('td')).toHaveClass('line-through');
+  });
+
+  // Auditoría del 6/10/2026: el modal vivía dentro de la solapa «Cuenta» y «Editar datos» no hacía nada en las otras.
+  it('«Editar datos» abre el formulario desde cualquier solapa', () => {
+    const persona = { id: id(), nombre: 'Romina Inquilina', tipo: 'fisica', documento: null, telefono: null, email: null } as unknown as PersonaDto;
+    const ficha = { persona, cuentas: [], contactos: [], contratos: [], saldos: [] } as unknown as PersonaFichaDto;
+    render(<CuentaCorriente cuenta={cuenta(0)} persona={persona} cobros={[]} ficha={ficha} historial={[]} />);
+    expect(screen.getByRole('tab', { selected: true })).not.toHaveTextContent(/cuenta/i);
+    fireEvent.click(screen.getByRole('button', { name: /Editar datos/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });

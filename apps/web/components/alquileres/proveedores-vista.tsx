@@ -37,6 +37,8 @@ import {
   Insignia,
   TituloSeccion,
 } from './piezas';
+import { InputImporte } from '../input-importe';
+import { leerImporte } from '../../lib/importe';
 
 const A_CARGO: Record<ACargoDe, string> = { propietario: 'Propietario', inquilino: 'Inquilino', inmobiliaria: 'Inmobiliaria' };
 const MEDIOS: [MedioCobro, string][] = [
@@ -45,7 +47,7 @@ const MEDIOS: [MedioCobro, string][] = [
   ['cheque', 'Cheque'],
   ['otro', 'Otro'],
 ];
-const num = (v: string) => Number(v.replace(/\./g, '').replace(',', '.')) || 0;
+const num = (v: string) => leerImporte(v) ?? 0;
 const hoy = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
 
 function EstadoComprobante({ c }: { c: ComprobanteDto }) {
@@ -366,7 +368,7 @@ function CargarComprobanteModal({ proveedores, contratos, onClose, onDone }: { p
               <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </Campo>
             <Campo label="Importe" requerido>
-              <input className={`${inputClass} text-right tabular-nums`} inputMode="decimal" value={importe} onChange={(e) => setImporte(e.target.value)} placeholder="$ 0" />
+              <InputImporte value={importe} onChange={setImporte} />
             </Campo>
             <Campo label="Comprobante">
               <select className={inputClass} value={tipoComprobante} onChange={(e) => setTipo(e.target.value as typeof tipoComprobante)}>
@@ -461,7 +463,7 @@ function ProveedorModal({ proveedor: p, onClose, onDone }: { proveedor: Proveedo
             </select>
           </Campo>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Teléfono">
             <input className={inputClass} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
           </Campo>

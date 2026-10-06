@@ -50,7 +50,7 @@ describe('CobroForm', () => {
     // 1.137.518 + 11.375,18 + 27.527,94
     expect(screen.getByText(/Para cancelar lo elegido: \$ 1\.176\.421,12/)).toBeInTheDocument();
     // El punitorio se cancela junto al alquiler; lo que sobra va a los gastos.
-    fireEvent.change(screen.getByPlaceholderText('$ 0'), { target: { value: '1.160.000' } });
+    fireEvent.change(screen.getByLabelText('Importe recibido'), { target: { value: '1.160.000' } });
     expect(screen.getByText('Se cancela')).toBeInTheDocument();
     expect(screen.getByText(/Queda debiendo \$ 16\.421,12/)).toBeInTheDocument();
   });
@@ -59,14 +59,14 @@ describe('CobroForm', () => {
   it('el saldo a favor de un recibo anterior baja lo sugerido', async () => {
     await abrir(prep({ creditos: [{ cobroId: crypto.randomUUID(), numero: 7, disponible: 76_421.12 }] }));
     expect(screen.getByText(/A su favor del recibo 000007/)).toBeInTheDocument();
-    expect(screen.getByText(/Para cancelar lo elegido: \$ 1\.100\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/Para cancelar lo elegido: \$ 1\.100\.000,00/)).toBeInTheDocument();
   });
 
   // Regla 16: condonar pide motivo, y no se manda nada hasta tenerlo.
   it('bajar el punitorio pide el motivo antes de registrar', async () => {
     await abrir();
     fireEvent.change(screen.getByLabelText('Punitorio de Alquiler noviembre 2026'), { target: { value: '0' } });
-    fireEvent.change(screen.getByPlaceholderText('$ 0'), { target: { value: '1.165.045,94' } });
+    fireEvent.change(screen.getByLabelText('Importe recibido'), { target: { value: '1.165.045,94' } });
     fireEvent.click(screen.getByRole('button', { name: /Registrar el cobro/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent('hace falta el motivo');
     expect(registrarCobro).not.toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('CobroForm', () => {
     registrarCobro.mockResolvedValueOnce({ id: crypto.randomUUID(), numero: 8, persona: { id: PERSONA, nombre: 'Romina Inquilina' }, importe: 1_148_893.18, moneda: 'ARS', aFavor: 0 });
     await abrir();
     fireEvent.click(screen.getByLabelText(/Gastos administrativos noviembre 2026/));
-    fireEvent.change(screen.getByPlaceholderText('$ 0'), { target: { value: '1.148.893,18' } });
+    fireEvent.change(screen.getByLabelText('Importe recibido'), { target: { value: '1.148.893,18' } });
     fireEvent.click(screen.getByRole('button', { name: /Registrar el cobro/ }));
     await waitFor(() => expect(registrarCobro).toHaveBeenCalled());
     const dto = registrarCobro.mock.calls[0]![1];

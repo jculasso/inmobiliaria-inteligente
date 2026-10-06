@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   DIAS_TABLERO_PROXIMOS,
+  NOMBRE_ESTADO_CONTRATO,
   TRAMOS_MORA,
+  type EstadoContrato,
   type FiltroTipoContrato,
   type FilaTablero,
   type Indicador,
@@ -10,10 +12,11 @@ import {
   type TableroAlquileresDto,
   type TramoMora,
 } from '@vacker/types';
-import { diasInclusive, fechaCorta, redondear2, sumarDiasIso, tramoDeMora } from '@vacker/domain';
+import { diasInclusive, redondear2, sumarDiasIso, tramoDeMora } from '@vacker/domain';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
+import { plata } from './historial';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
 import { IndexacionesService } from './indexaciones.service';
 import { LiquidacionesService } from './liquidaciones.service';
@@ -82,46 +85,76 @@ export class TableroAlquileresService {
     const bandeja = tipo === 'todos' ? bandejaTodas : { ...bandejaTodas, tramos: bandejaTodas.tramos.filter((t) => delTipo.has(t.contrato.id)) };
     const aLiquidar = tipo === 'todos' ? aLiquidarTodos : aLiquidarTodos.filter((p) => p.contratos.some((c) => delTipo.has(c.id)));
 
-    // --- Cartera (regla 27) ---
-    const vigentes = contratos.filter((c) => c.estado === 'vigente');
-    const inquilinosDe = (c: (typeof contratos)[number]) => c.partes.filter((p) => p.papel === 'inquilino');
-    const filaContrato = (c: (typeof contratos)[number], importe: number | null, detalle?: string): FilaTablero => ({
-      id: c.id,
-      href: aContrato(c.id),
-      contrato: c.codigo,
-      persona: inquilinosDe(c).map((p) => p.persona.nombre).join(', ') || null,
-      detalle: detalle ?? `${c.propiedad.direccion}${c.propiedad.unidad ? ` ${c.propiedad.unidad}` : ''}`,
-      fecha: fromDate(c.fin),
-      importe,
-    });
-    const importeDeHoy = (c: (typeof contratos)[number]) => {
+    // --- Lo que se sabe de cada contrato, para que cada fila del detalle sirva ---
+    // (Javier, 6/10/2026: «Propietario, Inquilino, Importe Alquiler vigente,
+    // cuando indexa, cuando vence»). Todo sale de lo ya leído: ninguna consulta más.
+    type C = (typeof todos)[number];
+    const porId = new Map(todos.map((c) => [c.id, c]));
+    const nombresDe = (c: C, papel: string) => c.partes.filter((p) => p.papel === papel).map((p) => p.persona.nombre).join(', ') || null;
+    const direccionDe = (c: C) => [c.propiedad.direccion, c.propiedad.unidad].filter(Boolean).join(' ');
+    const importeDeHoy = (c: C) => {
       const conImporte = c.tramos.filter((t) => t.importe != null && fromDate(t.desde)! <= hoy);
       return conImporte.length ? decToNum(conImporte.at(-1)!.importe) : null;
     };
-    const monedas = [...new Set(vigentes.map((c) => c.moneda))].sort() as MonedaAlquiler[];
-    const personasCon = (papel: string) => {
-      const vistas = new Map<string, FilaTablero>();
-      for (const c of vigentes) {
-        for (const p of c.partes.filter((x) => x.papel === papel)) {
-          vistas.set(p.personaId, { id: p.personaId, href: aPersona(p.personaId), contrato: null, persona: p.persona.nombre, detalle: `Contrato ${c.codigo}`, fecha: null, importe: null });
-        }
-      }
-      return porCantidad([...vistas.values()].sort((a, b) => (a.persona ?? '').localeCompare(b.persona ?? '')));
+    // La próxima indexación o escalón: el primer tramo sin importe (si ya
+    // empezó, está vencida) o el primero que todavía no empezó.
+    const proximaIndexacion = (c: C) => {
+      const t = c.tramos.find((x) => x.numero > 1 && (x.importe == null || fromDate(x.desde)! > hoy));
+      return t ? fromDate(t.desde) : null;
     };
+    const terminaEl = (c: C) => fromDate(c.rescindidoEl ?? c.fin)!;
+    const vacia = { detalle: '', fecha: null, importe: null, dias: null, estado: null };
+    const datosDe = (c: C | undefined) =>
+      c
+        ? {
+            contrato: c.codigo,
+            propiedad: direccionDe(c),
+            inquilino: nombresDe(c, 'inquilino'),
+            propietario: nombresDe(c, 'propietario'),
+            persona: nombresDe(c, 'inquilino'),
+            moneda: c.moneda as MonedaAlquiler,
+            alquiler: importeDeHoy(c),
+            indexa: c.estado === 'vigente' ? proximaIndexacion(c) : null,
+            vence: terminaEl(c),
+          }
+        : { contrato: null, propiedad: null, inquilino: null, propietario: null, persona: null, moneda: null, alquiler: null, indexa: null, vence: null };
+    const filaContrato = (c: C, extra: Partial<FilaTablero> = {}): FilaTablero => ({ id: c.id, href: aContrato(c.id), ...vacia, ...datosDe(c), ...extra });
+    /** Una fila de algo de un contrato (un concepto, un reclamo): los datos del contrato y lo propio. */
+    const filaDe = (contratoId: string | null, extra: Partial<FilaTablero> & { id: string; href: string | null }): FilaTablero => ({
+      ...vacia,
+      ...datosDe(contratoId ? porId.get(contratoId) : undefined),
+      ...extra,
+    });
+    const diasHasta = (iso: string) => diasInclusive(hoy, iso) - 1;
+
+    // --- Cartera (regla 27) ---
+    const vigentes = contratos.filter((c) => c.estado === 'vigente');
+    const monedas = [...new Set(vigentes.map((c) => c.moneda))].sort() as MonedaAlquiler[];
 
     // --- Cobranza del mes (regla 28) ---
     const cobranza = [...new Set(delMes.map((k) => k.moneda))].sort().map((moneda) => {
       const ks = delMes.filter((k) => k.moneda === moneda);
-      const fila = (k: (typeof ks)[number], importe: number): FilaTablero => ({
-        id: k.id,
-        href: aPersona(k.persona.id),
-        contrato: k.contrato?.codigo ?? null,
-        persona: k.persona.nombre,
-        detalle: k.descripcion ?? 'Alquiler',
-        fecha: fromDate(k.vencimiento),
-        importe,
-      });
       const cobrado = (k: (typeof ks)[number]) => redondear2(k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0));
+      const estadoDe = (k: (typeof ks)[number]) => {
+        const c = cobrado(k);
+        const total = decToNum(k.importe);
+        if (c >= total) return 'Cobrado';
+        if (c > 0) return `Pagó ${plata(c, moneda)}, falta ${plata(redondear2(total - c), moneda)}`;
+        const vence = fromDate(k.vencimiento)!;
+        return vence < hoy ? `Vencido hace ${-diasHasta(vence)} días` : 'Pendiente';
+      };
+      const fila = (k: (typeof ks)[number], importe: number): FilaTablero =>
+        filaDe(k.contratoId, {
+          id: k.id,
+          href: aPersona(k.persona.id),
+          inquilino: k.persona.nombre,
+          persona: k.persona.nombre,
+          moneda: moneda as MonedaAlquiler,
+          detalle: k.descripcion ?? 'Alquiler',
+          fecha: fromDate(k.vencimiento),
+          importe,
+          estado: estadoDe(k),
+        });
       return {
         moneda: moneda as MonedaAlquiler,
         emitidos: porCantidad(ks.map((k) => fila(k, decToNum(k.importe)))),
@@ -140,15 +173,18 @@ export class TableroAlquileresService {
         tramo: tramoDeMora(dias),
         dias,
         personaId: m.persona_id,
-        fila: {
+        contratoId: m.contrato_id,
+        fila: filaDe(m.contrato_id, {
           id: m.id,
           href: aPersona(m.persona_id),
-          contrato: m.codigo,
+          inquilino: m.nombre,
           persona: m.nombre,
-          detalle: `${m.descripcion ?? m.tipo} · ${dias} días`,
+          moneda: m.moneda as MonedaAlquiler,
+          detalle: m.descripcion ?? m.tipo,
           fecha: vence,
+          dias,
           importe: decToNum(m.saldo),
-        } satisfies FilaTablero,
+        }),
       };
     });
     const morosidad = [...new Set(filasMora.map((f) => f.moneda))].sort().map((moneda) => {
@@ -161,40 +197,41 @@ export class TableroAlquileresService {
     });
 
     // --- Lo que hay que hacer (regla 31) ---
-    const filaIndexacion = (t: (typeof bandeja.tramos)[number]): FilaTablero => ({
-      id: t.tramoId,
-      href: aContrato(t.contrato.id),
-      contrato: t.contrato.codigo,
-      persona: t.inquilinos.join(', ') || null,
-      detalle: `Tramo ${t.numero} · ${t.indice}${t.estado === 'pendiente_indice' ? ' · espera el índice' : ''}`,
-      fecha: t.desde,
-      importe: t.importePropuesto,
-    });
+    const filaIndexacion = (t: (typeof bandeja.tramos)[number]): FilaTablero =>
+      filaDe(t.contrato.id, {
+        id: t.tramoId,
+        href: aContrato(t.contrato.id),
+        detalle: `Tramo ${t.numero} · ${t.indice}`,
+        fecha: t.desde,
+        dias: diasHasta(t.desde),
+        alquiler: t.importeAnterior,
+        importe: t.importePropuesto,
+        estado: t.estado === 'pendiente_indice' ? `Espera ${t.falta.join(' y ') || 'el índice'}` : t.vencida ? 'Lista para confirmar (vencida)' : 'Lista para confirmar',
+      });
     const vencenEntre = (desde: number, hasta: number) =>
-      porCantidad(
-        vigentes
-          .filter((c) => {
-            const fin = fromDate(c.fin)!;
-            return fin > sumarDiasIso(hoy, desde) && fin <= sumarDiasIso(hoy, hasta);
-          })
-          .map((c) => filaContrato(c, null)),
-      );
+      vigentes.filter((c) => {
+        const fin = fromDate(c.fin)!;
+        return fin > sumarDiasIso(hoy, desde) && fin <= sumarDiasIso(hoy, hasta);
+      });
+    const filaVence = (c: C) => filaContrato(c, { dias: diasHasta(fromDate(c.fin)!) });
     const depositos = contratos.filter((c) => {
       if (c.depositoImporte == null || decToNum(c.depositoImporte) <= 0 || c.depositoDevolucion != null) return false;
-      const fin = c.estado === 'rescindido' && c.rescindidoEl ? fromDate(c.rescindidoEl)! : fromDate(c.fin)!;
-      return c.estado !== 'vigente' || fin <= sumarDiasIso(hoy, 30);
+      return c.estado !== 'vigente' || terminaEl(c) <= sumarDiasIso(hoy, 30);
     });
-    const deudores = new Map<string, FilaTablero>();
+    const deudores = new Map<string, FilaTablero & { conceptos: number }>();
     for (const f of filasMora.filter((x) => x.dias > 30)) {
-      const previo = deudores.get(`${f.personaId}|${f.moneda}`);
-      deudores.set(`${f.personaId}|${f.moneda}`, {
-        id: `${f.personaId}|${f.moneda}`,
-        href: aPersona(f.personaId),
-        contrato: f.fila.contrato,
-        persona: f.fila.persona,
-        detalle: `Debe hace más de 30 días${f.moneda === 'USD' ? ' (dólares)' : ''}`,
-        fecha: previo?.fecha && previo.fecha < f.fila.fecha ? previo.fecha : f.fila.fecha,
-        importe: redondear2((previo?.importe ?? 0) + f.fila.importe),
+      const clave = `${f.personaId}|${f.moneda}`;
+      const previo = deudores.get(clave);
+      const desde = previo?.fecha && previo.fecha < f.fila.fecha! ? previo.fecha : f.fila.fecha;
+      const conceptos = (previo?.conceptos ?? 0) + 1;
+      deudores.set(clave, {
+        ...f.fila,
+        id: clave,
+        conceptos,
+        detalle: `${conceptos} ${conceptos === 1 ? 'concepto' : 'conceptos'} con más de 30 días`,
+        fecha: desde,
+        dias: desde ? diasInclusive(desde, hoy) - 1 : null,
+        importe: redondear2((previo?.importe ?? 0) + f.fila.importe!),
       });
     }
 
@@ -209,12 +246,12 @@ export class TableroAlquileresService {
     });
 
     // --- Contratos nuevos (punto 8): los que empiezan en cada mes ---
-    const empiezaEn = (c: (typeof contratos)[number]) => fromDate(c.inicio)!.slice(0, 7);
-    const importeInicial = (c: (typeof contratos)[number]) => (c.tramos[0]?.importe != null ? decToNum(c.tramos[0].importe) : 0);
+    const empiezaEn = (c: C) => fromDate(c.inicio)!.slice(0, 7);
+    const importeInicial = (c: C) => (c.tramos[0]?.importe != null ? decToNum(c.tramos[0].importe) : 0);
     const meses = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
     const nuevosDe = (a: number, m: string) => contratos.filter((c) => empiezaEn(c) === `${a}-${m}`);
     const nuevos = {
-      porMes: meses.map((m) => porCantidad(nuevosDe(anio, m).map((c) => filaContrato(c, importeInicial(c), `Empieza el ${fechaCorta(fromDate(c.inicio)!)}`)))),
+      porMes: meses.map((m) => porCantidad(nuevosDe(anio, m).map((c) => filaContrato(c, { fecha: fromDate(c.inicio), importe: importeInicial(c), estado: NOMBRE_ESTADO_CONTRATO[c.estado as EstadoContrato] ?? c.estado })))),
       importePorMes: meses.map((m) => redondear2(nuevosDe(anio, m).filter((c) => c.moneda === 'ARS').reduce((s, c) => s + importeInicial(c), 0))),
       anterior: meses.map((m) => nuevosDe(anio - 1, m).length),
     };
@@ -226,7 +263,15 @@ export class TableroAlquileresService {
         ? []
         : c.tramos
             .filter((t) => t.numero > 1 && fromDate(t.desde)! > hoy && fromDate(t.desde)! <= hasta)
-            .map((t) => ({ ...filaContrato(c, t.importe == null ? null : decToNum(t.importe), `Escalón ${t.numero} desde el ${fechaCorta(fromDate(t.desde)!)}`), id: `${c.id}|${t.numero}`, fecha: fromDate(t.desde) })),
+            .map((t) =>
+              filaContrato(c, {
+                id: `${c.id}|${t.numero}`,
+                detalle: `Escalón ${t.numero}`,
+                fecha: fromDate(t.desde),
+                dias: diasHasta(fromDate(t.desde)!),
+                importe: t.importe == null ? null : decToNum(t.importe),
+              }),
+            ),
     );
 
     return {
@@ -237,15 +282,13 @@ export class TableroAlquileresService {
       nuevos,
       cartera: {
         porTipo,
-        vigentes: porCantidad(vigentes.map((c) => filaContrato(c, importeDeHoy(c)))),
+        vigentes: porCantidad(vigentes.map((c) => filaContrato(c))),
         vivienda: vigentes.filter((c) => c.tipo === 'vivienda').length,
         comercial: vigentes.filter((c) => c.tipo === 'comercial').length,
         alquilerMensual: monedas.map((moneda) => ({
           moneda,
-          indicador: porImporte(vigentes.filter((c) => c.moneda === moneda && importeDeHoy(c) != null).map((c) => filaContrato(c, importeDeHoy(c)))),
+          indicador: porImporte(vigentes.filter((c) => c.moneda === moneda && importeDeHoy(c) != null).map((c) => filaContrato(c, { importe: importeDeHoy(c) }))),
         })),
-        propietarios: personasCon('propietario'),
-        inquilinos: personasCon('inquilino'),
       },
       cobranza,
       morosidad,
@@ -262,64 +305,91 @@ export class TableroAlquileresService {
         indexacionesVencidas: porCantidad(bandeja.tramos.filter((t) => t.vencida).map(filaIndexacion)),
         indexacionesProximas: porCantidad(bandeja.tramos.filter((t) => !t.vencida).map(filaIndexacion)),
         vencen: [
-          { dias: 30 as const, indicador: vencenEntre(0, 30) },
-          { dias: 60 as const, indicador: vencenEntre(30, 60) },
-          { dias: 90 as const, indicador: vencenEntre(60, 90) },
+          { dias: 30 as const, indicador: porCantidad(vencenEntre(0, 30).map(filaVence)) },
+          { dias: 60 as const, indicador: porCantidad(vencenEntre(30, 60).map(filaVence)) },
+          { dias: 90 as const, indicador: porCantidad(vencenEntre(60, 90).map(filaVence)) },
         ],
-        depositos: porCantidad(depositos.map((c) => filaContrato(c, decToNum(c.depositoImporte), `Depósito · terminó o termina el ${fechaCorta(fromDate(c.rescindidoEl ?? c.fin)!)}`))),
+        depositos: porCantidad(
+          depositos.map((c) =>
+            filaContrato(c, {
+              importe: decToNum(c.depositoImporte),
+              estado: c.estado === 'vigente' ? `Termina en ${diasHasta(terminaEl(c))} días` : terminaEl(c) <= hoy ? `Terminó hace ${-diasHasta(terminaEl(c))} días` : NOMBRE_ESTADO_CONTRATO[c.estado as EstadoContrato] ?? c.estado,
+            }),
+          ),
+        ),
         liquidaciones: porCantidad(
           aLiquidar
             .filter((p) => p.neto > 0)
-            .map((p) => ({ id: `${p.persona.id}|${p.moneda}`, href: `/alquileres/liquidaciones/nueva?persona=${p.persona.id}`, contrato: null, persona: p.persona.nombre, detalle: 'Para liquidar', fecha: null, importe: p.neto })),
+            .map((p) => ({
+              ...vacia,
+              ...datosDe(undefined),
+              id: `${p.persona.id}|${p.moneda}`,
+              href: `/alquileres/liquidaciones/nueva?persona=${p.persona.id}`,
+              persona: p.persona.nombre,
+              propietario: p.persona.nombre,
+              contrato: p.contratos.map((c) => c.codigo).join(', ') || null,
+              propiedad: p.contratos.map((c) => c.propiedad).join(' · ') || null,
+              inquilino: [...new Set(p.contratos.flatMap((c) => c.inquilinos))].join(', ') || null,
+              moneda: p.moneda,
+              importe: p.neto,
+              estado: p.enEspera > 0 ? `${plata(p.enEspera, p.moneda)} en espera` : null,
+            })),
         ),
-        deudores: porCantidad([...deudores.values()].sort((a, b) => (b.importe ?? 0) - (a.importe ?? 0))),
+        deudores: porCantidad([...deudores.values()].sort((a, b) => (b.importe ?? 0) - (a.importe ?? 0)).map(({ conceptos: _c, ...f }) => f)),
         // Regla 36: puede estar vigente sin firma electrónica (se firmó en
         // papel), pero el contrato firmado tiene que quedar cargado.
         sinFirmar: porCantidad(
           vigentes
             .filter((c) => !c.documentos.some((d) => d.estadoFirma === 'firmado'))
-            .map((c) => filaContrato(c, null, c.documentos.length ? 'Falta completar la firma' : 'Falta cargar el contrato firmado')),
+            .map((c) => filaContrato(c, { fecha: fromDate(c.inicio), estado: c.documentos.length ? 'Falta completar la firma' : 'Falta cargar el contrato firmado' })),
         ),
         escalones: porCantidad(escalones.sort((a, b) => ((a.fecha ?? '') < (b.fecha ?? '') ? -1 : 1))),
         reclamos: porCantidad(
           reclamos
             .filter((r) => tipo === 'todos' || (r.contratoId != null && delTipo.has(r.contratoId)))
-            .map((r) => ({
-              id: r.id,
-              href: `/alquileres/reclamos/${r.id}`,
-              contrato: r.contratoId ? (todos.find((c) => c.id === r.contratoId)?.codigo ?? null) : null,
-              persona: null,
-              detalle: `${r.asunto} · ${r.prioridad}`,
-              fecha: fromDate(r.createdAt),
-              importe: null,
-            })),
+            .map((r) =>
+              filaDe(r.contratoId, {
+                id: r.id,
+                href: `/alquileres/reclamos/${r.id}`,
+                detalle: r.asunto,
+                fecha: fromDate(r.createdAt),
+                dias: diasInclusive(fromDate(r.createdAt)!, hoy) - 1,
+                estado: `Prioridad ${r.prioridad}`,
+              }),
+            ),
         ),
         // Entrega 19: las pólizas de los vigentes que vencen y lo que paga la inmobiliaria.
         polizas: porCantidad(
           polizas
             .filter((p) => p.contrato.estado === 'vigente' && delTipo.has(p.contratoId))
-            .map((p) => ({
-              id: p.id,
-              href: `/alquileres/contratos/${p.contratoId}`,
-              contrato: p.contrato.codigo,
-              persona: null,
-              detalle: `Póliza ${p.aseguradora}${p.numero ? ` N° ${p.numero}` : ''} · ${fromDate(p.hasta)! < hoy ? 'vencida' : 'vence'} el ${fechaCorta(fromDate(p.hasta)!)}`,
-              fecha: fromDate(p.hasta),
-              importe: null,
-            })),
+            .map((p) => {
+              const hastaP = fromDate(p.hasta)!;
+              return filaDe(p.contratoId, {
+                id: p.id,
+                href: aContrato(p.contratoId),
+                detalle: `${p.aseguradora}${p.numero ? ` N° ${p.numero}` : ''}`,
+                fecha: hastaP,
+                dias: diasHasta(hastaP),
+                estado: hastaP < hoy ? 'Vencida' : `Vence en ${diasHasta(hastaP)} días`,
+              });
+            }),
         ),
         boletas: porCantidad(
           boletas
             .filter((b) => tipo === 'todos' || (b.contratoId != null && delTipo.has(b.contratoId)))
-            .map((b) => ({
-              id: b.id,
-              href: '/alquileres/impuestos?ver=control',
-              contrato: b.contratoId ? (todos.find((c) => c.id === b.contratoId)?.codigo ?? null) : null,
-              persona: null,
-              detalle: `${b.cuenta ? b.cuenta.servicio.nombre : `Póliza ${b.poliza?.aseguradora ?? ''}`}${b.cuota ? ` cuota ${b.cuota}` : ''} · ${fromDate(b.vencimiento)! < hoy ? 'vencida' : 'vence'} el ${fechaCorta(fromDate(b.vencimiento)!)}`,
-              fecha: fromDate(b.vencimiento),
-              importe: decToNum(b.importe),
-            })),
+            .map((b) => {
+              const vence = fromDate(b.vencimiento)!;
+              return filaDe(b.contratoId, {
+                id: b.id,
+                href: '/alquileres/impuestos?ver=control',
+                moneda: 'ARS',
+                detalle: `${b.cuenta ? b.cuenta.servicio.nombre : `Póliza ${b.poliza?.aseguradora ?? ''}`}${b.cuota ? ` cuota ${b.cuota}` : ''}`,
+                fecha: vence,
+                dias: diasHasta(vence),
+                importe: decToNum(b.importe),
+                estado: vence < hoy ? `Vencida hace ${-diasHasta(vence)} días` : vence === hoy ? 'Vence hoy' : `Vence en ${diasHasta(vence)} días`,
+              });
+            }),
         ),
       },
     };
@@ -331,8 +401,11 @@ export class TableroAlquileresService {
     const delTipo = tipo === 'todos' ? Prisma.empty : Prisma.sql`AND c.tipo = ${tipo}`;
     const desdeEvolucion = `${anio}-01`;
     const hastaEvolucion = `${anio}-12`;
-    const desdeIngresos = `${anio - 1}-01-01`;
-    const hastaIngresos = `${anio + 1}-01-01`;
+    // El año elegido y el anterior, para el gráfico, y siempre el mes en
+    // curso, para la tarjeta «Ingresos del mes» aunque se mire otro año.
+    const anioHoy = Number(hoy.slice(0, 4));
+    const desdeIngresos = `${Math.min(anio - 1, anioHoy)}-01-01`;
+    const hastaIngresos = `${Math.max(anio, anioHoy) + 1}-01-01`;
     const [contratos, delMes, mora, evolucion, ingresos, reclamos, polizas, boletas] = await Promise.all([
       tx.alqContrato.findMany({
         where: { estado: { notIn: ['borrador', 'anulado'] } },

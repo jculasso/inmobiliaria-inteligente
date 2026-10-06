@@ -6,9 +6,10 @@ import { CargoIngresoSchema, type CargoIngreso, type CargosIngresoDto, type Esta
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cargarCargosIngreso } from '../../lib/alquileres-api';
-import { fmtMoneda } from '../../lib/format';
+import { fmtMoneda, hoyIso } from '../../lib/format';
 import { inputClass } from '../form-ui';
 import { Panel } from './piezas';
+import { InputImporteNumero } from '../input-importe';
 
 const TIPO: Record<CargoIngreso['tipo'], string> = { comision: 'Comisión', informe: 'Informe', deposito: 'Depósito', sellado: 'Sellado' };
 
@@ -24,7 +25,7 @@ export function CargosIngreso({ contratoId, estado, moneda, cargos }: { contrato
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const cambiar = (i: number, c: Partial<CargoIngreso>) => setFilas((xs) => xs.map((x, j) => (j === i ? { ...x, ...c } : x)));
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyIso();
 
   async function cargar() {
     setError(null);
@@ -75,13 +76,7 @@ export function CargosIngreso({ contratoId, estado, moneda, cargos }: { contrato
                 <option value="inquilino">Inquilino</option>
                 <option value="propietario">Propietario</option>
               </select>
-              <input
-                aria-label="Importe"
-                className={`${inputClass} text-right tabular-nums`}
-                inputMode="decimal"
-                value={String(f.importe).replace('.', ',')}
-                onChange={(e) => cambiar(i, { importe: Number(e.target.value.replace(/\./g, '').replace(',', '.')) || 0 })}
-              />
+              <InputImporteNumero aria-label="Importe" moneda={f.moneda ?? moneda} valor={f.importe} onValor={(n) => cambiar(i, { importe: n ?? 0 })} />
               <input aria-label="Vence" type="date" className={inputClass} value={f.vencimiento} onChange={(e) => cambiar(i, { vencimiento: e.target.value })} />
               <button type="button" onClick={() => setFilas((xs) => xs.filter((_, j) => j !== i))} className="rounded px-2 py-1 text-xs font-semibold text-brand-red hover:bg-brand-red/5">
                 🗑️ Quitar

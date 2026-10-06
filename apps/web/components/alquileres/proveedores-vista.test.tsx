@@ -51,8 +51,8 @@ const contratos = [{ id: C1, codigo: 'ALT-0003', estado: 'vigente', propiedad: {
 describe('ProveedoresVista', () => {
   it('los gastos del año y lo que falta pagar', () => {
     render(<ProveedoresVista proveedores={proveedores} comprobantes={[comp({})]} reporte={reporte} contratos={contratos} estado="pendientes" />);
-    expect(screen.getByText('A pagar a proveedores').closest('.rounded-brand')).toHaveTextContent('$ 85.000');
-    expect(screen.getByText('A cargo de propietarios').closest('.rounded-brand')).toHaveTextContent('$ 85.000');
+    expect(screen.getByText('A pagar a proveedores').closest('.rounded-brand')).toHaveTextContent('$ 85.000,00');
+    expect(screen.getByText('A cargo de propietarios').closest('.rounded-brand')).toHaveTextContent('$ 85.000,00');
   });
 
   it('lo ya cobrado o liquidado no se puede anular, pero sí pagar', () => {

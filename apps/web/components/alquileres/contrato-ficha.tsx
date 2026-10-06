@@ -15,6 +15,7 @@ import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { EstadoContratoBadge } from './estado-contrato';
 import { Panel, Registrado } from './piezas';
+import { fmtPct } from '../../lib/importe';
 
 const NOMBRE_INDICE = { ICL: 'ICL', IPC: 'IPC', CCP: 'Casa Propia' } as const;
 const fmtIndice = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 4 });
@@ -97,11 +98,11 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         <div className="flex flex-wrap gap-2">
           {contrato.estado === 'borrador' && (
             <>
-              <Link href={`/alquileres/contratos/${contrato.id}/editar`}>
-                <Button variant="secondary" size="sm">
+              <Button asChild variant="secondary" size="sm">
+                <Link href={`/alquileres/contratos/${contrato.id}/editar`}>
                   ✏️ Editar
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <Button variant="secondary" size="sm" onClick={() => setAccion('borrar')}>
                 🗑️ Borrar
               </Button>
@@ -147,7 +148,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             <li key={`${p.papel}-${p.personaId}`} className="flex flex-wrap items-baseline gap-2 text-sm">
               <span className="w-24 text-[11px] font-bold uppercase tracking-wide text-muted">{p.papel}</span>
               <span className="font-semibold text-ink">{p.nombre}</span>
-              {p.papel === 'propietario' && p.porcentaje != null && p.porcentaje !== 100 && <span className="text-muted">{p.porcentaje}%</span>}
+              {p.papel === 'propietario' && p.porcentaje != null && p.porcentaje !== 100 && <span className="text-muted">{fmtPct(p.porcentaje)}</span>}
             </li>
           ))}
         </ul>
@@ -167,9 +168,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           <Dato etiqueta="Vencimientos">
             Inquilino el {contrato.diaVencimiento} · propietario el {contrato.diaPagoPropietario}
           </Dato>
-          <Dato etiqueta="Honorarios">{contrato.honorariosPct}% + IVA</Dato>
-          <Dato etiqueta="Gastos adm.">{contrato.gastosAdmPct}% + IVA</Dato>
-          <Dato etiqueta="Punitorio diario">{contrato.punitorioDiarioPct}%</Dato>
+          <Dato etiqueta="Honorarios">{fmtPct(contrato.honorariosPct)} + IVA</Dato>
+          <Dato etiqueta="Gastos adm.">{fmtPct(contrato.gastosAdmPct)} + IVA</Dato>
+          <Dato etiqueta="Punitorio diario">{fmtPct(contrato.punitorioDiarioPct)}</Dato>
           <Dato etiqueta="Pago garantizado">{contrato.pagoGarantizado ? 'Sí' : 'No'}</Dato>
           {contrato.depositoImporte != null && <Dato etiqueta="Depósito">{fmtMoneda(contrato.depositoImporte, contrato.depositoMoneda ?? contrato.moneda)}</Dato>}
           {contrato.depositoDevolucion && <Dato etiqueta="Devolución del depósito">{fmtFecha(contrato.depositoDevolucion)}</Dato>}
@@ -276,7 +277,14 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         />
       )}
       {confirmar && (
-        <Modal title={textos[confirmar].titulo} onClose={() => setConfirmar(null)}>
+        <Modal
+          title={textos[confirmar].titulo}
+          onClose={() => {
+            // Que la próxima acción no abra con el error de esta.
+            setConfirmar(null);
+            setError(null);
+          }}
+        >
           <div className="flex flex-col gap-3">
             <p className="text-sm leading-relaxed text-ink">{textos[confirmar].detalle}</p>
             {confirmar === 'rescindido' && (

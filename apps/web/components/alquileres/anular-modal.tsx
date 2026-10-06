@@ -38,7 +38,7 @@ export function AnularModal({
     <Modal title={titulo} onClose={onClose}>
       <div className="flex flex-col gap-3">
         <p className="text-sm text-muted">{detalle}</p>
-        <Campo label="Motivo" requerido>
+        <Campo label="Motivo" requerido hint="Queda en el historial, con quién lo anuló. Al menos 3 letras.">
           <input className={inputClass} value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus />
         </Campo>
         {error && (
@@ -47,7 +47,7 @@ export function AnularModal({
           </p>
         )}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={enviando}>
             Cancelar
           </Button>
           <Button variant="primary" onClick={anular} disabled={enviando || motivo.trim().length < 3}>

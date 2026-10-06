@@ -1,22 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { DIAS_TABLERO_PROXIMOS, NOMBRE_TIPO_CONTRATO, type FiltroTipoContrato, type Indicador, type MonedaAlquiler, type TableroAlquileresDto } from '@vacker/types';
+import { DIAS_TABLERO_PROXIMOS, type FilaTablero, type FiltroTipoContrato, type Indicador, type MonedaAlquiler, type TableroAlquileresDto } from '@vacker/types';
 import { mesLargo } from '@vacker/domain';
 import { Card, KpiCard, Modal } from '@vacker/ui';
 import { fmtFecha, fmtK, fmtMoneda, fmtNum } from '../../lib/format';
 import { ABREV_MES, NOMBRES_MES, periodosTranscurridos } from '../../lib/meses';
 import { PeriodosChart } from '../tablero/periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from '../tablero/periodos-tabla';
-import { EncabezadoPagina, TituloSeccion } from './piezas';
+import { CLASE_TH, EncabezadoPagina, TituloSeccion } from './piezas';
 
+/** Las columnas que puede mostrar el detalle de un número. */
+type Columna = 'contrato' | 'propiedad' | 'inquilino' | 'propietario' | 'alquiler' | 'indexa' | 'vence' | 'detalle' | 'fecha' | 'dias' | 'importe' | 'estado';
+
+/**
+ * El detalle de un número: la lista, con las columnas que sirven para ESE
+ * número (Javier, 6/10/2026: «en cada uno pone información relevante»), y a
+ * dónde ir a resolverlo si es una tarea.
+ */
 interface Detalle {
   titulo: string;
   indicador: Indicador;
-  moneda: MonedaAlquiler | null;
+  columnas: [Columna, string][];
+  /** Si el número es un importe, la columna `importe` suma y lleva total. */
+  total?: MonedaAlquiler;
+  accion?: { href: string; texto: string };
 }
+
+const DE_CONTRATO: [Columna, string][] = [
+  ['contrato', 'Contrato'],
+  ['propiedad', 'Propiedad'],
+  ['inquilino', 'Inquilino'],
+  ['propietario', 'Propietario'],
+];
+const VISTAS = {
+  contratos: [...DE_CONTRATO, ['alquiler', 'Alquiler hoy'], ['indexa', 'Próx. indexación'], ['vence', 'Vence']],
+  alquilerMensual: [...DE_CONTRATO, ['importe', 'Alquiler del mes'], ['indexa', 'Próx. indexación'], ['vence', 'Vence']],
+  vencen: [...DE_CONTRATO, ['alquiler', 'Alquiler hoy'], ['vence', 'Vence'], ['dias', 'Faltan']],
+  nuevos: [...DE_CONTRATO, ['fecha', 'Empieza'], ['importe', 'Alquiler inicial'], ['vence', 'Vence'], ['estado', 'Estado']],
+  cobranza: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['fecha', 'Vence'], ['importe', 'Alquiler'], ['estado', 'Estado']],
+  cobrado: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['fecha', 'Vence'], ['importe', 'Cobrado'], ['estado', 'Estado']],
+  mora: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Concepto'], ['fecha', 'Venció'], ['dias', 'Atraso'], ['importe', 'Saldo']],
+  indexaciones: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Tramo'], ['fecha', 'Desde'], ['alquiler', 'Alquiler hoy'], ['importe', 'Nuevo'], ['estado', 'Estado']],
+  escalones: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Escalón'], ['fecha', 'Desde'], ['dias', 'Faltan'], ['alquiler', 'Alquiler hoy'], ['importe', 'Nuevo']],
+  depositos: [...DE_CONTRATO, ['vence', 'Termina'], ['estado', 'Estado'], ['importe', 'Depósito']],
+  liquidaciones: [['propietario', 'Propietario'], ['contrato', 'Contratos'], ['propiedad', 'Propiedades'], ['inquilino', 'Inquilinos'], ['estado', 'En espera'], ['importe', 'Neto a liquidar']],
+  deudores: [['inquilino', 'Inquilino'], ['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['propietario', 'Propietario'], ['detalle', 'Qué debe'], ['fecha', 'Debe desde'], ['dias', 'Atraso'], ['importe', 'Deuda']],
+  sinFirmar: [...DE_CONTRATO, ['fecha', 'Empezó'], ['vence', 'Vence'], ['estado', 'Qué falta']],
+  reclamos: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Asunto'], ['fecha', 'Abierto'], ['dias', 'Hace'], ['estado', 'Prioridad']],
+  polizas: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['inquilino', 'Inquilino'], ['detalle', 'Póliza'], ['fecha', 'Vence'], ['estado', 'Estado']],
+  boletas: [['contrato', 'Contrato'], ['propiedad', 'Propiedad'], ['detalle', 'Qué'], ['fecha', 'Vence'], ['estado', 'Estado'], ['importe', 'Importe']],
+} satisfies Record<string, [Columna, string][]>;
 
 /**
  * Un importe en una tarjeta de media pantalla no entra en un teléfono: «$» de
@@ -34,7 +70,7 @@ const porcentaje = (n: number) => `${Math.round(n)}%`;
 const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
 
 /** Cambia un parámetro del tablero en la dirección, sin perder los otros. */
-function useParametro() {
+function useParametro(startTransition: (f: () => void) => void) {
   const router = useRouter();
   const pathname = usePathname();
   return (t: TableroAlquileresDto, cambio: { anio?: number; tipo?: FiltroTipoContrato }) => {
@@ -43,7 +79,7 @@ function useParametro() {
     const tipo = cambio.tipo ?? t.tipo;
     if (anio !== Number(t.hoy.slice(0, 4))) q.set('anio', String(anio));
     if (tipo !== 'todos') q.set('tipo', tipo);
-    router.push(`${pathname}${q.toString() ? `?${q}` : ''}`);
+    startTransition(() => router.push(`${pathname}${q.toString() ? `?${q}` : ''}`, { scroll: false }));
   };
 }
 
@@ -51,16 +87,10 @@ function useParametro() {
  * El año de los gráficos. Como el filtro del Tablero Comercial, pero sin
  * «Todos los años»: el gráfico es de doce meses de un año.
  */
-function FiltroAnioAlquileres({ t }: { t: TableroAlquileresDto }) {
-  const cambiar = useParametro();
+function FiltroAnioAlquileres({ t, anio, cambiar }: { t: TableroAlquileresDto; anio: number; cambiar: (anio: number) => void }) {
   const hoy = Number(t.hoy.slice(0, 4));
   return (
-    <select
-      aria-label="Año"
-      value={t.anio}
-      onChange={(e) => cambiar(t, { anio: Number(e.target.value) })}
-      className="h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink"
-    >
+    <select aria-label="Año" value={anio} onChange={(e) => cambiar(Number(e.target.value))} className="h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink">
       {[hoy, hoy - 1, hoy - 2].map((a) => (
         <option key={a} value={a}>
           {a}
@@ -78,19 +108,20 @@ const TIPOS: [FiltroTipoContrato, string][] = [
 
 /**
  * Todos / Particulares / Comerciales (punto 8 de Javier: «es importante»).
- * Filtra el tablero entero, como las pestañas del Tablero Comercial.
+ * Filtra el tablero entero. El botón elegido se marca al instante: la API
+ * tarda en traer los números, y sin eso parecía que no andaba (Javier,
+ * 6/10/2026).
  */
-function FiltroTipo({ t }: { t: TableroAlquileresDto }) {
-  const cambiar = useParametro();
+function FiltroTipo({ tipo, cambiar }: { tipo: FiltroTipoContrato; cambiar: (tipo: FiltroTipoContrato) => void }) {
   return (
     <div role="group" aria-label="Tipo de contrato" className="flex gap-1 rounded-brand border border-line bg-white p-1">
       {TIPOS.map(([v, texto]) => (
         <button
           key={v}
           type="button"
-          aria-pressed={t.tipo === v}
-          onClick={() => cambiar(t, { tipo: v })}
-          className={`rounded-brand px-3 py-1 text-sm font-semibold ${t.tipo === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
+          aria-pressed={tipo === v}
+          onClick={() => cambiar(v)}
+          className={`rounded-brand px-3 py-1 text-sm font-semibold transition-colors ${tipo === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`}
         >
           {texto}
         </button>
@@ -99,32 +130,43 @@ function FiltroTipo({ t }: { t: TableroAlquileresDto }) {
   );
 }
 
-/** El reparto de la cartera, como en Gexion: cantidad, alquiler mensual y porcentaje de cada tipo. */
-function RepartoTipo({ porTipo }: { porTipo: TableroAlquileresDto['cartera']['porTipo'] }) {
+/**
+ * Cómo se reparte la cartera vigente entre particulares y comerciales. Una
+ * fila por tipo, con su propia barra: cuántos contratos, cuánto alquiler por
+ * mes y qué parte del total es. La barra única con la leyenda lejos «no se
+ * entendía» (Javier, 6/10/2026). Tocar una fila filtra el tablero.
+ */
+function RepartoTipo({ porTipo, onElegir }: { porTipo: TableroAlquileresDto['cartera']['porTipo']; onElegir: (tipo: FiltroTipoContrato) => void }) {
   if (porTipo.every((x) => x.cantidad === 0)) return null;
+  const contratos = suma(porTipo.map((x) => x.cantidad));
   return (
     <Card className="p-4">
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
-        <span aria-hidden>⚖️</span> Particulares y comerciales · alquiler mensual en pesos
+        <span aria-hidden>⚖️</span> Particulares y comerciales
+        <span className="font-normal normal-case tracking-normal"> · qué parte del alquiler mensual en pesos es de cada tipo</span>
       </p>
-      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface" aria-hidden>
+      <ul className="mt-3 flex flex-col gap-3">
         {porTipo.map((x) => (
-          <div key={x.tipo} style={{ width: `${x.pct}%` }} className={x.tipo === 'vivienda' ? 'bg-brand-red' : 'bg-ink/60'} />
+          <li key={x.tipo}>
+            <button type="button" onClick={() => onElegir(x.tipo)} className="group w-full rounded-brand text-left" title={`Ver solo ${x.tipo === 'vivienda' ? 'particulares' : 'comerciales'}`}>
+              <span className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                <span className="font-semibold text-ink group-hover:text-brand-red">
+                  {x.tipo === 'vivienda' ? 'Particulares' : 'Comerciales'}{' '}
+                  <span className="font-normal text-muted">
+                    · {x.cantidad} de {contratos} {contratos === 1 ? 'contrato' : 'contratos'}
+                  </span>
+                </span>
+                <span className="whitespace-nowrap tabular-nums text-muted">
+                  {fmtMoneda(x.importe, 'ARS')} por mes · <span className="font-bold text-ink">{fmtNum(x.pct)}%</span>
+                </span>
+              </span>
+              <span className="mt-1.5 block h-2.5 overflow-hidden rounded-full bg-surface" aria-hidden>
+                <span style={{ width: `${x.pct}%` }} className={`block h-full rounded-full ${x.tipo === 'vivienda' ? 'bg-brand-red' : 'bg-ink/60'}`} />
+              </span>
+            </button>
+          </li>
         ))}
-      </div>
-      <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-        {porTipo.map((x) => (
-          <div key={x.tipo} className="flex items-baseline justify-between gap-3 text-sm">
-            <dt className="flex items-center gap-2 font-semibold text-ink">
-              <span aria-hidden className={`inline-block h-2.5 w-2.5 rounded-full ${x.tipo === 'vivienda' ? 'bg-brand-red' : 'bg-ink/60'}`} />
-              {x.tipo === 'vivienda' ? 'Particulares' : 'Comerciales'} · {x.cantidad}
-            </dt>
-            <dd className="whitespace-nowrap tabular-nums text-muted">
-              {fmtMoneda(x.importe, 'ARS')} · <span className="font-bold text-ink">{fmtNum(x.pct)}%</span>
-            </dd>
-          </div>
-        ))}
-      </dl>
+      </ul>
     </Card>
   );
 }
@@ -309,223 +351,410 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
  */
 export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDto }) {
   const [detalle, setDetalle] = useState<Detalle | null>(null);
-  const abrir = (titulo: string, indicador: Indicador, moneda: MonedaAlquiler | null = null) => () => setDetalle({ titulo, indicador, moneda });
+  const [actualizando, startTransition] = useTransition();
+  const cambiar = useParametro(startTransition);
+  // Lo elegido se ve al instante; los números llegan cuando responde la API.
+  const [elegido, setElegido] = useState({ tipo: t.tipo, anio: t.anio });
+  const [visto, setVisto] = useState({ tipo: t.tipo, anio: t.anio });
+  if (visto.tipo !== t.tipo || visto.anio !== t.anio) {
+    setVisto({ tipo: t.tipo, anio: t.anio });
+    setElegido({ tipo: t.tipo, anio: t.anio });
+  }
+  const elegirTipo = (tipo: FiltroTipoContrato) => {
+    setElegido((e) => ({ ...e, tipo }));
+    cambiar(t, { tipo });
+  };
+  const elegirAnio = (anio: number) => {
+    setElegido((e) => ({ ...e, anio }));
+    cambiar(t, { anio });
+  };
+  const abrir = (titulo: string, indicador: Indicador, columnas: [Columna, string][], extra: Partial<Detalle> = {}) => () => setDetalle({ titulo, indicador, columnas, ...extra });
   const mes = mesLargo(`${t.mes}-01`);
+  const mesCorto = mes.split(' ')[0]!;
 
-  const tareas: [string, string, Indicador][] = [
-    ['⏰', 'Indexaciones vencidas', t.tareas.indexacionesVencidas],
-    ['📈', `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días`, t.tareas.indexacionesProximas],
-    ['🪜', `Escalones que empiezan en los próximos ${DIAS_TABLERO_PROXIMOS} días`, t.tareas.escalones],
-    ...t.tareas.vencen.map(
-      (v) =>
-        ['📅', `Contratos que vencen ${v.dias === 30 ? 'en 30 días' : v.dias === 60 ? 'entre 31 y 60 días' : 'entre 61 y 90 días'}`, v.indicador] as [
-          string,
-          string,
-          Indicador,
-        ],
-    ),
-    ['🔐', 'Depósitos a devolver', t.tareas.depositos],
-    ['🧾', 'Propietarios para liquidar', t.tareas.liquidaciones],
-    ['⚠️', 'Inquilinos con deuda de más de 30 días', t.tareas.deudores],
-    ['✍️', 'Contratos vigentes sin el firmado cargado', t.tareas.sinFirmar],
-    ['🛠️', 'Reclamos abiertos', t.tareas.reclamos],
-    ['🛡️', `Pólizas vencidas o que vencen en ${DIAS_TABLERO_PROXIMOS} días`, t.tareas.polizas],
-    ['💸', 'Boletas que paga la inmobiliaria, vencidas o a 7 días', t.tareas.boletas],
+  // Las tres ventanas de vencimiento juntas, para la tarjeta de la cartera.
+  const vencen90: Indicador = { valor: suma(t.tareas.vencen.map((v) => v.indicador.valor)), filas: t.tareas.vencen.flatMap((v) => v.indicador.filas) };
+  // Lo que ganó la inmobiliaria en el mes en curso, en pesos.
+  const ingresoMes = t.ingresos.find((i) => i.mes === t.mes && i.moneda === 'ARS');
+  const ganado = ingresoMes ? ingresoMes.honorarios + ingresoMes.gastos + ingresoMes.punitorios + (ingresoMes.comisiones ?? 0) : 0;
+
+  type Tarea = { icono: string; titulo: string; ind: Indicador; columnas: [Columna, string][]; total?: MonedaAlquiler; accion?: Detalle['accion'] };
+  const aIndexar = { href: '/alquileres/indexaciones', texto: 'Ir a indexar' };
+  const tareas: Tarea[] = [
+    { icono: '⏰', titulo: 'Indexaciones vencidas', ind: t.tareas.indexacionesVencidas, columnas: VISTAS.indexaciones, accion: aIndexar },
+    { icono: '📈', titulo: `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días`, ind: t.tareas.indexacionesProximas, columnas: VISTAS.indexaciones, accion: aIndexar },
+    { icono: '🪜', titulo: `Escalones que empiezan en los próximos ${DIAS_TABLERO_PROXIMOS} días`, ind: t.tareas.escalones, columnas: VISTAS.escalones },
+    ...t.tareas.vencen.map((v) => ({
+      icono: '📅',
+      titulo: `Contratos que vencen ${v.dias === 30 ? 'en 30 días' : v.dias === 60 ? 'entre 31 y 60 días' : 'entre 61 y 90 días'}`,
+      ind: v.indicador,
+      columnas: VISTAS.vencen,
+    })),
+    { icono: '🔐', titulo: 'Depósitos a devolver', ind: t.tareas.depositos, columnas: VISTAS.depositos },
+    { icono: '🧾', titulo: 'Propietarios para liquidar', ind: t.tareas.liquidaciones, columnas: VISTAS.liquidaciones, total: 'ARS', accion: { href: '/alquileres/liquidaciones/nueva', texto: 'Ir a liquidar' } },
+    { icono: '⚠️', titulo: 'Inquilinos con deuda de más de 30 días', ind: t.tareas.deudores, columnas: VISTAS.deudores, total: 'ARS', accion: { href: '/alquileres/cobros/nuevo', texto: 'Ir a cobrar' } },
+    { icono: '✍️', titulo: 'Contratos vigentes sin el firmado cargado', ind: t.tareas.sinFirmar, columnas: VISTAS.sinFirmar },
+    { icono: '🛠️', titulo: 'Reclamos abiertos', ind: t.tareas.reclamos, columnas: VISTAS.reclamos, accion: { href: '/alquileres/reclamos', texto: 'Ir a reclamos' } },
+    { icono: '🛡️', titulo: `Pólizas vencidas o que vencen en ${DIAS_TABLERO_PROXIMOS} días`, ind: t.tareas.polizas, columnas: VISTAS.polizas },
+    {
+      icono: '💸',
+      titulo: 'Boletas que paga la inmobiliaria, vencidas o a 7 días',
+      ind: t.tareas.boletas,
+      columnas: VISTAS.boletas,
+      total: 'ARS',
+      accion: { href: '/alquileres/impuestos?ver=control', texto: 'Ir a impuestos y servicios' },
+    },
   ];
 
   return (
     <div className="flex flex-col gap-5">
       <EncabezadoPagina titulo="Dashboard">
-        <FiltroTipo t={t} />
-        <FiltroAnioAlquileres t={t} />
+        {actualizando && (
+          <span role="status" className="flex items-center gap-1.5 text-xs font-semibold text-muted">
+            <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-line border-t-brand-red" />
+            Actualizando…
+          </span>
+        )}
+        <FiltroTipo tipo={elegido.tipo} cambiar={elegirTipo} />
+        <FiltroAnioAlquileres t={t} anio={elegido.anio} cambiar={elegirAnio} />
       </EncabezadoPagina>
 
-      <section className="flex flex-col gap-2">
-        <TituloSeccion icono="🏘️">Cartera</TituloSeccion>
-        {/* Con alquileres en dólares hay una tarjeta más: cinco columnas, para que no quede una sola abajo. */}
-        <div className={`grid grid-cols-2 gap-3 ${t.cartera.alquilerMensual.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
-          <Ancha>
-            <KpiCard
-              label="Contratos vigentes"
-              value={fmtNum(t.cartera.vigentes.valor)}
-              sub={`${t.cartera.vivienda} ${NOMBRE_TIPO_CONTRATO.vivienda.toLowerCase()} · ${t.cartera.comercial} ${NOMBRE_TIPO_CONTRATO.comercial.toLowerCase()}`}
-              icon="📄"
-              tone="brand"
-              onClick={abrir('Contratos vigentes', t.cartera.vigentes)}
-            />
-          </Ancha>
-          {t.cartera.alquilerMensual.map((a) => (
-            <Ancha key={a.moneda}>
+      <div aria-busy={actualizando} className={`flex flex-col gap-5 transition-opacity ${actualizando ? 'pointer-events-none opacity-50' : ''}`}>
+        <section className="flex flex-col gap-2">
+          <TituloSeccion icono="🏘️">Cartera</TituloSeccion>
+          {/* Con alquileres en dólares hay una tarjeta más: cinco columnas, para que no quede una sola abajo. */}
+          <div className={`grid grid-cols-2 gap-3 ${t.cartera.alquilerMensual.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+            <Ancha>
               <KpiCard
-                label={`Alquiler mensual${a.moneda === 'USD' ? ' en dólares' : ''}`}
-                value={fmtMoneda(a.indicador.valor, a.moneda)}
-                sub="lo que se cobra este mes en la cartera"
-                icon="💰"
-                onClick={abrir('Alquiler mensual administrado', a.indicador, a.moneda)}
+                label="Contratos vigentes"
+                value={fmtNum(t.cartera.vigentes.valor)}
+                sub={`${t.cartera.vivienda} ${t.cartera.vivienda === 1 ? 'particular' : 'particulares'} · ${t.cartera.comercial} ${t.cartera.comercial === 1 ? 'comercial' : 'comerciales'}`}
+                icon="📄"
+                tone="brand"
+                onClick={abrir('Contratos vigentes', t.cartera.vigentes, VISTAS.contratos)}
               />
             </Ancha>
-          ))}
-          <KpiCard label="Propietarios" value={fmtNum(t.cartera.propietarios.valor)} icon="🧑‍💼" onClick={abrir('Propietarios', t.cartera.propietarios)} />
-          <KpiCard label="Inquilinos" value={fmtNum(t.cartera.inquilinos.valor)} icon="🔑" onClick={abrir('Inquilinos', t.cartera.inquilinos)} />
-        </div>
-        {t.tipo === 'todos' && <RepartoTipo porTipo={t.cartera.porTipo} />}
-      </section>
-
-      <ContratosNuevos key={`${t.anio}-${t.tipo}`} t={t} onAbrir={(titulo, ind) => setDetalle({ titulo, indicador: ind, moneda: 'ARS' })} />
-
-      {t.cobranza.map((c) => (
-        <section key={c.moneda} className="flex flex-col gap-2">
-          <TituloSeccion icono="💵" detalle={c.moneda === 'USD' ? 'en dólares' : undefined}>
-            Cobranza de {mes}
-          </TituloSeccion>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <KpiCard label="Alquileres emitidos" value={fmtNum(c.emitidos.valor)} icon="🧾" onClick={abrir(`Alquileres emitidos de ${mes}`, c.emitidos, c.moneda)} />
-            <KpiCard
-              label="Alquileres cobrados"
-              value={fmtNum(c.cobrados.valor)}
-              sub={`${pct(c.cobrados.valor, c.emitidos.valor)} de los emitidos`}
-              icon="✅"
-              tone="success"
-              onClick={abrir(`Alquileres cobrados del todo, ${mes}`, c.cobrados, c.moneda)}
-            />
+            {t.cartera.alquilerMensual.map((a) => (
+              <Ancha key={a.moneda}>
+                <KpiCard
+                  label={a.moneda === 'USD' ? 'Alquiler mensual U$S' : 'Alquiler mensual'}
+                  value={fmtMoneda(a.indicador.valor, a.moneda)}
+                  sub={`de ${a.indicador.filas.length} ${a.indicador.filas.length === 1 ? 'contrato' : 'contratos'}${a.moneda === 'USD' ? ' en dólares' : ''}`}
+                  icon="💰"
+                  onClick={abrir(`Alquiler mensual${a.moneda === 'USD' ? ' en dólares' : ''}`, a.indicador, VISTAS.alquilerMensual, { total: a.moneda })}
+                />
+              </Ancha>
+            ))}
             <Ancha>
-              <KpiCard label="Importe emitido" value={fmtMoneda(c.importeEmitido.valor, c.moneda)} icon="📄" onClick={abrir(`Importe emitido de ${mes}`, c.importeEmitido, c.moneda)} />
+              <KpiCard
+                label={`Ingresos de ${mesCorto}`}
+                value={fmtMoneda(ganado, 'ARS')}
+                sub={ingresoMes ? `honorarios ${fmtMoneda(ingresoMes.honorarios, 'ARS')} · gastos ${fmtMoneda(ingresoMes.gastos, 'ARS')}` : 'de la inmobiliaria, cobrados'}
+                icon="🏦"
+                tone="success"
+              />
             </Ancha>
             <Ancha>
               <KpiCard
-                label="Importe cobrado"
-                value={fmtMoneda(c.importeCobrado.valor, c.moneda)}
-                sub={`${pct(c.importeCobrado.valor, c.importeEmitido.valor)} de lo emitido`}
-                icon="💵"
-                tone="success"
-                onClick={abrir(`Importe cobrado de ${mes}`, c.importeCobrado, c.moneda)}
+                label="Vencen en 90 días"
+                value={fmtNum(vencen90.valor)}
+                sub="contratos para renovar"
+                icon="📅"
+                tone={vencen90.valor ? 'warning' : 'default'}
+                onClick={abrir('Contratos que vencen en los próximos 90 días', vencen90, VISTAS.vencen)}
               />
             </Ancha>
           </div>
+          {t.tipo === 'todos' && <RepartoTipo porTipo={t.cartera.porTipo} onElegir={elegirTipo} />}
         </section>
-      ))}
 
-      <section className="flex flex-col gap-2">
-        <TituloSeccion icono="⏳" detalle="deuda vencida de inquilinos">
-          Morosidad
-        </TituloSeccion>
-        {t.morosidad.length === 0 ? (
-          <Card className="py-4 text-sm text-success">Ningún inquilino tiene deuda vencida.</Card>
-        ) : (
-          t.morosidad.map((m) => (
-            <div key={m.moneda} className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <ContratosNuevos key={`${t.anio}-${t.tipo}`} t={t} onAbrir={(titulo, ind) => setDetalle({ titulo, indicador: ind, columnas: VISTAS.nuevos })} />
+
+        {t.cobranza.map((c) => (
+          <section key={c.moneda} className="flex flex-col gap-2">
+            <TituloSeccion icono="💵" detalle={c.moneda === 'USD' ? 'en dólares' : undefined}>
+              Cobranza de {mes}
+            </TituloSeccion>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <KpiCard label="Alquileres emitidos" value={fmtNum(c.emitidos.valor)} sub="del mes" icon="🧾" onClick={abrir(`Alquileres emitidos de ${mes}`, c.emitidos, VISTAS.cobranza)} />
+              <KpiCard
+                label="Alquileres cobrados"
+                value={fmtNum(c.cobrados.valor)}
+                sub={`${pct(c.cobrados.valor, c.emitidos.valor)} de los emitidos`}
+                icon="✅"
+                tone="success"
+                onClick={abrir(`Alquileres cobrados del todo, ${mes}`, c.cobrados, VISTAS.cobranza)}
+              />
               <Ancha>
                 <KpiCard
-                  label={`Deuda vencida${m.moneda === 'USD' ? ' en dólares' : ''}`}
-                  value={fmtMoneda(m.total.valor, m.moneda)}
-                  sub={`${m.total.filas.length} conceptos`}
-                  icon="⏳"
-                  tone="warning"
-                  onClick={abrir('Deuda vencida de inquilinos', m.total, m.moneda)}
+                  label="Importe emitido"
+                  value={fmtMoneda(c.importeEmitido.valor, c.moneda)}
+                  sub="lo que hay que cobrar"
+                  icon="📄"
+                  onClick={abrir(`Importe emitido de ${mes}`, c.importeEmitido, VISTAS.cobranza, { total: c.moneda })}
                 />
               </Ancha>
-              {m.tramos.map((x) => (
-                <Ancha key={x.tramo}>
+              <Ancha>
+                <KpiCard
+                  label="Importe cobrado"
+                  value={fmtMoneda(c.importeCobrado.valor, c.moneda)}
+                  sub={`${pct(c.importeCobrado.valor, c.importeEmitido.valor)} de lo emitido`}
+                  icon="💵"
+                  tone="success"
+                  onClick={abrir(`Importe cobrado de ${mes}`, c.importeCobrado, VISTAS.cobrado, { total: c.moneda })}
+                />
+              </Ancha>
+            </div>
+          </section>
+        ))}
+
+        <section className="flex flex-col gap-2">
+          <TituloSeccion icono="⏳" detalle="deuda vencida de inquilinos, por antigüedad">
+            Morosidad
+          </TituloSeccion>
+          {t.morosidad.length === 0 ? (
+            <Card className="py-4 text-sm text-success">Ningún inquilino tiene deuda vencida.</Card>
+          ) : (
+            t.morosidad.map((m) => (
+              <div key={m.moneda} className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                <Ancha>
                   <KpiCard
-                    label={NOMBRE_TRAMO[x.tramo]}
-                    value={fmtMoneda(x.indicador.valor, m.moneda)}
-                    onClick={abrir(`Deuda vencida · ${NOMBRE_TRAMO[x.tramo].toLowerCase()}`, x.indicador, m.moneda)}
+                    label={`Deuda vencida${m.moneda === 'USD' ? ' U$S' : ''}`}
+                    value={fmtMoneda(m.total.valor, m.moneda)}
+                    sub={`${m.total.filas.length} ${m.total.filas.length === 1 ? 'concepto' : 'conceptos'} · ${new Set(m.total.filas.map((f) => f.inquilino)).size} inquilinos`}
+                    icon="⏳"
+                    tone="warning"
+                    onClick={abrir(`Deuda vencida de inquilinos${m.moneda === 'USD' ? ' en dólares' : ''}`, m.total, VISTAS.mora, { total: m.moneda })}
                   />
                 </Ancha>
-              ))}
-            </div>
-          ))
-        )}
-      </section>
+                {m.tramos.map((x) => (
+                  <Ancha key={x.tramo}>
+                    <KpiCard
+                      label={NOMBRE_TRAMO[x.tramo]}
+                      value={fmtMoneda(x.indicador.valor, m.moneda)}
+                      sub={`${x.indicador.filas.length} ${x.indicador.filas.length === 1 ? 'concepto' : 'conceptos'}`}
+                      onClick={abrir(`Deuda vencida · ${NOMBRE_TRAMO[x.tramo].toLowerCase()}`, x.indicador, VISTAS.mora, { total: m.moneda })}
+                    />
+                  </Ancha>
+                ))}
+              </div>
+            ))
+          )}
+        </section>
 
-      <section className="flex flex-col gap-2">
-        <TituloSeccion icono="📊" detalle={`en pesos, ${t.anio}`}>
-          Alquileres e ingresos
-        </TituloSeccion>
-        <Card className="p-0">
-          <EvolucionAnual key={t.anio} t={t} />
-        </Card>
-      </section>
+        <section className="flex flex-col gap-2">
+          <TituloSeccion icono="📊" detalle={`en pesos, ${t.anio}`}>
+            Alquileres e ingresos
+          </TituloSeccion>
+          <Card className="p-0">
+            <EvolucionAnual key={t.anio} t={t} />
+          </Card>
+        </section>
 
-      <section className="flex flex-col gap-2">
-        <TituloSeccion icono="✅">Lo que hay que hacer</TituloSeccion>
-        <Card className="p-0">
-          <ul className="divide-y divide-line">
-            {tareas.map(([icono, titulo, ind]) => (
-              <li key={titulo}>
-                <button
-                  type="button"
-                  onClick={abrir(titulo, ind)}
-                  disabled={ind.valor === 0}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm enabled:hover:bg-surface/60 disabled:cursor-default"
-                >
-                  <span className={ind.valor === 0 ? 'text-muted' : 'text-ink'}>
-                    <span aria-hidden className="mr-1.5">
-                      {icono}
-                    </span>
-                    {titulo}
-                  </span>
-                  <span
-                    className={`min-w-8 rounded-full px-2 py-0.5 text-center text-xs font-bold tabular-nums ${ind.valor === 0 ? 'bg-surface text-muted' : 'bg-warning/15 text-warning'}`}
-                  >
-                    {ind.valor}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </section>
+        <section className="flex flex-col gap-2">
+          <TituloSeccion icono="✅" detalle="tocá una para ver cuáles">
+            Lo que hay que hacer
+          </TituloSeccion>
+          <Card className="p-0">
+            <ul className="divide-y divide-line">
+              {tareas.map((x) => {
+                const importe = x.total ? suma(x.ind.filas.map((f) => f.importe ?? 0)) : 0;
+                return (
+                  <li key={x.titulo}>
+                    <button
+                      type="button"
+                      onClick={abrir(x.titulo, x.ind, x.columnas, { total: x.total, accion: x.accion })}
+                      disabled={x.ind.valor === 0}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm enabled:hover:bg-surface/60 disabled:cursor-default"
+                    >
+                      <span className={x.ind.valor === 0 ? 'text-muted' : 'text-ink'}>
+                        <span aria-hidden className="mr-1.5">
+                          {x.icono}
+                        </span>
+                        {x.titulo}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {importe > 0 && <span className="hidden whitespace-nowrap text-xs tabular-nums text-muted sm:inline">{fmtMoneda(importe, 'ARS')}</span>}
+                        <span
+                          className={`min-w-8 rounded-full px-2 py-0.5 text-center text-xs font-bold tabular-nums ${x.ind.valor === 0 ? 'bg-surface text-muted' : 'bg-warning/15 text-warning'}`}
+                        >
+                          {x.ind.filas.length}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        </section>
+      </div>
 
-      {detalle && <DetalleModal {...detalle} onClose={() => setDetalle(null)} />}
+      {detalle && <DetalleModal {...detalle} hoy={t.hoy} onClose={() => setDetalle(null)} />}
     </div>
   );
 }
 
-/** El detalle de un número: la lista y, si es un importe, su total, que es el número de la tarjeta. */
-function DetalleModal({ titulo, indicador, moneda, onClose }: Detalle & { onClose: () => void }) {
-  const conImporte = indicador.filas.some((f) => f.importe != null);
+/** «en 12 días», «hoy», «hace 5 días»: para lo que falta o lo que pasó. */
+function enDias(n: number, columna: string) {
+  if (columna === 'Atraso' || columna === 'Hace') return `${n} ${n === 1 ? 'día' : 'días'}`;
+  if (n === 0) return 'hoy';
+  return n > 0 ? `en ${n} ${n === 1 ? 'día' : 'días'}` : `hace ${-n} ${n === -1 ? 'día' : 'días'}`;
+}
+
+const DERECHA: Columna[] = ['alquiler', 'importe', 'dias'];
+/** Lo que no se corta en dos renglones: códigos, fechas e importes. */
+const SIN_CORTE: Columna[] = ['contrato', 'fecha', 'vence', 'indexa', 'alquiler', 'importe', 'dias'];
+
+/** Lo que va en una celda, formateado. */
+function Celda({ f, col, etiqueta, hoy }: { f: FilaTablero; col: Columna; etiqueta: string; hoy: string }) {
+  const moneda = f.moneda ?? 'ARS';
+  switch (col) {
+    case 'alquiler':
+    case 'importe': {
+      const v = f[col];
+      return v == null ? <span className="text-muted">—</span> : <>{fmtMoneda(v, moneda)}</>;
+    }
+    case 'indexa':
+      if (!f.indexa) return <span className="text-muted">—</span>;
+      return f.indexa < hoy ? (
+        <span className="font-semibold text-brand-red">
+          {fmtFecha(f.indexa)} <span className="text-[11px] font-bold uppercase">vencida</span>
+        </span>
+      ) : (
+        <>{fmtFecha(f.indexa)}</>
+      );
+    case 'vence':
+    case 'fecha':
+      return f[col] ? <>{fmtFecha(f[col])}</> : <span className="text-muted">—</span>;
+    case 'dias':
+      return f.dias == null ? <span className="text-muted">—</span> : <>{enDias(f.dias, etiqueta)}</>;
+    case 'contrato':
+      return <span className="font-semibold text-ink">{f.contrato ?? '—'}</span>;
+    default: {
+      const v = f[col];
+      return v ? <>{v}</> : <span className="text-muted">—</span>;
+    }
+  }
+}
+
+/**
+ * El detalle de un número: una tabla con las columnas de ese número en la
+ * computadora, y tarjetas en el teléfono. Cada fila lleva a su ficha. Si es un
+ * importe, el total es el número de la tarjeta.
+ */
+function DetalleModal({ titulo, indicador, columnas, total, accion, hoy, onClose }: Detalle & { hoy: string; onClose: () => void }) {
+  const router = useRouter();
+  const filas = indicador.filas;
+  // Una columna vacía en todas las filas no se muestra.
+  const cols = columnas.filter(([c]) => filas.some((f) => f[c] != null && f[c] !== ''));
+  const conTotal = total && cols.some(([c]) => c === 'importe');
+  const ir = (f: FilaTablero) => {
+    if (f.href) router.push(f.href);
+  };
   return (
-    <Modal title={titulo} subtitle={`${indicador.filas.length} ${indicador.filas.length === 1 ? 'fila' : 'filas'}`} onClose={onClose} size="lg">
-      {indicador.filas.length === 0 ? (
+    <Modal title={titulo} subtitle={`${filas.length} ${filas.length === 1 ? 'fila' : 'filas'}${filas.some((f) => f.href) ? ' · tocá una para abrir su ficha' : ''}`} onClose={onClose} size="xl">
+      {filas.length === 0 ? (
         <p className="text-sm text-muted">Nada por ahora.</p>
       ) : (
-        <ul className="divide-y divide-line text-sm">
-          {indicador.filas.map((f) => {
-            const contenido = (
-              <>
-                <span className="min-w-0">
-                  <span className="block font-semibold text-ink">
-                    {f.contrato ? `${f.contrato} · ` : ''}
-                    {f.persona ?? f.detalle}
-                  </span>
-                  <span className="block text-xs text-muted">
-                    {f.persona ? f.detalle : ''}
-                    {f.fecha ? `${f.persona ? ' · ' : ''}${fmtFecha(f.fecha)}` : ''}
-                  </span>
-                </span>
-                {f.importe != null && <span className="shrink-0 whitespace-nowrap font-semibold tabular-nums">{fmtMoneda(f.importe, moneda ?? 'ARS')}</span>}
-              </>
-            );
-            return (
-              <li key={f.id}>
-                {f.href ? (
-                  <Link href={f.href} className="flex items-start justify-between gap-3 py-2.5 hover:bg-surface/60">
-                    {contenido}
-                  </Link>
-                ) : (
-                  <div className="flex items-start justify-between gap-3 py-2.5">{contenido}</div>
-                )}
-              </li>
-            );
-          })}
-          {conImporte && moneda && (
-            <li className="flex justify-between py-2.5 font-bold">
-              <span>Total</span>
-              <span className="tabular-nums">{fmtMoneda(indicador.valor, moneda)}</span>
-            </li>
+        <div className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2 sm:hidden">
+            {filas.map((f) => {
+              const [primera, ...resto] = cols;
+              const cuerpo = (
+                <>
+                  <p className="font-semibold text-ink">
+                    {primera && <Celda f={f} col={primera[0]} etiqueta={primera[1]} hoy={hoy} />}
+                    {f.propiedad && primera?.[0] !== 'propiedad' && <span className="font-normal text-muted"> · {f.propiedad}</span>}
+                  </p>
+                  <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    {resto
+                      .filter(([c]) => c !== 'propiedad')
+                      .map(([c, etiqueta]) => (
+                        <div key={c} className="min-w-0">
+                          <dt className="text-muted">{etiqueta}</dt>
+                          <dd className="truncate text-ink">
+                            <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
+                          </dd>
+                        </div>
+                      ))}
+                  </dl>
+                </>
+              );
+              return (
+                <li key={f.id} className="rounded-brand border border-line text-sm">
+                  {f.href ? (
+                    <Link href={f.href} className="block p-3 hover:bg-surface/60">
+                      {cuerpo}
+                    </Link>
+                  ) : (
+                    <div className="p-3">{cuerpo}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden max-h-[65vh] overflow-auto sm:block">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white">
+                <tr>
+                  {cols.map(([c, etiqueta]) => (
+                    <th key={c} className={`${CLASE_TH} ${DERECHA.includes(c) ? 'text-right' : ''}`}>
+                      {etiqueta}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filas.map((f) => (
+                  <tr key={f.id} onClick={() => ir(f)} className={`border-b border-line last:border-0 ${f.href ? 'cursor-pointer hover:bg-surface/60' : ''}`}>
+                    {cols.map(([c, etiqueta], i) => (
+                      <td
+                        key={c}
+                        className={`px-3 py-2 align-top ${SIN_CORTE.includes(c) ? 'whitespace-nowrap' : ''} ${DERECHA.includes(c) ? 'text-right tabular-nums' : ''} ${c === 'importe' || i === 0 ? 'font-semibold text-ink' : 'text-muted'}`}
+                      >
+                        {i === 0 && f.href ? (
+                          <Link href={f.href} onClick={(e) => e.stopPropagation()} className="hover:text-brand-red">
+                            <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
+                          </Link>
+                        ) : (
+                          <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+              {conTotal && (
+                <tfoot className="sticky bottom-0 bg-white">
+                  <tr className="border-t-2 border-line font-bold text-ink">
+                    {cols.map(([c], i) => (
+                      <td key={c} className={`px-3 py-2 ${c === 'importe' ? 'whitespace-nowrap text-right tabular-nums' : ''}`}>
+                        {i === 0 ? 'Total' : c === 'importe' ? fmtMoneda(indicador.valor || suma(filas.map((f) => f.importe ?? 0)), total) : ''}
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+          {(conTotal || accion) && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+              {conTotal ? (
+                <p className="text-sm font-bold text-ink sm:hidden">
+                  Total {fmtMoneda(indicador.valor || suma(filas.map((f) => f.importe ?? 0)), total)}
+                </p>
+              ) : (
+                <span />
+              )}
+              {accion && (
+                <Link href={accion.href} className="ml-auto rounded-brand bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-d">
+                  {accion.texto} →
+                </Link>
+              )}
+            </div>
           )}
-        </ul>
+        </div>
       )}
     </Modal>
   );

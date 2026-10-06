@@ -35,11 +35,11 @@ describe('Contrato completo (entrega 14)', () => {
         }}
       />,
     );
-    expect(screen.getByText(/valor total \$ 8\.400\.000 · 24 meses/)).toBeInTheDocument();
+    expect(screen.getByText(/valor total \$ 8\.400\.000,00 · 24 meses/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '＋ Informe de garantía' }));
     const importes = screen.getAllByLabelText('Importe');
     fireEvent.change(importes[2]!, { target: { value: '30.000' } });
-    expect(screen.getByText(/Total:/).parentElement).toHaveTextContent('$ 538.200');
+    expect(screen.getByText(/Total:/).parentElement).toHaveTextContent('$ 538.200,00');
     fireEvent.click(screen.getByRole('button', { name: 'Cargar los cargos' }));
     await waitFor(() => expect(cargarCargosIngreso).toHaveBeenCalled());
     expect(cargarCargosIngreso.mock.calls[0]![2].map((c: { tipo: string; importe: number }) => [c.tipo, c.importe])).toEqual([

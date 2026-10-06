@@ -269,6 +269,13 @@ export type PropiedadAlquilerDto = z.infer<typeof PropiedadAlquilerDtoSchema>;
  */
 export const EstadoContratoSchema = z.enum(['borrador', 'vigente', 'finalizado', 'rescindido', 'anulado']);
 export type EstadoContrato = z.infer<typeof EstadoContratoSchema>;
+export const NOMBRE_ESTADO_CONTRATO: Record<EstadoContrato, string> = {
+  borrador: 'Borrador',
+  vigente: 'Vigente',
+  finalizado: 'Finalizado',
+  rescindido: 'Rescindido',
+  anulado: 'Anulado',
+};
 
 export const TipoContratoSchema = z.enum(['vivienda', 'comercial']);
 export type TipoContrato = z.infer<typeof TipoContratoSchema>;
@@ -1040,6 +1047,24 @@ export const FilaTableroSchema = z.object({
   detalle: z.string(),
   fecha: FechaIso.nullable(),
   importe: z.number().nullable(),
+  // Lo que hace que el detalle sirva (Javier, 6/10/2026: «Propietario,
+  // Inquilino, Importe Alquiler vigente, cuando indexa, cuando vence»). Cada
+  // lista elige qué columnas mostrar; `.default` por el orden de despliegue.
+  propiedad: z.string().nullable().default(null),
+  inquilino: z.string().nullable().default(null),
+  propietario: z.string().nullable().default(null),
+  /** La moneda de los importes de la fila: una lista puede mezclar pesos y dólares. */
+  moneda: MonedaAlquilerSchema.nullable().default(null),
+  /** El alquiler que rige hoy. */
+  alquiler: z.number().nullable().default(null),
+  /** La próxima indexación o escalón; si ya pasó y no se indexó, está vencida. */
+  indexa: FechaIso.nullable().default(null),
+  /** Cuándo termina el contrato (o cuándo se rescindió). */
+  vence: FechaIso.nullable().default(null),
+  /** Días de atraso, o los que faltan, según la lista. */
+  dias: z.number().int().nullable().default(null),
+  /** El estado en palabras: «Cobrado», «Pagó $ 100.000,00, falta $ 50.000,00»… */
+  estado: z.string().nullable().default(null),
 });
 export type FilaTablero = z.infer<typeof FilaTableroSchema>;
 
@@ -1070,8 +1095,9 @@ export const TableroAlquileresDtoSchema = z.object({
     vivienda: z.number().int(),
     comercial: z.number().int(),
     alquilerMensual: z.array(z.object({ moneda: MonedaAlquilerSchema, indicador: IndicadorSchema })),
-    propietarios: IndicadorSchema,
-    inquilinos: IndicadorSchema,
+    /** Ya no se muestran (Javier: «no agrega nada»); opcionales por el orden de despliegue. */
+    propietarios: IndicadorSchema.optional(),
+    inquilinos: IndicadorSchema.optional(),
     /**
      * El reparto de la cartera vigente, como en Gexion: cantidad, alquiler
      * mensual en pesos y porcentaje de cada tipo. Siempre de todos los

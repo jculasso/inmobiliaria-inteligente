@@ -286,15 +286,18 @@ function PagarBoletaModal({ boleta: b, onClose, onDone }: { boleta: BoletaDto; o
           <Campo label={inmo ? 'Fecha del pago' : 'Fecha del comprobante'}>
             <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </Campo>
-          <Campo label="Medio">
-            <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
-              {MEDIOS.map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </Campo>
+          {/* Si la pagó una parte, solo se registra que trajo el comprobante: el medio no es nuestro. */}
+          {inmo && (
+            <Campo label="Medio">
+              <select className={inputClass} value={medio} onChange={(e) => setMedio(e.target.value as MedioCobro)}>
+                {MEDIOS.map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          )}
         </div>
         {error && (
           <p role="alert" className="text-sm font-medium text-brand-red">
@@ -387,7 +390,7 @@ function CuentasPorPropiedad({ cuentas, servicios, propiedades }: { cuentas: Cue
       )}
       {aBorrar && (
         <ConfirmarBorradoModal
-          titulo={`Quitar ${aBorrar.servicio.nombre}`}
+          titulo={`Borrar ${aBorrar.servicio.nombre} de esta propiedad`}
           descripcion="Se quita solo si nunca tuvo boletas."
           detalle={<DatoBorrado etiqueta="Propiedad">{aBorrar.propiedad.direccion}</DatoBorrado>}
           onConfirm={async () => {
@@ -529,8 +532,12 @@ function Catalogo({ servicios }: { servicios: ServicioDto[] }) {
             disabled={sugiriendo}
             onClick={async () => {
               setSugiriendo(true);
-              await cargarServiciosSugeridos(await getAccessToken());
-              router.refresh();
+              try {
+                await cargarServiciosSugeridos(await getAccessToken());
+                router.refresh();
+              } finally {
+                setSugiriendo(false);
+              }
             }}
           >
             {sugiriendo ? 'Cargando…' : 'Cargar los habituales'}

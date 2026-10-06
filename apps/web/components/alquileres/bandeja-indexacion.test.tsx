@@ -42,7 +42,7 @@ describe('BandejaIndexacion', () => {
   it('muestra la propuesta con los índices usados, y el botón dice el importe', () => {
     render(<BandejaIndexacion bandeja={bandeja([t()])} />);
     expect(screen.getByText(/IPC de marzo de 2026: 11\.077,0608 → IPC de julio de 2026: 12\.076,3937/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Confirmar $ 1.137.518' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirmar $ 1.137.518,00' })).toBeInTheDocument();
   });
 
   // Regla 7: lo que espera un índice va aparte y no se puede confirmar.
@@ -59,7 +59,7 @@ describe('BandejaIndexacion', () => {
     const tramo = t();
     render(<BandejaIndexacion bandeja={bandeja([tramo])} />);
     fireEvent.click(screen.getByRole('button', { name: /Confirmar/ }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Contrato 5: el tramo 4 quedó en $ 1.137.518.'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Contrato 5: el tramo 4 quedó en $ 1.137.518,00.'));
     expect(confirmarIndexacion).toHaveBeenCalledWith('token', tramo.tramoId, null);
   });
 

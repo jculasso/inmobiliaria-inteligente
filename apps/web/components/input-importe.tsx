@@ -1,0 +1,99 @@
+'use client';
+
+import { useState } from 'react';
+import { escribirImporte, leerImporte, leerNumero } from '../lib/importe';
+import { inputClass } from './form-ui';
+
+/**
+ * El campo de un importe: con su moneda a la izquierda, teclado con coma en el
+ * teléfono, y al salir del campo se ve como se lee —«200.000,00»—, con miles
+ * y centavos. Lo escrito se interpreta con `leerImporte`, el mismo lector de
+ * todo el módulo.
+ */
+export function InputImporte({
+  value,
+  onChange,
+  moneda = 'ARS',
+  className = '',
+  ...rest
+}: {
+  value: string;
+  onChange: (texto: string) => void;
+  moneda?: 'ARS' | 'USD';
+  className?: string;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'>) {
+  return (
+    <div className={`relative ${className}`}>
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">
+        {moneda === 'USD' ? 'U$S' : '$'}
+      </span>
+      <input
+        {...rest}
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        className={`${inputClass} text-right tabular-nums ${moneda === 'USD' ? 'pl-12' : 'pl-7'}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => {
+          const n = leerImporte(value);
+          if (n != null && !Number.isNaN(n)) onChange(escribirImporte(n));
+          rest.onBlur?.(e);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Lo mismo, para un importe que vive como número en el estado (una fila de una
+ * lista). Guarda el texto mientras se escribe —si no, «123,» se volvía «123»
+ * y la coma desaparecía, y el campo no se podía vaciar— y avisa el número.
+ */
+export function InputImporteNumero({
+  valor,
+  onValor,
+  ...rest
+}: { valor: number | null; onValor: (n: number | null) => void } & Omit<Parameters<typeof InputImporte>[0], 'value' | 'onChange'>) {
+  const [texto, setTexto] = useState(escribirImporte(valor));
+  return (
+    <InputImporte
+      {...rest}
+      value={texto}
+      onChange={(t) => {
+        setTexto(t);
+        const n = leerImporte(t);
+        onValor(n == null || Number.isNaN(n) ? null : n);
+      }}
+    />
+  );
+}
+
+/** Un porcentaje que vive como número: deja escribir «8,» y vaciar el campo. */
+export function InputPorcentaje({
+  valor,
+  onValor,
+  className = '',
+  ...rest
+}: { valor: number; onValor: (n: number) => void; className?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'>) {
+  const [texto, setTexto] = useState(String(valor).replace('.', ','));
+  return (
+    <div className={`relative ${className}`}>
+      <input
+        {...rest}
+        type="text"
+        inputMode="decimal"
+        className={`${inputClass} pr-8 text-right tabular-nums`}
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          const n = leerNumero(e.target.value);
+          onValor(n == null || Number.isNaN(n) ? 0 : n);
+        }}
+      />
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">
+        %
+      </span>
+    </div>
+  );
+}

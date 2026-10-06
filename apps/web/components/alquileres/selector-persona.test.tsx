@@ -18,7 +18,7 @@ describe('SelectorPersona (punto 6 de Javier)', () => {
     const lista = within(screen.getByRole('listbox', { name: 'Quién paga' }));
     expect(lista.getAllByRole('option')).toHaveLength(2);
     expect(lista.getAllByText('INQ')).toHaveLength(2);
-    expect(lista.getByText('$ 650.000')).toBeInTheDocument();
+    expect(lista.getByText('$ 650.000,00')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText(/Nombre, dirección/), { target: { value: 'paraguay' } });
     expect(lista.getAllByRole('option')).toHaveLength(1);
     expect(lista.getByText('Pedro Al Día')).toBeInTheDocument();
