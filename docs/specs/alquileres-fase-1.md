@@ -251,6 +251,18 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
     firmado en papel); el tablero lista los contratos vigentes **sin documento
     firmado** como «a completar».
 
+    Cómo quedó en la entrega 9:
+    - Un documento por contrato. El estado del documento **sale de sus
+      firmantes**: alguien rechazó, rechazado; todos firmaron, firmado;
+      algunos, firmado en parte. No se elige a mano.
+    - Una vez enviado a firmar, el PDF no se cambia: se firma lo que se
+      envió. Subir el PDF firmado marca que firmaron todos.
+    - Mientras no se contrate un proveedor, el adaptador es el **manual**: la
+      inmobiliaria manda el PDF por su cuenta y marca quién firmó. El
+      proveedor se elige con `FIRMA_PROVEEDOR`; sus avisos llegan a
+      `/webhooks/firma/<proveedor>` y, antes de mirarlos, el adaptador
+      valida que sean auténticos.
+
 ### Migración
 
 25. Al día de corte, cada persona migrada tiene un concepto «Saldo inicial»
