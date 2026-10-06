@@ -764,6 +764,8 @@ model AlqConcepto {
   origenId                  String?   @map("origen_id") @db.Uuid
   descripcion               String?
   claveGeneracion           String?   @map("clave_generacion")
+  /// El cobro que lo creó: los punitorios nacen al cobrar (regla 16).
+  cobroId                   String?   @map("cobro_id") @db.Uuid
   anuladoEn                 DateTime? @map("anulado_en") @db.Timestamptz(6)
   anuladoPorId              String?   @map("anulado_por_id") @db.Uuid
   motivoAnulacion           String?   @map("motivo_anulacion")
@@ -775,12 +777,14 @@ model AlqConcepto {
   persona      AlqPersona      @relation(fields: [personaId], references: [id], onDelete: Restrict)
   liquidacion  AlqLiquidacion? @relation(fields: [liquidacionId], references: [id], onDelete: SetNull)
   imputaciones AlqImputacion[]
+  cobro        AlqCobro?       @relation("ConceptoDelCobro", fields: [cobroId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, claveGeneracion])
   @@index([tenantId])
   @@index([tenantId, personaId])
   @@index([tenantId, periodo])
   @@index([contratoId])
+  @@index([cobroId])
   @@map("alq_concepto")
 }
 
@@ -788,6 +792,8 @@ model AlqConcepto {
 model AlqCobro {
   id              String    @id @default(uuid()) @db.Uuid
   tenantId        String    @map("tenant_id") @db.Uuid
+  /// Número del recibo, correlativo por inmobiliaria.
+  numero          Int
   personaId       String    @map("persona_id") @db.Uuid
   fecha           DateTime  @db.Date
   moneda          String    @default("ARS")
@@ -803,7 +809,13 @@ model AlqCobro {
   tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   persona      AlqPersona      @relation(fields: [personaId], references: [id], onDelete: Restrict)
   imputaciones AlqImputacion[]
+  /// Imputaciones hechas al registrar este cobro, incluidas las que usan el
+  /// saldo a favor de cobros anteriores (regla 17).
+  registradas  AlqImputacion[] @relation("ImputacionRegistradaEn")
+  /// Conceptos que nacieron con este cobro: los punitorios (regla 16).
+  conceptos    AlqConcepto[]   @relation("ConceptoDelCobro")
 
+  @@unique([tenantId, numero])
   @@index([tenantId])
   @@index([tenantId, personaId])
   @@map("alq_cobro")
@@ -812,18 +824,22 @@ model AlqCobro {
 /// Cuánto de un cobro se aplicó a cada concepto. El saldo de un concepto es su
 /// importe menos lo imputado; la cuenta corriente no es una tabla (ver el plan).
 model AlqImputacion {
-  id         String  @id @default(uuid()) @db.Uuid
-  tenantId   String  @map("tenant_id") @db.Uuid
-  cobroId    String  @map("cobro_id") @db.Uuid
-  conceptoId String  @map("concepto_id") @db.Uuid
-  importe    Decimal @db.Decimal(14, 2)
+  id                  String  @id @default(uuid()) @db.Uuid
+  tenantId            String  @map("tenant_id") @db.Uuid
+  cobroId             String  @map("cobro_id") @db.Uuid
+  conceptoId          String  @map("concepto_id") @db.Uuid
+  importe             Decimal @db.Decimal(14, 2)
+  /// En qué cobro se registró: otro que `cobroId` cuando se aplica saldo a favor.
+  registradaEnCobroId String  @map("registrada_en_cobro_id") @db.Uuid
 
-  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  cobro    AlqCobro    @relation(fields: [cobroId], references: [id], onDelete: Cascade)
-  concepto AlqConcepto @relation(fields: [conceptoId], references: [id], onDelete: Restrict)
+  tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cobro             AlqCobro    @relation(fields: [cobroId], references: [id], onDelete: Cascade)
+  registradaEnCobro AlqCobro    @relation("ImputacionRegistradaEn", fields: [registradaEnCobroId], references: [id], onDelete: Cascade)
+  concepto          AlqConcepto @relation(fields: [conceptoId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@index([cobroId])
+  @@index([registradaEnCobroId])
   @@index([conceptoId])
   @@map("alq_imputacion")
 }

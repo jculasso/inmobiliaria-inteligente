@@ -1,0 +1,53 @@
+import { describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import type { CuentaCorrienteDto } from '@vacker/types';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn() }));
+vi.mock('../../lib/abrir-pdf', () => ({ abrirPdfEnPestana: vi.fn() }));
+vi.mock('../../lib/alquileres-api', () => ({ anularCobro: vi.fn(), generarRecibo: vi.fn() }));
+
+import { CuentaCorriente } from './cuenta-corriente';
+
+const id = () => crypto.randomUUID();
+const cuenta = (saldo: number): CuentaCorrienteDto => ({
+  persona: { id: id(), nombre: 'Romina Inquilina' },
+  monedas: [
+    {
+      moneda: 'ARS',
+      saldo,
+      movimientos: [
+        { id: id(), tipo: 'concepto', fecha: '2026-11-05', descripcion: 'Alquiler noviembre 2026', contrato: { id: id(), codigo: '5' }, debe: 1_137_518, haber: 0, saldo: 1_137_518, anulado: false, numero: null },
+        { id: id(), tipo: 'cobro', fecha: '2026-11-06', descripcion: 'Cobro · recibo 9', contrato: null, debe: 0, haber: 999_999, saldo: 1_137_518, anulado: true, numero: 9 },
+        { id: id(), tipo: 'cobro', fecha: '2026-11-07', descripcion: 'Cobro · recibo 10', contrato: null, debe: 0, haber: 1_000_000, saldo: 137_518, anulado: false, numero: 10 },
+      ],
+      pendientes: [{ conceptoId: id(), contrato: { id: id(), codigo: '5' }, descripcion: 'Alquiler noviembre 2026', sentido: 'a_cobrar', vencimiento: '2026-11-05', importe: 1_137_518, saldo: 137_518 }],
+      aFavor: [],
+    },
+  ],
+});
+
+describe('CuentaCorriente', () => {
+  it('el saldo dicho en palabras: debe, a favor o al día', () => {
+    const { rerender } = render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
+    expect(screen.getByText('Debe $ 137.518')).toBeInTheDocument();
+    rerender(<CuentaCorriente cuenta={cuenta(-5_000)} persona={null} cobros={[]} />);
+    expect(screen.getByText('A favor $ 5.000')).toBeInTheDocument();
+    rerender(<CuentaCorriente cuenta={cuenta(0)} persona={null} cobros={[]} />);
+    expect(screen.getByText('Al día')).toBeInTheDocument();
+  });
+
+  // Regla 24: el estado de cuenta cierra en el saldo.
+  it('lo pendiente muestra lo que falta y cierra con el total del saldo', () => {
+    render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
+    const pendiente = screen.getByText(/Pendiente · estado de cuenta/).parentElement!;
+    expect(within(pendiente).getByText(/de \$ 1\.137\.518/)).toBeInTheDocument();
+    expect(within(pendiente).getByText('Total').parentElement).toHaveTextContent('$ 137.518');
+  });
+
+  // Regla 19: lo anulado se ve, tachado.
+  it('un cobro anulado queda tachado en los movimientos', () => {
+    render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
+    expect(screen.getByText(/Cobro · recibo 9/).closest('td')).toHaveClass('line-through');
+  });
+});
