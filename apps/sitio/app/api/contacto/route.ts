@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { aceptarPedido, ipDe } from './limites';
 
 /**
  * Recibe las consultas del sitio y las manda por correo a la dirección.
@@ -29,7 +30,31 @@ const ConsultaSchema = z.object({
  */
 const MENSAJE_DE_ERROR = 'No pudimos enviar la consulta. Probá de nuevo en un momento.';
 
-const DESTINO = ['javier.culasso@icloud.com', 'bernardo_falconi@hotmail.com'];
+/** Lo que ve quien manda demasiadas consultas seguidas. */
+const MENSAJE_DE_TOPE = 'Recibimos varias consultas seguidas. Probá de nuevo en unos minutos.';
+
+/**
+ * A quién le llegan las consultas: `CONTACTO_DESTINOS`, separadas por coma.
+ * Estaban escritas en el código, y el repositorio es público: dos casillas
+ * personales a la vista de cualquier robot que junta direcciones.
+ */
+function destinos(): string[] {
+  return (process.env.CONTACTO_DESTINOS ?? '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter((d) => z.string().email().safeParse(d).success);
+}
+
+/**
+ * Un dato del visitante que va al asunto del mail, en una sola línea. Un salto
+ * de línea en un encabezado es la forma clásica de colar encabezados propios
+ * (un `Bcc:` a quien sea); Resend arma el mail por su cuenta, pero no hay por
+ * qué confiar en eso para algo que escribe un desconocido.
+ */
+function enUnaLinea(s: string): string {
+  return s.replace(/[\r\n\u2028\u2029]+/g, ' ').trim();
+}
+
 const REMITENTE = 'Sitio Inmobiliaria Inteligente <sitio@avisos.inmobiliariainteligente.net>';
 
 function esc(s: string): string {
@@ -49,6 +74,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Después de la trampa —el robot que cae ahí no cuesta nada y se tiene que
+  // ir convencido— y antes de validar, para que probar datos a ciegas también
+  // consuma el tope.
+  if (!aceptarPedido(ipDe(req))) {
+    return NextResponse.json({ mensaje: MENSAJE_DE_TOPE }, { status: 429 });
+  }
+
   const parsed = ConsultaSchema.safeParse(cuerpo);
   if (!parsed.success) {
     return NextResponse.json({ mensaje: 'Revisá los datos del formulario.' }, { status: 400 });
@@ -58,6 +90,13 @@ export async function POST(req: Request) {
   const clave = process.env.RESEND_API_KEY;
   if (!clave) {
     console.error('Falta RESEND_API_KEY: la consulta NO se envió.', { de: c.email });
+    return NextResponse.json({ mensaje: MENSAJE_DE_ERROR }, { status: 500 });
+  }
+  // Misma falla ruidosa que sin la clave: una consulta sin a quién mandarla se
+  // pierde igual, y que el visitante lo sepa es lo único honesto.
+  const para = destinos();
+  if (para.length === 0) {
+    console.error('Falta CONTACTO_DESTINOS: la consulta NO se envió.', { de: c.email });
     return NextResponse.json({ mensaje: MENSAJE_DE_ERROR }, { status: 500 });
   }
 
@@ -74,11 +113,11 @@ export async function POST(req: Request) {
     headers: { Authorization: `Bearer ${clave}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: REMITENTE,
-      to: DESTINO,
+      to: para,
       // Responder al correo contesta directamente al prospecto, sin copiar y
       // pegar la dirección.
       reply_to: c.email,
-      subject: `Consulta del sitio — ${c.inmobiliaria}`,
+      subject: `Consulta del sitio — ${enUnaLinea(c.inmobiliaria)}`,
       html: `<div style="font-family:system-ui,sans-serif;font-size:15px;color:#1D1D1F">
         <p style="font-size:12px;font-weight:700;letter-spacing:1.5px;color:#6B6B6B;text-transform:uppercase">Consulta del sitio</p>
         <table cellpadding="6" style="border-collapse:collapse">
