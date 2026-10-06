@@ -33,21 +33,11 @@ import { TasacionesService } from './tasaciones.service';
 export class TasacionesController {
   constructor(private readonly tasaciones: TasacionesService) {}
 
-  @Get()
-  @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
-  @ApiOperation({ summary: 'Lista tasaciones (scope por rol; filtros año/mes/estado/agente)' })
-  list(
-    @Query(new ZodValidationPipe(TasacionFiltroSchema)) filtro: TasacionFiltro,
-    @CurrentUser() user: AuthPrincipal,
-  ) {
-    return this.tasaciones.list(filtro, ctxDe(user));
-  }
-
   @Get('resumen')
   @Roles('vendedor', 'team_leader', 'direccion', 'admin_tenant')
   @ApiOperation({
     summary:
-      'Lista tasaciones en formato liviano (sin comparables/fotos/análisis) — para el dashboard',
+      'Lista tasaciones en formato liviano (scope por rol; año/mes/estado/agente; `limite` = últimas N)',
   })
   listResumen(
     @Query(new ZodValidationPipe(TasacionFiltroSchema)) filtro: TasacionFiltro,

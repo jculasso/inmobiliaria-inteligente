@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type {
+  DashboardTasador,
   EstadoTasacion,
   RankingCaptacionItem,
   ResumenTasadorKpi,
@@ -60,6 +61,31 @@ export class KpisService {
       return Array.from({ length: 12 }, (_, i) =>
         agregar(aplanar(rows.filter((r) => r.fecha.getUTCMonth() === i)), scopeSet),
       );
+    });
+  }
+
+  /**
+   * La portada del Tasador: resumen y ranking del período pedido más los doce
+   * meses del año, de UNA consulta en UNA transacción. El período (mes,
+   * trimestre o año) siempre cae dentro del año, así que se traen las
+   * tasaciones del año y el período se recorta en memoria. Mismas funciones
+   * puras que `resumen`, `ranking` y `mensual`, que siguen vivos: lo fija
+   * `kpis.dashboard.spec.ts`.
+   */
+  async dashboard(filtro: TasadorKpiFiltro, ctx: TenantContext): Promise<DashboardTasador> {
+    return this.db.withTenant(async (tx) => {
+      const scope = await scopeDeVista(ctx, tx, filtro.verTodo);
+      const scopeSet = toScopeSet(scope);
+      const rows = await this.tasaciones(tx, { ...filtro, periodo: 'anual' }, scope);
+      const { gte, lt } = rangoDeFiltro(filtro) as { gte: Date; lt: Date };
+      const delPeriodo = aplanar(rows.filter((r) => r.fecha >= gte && r.fecha < lt));
+      return {
+        resumen: agregar(delPeriodo, scopeSet),
+        ranking: ranking(delPeriodo, scopeSet),
+        mensual: Array.from({ length: 12 }, (_, i) =>
+          agregar(aplanar(rows.filter((r) => r.fecha.getUTCMonth() === i)), scopeSet),
+        ),
+      };
     });
   }
 
