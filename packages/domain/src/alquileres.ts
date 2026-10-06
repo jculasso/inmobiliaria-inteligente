@@ -672,3 +672,13 @@ export function proponerLiquidacion(conceptos: ConceptoALiquidar[], partesPagada
   const suma = (xs: ConceptoALiquidar[]) => xs.reduce((s, x) => s + aCentavos(x.saldo), 0);
   return { aPagar, aDescontar, enEspera, neto: (suma(aPagar) - suma(aDescontar)) / 100 };
 }
+
+// --- Tablero (regla 29) --------------------------------------------------------------
+
+/** El tramo de antigüedad de una deuda, por días desde el vencimiento. */
+export function tramoDeMora(dias: number): '1-30' | '31-60' | '61-90' | '90+' {
+  if (dias <= 30) return '1-30';
+  if (dias <= 60) return '31-60';
+  if (dias <= 90) return '61-90';
+  return '90+';
+}

@@ -694,3 +694,80 @@ export type PendienteLiquidarDto = z.infer<typeof PendienteLiquidarDtoSchema>;
 
 export const AnularLiquidacionSchema = z.object({ motivo: z.string().trim().min(3, 'Escribí el motivo.') });
 export type AnularLiquidacion = z.infer<typeof AnularLiquidacionSchema>;
+
+// --- Tablero del módulo (reglas 26 a 32) -------------------------------------------
+
+/** Una fila del detalle de un número del tablero. */
+export const FilaTableroSchema = z.object({
+  id: z.string(),
+  /** A dónde lleva tocarla: la ficha del contrato o la cuenta de la persona. */
+  href: z.string().nullable(),
+  contrato: z.string().nullable(),
+  persona: z.string().nullable(),
+  detalle: z.string(),
+  fecha: FechaIso.nullable(),
+  importe: z.number().nullable(),
+});
+export type FilaTablero = z.infer<typeof FilaTableroSchema>;
+
+/**
+ * Un número del tablero con lo que cuenta (regla 26). Si `valor` es un importe,
+ * las filas suman `valor`; si es una cantidad, hay `valor` filas. Salen del
+ * mismo cálculo, así que no pueden contradecirse.
+ */
+export const IndicadorSchema = z.object({
+  valor: z.number(),
+  filas: z.array(FilaTableroSchema),
+});
+export type Indicador = z.infer<typeof IndicadorSchema>;
+
+export const TRAMOS_MORA = ['1-30', '31-60', '61-90', '90+'] as const;
+export type TramoMora = (typeof TRAMOS_MORA)[number];
+
+export const TableroAlquileresDtoSchema = z.object({
+  hoy: FechaIso,
+  mes: PeriodoSchema,
+  /** Regla 27. */
+  cartera: z.object({
+    vigentes: IndicadorSchema,
+    vivienda: z.number().int(),
+    comercial: z.number().int(),
+    alquilerMensual: z.array(z.object({ moneda: MonedaAlquilerSchema, indicador: IndicadorSchema })),
+    propietarios: IndicadorSchema,
+    inquilinos: IndicadorSchema,
+  }),
+  /** Regla 28: alquileres del mes, por moneda. Uno pagado en parte no cuenta como cobrado, pero suma lo pagado. */
+  cobranza: z.array(
+    z.object({
+      moneda: MonedaAlquilerSchema,
+      emitidos: IndicadorSchema,
+      cobrados: IndicadorSchema,
+      importeEmitido: IndicadorSchema,
+      importeCobrado: IndicadorSchema,
+    }),
+  ),
+  /** Regla 29: deuda de inquilinos vencida, por antigüedad. */
+  morosidad: z.array(
+    z.object({
+      moneda: MonedaAlquilerSchema,
+      total: IndicadorSchema,
+      tramos: z.array(z.object({ tramo: z.enum(TRAMOS_MORA), indicador: IndicadorSchema })),
+    }),
+  ),
+  /** Regla 29: porcentaje cobrado al cierre de cada mes, 12 meses. */
+  evolucion: z.array(z.object({ mes: PeriodoSchema, moneda: MonedaAlquilerSchema, emitido: z.number(), cobrado: z.number() })),
+  /** Regla 30: honorarios, gastos y punitorios cobrados, 24 meses (12 y los mismos del año anterior). */
+  ingresos: z.array(
+    z.object({ mes: PeriodoSchema, moneda: MonedaAlquilerSchema, honorarios: z.number(), gastos: z.number(), punitorios: z.number() }),
+  ),
+  /** Regla 31: lo que hay que hacer. */
+  tareas: z.object({
+    indexacionesVencidas: IndicadorSchema,
+    indexacionesProximas: IndicadorSchema,
+    vencen: z.array(z.object({ dias: z.union([z.literal(30), z.literal(60), z.literal(90)]), indicador: IndicadorSchema })),
+    depositos: IndicadorSchema,
+    liquidaciones: IndicadorSchema,
+    deudores: IndicadorSchema,
+  }),
+});
+export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;

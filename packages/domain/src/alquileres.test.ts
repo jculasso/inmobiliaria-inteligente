@@ -15,6 +15,7 @@ import {
   redondear2,
   repartir,
   sumarMesesIso,
+  tramoDeMora,
   validarPartes,
   validarTramos,
   vencimientoDelMes,
@@ -524,6 +525,12 @@ describe('proponerLiquidacion (reglas 20 a 22)', () => {
   it('un reintegro a su favor se le paga', () => {
     const reintegro = { id: 'rei', tipo: 'reparacion', sentido: 'a_pagar' as const, saldo: 50_000, clave: null, pagoGarantizado: false };
     expect(proponerLiquidacion([reintegro], new Set()).neto).toBe(50_000);
+  });
+});
+
+describe('tramoDeMora (regla 29)', () => {
+  it('cada borde cae en su tramo', () => {
+    expect([1, 30, 31, 60, 61, 90, 91].map(tramoDeMora)).toEqual(['1-30', '1-30', '31-60', '31-60', '61-90', '61-90', '90+']);
   });
 });
 
