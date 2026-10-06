@@ -15,8 +15,11 @@ import {
 import { valuationSurface, type AnalisisComparables, type Coeficientes } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { fmtNum, fmtUSD } from '../../lib/format';
+import { leerNumero } from '../../lib/importe';
 import { ConfianzaBadge } from './confianza-badge';
 import { Campo, inputClass } from '../form-ui';
+import { InputImporteNumero } from '../input-importe';
+import { CLASE_FOCO } from '../piezas';
 
 const TIPOS = TipoPropiedadSchema.options;
 const FUENTES = FuenteComparableSchema.options;
@@ -113,7 +116,10 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
         detectan automáticamente.
       </p>
       {comparables.length > 0 && comparables.length < 3 && (
-        <p className="text-xs text-brand-red">Cargá al menos 3 comparables (o ninguno todavía).</p>
+        // Lo que falta para poder guardar: en el color de peligro, no en el de la marca (§13).
+        <p className="text-xs font-semibold text-danger">
+          Cargá al menos 3 comparables (o ninguno todavía).
+        </p>
       )}
 
       {comparables.map((c, i) => {
@@ -135,7 +141,8 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
               <button
                 type="button"
                 onClick={() => setOpenIndex(i)}
-                className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+                aria-expanded={false}
+                className={`flex min-h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded text-left ${CLASE_FOCO}`}
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="shrink-0 text-xs font-semibold text-muted">
@@ -150,7 +157,8 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
               <button
                 type="button"
                 onClick={() => quitar(i)}
-                className="shrink-0 text-xs text-brand-red hover:underline"
+                aria-label={`Quitar el comparable ${i + 1}`}
+                className={`h-10 shrink-0 rounded px-2 text-xs font-semibold text-danger hover:underline ${CLASE_FOCO}`}
               >
                 × Quitar
               </button>
@@ -168,7 +176,8 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
               <button
                 type="button"
                 onClick={() => setOpenIndex(null)}
-                className="text-xs font-semibold text-muted hover:text-ink"
+                aria-expanded
+                className={`h-10 rounded px-1 text-xs font-semibold text-muted hover:text-ink ${CLASE_FOCO}`}
               >
                 ▴ Comparable {i + 1}
               </button>
@@ -178,7 +187,8 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
               <button
                 type="button"
                 onClick={() => quitar(i)}
-                className="text-xs text-brand-red hover:underline"
+                aria-label={`Quitar el comparable ${i + 1}`}
+                className={`h-10 rounded px-2 text-xs font-semibold text-danger hover:underline ${CLASE_FOCO}`}
               >
                 × Quitar
               </button>
@@ -252,7 +262,7 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
                 <NumInput
                   value={c.distanciaKm}
                   onChange={(v) => actualizar(i, { distanciaKm: v })}
-                  placeholder="Ej: 0.8"
+                  placeholder="Ej: 0,8"
                 />
               </Campo>
             </div>
@@ -295,10 +305,11 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Campo label="Precio (USD)">
-                <NumInput
-                  value={c.precio || null}
-                  onChange={(v) => actualizar(i, { precio: v ?? 0 })}
-                  placeholder="Ej: 120000"
+                <InputImporteNumero
+                  moneda="USD"
+                  valor={c.precio || null}
+                  onValor={(v) => actualizar(i, { precio: v ?? 0 })}
+                  placeholder="Ej: 120.000"
                 />
               </Campo>
               <Campo label="Dormitorios">
@@ -378,7 +389,11 @@ export function ComparablesEditor({ comparables, onChange, analisis, coeficiente
   );
 }
 
-/** Input numérico que mapea '' → null (para campos opcionales). */
+/**
+ * Un número chico (m², km, cantidades) que mapea '' → null. Guarda el texto
+ * mientras se escribe: controlado con `Number()`, «0,» o «12.» se volvían «0»
+ * y «12» al instante y no se podía escribir un decimal. Acepta coma o punto.
+ */
 function NumInput({
   value,
   onChange,
@@ -388,15 +403,20 @@ function NumInput({
   onChange: (v: number | null) => void;
   placeholder?: string;
 }) {
+  const [texto, setTexto] = useState(value == null ? '' : String(value).replace('.', ','));
   return (
     <input
-      type="number"
-      min={0}
-      step="0.01"
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      value={texto}
+      onChange={(e) => {
+        setTexto(e.target.value);
+        const n = leerNumero(e.target.value);
+        onChange(n == null || Number.isNaN(n) ? null : n);
+      }}
       placeholder={placeholder}
-      className={inputClass}
+      className={`${inputClass} tabular-nums`}
     />
   );
 }
