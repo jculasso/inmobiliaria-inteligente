@@ -24,9 +24,28 @@ describe('CORS · orígenes', () => {
     await expect(permitido('https://app.inmobiliariainteligente.net')).resolves.toBe(true);
   });
 
-  it('acepta previews de Vercel y localhost', async () => {
-    await expect(permitido('https://mi-preview-abc123.vercel.app')).resolves.toBe(true);
+  it('acepta las previews de Vercel de ESTE proyecto y localhost', async () => {
+    await expect(permitido('https://inmobiliaria-inteligente-web.vercel.app')).resolves.toBe(true);
+    await expect(
+      permitido('https://inmobiliaria-inteligente-web-abc123-equipo.vercel.app'),
+    ).resolves.toBe(true);
+    await expect(
+      permitido('https://inmobiliaria-inteligente-sitio-git-mi-rama-equipo.vercel.app'),
+    ).resolves.toBe(true);
     await expect(permitido('http://localhost:3000')).resolves.toBe(true);
+  });
+
+  // Cualquiera publica un proyecto en vercel.app en un minuto: aceptar
+  // cualquier subdominio equivalía a no tener lista.
+  it('rechaza un *.vercel.app que no es de este proyecto', async () => {
+    await expect(permitido('https://mi-preview-abc123.vercel.app')).resolves.toBe(false);
+    await expect(permitido('https://atacante.vercel.app')).resolves.toBe(false);
+    await expect(permitido('https://inmobiliaria-inteligente-otro.vercel.app')).resolves.toBe(
+      false,
+    );
+    await expect(
+      permitido('https://inmobiliaria-inteligente-web.vercel.app.evil.com'),
+    ).resolves.toBe(false);
   });
 
   it('acepta requests sin Origin (curl, health checks, server-to-server)', async () => {

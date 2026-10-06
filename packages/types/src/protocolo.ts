@@ -1,7 +1,7 @@
 // Contratos del módulo Protocolo 5 Semanas (seguimiento de la comercialización).
 // Ver docs/MODULO_PROTOCOLO_5_SEMANAS.md.
 import { z } from 'zod';
-import { IsoDateSchema, MontoSchema } from './tablero';
+import { BoolQuerySchema, IsoDateSchema, MontoSchema } from './tablero';
 
 export const EstadoProtocoloSchema = z.enum(['activa', 'archivada']);
 export type EstadoProtocolo = z.infer<typeof EstadoProtocoloSchema>;
@@ -343,7 +343,7 @@ export type ArchivarProtocolo = z.infer<typeof ArchivarProtocoloSchema>;
 
 export const ProtocoloFiltroSchema = z.object({
   estado: EstadoProtocoloSchema.optional(),
-  verTodo: z.coerce.boolean().optional(),
+  verTodo: BoolQuerySchema,
   // Mismo control de período que Ventas: año + Anual / Trimestral / Mensual.
   anio: z.coerce.number().int().optional(),
   mes: z.coerce.number().int().min(1).max(12).optional(),

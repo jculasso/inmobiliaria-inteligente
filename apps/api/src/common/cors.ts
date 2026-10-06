@@ -7,15 +7,27 @@ const CORS_EXTRA = (process.env.CORS_ORIGINS ?? '')
   .filter(Boolean);
 
 /**
- * Un origen del browser es propio: dominio de producción, cualquier
- * *.vercel.app (fallback + previews de PRs), localhost de desarrollo, o algo
- * listado en CORS_ORIGINS.
+ * Las previews de Vercel de NUESTROS proyectos: `inmobiliaria-inteligente-web`
+ * y `inmobiliaria-inteligente-sitio`, con o sin el sufijo que Vercel agrega
+ * por deploy (`-abc123-equipo`) o por rama (`-git-rama-equipo`).
+ *
+ * Hasta el 6/10/2026 se aceptaba CUALQUIER `*.vercel.app`: cualquiera puede
+ * publicar un proyecto ahí en un minuto, así que eso equivalía a no tener
+ * lista. Un dominio que no siga este patrón se agrega en CORS_ORIGINS.
+ */
+const PREVIEW_VERCEL =
+  /^https:\/\/inmobiliaria-inteligente-(web|sitio)(-[a-z0-9-]+)?\.vercel\.app$/;
+
+/**
+ * Un origen del browser es propio: dominio de producción, una preview de
+ * Vercel de este proyecto, localhost de desarrollo, o algo listado en
+ * CORS_ORIGINS.
  */
 export function esOrigenPermitido(origin: string): boolean {
   if (CORS_EXTRA.includes(origin)) return true;
   return (
     origin === 'https://app.inmobiliariainteligente.net' ||
-    /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin) ||
+    PREVIEW_VERCEL.test(origin) ||
     /^http:\/\/localhost:\d+$/.test(origin)
   );
 }
