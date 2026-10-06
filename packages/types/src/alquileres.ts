@@ -631,15 +631,57 @@ export const PrepararLiquidacionSchema = z.object({
 });
 export type PrepararLiquidacion = z.infer<typeof PrepararLiquidacionSchema>;
 
+/**
+ * El contrato de una línea de liquidación, con lo que hace falta para leerla
+ * sin abrirlo: qué propiedad es y quién la alquila (pedido de Javier del
+ * 6/10/2026: «Inquilino, Propiedad, Propietario, todo bien organizado»).
+ * Con `default` porque las liquidaciones guardadas antes no lo tienen.
+ */
+export const ContratoDeLiquidacionSchema = z.object({
+  id: z.string().uuid(),
+  codigo: z.string(),
+  propiedad: z.string().default(''),
+  inquilinos: z.array(z.string()).default([]),
+});
+export type ContratoDeLiquidacion = z.infer<typeof ContratoDeLiquidacionSchema>;
+
 /** Una línea de la liquidación: un concepto con lo que se le paga o se le descuenta. */
 export const LineaLiquidacionSchema = z.object({
   conceptoId: z.string().uuid(),
-  contrato: ContratoMiniSchema,
+  contrato: ContratoDeLiquidacionSchema.nullable(),
   tipo: TipoConceptoSchema,
   descripcion: z.string(),
   importe: z.number(),
 });
 export type LineaLiquidacion = z.infer<typeof LineaLiquidacionSchema>;
+
+/** Las líneas de una liquidación de una misma propiedad, con lo que deja: lo cobrado menos lo descontado. */
+export interface GrupoLiquidacion {
+  contrato: ContratoDeLiquidacion | null;
+  aPagar: LineaLiquidacion[];
+  aDescontar: LineaLiquidacion[];
+  enEspera: LineaLiquidacion[];
+  subtotal: number;
+}
+
+/**
+ * Agrupa las líneas por contrato, en el orden en que aparecen. Así se leen la
+ * pantalla y el PDF: una propiedad, su inquilino y lo suyo, y después la otra.
+ * Una sola función para los dos, para que no digan cosas distintas.
+ */
+export function agruparPorContrato(lineas: { aPagar: LineaLiquidacion[]; aDescontar: LineaLiquidacion[]; enEspera?: LineaLiquidacion[] }): GrupoLiquidacion[] {
+  const grupos = new Map<string, GrupoLiquidacion>();
+  const grupo = (l: LineaLiquidacion) => {
+    const clave = l.contrato?.id ?? '';
+    if (!grupos.has(clave)) grupos.set(clave, { contrato: l.contrato, aPagar: [], aDescontar: [], enEspera: [], subtotal: 0 });
+    return grupos.get(clave)!;
+  };
+  for (const l of lineas.aPagar) grupo(l).aPagar.push(l);
+  for (const l of lineas.aDescontar) grupo(l).aDescontar.push(l);
+  for (const l of lineas.enEspera ?? []) grupo(l).enEspera.push(l);
+  const suma = (xs: LineaLiquidacion[]) => xs.reduce((s, x) => s + Math.round(x.importe * 100), 0);
+  return [...grupos.values()].map((g) => ({ ...g, subtotal: (suma(g.aPagar) - suma(g.aDescontar)) / 100 }));
+}
 
 export const PreparacionLiquidacionDtoSchema = z.object({
   persona: z.object({ id: z.string().uuid(), nombre: z.string() }),
@@ -686,6 +728,8 @@ export const LiquidacionResumenDtoSchema = z.object({
   moneda: MonedaAlquilerSchema,
   neto: z.number(),
   anulado: z.boolean(),
+  /** Las propiedades que liquida, con sus inquilinos. */
+  contratos: z.array(ContratoDeLiquidacionSchema).default([]),
 });
 export type LiquidacionResumenDto = z.infer<typeof LiquidacionResumenDtoSchema>;
 
@@ -695,6 +739,8 @@ export const PendienteLiquidarDtoSchema = z.object({
   moneda: MonedaAlquilerSchema,
   neto: z.number(),
   enEspera: z.number(),
+  /** Las propiedades de las que tiene algo para liquidar o en espera, con sus inquilinos. */
+  contratos: z.array(ContratoDeLiquidacionSchema).default([]),
 });
 export type PendienteLiquidarDto = z.infer<typeof PendienteLiquidarDtoSchema>;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { PersonaDto, PreparacionLiquidacionDto } from '@vacker/types';
 
 const prepararLiquidacion = vi.fn();
@@ -17,7 +17,7 @@ import { LiquidacionForm } from './liquidacion-form';
 
 const DUENO = '11111111-1111-4111-8111-111111111111';
 const REP = '33333333-3333-4333-8333-333333333333';
-const c5 = { id: '55555555-5555-4555-8555-555555555555', codigo: '5' };
+const c5 = { id: '55555555-5555-4555-8555-555555555555', codigo: 'ALT-0005', propiedad: 'Córdoba 1452 3° B', inquilinos: ['Ana Inquilina'] };
 const personas = [{ id: DUENO, nombre: 'Juan Propietario' }] as PersonaDto[];
 
 /* Noviembre de 2026 del contrato #5, más una reparación a cargo del dueño. */
@@ -39,8 +39,20 @@ describe('LiquidacionForm', () => {
   it('muestra lo cobrado, los descuentos, lo que espera y el neto', async () => {
     prepararLiquidacion.mockResolvedValue(prep());
     render(<LiquidacionForm personas={personas} personaInicial={DUENO} hoy="2026-11-12" />);
-    expect(await screen.findByText('$ 886.707,26')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /En espera: el inquilino todavía no pagó · 1/ })).toBeInTheDocument();
+    expect((await screen.findByText('💰 Neto a pagar')).nextSibling).toHaveTextContent('$ 886.707,26');
+    expect(screen.getByText('⏳ En espera: el inquilino todavía no pagó')).toBeInTheDocument();
+  });
+
+  // Pedido de Javier del 6/10/2026: cada propiedad dice qué es, quién la alquila y de quién es.
+  it('agrupa por propiedad, con el inquilino y el propietario', async () => {
+    prepararLiquidacion.mockResolvedValue(prep());
+    render(<LiquidacionForm personas={personas} personaInicial={DUENO} hoy="2026-11-12" />);
+    const propiedad = within(await screen.findByRole('region', { name: 'Propiedad Córdoba 1452 3° B' }));
+    expect(propiedad.getByText('Ana Inquilina')).toBeInTheDocument();
+    expect(propiedad.getByText('Propietario:').nextSibling).toHaveTextContent('Juan Propietario');
+    expect(propiedad.getByRole('link', { name: 'Contrato ALT-0005' })).toHaveAttribute('href', `/alquileres/contratos/${c5.id}`);
+    // Lo cobrado menos los dos descuentos.
+    expect(propiedad.getByText('Subtotal de la propiedad').nextSibling).toHaveTextContent('$ 886.707,26');
   });
 
   // Dejar algo para después se le pregunta a la API, que sabe qué arrastra.

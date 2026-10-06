@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import {
   LIMITE_LISTA_CON_SONDA,
   LineaLiquidacionSchema,
+  type ContratoDeLiquidacion,
   type LineaLiquidacion,
   type Liquidacion,
   type LiquidacionDto,
@@ -30,8 +31,15 @@ const DetalleSchema = z.object({ aPagar: z.array(LineaLiquidacionSchema), aDesco
 interface Pendiente extends ConceptoALiquidar {
   personaId: string;
   moneda: string;
-  contrato: { id: string; codigo: string };
+  contrato: ContratoDeLiquidacion;
   descripcion: string;
+}
+
+/** Los contratos de un grupo de líneas, una vez cada uno y en el orden en que aparecen. */
+function contratosDe(lineas: { contrato: ContratoDeLiquidacion | null }[]): ContratoDeLiquidacion[] {
+  const vistos = new Map<string, ContratoDeLiquidacion>();
+  for (const l of lineas) if (l.contrato && !vistos.has(l.contrato.id)) vistos.set(l.contrato.id, l.contrato);
+  return [...vistos.values()];
 }
 
 /**
@@ -73,7 +81,7 @@ export class LiquidacionesService {
         const p = proponerLiquidacion(conceptos, pagadas);
         const enEspera = redondear2(p.enEspera.filter((c) => c.sentido === 'a_pagar').reduce((s, c) => s + c.saldo, 0));
         if (p.aPagar.length === 0 && enEspera === 0) continue;
-        filas.push({ persona: nombres.get(personaId)!, moneda, neto: p.aPagar.length ? p.neto : 0, enEspera });
+        filas.push({ persona: nombres.get(personaId)!, moneda, neto: p.aPagar.length ? p.neto : 0, enEspera, contratos: contratosDe(conceptos) });
       }
       return filas.sort((a, b) => b.neto - a.neto);
     });
@@ -132,15 +140,21 @@ export class LiquidacionesService {
         orderBy: { numero: 'desc' },
         take: LIMITE_LISTA_CON_SONDA,
       });
-      return filas.map((l) => ({
-        id: l.id,
-        numero: l.numero,
-        persona: l.persona,
-        fecha: fromDate(l.fecha)!,
-        moneda: l.moneda as MonedaAlquiler,
-        neto: decToNum(l.neto),
-        anulado: l.anuladoEn != null,
-      }));
+      return filas.map((l) => {
+        // El detalle guardado dice qué propiedades se liquidaron; si no se
+        // puede leer, la fila se muestra igual, sin ellas.
+        const detalle = DetalleSchema.safeParse(l.detalle);
+        return {
+          id: l.id,
+          numero: l.numero,
+          persona: l.persona,
+          fecha: fromDate(l.fecha)!,
+          moneda: l.moneda as MonedaAlquiler,
+          neto: decToNum(l.neto),
+          anulado: l.anuladoEn != null,
+          contratos: detalle.success ? contratosDe([...detalle.data.aPagar, ...detalle.data.aDescontar]) : [],
+        };
+      });
     });
   }
 
@@ -199,13 +213,23 @@ export class LiquidacionesService {
         OR: [{ sentido: 'a_pagar' }, { sentido: 'a_cobrar', tipo: { in: ['honorarios', ...SUELTOS] } }],
       },
       include: {
-        contrato: { select: { id: true, codigo: true, pagoGarantizado: true, partes: { where: { papel: 'propietario' }, select: { personaId: true } } } },
+        // La propiedad y los inquilinos viajan en la misma consulta: la
+        // liquidación los muestra en cada línea y no cuesta un viaje más.
+        contrato: {
+          select: {
+            id: true,
+            codigo: true,
+            pagoGarantizado: true,
+            propiedad: { select: { direccion: true, unidad: true } },
+            partes: { where: { papel: { in: ['propietario', 'inquilino'] } }, select: { personaId: true, papel: true, persona: { select: { nombre: true } } } },
+          },
+        },
         imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
       },
       orderBy: [{ vencimiento: 'asc' }, { createdAt: 'asc' }],
     });
     return filas
-      .filter((k) => k.contrato?.partes.some((p) => p.personaId === k.personaId))
+      .filter((k) => k.contrato?.partes.some((p) => p.papel === 'propietario' && p.personaId === k.personaId))
       .map((k) => ({
         id: k.id,
         personaId: k.personaId,
@@ -215,7 +239,12 @@ export class LiquidacionesService {
         saldo: redondear2(decToNum(k.importe) - k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0)),
         clave: k.claveGeneracion,
         pagoGarantizado: k.contrato!.pagoGarantizado,
-        contrato: { id: k.contrato!.id, codigo: k.contrato!.codigo },
+        contrato: {
+          id: k.contrato!.id,
+          codigo: k.contrato!.codigo,
+          propiedad: [k.contrato!.propiedad.direccion, k.contrato!.propiedad.unidad].filter(Boolean).join(' '),
+          inquilinos: k.contrato!.partes.filter((p) => p.papel === 'inquilino').map((p) => p.persona.nombre),
+        },
         descripcion: k.descripcion ?? k.tipo,
       }))
       .filter((k) => k.saldo > 0);

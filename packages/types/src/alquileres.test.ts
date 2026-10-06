@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PersonaInputSchema, PropiedadAlquilerInputSchema, normalizarDocumento } from './alquileres';
+import { PersonaInputSchema, PropiedadAlquilerInputSchema, agruparPorContrato, normalizarDocumento } from './alquileres';
 
 describe('normalizarDocumento', () => {
   /*
@@ -58,5 +58,20 @@ describe('PropiedadAlquilerInputSchema', () => {
       tipo: null,
     });
     expect(PropiedadAlquilerInputSchema.safeParse({ direccion: '' }).success).toBe(false);
+  });
+});
+
+describe('agruparPorContrato', () => {
+  const c = (id: string) => ({ id, codigo: id.slice(-1), propiedad: `Calle ${id.slice(-1)}`, inquilinos: ['Inquilina'] });
+  const A = c('00000000-0000-4000-8000-00000000000a');
+  const B = c('00000000-0000-4000-8000-00000000000b');
+  const l = (contrato: typeof A, importe: number) => ({ conceptoId: crypto.randomUUID(), contrato, tipo: 'alquiler' as const, descripcion: 'x', importe });
+
+  it('una propiedad por grupo, en orden, con lo cobrado menos lo descontado', () => {
+    const g = agruparPorContrato({ aPagar: [l(A, 1_000.1), l(B, 500)], aDescontar: [l(A, 100.05)], enEspera: [l(B, 300)] });
+    expect(g.map((x) => [x.contrato?.codigo, x.aPagar.length, x.aDescontar.length, x.enEspera.length, x.subtotal])).toEqual([
+      ['a', 1, 1, 0, 900.05],
+      ['b', 1, 0, 1, 500],
+    ]);
   });
 });

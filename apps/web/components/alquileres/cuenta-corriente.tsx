@@ -226,8 +226,15 @@ export function CuentaCorriente({
           <ul className="divide-y divide-line text-sm">
             {liquidaciones.map((l) => (
               <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-                <span className={l.anulado ? 'text-muted line-through' : 'text-ink'}>
-                  Liquidación {recibo(l.numero)} · {fmtFecha(l.fecha)} · <span className="tabular-nums">{fmtMoneda(l.neto, l.moneda)}</span>
+                <span className="min-w-0">
+                  <span className={`block ${l.anulado ? 'text-muted line-through' : 'text-ink'}`}>
+                    Liquidación {recibo(l.numero)} · {fmtFecha(l.fecha)} · <span className="tabular-nums">{fmtMoneda(l.neto, l.moneda)}</span>
+                  </span>
+                  {l.contratos.length > 0 && (
+                    <span className="block text-xs text-muted">
+                      {l.contratos.map((c) => `🏠 ${c.propiedad || c.codigo}${c.inquilinos.length ? ` (${c.inquilinos.join(', ')})` : ''}`).join(' · ')}
+                    </span>
+                  )}
                 </span>
                 <span className="flex gap-1">
                   <button type="button" onClick={() => descargarLiquidacion(l)} className="rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface">
