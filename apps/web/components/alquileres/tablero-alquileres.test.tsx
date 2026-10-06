@@ -75,8 +75,8 @@ describe('TableroAlquileres', () => {
       <TableroAlquileres
         tablero={tablero({
           ingresos: [
-            { mes: '2026-10', moneda: 'ARS', honorarios: 70_000, gastos: 5_000, punitorios: 0 },
-            { mes: '2025-10', moneda: 'ARS', honorarios: 50_000, gastos: 0, punitorios: 0 },
+            { mes: '2026-10', moneda: 'ARS', honorarios: 70_000, gastos: 5_000, punitorios: 0, comisiones: 0 },
+            { mes: '2025-10', moneda: 'ARS', honorarios: 50_000, gastos: 0, punitorios: 0, comisiones: 0 },
           ],
         })}
       />,

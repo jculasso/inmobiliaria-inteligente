@@ -10,6 +10,7 @@ import { anularContrato, borrarContrato, cambiarEstadoContrato } from '../../lib
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { AnularModal } from './anular-modal';
 import { DatosContratoModal } from './datos-contrato-modal';
+import { ExtenderModal } from './extender-modal';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { EstadoContratoBadge } from './estado-contrato';
@@ -33,7 +34,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const [confirmar, setConfirmar] = useState<null | 'vigente' | 'finalizado' | 'rescindido'>(null);
   const [fecha, setFecha] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [accion, setAccion] = useState<null | 'datos' | 'anular' | 'borrar'>(null);
+  const [accion, setAccion] = useState<null | 'datos' | 'anular' | 'borrar' | 'extender'>(null);
   // Punto 3 de Javier: con qué valores del índice se calculó cada tramo.
   const conIndice = contrato.ajuste === 'indexado' && contrato.tramos.some((t) => t.indiceBase != null);
   const unidad = `${contrato.propiedad.direccion}${contrato.propiedad.unidad ? ` ${contrato.propiedad.unidad}` : ''}`;
@@ -113,6 +114,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             <>
               <Button variant="secondary" size="sm" onClick={() => setAccion('datos')}>
                 ✏️ Editar datos
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setAccion('extender')}>
+                📆 Extender
               </Button>
               <Button variant="secondary" size="sm" onClick={() => setConfirmar('finalizado')}>
                 Finalizar
@@ -220,6 +224,16 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         </div>
       </Panel>
 
+      {accion === 'extender' && (
+        <ExtenderModal
+          contrato={contrato}
+          onClose={() => setAccion(null)}
+          onDone={() => {
+            setAccion(null);
+            router.refresh();
+          }}
+        />
+      )}
       {accion === 'datos' && (
         <DatosContratoModal
           contratoId={contrato.id}

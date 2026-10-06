@@ -19,7 +19,7 @@ const PRINCIPAL = {
      * — es la garantía de que una inmobiliaria que nunca los configuró calcula
      * como Vacker y no con `undefined`.
      */
-    config: { coefSemicubierta: 1, coefDescubierta: 0.3, ivaHonorariosPct: 21 },
+    config: { coefSemicubierta: 1, coefDescubierta: 0.3, ivaHonorariosPct: 21, comisionInicialPct: 5, comisionInicialCuotas: 2, comisionInicialConIva: true, selladoPct: 0, selladoInquilinoPct: 50, depositoGestion: 'entrega_propietario' },
   },
 };
 

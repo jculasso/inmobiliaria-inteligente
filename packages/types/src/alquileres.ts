@@ -603,6 +603,11 @@ export const TipoConceptoSchema = z.enum([
   'reparacion',
   'saldo_inicial',
   'otro',
+  // Cargos de ingreso (entrega 14): se cargan al firmar el contrato.
+  'comision',
+  'informe',
+  'deposito',
+  'sellado',
 ]);
 export type TipoConcepto = z.infer<typeof TipoConceptoSchema>;
 
@@ -1110,7 +1115,15 @@ export const TableroAlquileresDtoSchema = z.object({
   evolucion: z.array(z.object({ mes: PeriodoSchema, moneda: MonedaAlquilerSchema, emitido: z.number(), cobrado: z.number() })),
   /** Regla 30: honorarios, gastos y punitorios cobrados por mes, del año elegido y del anterior. */
   ingresos: z.array(
-    z.object({ mes: PeriodoSchema, moneda: MonedaAlquilerSchema, honorarios: z.number(), gastos: z.number(), punitorios: z.number() }),
+    z.object({
+      mes: PeriodoSchema,
+      moneda: MonedaAlquilerSchema,
+      honorarios: z.number(),
+      gastos: z.number(),
+      punitorios: z.number(),
+      /** Comisiones iniciales e informes de garantía cobrados (entrega 14). */
+      comisiones: z.number().default(0),
+    }),
   ),
   /** Regla 31: lo que hay que hacer. */
   tareas: z.object({
@@ -1249,3 +1262,103 @@ export const PersonaFichaDtoSchema = z.object({
   ),
 });
 export type PersonaFichaDto = z.infer<typeof PersonaFichaDtoSchema>;
+
+// --- Contrato completo (entrega 14: puntos 7, 11, 12 y 13 de Javier) ------------------
+
+/** La configuración del módulo que edita la inmobiliaria: cargos de ingreso y depósito. */
+export const ConfiguracionAlquileresSchema = z.object({
+  ivaHonorariosPct: z.number().min(0).max(27),
+  comisionInicialPct: z.number().min(0).max(20),
+  comisionInicialCuotas: z.number().int().min(1).max(12),
+  comisionInicialConIva: z.boolean(),
+  selladoPct: z.number().min(0).max(5),
+  selladoInquilinoPct: z.number().min(0).max(100),
+  depositoGestion: z.enum(['entrega_propietario', 'retiene_inmobiliaria']),
+});
+export type ConfiguracionAlquileres = z.infer<typeof ConfiguracionAlquileresSchema>;
+
+/** Un cargo de ingreso: comisión, informe de garantía, depósito o sellado. */
+export const CargoIngresoSchema = z.object({
+  tipo: z.enum(['comision', 'informe', 'deposito', 'sellado']),
+  descripcion: z.string().trim().min(1).max(120),
+  aCargoDe: z.enum(['inquilino', 'propietario']),
+  importe: z.number().positive('El importe tiene que ser mayor a cero.'),
+  vencimiento: FechaIso,
+  /** El depósito puede ir en dólares aunque el contrato sea en pesos (Gexion). */
+  moneda: MonedaAlquilerSchema.nullish().transform((v) => v ?? null),
+});
+export type CargoIngreso = z.infer<typeof CargoIngresoSchema>;
+
+export const CargosIngresoDtoSchema = z.object({
+  /** Ya se cargaron: no se propone de nuevo. */
+  cargados: z.boolean(),
+  /** El valor total del contrato con que se calcularon: alquiler inicial × meses. */
+  valorTotal: z.number(),
+  meses: z.number().int(),
+  propuesta: z.array(CargoIngresoSchema),
+});
+export type CargosIngresoDto = z.infer<typeof CargosIngresoDtoSchema>;
+
+export const CargarCargosIngresoSchema = z.object({ cargos: z.array(CargoIngresoSchema).min(1).max(30) });
+
+/** El depósito en garantía y dónde está (punto 12). */
+export const EstadoDepositoSchema = z.enum(['sin_deposito', 'a_cobrar', 'cobrado', 'entregado', 'devuelto']);
+export type EstadoDeposito = z.infer<typeof EstadoDepositoSchema>;
+export const DepositoDtoSchema = z.object({
+  importe: z.number().nullable(),
+  moneda: MonedaAlquilerSchema.nullable(),
+  gestion: z.enum(['entrega_propietario', 'retiene_inmobiliaria']),
+  estado: EstadoDepositoSchema,
+  /** Lo que el inquilino ya pagó del depósito. */
+  cobrado: z.number(),
+  devueltoEl: FechaIso.nullable(),
+});
+export type DepositoDto = z.infer<typeof DepositoDtoSchema>;
+export const DevolverDepositoSchema = z.object({ fecha: FechaIso });
+
+/** Una garantía del contrato, con su informe (punto 11). */
+export const TipoGarantiaSchema = z.enum(['propietaria', 'laboral', 'caucion', 'otra']);
+export type TipoGarantia = z.infer<typeof TipoGarantiaSchema>;
+export const NOMBRE_TIPO_GARANTIA: Record<TipoGarantia, string> = { propietaria: 'Propietaria', laboral: 'Laboral (recibo de sueldo)', caucion: 'Seguro de caución', otra: 'Otra' };
+export const EstadoGarantiaSchema = z.enum(['pendiente', 'aprobada', 'rechazada']);
+export type EstadoGarantia = z.infer<typeof EstadoGarantiaSchema>;
+export const GarantiaInputSchema = z.object({
+  tipo: TipoGarantiaSchema,
+  /** El garante, si está cargado como persona; si no, su nombre. */
+  personaId: z.string().uuid().nullish().transform((v) => v ?? null),
+  garante: z.string().trim().max(120).nullish().transform((v) => (v ? v : null)),
+  /** Propietaria: la propiedad que garantiza. Caución: aseguradora y póliza. Laboral: empleador. */
+  detalle: z.string().trim().max(300).nullish().transform((v) => (v ? v : null)),
+  estado: EstadoGarantiaSchema.default('pendiente'),
+  aprobadaEl: FechaIso.nullish().transform((v) => v ?? null),
+  obs: z.string().trim().max(1000).nullish().transform((v) => (v ? v : null)),
+});
+export type GarantiaInput = z.input<typeof GarantiaInputSchema>;
+export type Garantia = z.output<typeof GarantiaInputSchema>;
+export const GarantiaDtoSchema = z.object({
+  id: z.string().uuid(),
+  tipo: TipoGarantiaSchema,
+  personaId: z.string().uuid().nullable(),
+  garante: z.string().nullable(),
+  detalle: z.string().nullable(),
+  estado: EstadoGarantiaSchema,
+  aprobadaEl: FechaIso.nullable(),
+  obs: z.string().nullable(),
+});
+export type GarantiaDto = z.infer<typeof GarantiaDtoSchema>;
+export const GarantiasInputSchema = z.object({ garantias: z.array(GarantiaInputSchema).max(10) });
+
+/** Extender un contrato vigente (punto 13): hasta cuándo, y el importe si es escalonado. */
+export const ExtenderContratoSchema = z.object({
+  nuevoFin: FechaIso,
+  /** Escalonado: el importe del tramo nuevo. Indexado: se indexa como cualquier tramo. */
+  importeBase: z.number().positive().nullish().transform((v) => v ?? null),
+});
+export type ExtenderContrato = z.infer<typeof ExtenderContratoSchema>;
+
+export const CompletoContratoDtoSchema = z.object({
+  deposito: DepositoDtoSchema,
+  garantias: z.array(GarantiaDtoSchema),
+  cargos: CargosIngresoDtoSchema,
+});
+export type CompletoContratoDto = z.infer<typeof CompletoContratoDtoSchema>;

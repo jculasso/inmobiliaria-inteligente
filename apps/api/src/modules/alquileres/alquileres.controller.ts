@@ -1,6 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CandidatosQuerySchema, ROLES_ADMINISTRACION_ALQUILERES } from '@vacker/types';
+import { CandidatosQuerySchema, ConfiguracionAlquileresSchema, ROLES_ADMINISTRACION_ALQUILERES, type ConfiguracionAlquileres } from '@vacker/types';
+import { CurrentUser } from '../../auth/decorators';
+import type { AuthPrincipal } from '../../auth/auth-principal';
+import { ctxDe } from '../tablero/tablero.util';
 import type { z } from 'zod';
 import { Modulo, Roles } from '../../auth/decorators';
 import { AlquileresService } from './alquileres.service';
@@ -38,5 +41,19 @@ export class AlquileresController {
   @ApiOperation({ summary: 'Inquilinos (con lo que deben) o propietarios (con lo que hay para liquidarles), para elegir a quién se cobra o se liquida' })
   candidatosDe(@Query(new ZodValidationPipe(CandidatosQuerySchema)) q: z.infer<typeof CandidatosQuerySchema>) {
     return this.candidatos.listar(q.papel);
+  }
+
+  @Get('configuracion')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Configuración del módulo: IVA de honorarios, comisión inicial, sellado y depósito' })
+  configuracion(@CurrentUser() user: AuthPrincipal) {
+    return this.alquileres.configuracion(ctxDe(user));
+  }
+
+  @Put('configuracion')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({ summary: 'Guarda la configuración del módulo' })
+  guardarConfiguracion(@Body(new ZodValidationPipe(ConfiguracionAlquileresSchema)) dto: ConfiguracionAlquileres, @CurrentUser() user: AuthPrincipal) {
+    return this.alquileres.guardarConfiguracion(ctxDe(user), dto);
   }
 }

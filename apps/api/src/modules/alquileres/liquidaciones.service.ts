@@ -24,7 +24,7 @@ import { IMPUTACION_ACTIVA } from './imputacion-activa';
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
 /** Lo que un propietario puede deber por fuera de los honorarios: los gastos sueltos (regla 14). */
-const SUELTOS = ['expensa', 'impuesto', 'servicio', 'reparacion', 'otro'];
+const SUELTOS = ['expensa', 'impuesto', 'servicio', 'reparacion', 'otro', 'comision', 'informe', 'deposito', 'sellado'];
 
 /** El detalle que se guarda en la liquidación, tal como se liquidó. */
 const DetalleSchema = z.object({ aPagar: z.array(LineaLiquidacionSchema), aDescontar: z.array(LineaLiquidacionSchema) });

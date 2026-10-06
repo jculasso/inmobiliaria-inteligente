@@ -22,6 +22,13 @@ import {
   type ConceptoSueltoInput,
   ContratoDtoSchema,
   CandidatoDtoSchema,
+  CompletoContratoDtoSchema,
+  ConfiguracionAlquileresSchema,
+  GarantiaDtoSchema,
+  type CargoIngreso,
+  type ConfiguracionAlquileres,
+  type ExtenderContrato,
+  type GarantiaInput,
   ContactoDtoSchema,
   CuentaBancariaDtoSchema,
   EnvioMailDtoSchema,
@@ -284,4 +291,38 @@ export async function enviarReciboPorMail(accessToken: string, cobroId: string, 
 
 export async function enviarLiquidacionPorMail(accessToken: string, id: string, para: string[]) {
   return apiFetch(`/alquileres/liquidaciones/${id}/enviar`, EnvioMailDtoSchema, { accessToken, method: 'POST', body: { para } });
+}
+
+// --- Entrega 14: contrato completo y configuración -----------------------------
+
+export async function getConfiguracionAlquileres(accessToken: string) {
+  return apiFetch('/alquileres/configuracion', ConfiguracionAlquileresSchema, { accessToken });
+}
+
+export async function guardarConfiguracionAlquileres(accessToken: string, dto: ConfiguracionAlquileres) {
+  return apiFetch('/alquileres/configuracion', ConfiguracionAlquileresSchema, { accessToken, method: 'PUT', body: dto });
+}
+
+export async function getContratoCompleto(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/contratos/${id}/completo`, CompletoContratoDtoSchema, { accessToken });
+}
+
+export async function cargarCargosIngreso(accessToken: string, id: string, cargos: CargoIngreso[]) {
+  return apiFetch(`/alquileres/contratos/${id}/cargos-ingreso`, CompletoContratoDtoSchema, { accessToken, method: 'POST', body: { cargos } });
+}
+
+export async function entregarDeposito(accessToken: string, id: string) {
+  return apiFetch(`/alquileres/contratos/${id}/deposito/entregar`, CompletoContratoDtoSchema, { accessToken, method: 'POST' });
+}
+
+export async function devolverDeposito(accessToken: string, id: string, fecha: string) {
+  return apiFetch(`/alquileres/contratos/${id}/deposito/devolver`, CompletoContratoDtoSchema, { accessToken, method: 'POST', body: { fecha } });
+}
+
+export async function guardarGarantias(accessToken: string, id: string, garantias: GarantiaInput[]) {
+  return apiFetch(`/alquileres/contratos/${id}/garantias`, z.array(GarantiaDtoSchema), { accessToken, method: 'PUT', body: { garantias } });
+}
+
+export async function extenderContrato(accessToken: string, id: string, dto: ExtenderContrato) {
+  return apiFetch(`/alquileres/contratos/${id}/extender`, ContratoDtoSchema, { accessToken, method: 'POST', body: dto });
 }

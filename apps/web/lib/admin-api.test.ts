@@ -18,7 +18,7 @@ const TENANT = {
   plan: 'basico',
   modulos: { tablero: true, tasador: false, todo: false, protocolo: false, publicacion: false, alquileres: false },
   estado: 'activo',
-  config: { coefSemicubierta: 1, coefDescubierta: 0.3, ivaHonorariosPct: 21 },
+  config: { coefSemicubierta: 1, coefDescubierta: 0.3, ivaHonorariosPct: 21, comisionInicialPct: 5, comisionInicialCuotas: 2, comisionInicialConIva: true, selladoPct: 0, selladoInquilinoPct: 50, depositoGestion: 'entrega_propietario' },
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
