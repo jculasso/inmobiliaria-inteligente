@@ -28,8 +28,10 @@ export interface ModuleCardProps {
   /**
    * Si la inmobiliaria tiene contratado el módulo. Se distingue de `habilitado`
    * (que además exige alcance por rol) porque el badge tiene que decir "No
-   * incluido" y no "Activo": el estado del badge es la madurez del módulo, y
+   * contratado" y no "Activo": el estado del badge es la madurez del módulo, y
    * mostrarlo verde en un módulo no contratado se lee como que está prendido.
+   * Badge y botón dicen lo mismo: decían «No incluido» y «No contratado», y
+   * parecían dos situaciones distintas.
    */
   licenciado?: boolean;
   /** Mini-preview de datos reales (solo para el módulo activo y desbloqueado). */
@@ -69,7 +71,7 @@ export function ModuleCard({
         >
           {icono}
         </div>
-        {!bloqueada && <Badge variant={variante}>{noIncluido ? 'No incluido' : undefined}</Badge>}
+        {!bloqueada && <Badge variant={variante}>{noIncluido ? 'No contratado' : undefined}</Badge>}
       </div>
 
       <h3 className="mt-3 text-base font-bold text-ink">{nombre}</h3>

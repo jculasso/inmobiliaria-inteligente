@@ -10,6 +10,15 @@
  */
 export const metadata = { title: 'Sin conexión · Inmobiliaria Inteligente' };
 
+/**
+ * El azul de la plataforma (`--color-plataforma` en `packages/ui`), escrito
+ * acá porque esta página no puede depender de la hoja de estilos. Era el rojo
+ * de Vacker: sin sesión no se sabe de qué inmobiliaria es quien mira, y a
+ * cualquier otra le mostrábamos la marca de Vacker (como en el ingreso, ver
+ * `marcaPlataformaStyle`).
+ */
+const AZUL_PLATAFORMA = '#173F6B';
+
 const boton = {
   display: 'inline-block',
   borderRadius: 16,
@@ -61,7 +70,7 @@ export default function OfflinePage() {
           }}
         >
           {/* href vacío = la misma dirección: vuelve a pedir la página que falló. */}
-          <a href="" style={{ ...boton, background: '#C1121F', color: '#fff' }}>
+          <a href="" style={{ ...boton, background: AZUL_PLATAFORMA, color: '#fff' }}>
             Reintentar
           </a>
           <a

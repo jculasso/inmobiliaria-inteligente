@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../lib/supabase/client';
 import { cambiarPassword } from '../lib/password-api';
+import { MensajeError } from './piezas';
 
 const MINIMO = 8;
 
@@ -92,11 +93,7 @@ export function CambiarClaveForm({ obligatorio }: { obligatorio: boolean }) {
         />
       </Campo>
 
-      {error && (
-        <p role="alert" className="text-sm font-medium text-brand-red">
-          {error}
-        </p>
-      )}
+      <MensajeError>{error}</MensajeError>
 
       <Button type="submit" variant="primary" disabled={loading || listo}>
         {listo ? 'Listo ✓' : loading ? 'Guardando…' : 'Guardar contraseña'}

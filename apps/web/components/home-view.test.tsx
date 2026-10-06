@@ -63,7 +63,7 @@ describe('HomeView · modo logueado', () => {
     ]);
   });
 
-  it('un módulo no contratado se muestra "No incluido", no "Activo"', () => {
+  it('un módulo no contratado se muestra "No contratado", no "Activo"', () => {
     // Regresión: el badge reflejaba la madurez del módulo, así que una
     // inmobiliaria sin el Protocolo lo veía igual de verde que los contratados.
     render(
@@ -78,8 +78,10 @@ describe('HomeView · modo logueado', () => {
       />,
     );
     expect(screen.getAllByText('Activo')).toHaveLength(3);
-    expect(screen.getByText('No incluido')).toBeInTheDocument();
+    // Badge y botón con la misma palabra: «No incluido» y «No contratado» parecían dos cosas.
+    expect(screen.getByText('No contratado', { selector: 'span' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'No contratado' })).toBeDisabled();
+    expect(screen.queryByText('No incluido')).not.toBeInTheDocument();
   });
 
   it('el Protocolo queda apagado si la inmobiliaria no lo tiene contratado', () => {
