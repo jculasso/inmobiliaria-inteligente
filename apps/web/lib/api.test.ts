@@ -64,6 +64,21 @@ describe('getMe', () => {
     await expect(getMe('token-123')).rejects.toBeInstanceOf(MeError);
   });
 
+  // Una inmobiliaria suspendida: la persona tiene que leer el motivo, no «devolvió 403».
+  it('el MeError trae el motivo que da la API', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: async () => ({
+          error: { code: 'forbidden', message: 'La inmobiliaria está suspendida.' },
+        }),
+      }),
+    );
+    await expect(getMe('token-123')).rejects.toThrow('La inmobiliaria está suspendida.');
+  });
+
   it('lanza MeError si el body no matchea el schema', async () => {
     vi.stubGlobal(
       'fetch',

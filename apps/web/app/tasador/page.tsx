@@ -1,5 +1,6 @@
 import { sesionServidor } from '../../lib/server-principal';
 import {
+  getDashboardTasador,
   getKpisMensualTasador,
   getKpisResumenTasador,
   getRankingCaptaciones,
@@ -21,13 +22,20 @@ export default async function TasadorDashboardPage({
   // el dashboard llega con datos, sin "Cargando…" ni la cascada getAccessToken→4 fetches
   // client-side sobre el hop lento hacia Supabase. El perfil viaja en el mismo
   // lote: el rol solo decide qué se muestra, no qué se pide.
-  const [principal, kpisMensual, resumenAnual, rankingAnual, tasaciones] = await Promise.all([
+  const [principal, dashboard, tasaciones] = await Promise.all([
     s.principal,
-    getKpisMensualTasador(s.accessToken, anio, verTodo),
-    getKpisResumenTasador(s.accessToken, { anio, periodo: 'anual', verTodo }),
-    getRankingCaptaciones(s.accessToken, { anio, periodo: 'anual', verTodo }),
+    // Resumen, ranking y los doce meses en un solo pedido (antes eran tres).
+    getDashboardTasador(s.accessToken, anio, verTodo),
     listTasacionesResumen(s.accessToken, { anio, verTodo }),
   ]);
+  // Si la API todavía no tiene el pedido nuevo, como antes.
+  const [kpisMensual, resumenAnual, rankingAnual] = dashboard
+    ? [dashboard.mensual, dashboard.resumen, dashboard.ranking]
+    : await Promise.all([
+        getKpisMensualTasador(s.accessToken, anio, verTodo),
+        getKpisResumenTasador(s.accessToken, { anio, periodo: 'anual', verTodo }),
+        getRankingCaptaciones(s.accessToken, { anio, periodo: 'anual', verTodo }),
+      ]);
   if (!principal) return null;
 
   return (

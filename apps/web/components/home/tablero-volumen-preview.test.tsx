@@ -7,13 +7,14 @@ vi.mock('../../lib/supabase/client', () => ({ getAccessToken: () => Promise.reso
 const pedidos: unknown[] = [];
 let fallarProximos = 0;
 vi.mock('../../lib/tablero-api', () => ({
-  getKpisResumen: (_t: string, filtro: unknown) => {
-    pedidos.push(filtro);
+  // El rango del año (1 a 12): alcanza para un número y cuesta la mitad que el resumen completo.
+  getResumenRango: (_t: string, anio: number, desde: number, hasta: number, verTodo: boolean) => {
+    pedidos.push({ anio, desde, hasta, verTodo });
     if (fallarProximos > 0) {
       fallarProximos--;
       return Promise.reject(new Error('sin red'));
     }
-    return Promise.resolve({ anual: { volumen: 8452500 } });
+    return Promise.resolve({ agregado: { volumen: 8452500 }, ranking: [] });
   },
 }));
 
@@ -38,7 +39,7 @@ describe('TableroVolumenPreview — el número coincide con su etiqueta', () => 
     pedidos.length = 0;
     render(<TableroVolumenPreview anio={2026} alcance="total" />);
     await screen.findByText('U$S 8.452.500');
-    expect(pedidos[0]).toMatchObject({ verTodo: true });
+    expect(pedidos[0]).toMatchObject({ anio: 2026, desde: 1, hasta: 12, verTodo: true });
   });
 
   it('con alcance propio, no lo pide', async () => {

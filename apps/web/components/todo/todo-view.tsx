@@ -240,6 +240,13 @@ export function TodoView() {
       </div>
 
       <MensajeError>{error}</MensajeError>
+      {data?.truncado && (
+        // Google devuelve los eventos de a páginas; si ni así entraron todos, se avisa en vez de callar.
+        <p className="text-xs text-muted">
+          Este período tiene muchísimos eventos: se muestran los primeros. Mirá una semana o un día
+          para ver todo.
+        </p>
+      )}
 
       {cargandoEventos ? (
         <p className="text-sm text-muted">Cargando eventos…</p>

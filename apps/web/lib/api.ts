@@ -23,7 +23,12 @@ export const getMe = cache(async (accessToken: string): Promise<AuthPrincipal> =
   // desplegando: eso va a la pantalla de «reintentar», no a «tu cuenta no
   // está habilitada» (revisión PWA del 6/10/2026).
   if (res.status === 401 || res.status === 403) {
-    throw new MeError(`GET /me devolvió ${res.status}`);
+    // El motivo que da la API («la inmobiliaria está suspendida», «tu usuario
+    // está inactivo») le sirve a la persona; «GET /me devolvió 403», no.
+    const cuerpo = (await Promise.resolve()
+      .then(() => res.json())
+      .catch(() => null)) as { error?: { message?: string } } | null;
+    throw new MeError(cuerpo?.error?.message ?? `GET /me devolvió ${res.status}`);
   }
   if (!res.ok) {
     throw new Error(`GET /me devolvió ${res.status}`);

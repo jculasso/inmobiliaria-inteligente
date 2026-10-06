@@ -172,7 +172,8 @@ export function DetalleProtocolo({
         ...prev,
         acciones: prev.acciones.map((a) => (a.id === accionId ? { ...a, ...campos } : a)),
       }),
-      (t) => updateAccion(t, p.id, accionId, campos),
+      // Sobre lo último que confirmó la base: la respuesta liviana trae solo la acción.
+      (t) => updateAccion(t, confirmado.current, accionId, campos),
     );
 
   // La ficha SÍ la lleva: los contadores viajan como valor absoluto y sin esto

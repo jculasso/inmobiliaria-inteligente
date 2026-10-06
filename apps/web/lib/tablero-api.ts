@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  DashboardTableroSchema,
+  type DashboardTablero,
   AgregadoKpiSchema,
   AlquileresMesSchema,
   ObjetivoSetDtoSchema,
@@ -18,7 +20,7 @@ import {
   type UpdateOperacion,
   type UpdateVendedor,
 } from '@vacker/types';
-import { apiFetch, apiFetchForm } from './api-client';
+import { ApiError, apiFetch, apiFetchForm } from './api-client';
 
 // --- Operaciones ---
 
@@ -122,6 +124,29 @@ export async function getKpisResumen(accessToken: string, filtro: KpiFiltro) {
     accessToken,
     searchParams: { anio: filtro.anio, mes: filtro.mes, verTodo: filtro.verTodo ? 1 : undefined },
   });
+}
+
+/**
+ * Todo lo de la portada del Tablero en un solo pedido (resumen del mes, año,
+ * doce meses y alquileres). Antes eran cuatro pedidos que leían las mismas
+ * ventas (revisión de performance del 6/10/2026).
+ *
+ * Si la API todavía no lo tiene (404: la web nueva sale unos minutos antes que
+ * la API), devuelve `null` y la página pide como antes.
+ */
+export async function getDashboardTablero(
+  accessToken: string,
+  filtro: KpiFiltro,
+): Promise<DashboardTablero | null> {
+  try {
+    return await apiFetch('/tablero/kpis/dashboard', DashboardTableroSchema, {
+      accessToken,
+      searchParams: { anio: filtro.anio, mes: filtro.mes, verTodo: filtro.verTodo ? 1 : undefined },
+    });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 /** Agregados de los 12 meses del año en una sola llamada de red. */

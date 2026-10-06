@@ -124,9 +124,17 @@ interface Props {
   verTodo?: boolean;
   /** Acumulado anual ya resuelto server-side (mismo dato que pide el tab "Acumulado Anual" por defecto) — evita repetir esa consulta al montar. */
   inicial?: { agregado: AgregadoKpi; ranking: RankingItem[] };
+  /** Los doce meses, si ya vinieron con la página: la pestaña mensual no los vuelve a pedir. */
+  mensualInicial?: AgregadoKpi[];
 }
 
-export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Props) {
+export function ResumenAcumulado({
+  anio,
+  mesSeleccionado,
+  verTodo,
+  inicial,
+  mensualInicial,
+}: Props) {
   const [tab, setTab] = useState<PeriodoResumen>('anual');
   const [trimestre, setTrimestre] = useState(() => Math.ceil(mesSeleccionado / 3));
   const [mes, setMes] = useState(mesSeleccionado);
@@ -135,7 +143,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
   );
   const [loading, setLoading] = useState(!inicial);
   const [porTrimestre, setPorTrimestre] = useState<AgregadoKpi[] | null>(null);
-  const [porMes, setPorMes] = useState<AgregadoKpi[] | null>(null);
+  const [porMes, setPorMes] = useState<AgregadoKpi[] | null>(mensualInicial ?? null);
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const primerRender = useRef(true);
 
@@ -189,7 +197,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
   }, [anio, tab, verTodo]);
 
   useEffect(() => {
-    if (tab !== 'mensual') return;
+    if (tab !== 'mensual' || mensualInicial) return;
     let cancelado = false;
     getAccessToken()
       .then((accessToken) => getKpisMensual(accessToken, anio, verTodo))
@@ -199,7 +207,7 @@ export function ResumenAcumulado({ anio, mesSeleccionado, verTodo, inicial }: Pr
     return () => {
       cancelado = true;
     };
-  }, [anio, tab, verTodo]);
+  }, [anio, tab, verTodo, mensualInicial]);
 
   const nombrePeriodo =
     tab === 'trimestral'
