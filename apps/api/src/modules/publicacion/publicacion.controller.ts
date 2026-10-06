@@ -6,6 +6,7 @@ import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero/tablero.util';
 import { PublicacionService } from './publicacion.service';
+import { Costoso } from '../../common/limite-solicitudes';
 
 /**
  * Configuración del módulo de Publicación.
@@ -51,6 +52,7 @@ export class PublicacionController {
    * Tokko. POST y no GET porque sale a la red y escribe en nuestra base.
    */
   @Post('propiedades/importar')
+  @Costoso(3)
   @Roles(...ROLES_PUBLICACION)
   @ApiOperation({ summary: 'Trae desde Tokko las N propiedades más recientes' })
   importar(

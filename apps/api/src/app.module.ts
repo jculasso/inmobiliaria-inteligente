@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClsModule } from 'nestjs-cls';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { opcionesDeLimite } from './common/limite-solicitudes';
 import { validateEnv } from './config/env';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -28,6 +30,9 @@ import { AdminModule } from './admin/admin.module';
     }),
     // Contexto por request (tenant/user/roles) accesible en la capa de datos.
     ClsModule.forRoot({ global: true, middleware: { mount: true } }),
+    // Límite de pedidos por persona (ver common/limite-solicitudes.ts). El
+    // guard se registra en AuthModule, detrás del AuthGuard.
+    ThrottlerModule.forRoot(opcionesDeLimite()),
     PrismaModule,
     AuthModule,
     HealthModule,
