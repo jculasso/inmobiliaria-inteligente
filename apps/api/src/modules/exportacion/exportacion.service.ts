@@ -26,7 +26,14 @@ export class ExportacionService {
 
   constructor(private readonly db: TenantPrismaService) {}
 
-  async exportar(ctx: TenantContext): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+  /**
+   * @param anio el año cuyo objetivo va en vendedores.csv. Por defecto, el año
+   *   en curso en Argentina (UTC-3): el 31/12 a las 22 h todavía es ese año.
+   */
+  async exportar(
+    ctx: TenantContext,
+    anio = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear(),
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     // El filtro por inquilino va EXPLÍCITO además de RLS. En el resto del
     // sistema alcanza con RLS —es la barrera real y está probada—, pero este es
     // el único endpoint que vuelca la cartera entera: si algún día faltara una
@@ -271,11 +278,14 @@ export class ExportacionService {
             { clave: 'estado', titulo: 'Estado' },
             { clave: 'roles', titulo: 'Roles' },
             { clave: 'lider', titulo: 'Reporta a' },
-            { clave: 'objComision', titulo: 'Objetivo de comisión 2026' },
-            { clave: 'objPuntas', titulo: 'Objetivo de puntas 2026' },
+            { clave: 'objComision', titulo: `Objetivo de comisión ${anio}` },
+            { clave: 'objPuntas', titulo: `Objetivo de puntas ${anio}` },
           ],
           datos.usuarios.map((u) => {
-            const o = obj.get(`${u.id}-2026`);
+            // El año en curso, no uno fijo: decía 2026 escrito a mano, así
+            // que desde enero de 2027 la columna habría salido vacía para
+            // todos. Los de los otros años van en objetivos.csv.
+            const o = obj.get(`${u.id}-${anio}`);
             return {
               nombre: u.nombre,
               email: u.email,
@@ -287,6 +297,27 @@ export class ExportacionService {
               objPuntas: o ? o.objPuntas : null,
             };
           }),
+        ),
+      },
+      {
+        nombre: 'objetivos.csv',
+        contenido: armarCsv(
+          [
+            { clave: 'vendedor', titulo: 'Vendedor' },
+            { clave: 'anio', titulo: 'Año' },
+            { clave: 'objComision', titulo: 'Objetivo de comisión' },
+            { clave: 'objVolumen', titulo: 'Objetivo de volumen' },
+            { clave: 'objPuntas', titulo: 'Objetivo de puntas' },
+          ],
+          [...datos.objetivos]
+            .sort((a, b) => b.anio - a.anio || a.usuario.nombre.localeCompare(b.usuario.nombre))
+            .map((o) => ({
+              vendedor: o.usuario.nombre,
+              anio: o.anio,
+              objComision: num(o.objComision),
+              objVolumen: num(o.objVolumen),
+              objPuntas: o.objPuntas,
+            })),
         ),
       },
     ];
@@ -320,7 +351,8 @@ export class ExportacionService {
       '  tasaciones-comparables.csv ... los comparables usados en cada tasación',
       '  protocolos.csv ............... las propiedades en comercialización',
       '  protocolos-acciones.csv ...... las 29 acciones de cada protocolo',
-      '  vendedores.csv ............... el equipo, sus roles y objetivos',
+      '  vendedores.csv ............... el equipo, sus roles y el objetivo del año',
+      '  objetivos.csv ................ los objetivos de todos los años',
       '',
       'CÓMO ABRIRLAS',
       '',
