@@ -14,6 +14,7 @@ import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cambiarEstadoTasacion } from '../../lib/tasador-api';
 import { Campo, inputClass } from '../form-ui';
+import { MensajeError } from '../piezas';
 
 const ESTADOS = EstadoTasacionSchema.options;
 const MOTIVOS = MotivoNoCaptadaSchema.options;
@@ -53,6 +54,7 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
 
     let dto: CambiarEstado;
@@ -95,6 +97,7 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
       title={`Cambiar estado — ${tasacion.direccion}`}
       subtitle={tasacion.cliente}
       onClose={onClose}
+      cerrable={!loading}
     >
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <Campo label="Estado">
@@ -125,11 +128,13 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
               Exclusiva
               <input
                 type="number"
+                inputMode="numeric"
+                aria-label="Días de exclusividad"
                 min={1}
                 value={dias}
                 onChange={(e) => setDias(e.target.value)}
                 disabled={tipoExclusividad !== 'exclusiva'}
-                className="h-8 w-20 rounded-brand border border-line px-2 text-sm disabled:bg-surface"
+                className="h-10 w-20 rounded-brand border border-line px-2 text-sm disabled:bg-surface"
               />
               días
             </label>
@@ -161,14 +166,10 @@ export function CambiarEstadoModal({ tasacion, onClose, onSaved }: Props) {
           </Campo>
         )}
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
-            {error}
-          </p>
-        )}
+        <MensajeError>{error}</MensajeError>
 
         <div className="mt-2 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
           <Button type="submit" variant="primary" disabled={loading}>
