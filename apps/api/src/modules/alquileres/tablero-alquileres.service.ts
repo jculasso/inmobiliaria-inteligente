@@ -221,6 +221,13 @@ export class TableroAlquileresService {
             .map((p) => ({ id: `${p.persona.id}|${p.moneda}`, href: `/alquileres/liquidaciones/nueva?persona=${p.persona.id}`, contrato: null, persona: p.persona.nombre, detalle: 'Para liquidar', fecha: null, importe: p.neto })),
         ),
         deudores: porCantidad([...deudores.values()].sort((a, b) => (b.importe ?? 0) - (a.importe ?? 0))),
+        // Regla 36: puede estar vigente sin firma electrónica (se firmó en
+        // papel), pero el contrato firmado tiene que quedar cargado.
+        sinFirmar: porCantidad(
+          vigentes
+            .filter((c) => !c.documentos.some((d) => d.estadoFirma === 'firmado'))
+            .map((c) => filaContrato(c, null, c.documentos.length ? 'Falta completar la firma' : 'Falta cargar el contrato firmado')),
+        ),
       },
     };
   }
@@ -245,6 +252,7 @@ export class TableroAlquileresService {
           propiedad: { select: { direccion: true, unidad: true } },
           partes: { select: { personaId: true, papel: true, persona: { select: { nombre: true } } } },
           tramos: { select: { desde: true, importe: true }, orderBy: { numero: 'asc' } },
+          documentos: { select: { estadoFirma: true } },
         },
         orderBy: { codigo: 'asc' },
       }),

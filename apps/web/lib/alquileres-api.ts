@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import {
   BandejaIndexacionDtoSchema,
+  DocumentoContratoDtoSchema,
+  DocumentoDeContratoDtoSchema,
+  UrlArchivoDtoSchema,
+  type CambioFirmaManualInput,
   TableroAlquileresDtoSchema,
   LiquidacionDtoSchema,
   LiquidacionResumenDtoSchema,
@@ -27,7 +31,7 @@ import {
   type PersonaInput,
   type PropiedadAlquilerInput,
 } from '@vacker/types';
-import { apiFetch, apiFetchPdf } from './api-client';
+import { apiFetch, apiFetchForm, apiFetchPdf } from './api-client';
 
 /** Cuánto tiene cargado la inmobiliaria en el módulo (GET /alquileres/resumen). */
 export async function getResumenAlquileres(accessToken: string) {
@@ -172,4 +176,30 @@ export async function generarLiquidacionPdf(accessToken: string, id: string) {
 /** El tablero del módulo (reglas 26 a 32). */
 export async function getTableroAlquileres(accessToken: string) {
   return apiFetch('/alquileres/tablero', TableroAlquileresDtoSchema, { accessToken });
+}
+
+/** El documento del contrato y su firma (reglas 33 a 36). */
+export async function getDocumentoContrato(accessToken: string, contratoId: string) {
+  return apiFetch(`/alquileres/contratos/${contratoId}/documento`, DocumentoDeContratoDtoSchema, { accessToken });
+}
+
+export async function cargarDocumentoContrato(accessToken: string, contratoId: string, file: File) {
+  return apiFetchForm(`/alquileres/contratos/${contratoId}/documento`, DocumentoContratoDtoSchema, { accessToken, file });
+}
+
+export async function enviarAFirmar(accessToken: string, documentoId: string) {
+  return apiFetch(`/alquileres/documentos/${documentoId}/enviar`, DocumentoContratoDtoSchema, { accessToken, method: 'POST', body: {} });
+}
+
+export async function cambiarFirma(accessToken: string, documentoId: string, cambio: CambioFirmaManualInput) {
+  return apiFetch(`/alquileres/documentos/${documentoId}/firma`, DocumentoContratoDtoSchema, { accessToken, method: 'POST', body: cambio });
+}
+
+export async function cargarContratoFirmado(accessToken: string, documentoId: string, file: File) {
+  return apiFetchForm(`/alquileres/documentos/${documentoId}/firmado`, DocumentoContratoDtoSchema, { accessToken, file });
+}
+
+/** Link de vida corta al PDF: el bucket es privado. */
+export async function urlDocumento(accessToken: string, documentoId: string, firmado: boolean) {
+  return apiFetch(`/alquileres/documentos/${documentoId}/archivo${firmado ? '?firmado=1' : ''}`, UrlArchivoDtoSchema, { accessToken });
 }

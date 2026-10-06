@@ -53,6 +53,7 @@ export function TableroAlquileres({ tablero: t }: { tablero: TableroAlquileresDt
     ['Depósitos a devolver', t.tareas.depositos],
     ['Propietarios para liquidar', t.tareas.liquidaciones],
     ['Inquilinos con deuda de más de 30 días', t.tareas.deudores],
+    ['Contratos vigentes sin el firmado cargado', t.tareas.sinFirmar],
   ];
 
   return (

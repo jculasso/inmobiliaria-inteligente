@@ -45,6 +45,16 @@ export class SupabaseStorageService {
     return path;
   }
 
+  /** Los bytes de un objeto de un bucket privado (para mandarlo a un tercero, p. ej. a firmar). */
+  async descargarPrivado(bucket: string, path: string): Promise<Buffer> {
+    const res = await fetch(`${this.baseUrl()}/storage/v1/object/${bucket}/${path}`, {
+      headers: this.headers(),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new InternalServerErrorException(`No se pudo leer el archivo de Supabase Storage (${res.status}).`);
+    return Buffer.from(await res.arrayBuffer());
+  }
+
   /** URL firmada (vida corta) de un objeto de un bucket privado. */
   async signedUrl(bucket: string, path: string, expiresIn: number = SIGNED_URL_TTL): Promise<string> {
     const res = await fetch(`${this.baseUrl()}/storage/v1/object/sign/${bucket}/${path}`, {

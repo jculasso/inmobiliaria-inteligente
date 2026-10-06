@@ -682,3 +682,20 @@ export function tramoDeMora(dias: number): '1-30' | '31-60' | '61-90' | '90+' {
   if (dias <= 90) return '61-90';
   return '90+';
 }
+
+// --- Firma del contrato (reglas 33 y 34) ---------------------------------------------
+
+export type EstadoFirma = 'sin_enviar' | 'enviado' | 'firmado_parcial' | 'firmado' | 'rechazado' | 'vencido';
+export type EstadoFirmante = 'pendiente' | 'firmado' | 'rechazado';
+
+/**
+ * Regla 33: el estado del documento sale de sus firmantes. Alguien rechazó:
+ * rechazado. Firmaron todos: firmado. Algunos: firmado en parte. Nadie
+ * todavía: queda como estaba (sin enviar, enviado o vencido).
+ */
+export function estadoDeFirma(actual: EstadoFirma, firmantes: EstadoFirmante[]): EstadoFirma {
+  if (firmantes.some((f) => f === 'rechazado')) return 'rechazado';
+  if (firmantes.length > 0 && firmantes.every((f) => f === 'firmado')) return 'firmado';
+  if (firmantes.some((f) => f === 'firmado')) return 'firmado_parcial';
+  return actual === 'firmado' || actual === 'firmado_parcial' || actual === 'rechazado' ? 'enviado' : actual;
+}
