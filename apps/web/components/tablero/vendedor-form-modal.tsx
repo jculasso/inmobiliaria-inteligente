@@ -6,7 +6,10 @@ import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { createVendedor, updateVendedor } from '../../lib/tablero-api';
 import { fmtUSD } from '../../lib/format';
-import { Campo, MoneyInput, OpcionCard, Seccion, inputClass } from '../form-ui';
+import { escribirImporte, leerImporte } from '../../lib/importe';
+import { Campo, OpcionCard, Seccion, inputClass } from '../form-ui';
+import { InputImporte } from '../input-importe';
+import { MensajeError } from '../piezas';
 
 interface Props {
   vendedores: VendedorDto[];
@@ -26,7 +29,7 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
     vendedor?.roles.includes('team_leader') ? 'team_leader' : 'vendedor',
   );
   const [liderId, setLiderId] = useState(vendedor?.liderId ?? '');
-  const [objComision, setObjComision] = useState(String(objetivoActual?.objComision ?? ''));
+  const [objComision, setObjComision] = useState(escribirImporte(objetivoActual?.objComision));
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,11 +37,17 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
   const lideresDisponibles = vendedores.filter(
     (v) => v.roles.includes('team_leader') && v.id !== vendedor?.id,
   );
-  const objetivoMensual = (Number(objComision) || 0) / 12;
+  // «48.000» es cuarenta y ocho mil, no 48: el mismo lector de importes de toda la app.
+  const objetivoLeido = leerImporte(objComision);
+  const objetivoMensual = (objetivoLeido || 0) / 12;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (Number.isNaN(objetivoLeido)) {
+      setError(`«${objComision}» no es un importe. Escribilo con números, por ejemplo 48.000.`);
+      return;
+    }
     setLoading(true);
     try {
       const accessToken = await getAccessToken();
@@ -47,7 +56,7 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
       // segundo viaje completo solo para el objetivo se nota bastante.
       const objetivo = {
         anio: anioActual,
-        objComision: Number(objComision) || 0,
+        objComision: objetivoLeido ?? 0,
         objVolumen: 0,
         objPuntas: 0,
       };
@@ -182,7 +191,7 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
         <Seccion titulo={`Objetivo ${anioActual}`} icono="🎯" full>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <Campo label="Comisión objetivo del año">
-              <MoneyInput value={objComision} onChange={setObjComision} />
+              <InputImporte moneda="USD" value={objComision} onChange={setObjComision} />
             </Campo>
             <div className="flex flex-col justify-center rounded-brand bg-surface px-3 py-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">
@@ -195,11 +204,7 @@ export function VendedorFormModal({ vendedores, vendedor, onClose, onSaved }: Pr
           </div>
         </Seccion>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red sm:col-span-2">
-            {error}
-          </p>
-        )}
+        <MensajeError className="sm:col-span-2">{error}</MensajeError>
 
         <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onClose}>

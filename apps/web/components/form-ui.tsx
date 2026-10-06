@@ -101,33 +101,6 @@ export function CheckCard({
   );
 }
 
-/** Input de monto con el prefijo de moneda adentro, como en el form de operaciones. */
-export function MoneyInput({
-  value,
-  onChange,
-  moneda = 'USD',
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  moneda?: string;
-}) {
-  return (
-    <div className="relative">
-      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted">
-        {moneda}
-      </span>
-      <input
-        type="number"
-        min={0}
-        step="0.01"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${inputClass} pl-11 text-right font-semibold`}
-      />
-    </div>
-  );
-}
-
 /** Opción excluyente con descripción — para elegir entre pocos valores. */
 export function OpcionCard({
   seleccionada,
