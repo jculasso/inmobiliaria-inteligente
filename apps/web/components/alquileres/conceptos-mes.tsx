@@ -34,6 +34,10 @@ const NOMBRE_TIPO: Record<TipoConcepto, string> = {
   reparacion: 'Reparación',
   saldo_inicial: 'Saldo inicial',
   otro: 'Otro',
+  comision: 'Comisión inicial',
+  informe: 'Informe de garantía',
+  deposito: 'Depósito en garantía',
+  sellado: 'Sellado',
 };
 
 const mesDe = (periodo: string) => mesLargo(`${periodo}-01`);
@@ -57,8 +61,8 @@ function totales(conceptos: ConceptoDto[]) {
       titulo: 'Para la inmobiliaria',
       icono: '🏢',
       tono: 'success' as const,
-      detalle: 'honorarios y gastos administrativos',
-      valores: porMoneda((c) => c.tipo === 'honorarios' || c.tipo === 'gastos_adm'),
+      detalle: 'honorarios, gastos, comisiones e informes',
+      valores: porMoneda((c) => ['honorarios', 'gastos_adm', 'comision', 'informe'].includes(c.tipo)),
     },
   ];
 }
@@ -109,7 +113,7 @@ function agrupar(conceptos: ConceptoDto[]): Grupo[] {
       conceptos: xs,
       inquilino: suma(xs, (c) => (c.sentido === 'a_cobrar' && c.papel !== 'propietario' ? c.importe : 0)),
       propietario: suma(xs, (c) => (c.papel === 'propietario' ? (c.sentido === 'a_pagar' ? c.importe : -c.importe) : 0)),
-      inmobiliaria: suma(xs, (c) => (c.tipo === 'honorarios' || c.tipo === 'gastos_adm' ? c.importe : 0)),
+      inmobiliaria: suma(xs, (c) => (['honorarios', 'gastos_adm', 'comision', 'informe'].includes(c.tipo) ? c.importe : 0)),
     }))
     .sort((a, b) => (!a.contrato ? 1 : !b.contrato ? -1 : a.contrato.codigo.localeCompare(b.contrato.codigo, 'es', { numeric: true })));
 }

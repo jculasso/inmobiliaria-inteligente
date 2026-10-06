@@ -227,10 +227,10 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
   // Los gráficos van en pesos, la moneda de toda la cartera de Vacker.
   const evolucion = (m: string) => t.evolucion.find((x) => x.mes === m && x.moneda === 'ARS');
   const ingreso = (m: string) => t.ingresos.find((x) => x.mes === m && x.moneda === 'ARS');
-  const deIngreso = (campo: 'honorarios' | 'gastos' | 'punitorios') => meses.map((m) => ingreso(m)?.[campo] ?? 0);
+  const deIngreso = (campo: 'honorarios' | 'gastos' | 'punitorios' | 'comisiones') => meses.map((m) => ingreso(m)?.[campo] ?? 0);
   const totalIngreso = (m: string) => {
     const i = ingreso(m);
-    return i ? i.honorarios + i.gastos + i.punitorios : 0;
+    return i ? i.honorarios + i.gastos + i.punitorios + (i.comisiones ?? 0) : 0;
   };
 
   const emitido = meses.map((m) => evolucion(m)?.emitido ?? 0);
@@ -246,6 +246,7 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
   const honorarios = deIngreso('honorarios');
   const gastos = deIngreso('gastos');
   const punitorios = deIngreso('punitorios');
+  const comisiones = deIngreso('comisiones');
   const filas: FilaPeriodos[] = [
     { label: 'Alquileres emitidos', valores: emitido, total: suma(emitido), formato: plata },
     { label: 'Cobrado al cierre', valores: cobrado, total: suma(cobrado), formato: plata },
@@ -259,6 +260,7 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
     { label: 'Honorarios', valores: honorarios, total: suma(honorarios), formato: plata, separa: true },
     { label: 'Gastos adm.', valores: gastos, total: suma(gastos), formato: plata },
     { label: 'Punitorios', valores: punitorios, total: suma(punitorios), formato: plata },
+    { label: 'Comisiones e informes', valores: comisiones, total: suma(comisiones), formato: plata },
     { label: 'Ingresos', valores: ingresos, total: suma(ingresos), formato: plata, destaca: true },
     { label: `Ingresos ${t.anio - 1}`, valores: ingresosAntes, total: suma(ingresosAntes), formato: plata },
   ];

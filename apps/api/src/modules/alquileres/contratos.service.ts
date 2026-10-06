@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import type { Prisma } from '@prisma/client';
 import {
   LIMITE_LISTA_CON_SONDA,
+  TenantConfigSchema,
   codigoDeContrato,
   prefijoDeContratos,
   type CambiarEstadoContrato,
@@ -9,9 +10,10 @@ import {
   type ContratoDatos,
   type ContratoDto,
   type ContratoResumenDto,
+  type ExtenderContrato,
   type EstadoContrato,
 } from '@vacker/types';
-import { validarPartes, validarTramos } from '@vacker/domain';
+import { generarTramos, sumarDiasIso, validarPartes, validarTramos } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
@@ -64,7 +66,7 @@ export class ContratosService {
       const codigo = dto.codigo ? await this.normalizarCodigo(tx, ctx, dto.codigo) : await this.siguienteCodigo(tx, ctx);
       await this.assertCodigoLibre(tx, codigo);
       const fila = await tx.alqContrato.create({
-        data: { ...columnas(dto), codigo, tenantId: ctx.tenantId, estado: 'borrador', creadoPorId: ctx.userId, ...hijos(ctx.tenantId, dto) },
+        data: { ...columnas(dto), codigo, tenantId: ctx.tenantId, estado: 'borrador', creadoPorId: ctx.userId, depositoGestion: await this.gestionDeposito(tx, ctx), ...hijos(ctx.tenantId, dto) },
         include: INCLUIR,
       });
       await registrarEventos(tx, ctx, { entidad: 'contrato', entidadId: fila.id, contratoId: fila.id, accion: 'alta', resumen: `Alta del contrato ${codigo}, en borrador` });
@@ -133,6 +135,46 @@ export class ContratosService {
           detalle: Object.fromEntries(cambios.map((k) => [k, { antes: antes[k] ?? null, despues: datos[k] ?? null }])),
         });
       }
+      return this.dto(tx, fila);
+    });
+  }
+
+  /**
+   * Extender un contrato vigente (punto 13 de Javier, como el botón de Gexion):
+   * los tramos nuevos arrancan al día siguiente del fin y siguen la misma
+   * periodicidad. Indexado: se indexan como cualquier tramo. Escalonado: un
+   * tramo con el importe que se indica.
+   */
+  async extender(ctx: TenantContext, id: string, dto: ExtenderContrato): Promise<ContratoDto> {
+    return this.db.withTenant(async (tx) => {
+      const actual = await this.buscar(tx, id);
+      if (actual.estado !== 'vigente') throw new BadRequestException('Se extiende un contrato vigente.');
+      const finActual = fromDate(actual.fin)!;
+      if (dto.nuevoFin <= finActual) throw new BadRequestException(`La nueva fecha de fin tiene que ser posterior al ${dia(finActual)}.`);
+      const desde = sumarDiasIso(finActual, 1);
+      const indexado = actual.ajuste === 'indexado' && actual.periodicidadMeses;
+      if (!indexado && dto.importeBase == null) throw new BadRequestException('Un contrato escalonado necesita el importe del tramo nuevo.');
+      const base = actual.tramos.at(-1)?.numero ?? 0;
+      const nuevos = indexado ? generarTramos(desde, dto.nuevoFin, actual.periodicidadMeses!) : [{ numero: 1, desde, hasta: dto.nuevoFin }];
+      await tx.alqTramo.createMany({
+        data: nuevos.map((t) => ({
+          tenantId: ctx.tenantId,
+          contratoId: id,
+          numero: base + t.numero,
+          desde: toDate(t.desde)!,
+          hasta: toDate(t.hasta)!,
+          // Indexado: el importe sale de indexar, como cualquier tramo.
+          importe: indexado ? null : dto.importeBase,
+        })),
+      });
+      const fila = await tx.alqContrato.update({ where: { id }, data: { fin: toDate(dto.nuevoFin)! }, include: INCLUIR });
+      await registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: id,
+        contratoId: id,
+        accion: 'edicion',
+        resumen: `Contrato ${actual.codigo} extendido del ${dia(finActual)} al ${dia(dto.nuevoFin)}: ${nuevos.length} ${nuevos.length === 1 ? 'tramo nuevo' : 'tramos nuevos'}`,
+      });
       return this.dto(tx, fila);
     });
   }
@@ -267,6 +309,12 @@ export class ContratosService {
   private async dto(tx: Tx, f: FilaContrato): Promise<ContratoDto> {
     const nombres = await nombresDeUsuarios(tx, [f.creadoPorId, f.anuladoPorId]);
     return aDto(f, nombres);
+  }
+
+  /** Cómo se gestiona el depósito en los contratos nuevos: lo que diga la configuración de la inmobiliaria. */
+  private async gestionDeposito(tx: Tx, ctx: TenantContext): Promise<string> {
+    const t = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } });
+    return TenantConfigSchema.parse(t.config ?? {}).depositoGestion;
   }
 
   private async prefijo(tx: Tx, ctx: TenantContext): Promise<string> {

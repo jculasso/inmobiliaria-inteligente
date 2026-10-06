@@ -256,6 +256,7 @@ export class TableroAlquileresService {
         honorarios: decToNum(i.honorarios),
         gastos: decToNum(i.gastos),
         punitorios: decToNum(i.punitorios),
+        comisiones: i.comisiones == null ? 0 : decToNum(i.comisiones),
       })),
       tareas: {
         indexacionesVencidas: porCantidad(bandeja.tramos.filter((t) => t.vencida).map(filaIndexacion)),
@@ -370,11 +371,12 @@ export class TableroAlquileresService {
          ORDER BY k.periodo, k.moneda`,
       // Regla 30: gastos y punitorios cobrados (por la fecha del cobro) y
       // honorarios descontados (por la fecha de la liquidación).
-      tx.$queryRaw<{ mes: string; moneda: string; honorarios: Prisma.Decimal; gastos: Prisma.Decimal; punitorios: Prisma.Decimal }[]>`
+      tx.$queryRaw<{ mes: string; moneda: string; honorarios: Prisma.Decimal; gastos: Prisma.Decimal; punitorios: Prisma.Decimal; comisiones: Prisma.Decimal | null }[]>`
         SELECT mes, moneda,
                SUM(importe) FILTER (WHERE tipo = 'honorarios') AS honorarios,
                SUM(importe) FILTER (WHERE tipo = 'gastos_adm') AS gastos,
-               SUM(importe) FILTER (WHERE tipo = 'punitorio') AS punitorios
+               SUM(importe) FILTER (WHERE tipo = 'punitorio') AS punitorios,
+               SUM(importe) FILTER (WHERE tipo IN ('comision', 'informe')) AS comisiones
           FROM (
             SELECT to_char(re.fecha, 'YYYY-MM') AS mes, k.moneda, k.tipo, im.importe
               FROM alq_imputacion im
@@ -382,7 +384,7 @@ export class TableroAlquileresService {
               JOIN alq_contrato c ON c.id = k.contrato_id
               JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
               JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
-             WHERE k.tipo IN ('gastos_adm', 'punitorio') AND re.fecha >= ${toDate(desdeIngresos)} AND re.fecha < ${toDate(hastaIngresos)}
+             WHERE k.tipo IN ('gastos_adm', 'punitorio', 'comision', 'informe') AND re.fecha >= ${toDate(desdeIngresos)} AND re.fecha < ${toDate(hastaIngresos)}
                ${delTipo}
             UNION ALL
             SELECT to_char(l.fecha, 'YYYY-MM'), k.moneda, k.tipo, k.importe

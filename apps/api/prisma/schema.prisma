@@ -56,6 +56,7 @@ model Tenant {
   alqEventos               AlqEvento[]
   alqCuentasBancarias      AlqCuentaBancaria[]
   alqContactos             AlqContacto[]
+  alqGarantias             AlqGarantia[]
 
   @@map("tenant")
 }
@@ -695,6 +696,8 @@ model AlqContrato {
   depositoImporte    Decimal?  @map("deposito_importe") @db.Decimal(14, 2)
   depositoMoneda     String?   @map("deposito_moneda")
   depositoDevolucion DateTime? @map("deposito_devolucion") @db.Date
+  /// entrega_propietario | retiene_inmobiliaria (Javier, 6/10/2026: se le entrega al propietario)
+  depositoGestion    String    @default("entrega_propietario") @map("deposito_gestion")
   estado             String    @default("borrador") // borrador | vigente | finalizado | rescindido | anulado
   rescindidoEl       DateTime? @map("rescindido_el") @db.Date
   obs                String?
@@ -714,6 +717,7 @@ model AlqContrato {
   tramos     AlqTramo[]
   conceptos  AlqConcepto[]
   documentos AlqDocumento[]
+  garantias  AlqGarantia[]
 
   @@unique([tenantId, codigo])
   @@index([tenantId])
@@ -1060,4 +1064,30 @@ model AlqContacto {
   @@index([tenantId])
   @@index([personaId])
   @@map("alq_contacto")
+}
+
+/// Una garantía del contrato y su informe (Gexion; punto 11 de Javier).
+model AlqGarantia {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  contratoId String    @map("contrato_id") @db.Uuid
+  /// propietaria | laboral | caucion | otra
+  tipo       String
+  /// El garante si está cargado como persona (sin clave foránea: puede no estarlo).
+  personaId  String?   @map("persona_id") @db.Uuid
+  garante    String?
+  /// Propietaria: la propiedad. Caución: aseguradora y póliza. Laboral: empleador.
+  detalle    String?
+  /// pendiente | aprobada | rechazada
+  estado     String    @default("pendiente")
+  aprobadaEl DateTime? @map("aprobada_el") @db.Date
+  obs        String?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato AlqContrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contratoId])
+  @@map("alq_garantia")
 }

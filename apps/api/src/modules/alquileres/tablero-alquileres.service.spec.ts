@@ -219,7 +219,7 @@ describe('TableroAlquileresService', () => {
   });
 
   it('los ingresos llegan por mes, con los punitorios en cero si no hubo', async () => {
-    expect((await servicio().tablero(HOY)).ingresos).toEqual([{ mes: '2026-10', moneda: 'ARS', honorarios: 110_111.74, gastos: 27_527.94, punitorios: 0 }]);
+    expect((await servicio().tablero(HOY)).ingresos).toEqual([{ mes: '2026-10', moneda: 'ARS', honorarios: 110_111.74, gastos: 27_527.94, punitorios: 0, comisiones: 0 }]);
   });
 
   // Punto 8 de Javier: Particulares y Comerciales por separado, en todo el tablero.

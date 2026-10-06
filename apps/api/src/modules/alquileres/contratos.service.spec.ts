@@ -94,7 +94,7 @@ function makeTx(over: { contratos?: unknown[]; personas?: number; propiedad?: un
     alqPropiedad: { findUnique: vi.fn().mockResolvedValue(over.propiedad === undefined ? { id: PROP } : over.propiedad) },
     alqPersona: { count: vi.fn().mockResolvedValue(over.personas ?? 2) },
     alqContratoParte: { deleteMany: vi.fn() },
-    alqTramo: { deleteMany: vi.fn() },
+    alqTramo: { deleteMany: vi.fn(), createMany: vi.fn() },
     alqConcepto: {
       updateMany: vi.fn(),
       count: vi.fn(async (args: { where: { liquidacionId?: unknown } }) => (args.where.liquidacionId ? (over.liquidados ?? 0) : (over.cobrados ?? 0))),
@@ -294,5 +294,30 @@ describe('ContratosService · borrar, anular y editar lo que no toca plata (deci
   it('un borrador no usa la edición corta: se edita completo', async () => {
     const tx = makeTx({ existente: fila({ estado: 'borrador' }) });
     await expect(new ContratosService(makeDb(tx)).actualizarDatos(CTX, 'c1', { fechaFirma: null, diaVencimiento: 5, diaPagoPropietario: 10, obs: null })).rejects.toThrow(/se edita completo/);
+  });
+});
+
+describe('ContratosService.extender (punto 13 de Javier)', () => {
+  it('indexado: tramos nuevos desde el día siguiente al fin, con la misma periodicidad y a indexar', async () => {
+    const tx = makeTx({ existente: fila({ estado: 'vigente', tramos: [{ numero: 6, desde: new Date('2026-07-01'), hasta: new Date('2026-10-31'), importe: 500_000, confirmadoEl: null }] }) });
+    await new ContratosService(makeDb(tx)).extender(CTX, 'c1', { nuevoFin: '2027-10-31', importeBase: null });
+    const tramos = tx.alqTramo.createMany.mock.calls[0]![0].data.map((t: { numero: number; desde: Date; hasta: Date; importe: unknown }) => [t.numero, t.desde.toISOString().slice(0, 10), t.hasta.toISOString().slice(0, 10), t.importe]);
+    expect(tramos).toEqual([
+      [7, '2026-11-01', '2027-02-28', null],
+      [8, '2027-03-01', '2027-06-30', null],
+      [9, '2027-07-01', '2027-10-31', null],
+    ]);
+    expect((tx.alqContrato.update.mock.calls[0]![0].data.fin as Date).toISOString().slice(0, 10)).toBe('2027-10-31');
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0].resumen).toBe('Contrato 1 extendido del 31/10/2026 al 31/10/2027: 3 tramos nuevos');
+  });
+
+  it('la nueva fecha tiene que ser posterior al fin', async () => {
+    const tx = makeTx({ existente: fila({ estado: 'vigente' }) });
+    await expect(new ContratosService(makeDb(tx)).extender(CTX, 'c1', { nuevoFin: '2026-01-01', importeBase: null })).rejects.toThrow(/posterior al 31\/10\/2026/);
+  });
+
+  it('escalonado: necesita el importe del tramo nuevo', async () => {
+    const tx = makeTx({ existente: fila({ estado: 'vigente', ajuste: 'escalonado', indice: null, periodicidadMeses: null }) });
+    await expect(new ContratosService(makeDb(tx)).extender(CTX, 'c1', { nuevoFin: '2027-10-31', importeBase: null })).rejects.toThrow(/importe del tramo nuevo/);
   });
 });

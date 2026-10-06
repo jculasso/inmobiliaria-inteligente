@@ -33,6 +33,19 @@ export const TenantConfigSchema = z.object({
    * monotributista pone 0.
    */
   ivaHonorariosPct: z.number().min(0).max(27).default(21),
+  /**
+   * Cargos de ingreso de un contrato de alquiler (Javier, 6/10/2026: «la
+   * comisión la podemos dejar parametrizable»). Por defecto, como Vacker: 5%
+   * del valor total del contrato, más IVA, en 2 cuotas, a cargo del inquilino.
+   */
+  comisionInicialPct: z.number().min(0).max(20).default(5),
+  comisionInicialCuotas: z.number().int().min(1).max(12).default(2),
+  comisionInicialConIva: z.boolean().default(true),
+  /** Sellado: alícuota sobre el valor total y qué parte paga el inquilino (el resto, el propietario). 0 = no se calcula. */
+  selladoPct: z.number().min(0).max(5).default(0),
+  selladoInquilinoPct: z.number().min(0).max(100).default(50),
+  /** El depósito en garantía: Javier, 6/10/2026, «se le entrega al propietario». */
+  depositoGestion: z.enum(['entrega_propietario', 'retiene_inmobiliaria']).default('entrega_propietario'),
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 
