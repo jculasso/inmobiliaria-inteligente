@@ -10,7 +10,7 @@ import {
   type VendedorEnReporte,
 } from '@vacker/types';
 import { KpiCard } from '@vacker/ui';
-import { fmtNum, fmtUSD } from '../../lib/format';
+import { fmtFecha, fmtMoneda, fmtNum, fmtUSD } from '../../lib/format';
 import { AlertaItem, ETIQUETA_PRIORIDAD, FotoPropiedad } from './protocolo-ui';
 
 // Reporte semanal en pantalla. Es EL MISMO objeto que va a viajar en el mail,
@@ -74,15 +74,15 @@ function TiraDeSemanas({ propiedad }: { propiedad: PropiedadEnReporte }) {
   );
 }
 
-/** El monto con su moneda. `fmtUSD` asume dólares; acá puede venir otra. */
+/**
+ * El monto con su moneda: dólares como «U$S 185.000» y pesos como el resto de
+ * la app, «$ 120.000.000,00» (antes salía «ARS 120.000.000», que no se usa en
+ * ninguna otra pantalla).
+ */
 export function fmtPrecio(precio: number, moneda: string): string {
-  return moneda === 'USD' ? fmtUSD(precio) : `${moneda} ${fmtNum(precio)}`;
-}
-
-/** dd/mm/aaaa — el formato en que la dirección escribe las fechas. */
-export function fmtFechaCorta(iso: string): string {
-  const [a, m, d] = iso.split('-');
-  return a && m && d ? `${d}/${m}/${a}` : iso;
+  if (moneda === 'USD') return fmtUSD(precio);
+  if (moneda === 'ARS') return fmtMoneda(precio, 'ARS');
+  return `${moneda} ${fmtNum(precio)}`;
 }
 
 /**
@@ -132,10 +132,7 @@ function FichaPropiedad({ propiedad }: { propiedad: PropiedadEnReporte }) {
           </p>
           <p className="mt-0.5 text-xs text-muted">
             Desde el{' '}
-            <strong className="font-semibold text-ink">
-              {fmtFechaCorta(propiedad.fechaInicio)}
-            </strong>{' '}
-            ·{' '}
+            <strong className="font-semibold text-ink">{fmtFecha(propiedad.fechaInicio)}</strong> ·{' '}
             <strong className={`font-bold ${pasada ? 'text-warning' : 'text-ink'}`}>
               {propiedad.diasTranscurridos} {propiedad.diasTranscurridos === 1 ? 'día' : 'días'}
             </strong>

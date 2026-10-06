@@ -3,7 +3,7 @@ import { ColdStartHint } from '../../components/cold-start-hint';
 /**
  * Feedback instantáneo mientras el dashboard espera la respuesta de la API
  * (ver app/loading.tsx). Ocupa solo el `children` de `TasadorLayout` — el
- * título y el nav (Dashboard/Tasaciones/Reporte) ya los pinta el layout, que
+ * título y el nav (Panel/Captadas/Propiedades/Reporte) ya los pinta el layout, que
  * persiste entre navegaciones, así que no hace falta duplicarlos acá (antes
  * este skeleton traía su propia barra de "tabs" falsa que se veía superpuesta
  * un instante con el nav real).

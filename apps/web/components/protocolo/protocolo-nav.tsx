@@ -3,7 +3,9 @@
 import { NavModulo } from '../nav-modulo';
 
 const TABS = [
-  { href: '/protocolo', label: 'Dashboard' },
+  // «Panel», como dice el título de la página («Panel de comercialización»):
+  // la pestaña decía «Dashboard» y la página otra cosa.
+  { href: '/protocolo', label: 'Panel' },
   { href: '/protocolo/captadas', label: 'Captadas' },
   { href: '/protocolo/propiedades', label: 'Propiedades' },
 ];

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { KpiCard } from '@vacker/ui';
-import { requireServerPrincipal } from '../../lib/server-principal';
+import { Button, KpiCard } from '@vacker/ui';
+import { sesionServidor } from '../../lib/server-principal';
 import { puedeVerTodo } from '../../lib/rbac';
 import { fmtNum } from '../../lib/format';
 import { getProtocoloKpis, listProtocolos } from '../../lib/protocolo-api';
@@ -8,20 +8,25 @@ import { ToggleVerTodo } from '../../components/tablero/toggle-ver-todo';
 import { PropiedadCard } from '../../components/protocolo/propiedad-card';
 import { porcentaje } from '../../components/protocolo/protocolo-ui';
 import { PanelAlertas } from '../../components/protocolo/panel-alertas';
+import { CLASE_FOCO, EncabezadoPagina, TituloSeccion } from '../../components/piezas';
 
 export default async function ProtocoloDashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ verTodo?: string }>;
 }) {
-  const ctx = await requireServerPrincipal();
-  if (!ctx) return null;
+  const s = await sesionServidor();
+  if (!s) return null;
 
+  // El perfil, en paralelo con los datos: el rol solo decide si se muestra el
+  // check de «ver todo», no qué se pide.
   const verTodo = (await searchParams).verTodo === '1';
-  const [kpis, activas] = await Promise.all([
-    getProtocoloKpis(ctx.accessToken, verTodo),
-    listProtocolos(ctx.accessToken, { estado: 'activa', verTodo }),
+  const [principal, kpis, activas] = await Promise.all([
+    s.principal,
+    getProtocoloKpis(s.accessToken, verTodo),
+    listProtocolos(s.accessToken, { estado: 'activa', verTodo }),
   ]);
+  if (!principal) return null;
 
   // Las alertas se muestran juntas y ordenadas por urgencia: es la pantalla
   // desde la que se decide qué atender primero.
@@ -33,10 +38,9 @@ export default async function ProtocoloDashboardPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-ink sm:text-lg">Panel de comercialización</h2>
-        {puedeVerTodo(ctx.principal.roles) && <ToggleVerTodo />}
-      </div>
+      <EncabezadoPagina titulo="Panel de comercialización">
+        {puedeVerTodo(principal.roles) && <ToggleVerTodo />}
+      </EncabezadoPagina>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="En comercialización" value={fmtNum(kpis.activas)} icon="🏠" tone="brand" />
@@ -60,10 +64,10 @@ export default async function ProtocoloDashboardPage({
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-ink">Propiedades en comercialización</h3>
+          <TituloSeccion icono="🏠">Propiedades en comercialización</TituloSeccion>
           <Link
             href="/protocolo/captadas"
-            className="text-sm font-semibold text-brand-red hover:underline"
+            className={`rounded text-sm font-semibold text-brand-red hover:underline ${CLASE_FOCO}`}
           >
             Ver captadas sin iniciar →
           </Link>
@@ -81,12 +85,9 @@ export default async function ProtocoloDashboardPage({
               Iniciá el protocolo desde una tasación captada para empezar el seguimiento de las 5
               semanas.
             </p>
-            <Link
-              href="/protocolo/captadas"
-              className="mt-4 inline-flex items-center justify-center rounded-brand bg-brand-red px-4 py-2 text-sm font-bold text-white hover:bg-brand-red-dark"
-            >
-              Ver captadas
-            </Link>
+            <Button asChild variant="primary" className="mt-4">
+              <Link href="/protocolo/captadas">Ver captadas</Link>
+            </Button>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

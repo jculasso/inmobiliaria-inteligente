@@ -2,7 +2,8 @@ import Link from 'next/link';
 import type { ProtocoloResumenDto } from '@vacker/types';
 import { MOTIVO_ARCHIVO_LABEL, TOTAL_SEMANAS } from '@vacker/types';
 import { fmtUSD } from '../../lib/format';
-import { BarraAvance, ETIQUETA_PRIORIDAD, FotoPropiedad, Pill, porcentaje } from './protocolo-ui';
+import { Insignia } from '../piezas';
+import { BarraAvance, ETIQUETA_PRIORIDAD, FotoPropiedad, porcentaje } from './protocolo-ui';
 
 /** Nivel más urgente de las alertas — define el chip de la esquina. */
 function prioridad(p: ProtocoloResumenDto) {
@@ -52,10 +53,10 @@ export function PropiedadCard({ p }: { p: ProtocoloResumenDto }) {
         <BarraAvance valor={p.avance} />
 
         <div className="flex flex-wrap gap-1.5">
-          <Pill>{p.diasPublicada} días</Pill>
-          <Pill>{p.agente.nombre}</Pill>
+          <Insignia tono="neutro">{p.diasPublicada} días</Insignia>
+          <Insignia tono="neutro">{p.agente.nombre}</Insignia>
           {archivada && p.motivoArchivo && (
-            <Pill tono="neutro">{MOTIVO_ARCHIVO_LABEL[p.motivoArchivo]}</Pill>
+            <Insignia tono="neutro">{MOTIVO_ARCHIVO_LABEL[p.motivoArchivo]}</Insignia>
           )}
         </div>
 

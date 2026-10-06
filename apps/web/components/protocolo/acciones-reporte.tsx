@@ -5,6 +5,7 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarReporteSemanalPdf } from '../../lib/protocolo-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
+import { MensajeError } from '../piezas';
 import { EnviarReporteModal } from './enviar-reporte-modal';
 
 /**
@@ -34,17 +35,13 @@ export function AccionesReporte() {
     <div className="flex flex-col items-end gap-1.5">
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="secondary" onClick={descargar} disabled={generando}>
-          {generando ? 'Generando…' : 'Descargar PDF'}
+          {generando ? 'Generando…' : '📄 Descargar PDF'}
         </Button>
         <Button type="button" variant="primary" onClick={() => setAbierto(true)}>
           Enviar por mail
         </Button>
       </div>
-      {error && (
-        <p role="alert" className="max-w-xs text-right text-xs font-semibold text-danger">
-          {error}
-        </p>
-      )}
+      <MensajeError className="max-w-xs text-right text-xs">{error}</MensajeError>
 
       {abierto && <EnviarReporteModal onClose={() => setAbierto(false)} />}
     </div>
