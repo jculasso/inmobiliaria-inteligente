@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@vacker/ui';
 import { createClient } from '../../lib/supabase/client';
+import { mensajeDeIngreso } from '../../lib/error-ingreso';
+import { MensajeError } from '../piezas';
 import { OlvideClave } from './olvide-clave';
 
 /** Ruta a la que volver tras loguear (ver middleware.ts: ?redirect= es el destino original, ej. /admin, antes de rebotar a la Home). Solo se acepta un path relativo propio, para no habilitar un open redirect. */
@@ -68,10 +70,16 @@ export function LoginPanel() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    let authError: unknown;
+    try {
+      ({ error: authError } = await supabase.auth.signInWithPassword({ email, password }));
+    } catch (err) {
+      authError = err;
+    }
 
     if (authError) {
-      setError('Email o clave incorrectos.');
+      // Sin conexión no es «clave incorrecta»: ver `lib/error-ingreso.ts`.
+      setError(mensajeDeIngreso(authError));
       setLoading(false);
       return;
     }
@@ -180,11 +188,8 @@ export function LoginPanel() {
           </div>
         </div>
 
-        {error && (
-          <p role="alert" className="text-sm font-medium text-brand-red">
-            {error}
-          </p>
-        )}
+        {/* En `danger`: con el estilo de la plataforma, `brand-red` es azul y el error no se leía como error. */}
+        <MensajeError>{error}</MensajeError>
 
         <Button type="submit" variant="primary" disabled={loading} className="mt-1">
           {loading ? 'Ingresando…' : 'Ingresar'}

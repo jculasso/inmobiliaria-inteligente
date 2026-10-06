@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { createClient } from '../../lib/supabase/client';
+import { esFallaDeRed, MENSAJE_SIN_CONEXION } from '../../lib/error-ingreso';
+import { MensajeError } from '../piezas';
 
 /**
  * Recupero de contraseña. Arranca en modo "pedile al administrador", que
@@ -30,10 +32,15 @@ export function OlvideClave() {
       const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/cambiar-clave`,
       });
-      if (err) throw new Error(err.message);
+      if (err) throw err;
       setEnviado(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo enviar el correo.');
+      // El mensaje crudo de Supabase llegaba en inglés («Failed to fetch»).
+      setError(
+        esFallaDeRed(err)
+          ? MENSAJE_SIN_CONEXION
+          : 'No se pudo enviar el correo. Probá de nuevo en unos minutos.',
+      );
     } finally {
       setLoading(false);
     }
@@ -78,11 +85,7 @@ export function OlvideClave() {
             placeholder="tu@correo.com"
             className="h-9 w-full rounded-brand border border-line px-2.5 text-sm text-ink outline-none focus:border-brand-red"
           />
-          {error && (
-            <p role="alert" className="text-xs font-medium text-brand-red">
-              {error}
-            </p>
-          )}
+          <MensajeError>{error}</MensajeError>
           <button
             type="submit"
             disabled={loading}
