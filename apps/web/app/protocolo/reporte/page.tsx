@@ -5,6 +5,7 @@ import { puedeVerReporteProtocolo } from '../../../lib/rbac';
 import { getReporteSemanal } from '../../../lib/protocolo-api';
 import { ReporteSemanalVista } from '../../../components/protocolo/reporte-semanal';
 import { AccionesReporte } from '../../../components/protocolo/acciones-reporte';
+import { EncabezadoPagina } from '../../../components/piezas';
 
 // Se pide siempre fresco: el sentido de esta pantalla es correr el reporte
 // cuando uno tiene un rato, no leer una copia de ayer.
@@ -32,11 +33,11 @@ export default async function ReportePage() {
           <CardTitle>Este reporte es para la dirección</CardTitle>
           <CardDescription>
             Reúne las alertas de toda la inmobiliaria, agrupadas por vendedor. Tus propias
-            propiedades y sus alertas las tenés en el dashboard del módulo.
+            propiedades y sus alertas las tenés en el panel del módulo.
           </CardDescription>
         </CardHeader>
         <Link href="/protocolo" className="text-sm font-semibold text-brand-red hover:underline">
-          ← Ir al dashboard
+          ← Ir al panel
         </Link>
       </Card>
     );
@@ -46,16 +47,17 @@ export default async function ReportePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-ink">Reporte semanal</h2>
+      <EncabezadoPagina
+        titulo="Reporte semanal"
+        detalle={
           <p className="text-xs text-muted">
             Las alertas de las propiedades en comercialización, agrupadas por vendedor. Es el mismo
             que se manda por mail — generado al {fmtDia(reporte.generadoEl)}.
           </p>
-        </div>
+        }
+      >
         <AccionesReporte />
-      </div>
+      </EncabezadoPagina>
 
       <ReporteSemanalVista reporte={reporte} />
     </div>

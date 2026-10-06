@@ -4,7 +4,8 @@ import { useState } from 'react';
 import type { CandidataDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { fmtUSD } from '../../lib/format';
-import { FotoPropiedad, Pill } from './protocolo-ui';
+import { Insignia } from '../piezas';
+import { FotoPropiedad } from './protocolo-ui';
 import { IniciarProtocoloModal } from './iniciar-protocolo-modal';
 
 /**
@@ -50,12 +51,12 @@ export function CaptadasLista({ captadas }: { captadas: CandidataDto[] }) {
                 {[c.barrio, c.ciudad].filter(Boolean).join(', ') || 'Sin ubicación'}
               </p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                <Pill>{c.cliente}</Pill>
-                <Pill>{c.agente.nombre}</Pill>
+                <Insignia tono="neutro">{c.cliente}</Insignia>
+                <Insignia tono="neutro">{c.agente.nombre}</Insignia>
                 {c.diasExclusividad != null && (
-                  <Pill tono="ambar">Exclusiva {c.diasExclusividad} días</Pill>
+                  <Insignia tono="aviso">Exclusiva {c.diasExclusividad} días</Insignia>
                 )}
-                {c.codigo && <Pill>{c.codigo}</Pill>}
+                {c.codigo && <Insignia tono="neutro">{c.codigo}</Insignia>}
               </div>
             </div>
 

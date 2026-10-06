@@ -61,29 +61,6 @@ export function BarraAvance({ valor }: { valor: number }) {
   );
 }
 
-/** Chip de estado/dato, con tono opcional. */
-export function Pill({
-  children,
-  tono = 'neutro',
-}: {
-  children: React.ReactNode;
-  tono?: 'neutro' | 'rojo' | 'verde' | 'ambar';
-}) {
-  const clases = {
-    neutro: 'bg-surface text-muted',
-    rojo: 'bg-brand-red/10 text-brand-red-dark',
-    verde: 'bg-success/10 text-success',
-    ambar: 'bg-warning/10 text-warning',
-  }[tono];
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${clases}`}
-    >
-      {children}
-    </span>
-  );
-}
-
 /** Portada de la propiedad; si no hay foto muestra un marcador sobrio. */
 export function FotoPropiedad({
   url,
@@ -108,6 +85,11 @@ export function FotoPropiedad({
   return <img src={url} alt={alt} className={`object-cover ${className}`} />;
 }
 
+/**
+ * Una proporción (0..1) como porcentaje redondeado: 0,4 → «40%». El único
+ * del módulo: el avance de la ficha, el de cada semana y el del archivo lo
+ * escribían a mano.
+ */
 export function porcentaje(valor: number): string {
   return `${Math.round(valor * 100)}%`;
 }

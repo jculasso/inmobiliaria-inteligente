@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import type { PropiedadEnReporte, ReporteSemanal, SemanaEnReporte } from '@vacker/types';
 import { describe, expect, it } from 'vitest';
-import { fmtFechaCorta, ReporteSemanalVista, resumenDeVendedor } from './reporte-semanal';
+import { fmtFecha } from '../../lib/format';
+import { fmtPrecio, ReporteSemanalVista, resumenDeVendedor } from './reporte-semanal';
 
 function semanas(over: Partial<SemanaEnReporte>[] = []): SemanaEnReporte[] {
   return [1, 2, 3, 4, 5].map((semana, i) => ({
@@ -271,8 +272,20 @@ describe('resumenDeVendedor', () => {
   });
 });
 
-describe('fmtFechaCorta', () => {
+// La copia local (`fmtFechaCorta`) se fue: el reporte usa el `fmtFecha` de
+// toda la app, que escribe igual.
+describe('la fecha de inicio', () => {
   it('escribe la fecha como dd/mm/aaaa', () => {
-    expect(fmtFechaCorta('2026-06-18')).toBe('18/06/2026');
+    expect(fmtFecha('2026-06-18')).toBe('18/06/2026');
+  });
+});
+
+describe('fmtPrecio', () => {
+  it('dólares como «U$S», sin decimales', () => {
+    expect(fmtPrecio(185000, 'USD')).toBe('U$S 185.000');
+  });
+
+  it('pesos como el resto de la app, no «ARS 1.234»', () => {
+    expect(fmtPrecio(120_000_000, 'ARS')).toBe('$ 120.000.000,00');
   });
 });
