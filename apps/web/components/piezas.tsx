@@ -296,7 +296,7 @@ export function Segmentado<T extends string>({
   hrefDe?: (v: T) => string;
 }) {
   const clase = (v: T) =>
-    `rounded-brand px-3 py-1 text-sm font-semibold ${CLASE_FOCO} ${valor === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`;
+    `inline-flex items-center rounded-brand px-3 py-1 text-sm font-semibold pointer-coarse:min-h-10 ${CLASE_FOCO} ${valor === v ? 'bg-brand-red text-white' : 'text-muted hover:text-ink'}`;
   return (
     <div
       role="group"
@@ -377,13 +377,15 @@ export function CabezaTarjeta({
   insignia?: ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-2">
+    // `span`, no `div`: la cabeza va adentro del botón de una tarjeta, y un
+    // <div> adentro de un <button> es HTML inválido.
+    <span className="flex items-start gap-2">
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-bold text-ink">{titulo}</span>
         {detalle && <span className="mt-0.5 block text-[11px] text-muted">{detalle}</span>}
       </span>
       {insignia}
-    </div>
+    </span>
   );
 }
 
@@ -534,7 +536,8 @@ export function AccionFila({
       <button
         type="button"
         onClick={parar}
-        className={`rounded px-2 py-1 text-xs font-semibold ${CLASE_FOCO} ${peligro ? 'text-danger hover:bg-danger/5' : 'text-ink hover:bg-surface'}`}
+        // En pantalla táctil, 40 px como mínimo: con 28 px el dedo erraba entre Editar y Borrar.
+        className={`inline-flex items-center justify-center rounded px-2 py-1 text-xs font-semibold pointer-coarse:min-h-10 pointer-coarse:min-w-10 ${CLASE_FOCO} ${peligro ? 'text-danger hover:bg-danger/5' : 'text-ink hover:bg-surface'}`}
       >
         {icono} {texto}
       </button>
