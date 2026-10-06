@@ -1,12 +1,16 @@
-import type { Metadata } from 'next';
 import { Captura } from '../../components/marco';
 import { Bloque, PaginaModulo, Paso, Rol } from '../../components/pagina-modulo';
+import { metadatosDePagina } from '../../lib/metadatos';
 
-export const metadata: Metadata = {
-  title: 'Tablero Comercial — Inmobiliaria Inteligente',
-  description:
+export const metadata = metadatosDePagina({
+  ruta: '/tablero',
+  titulo: 'Tablero Comercial — Inmobiliaria Inteligente',
+  descripcion:
     'Ventas y alquileres con las dos puntas, comisiones calculadas y objetivos por vendedor. Un solo número, el mismo para todos.',
-};
+  tituloCompartir: 'Tablero Comercial · Inmobiliaria Inteligente',
+  descripcionCompartir:
+    'Cuánto se vendió, quién lo vendió y cuánto se cobra: un solo número, el mismo para todos.',
+});
 
 export default function Tablero() {
   return (
