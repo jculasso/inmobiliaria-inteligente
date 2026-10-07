@@ -31,6 +31,9 @@ import { hoyArgentina } from '../protocolo/protocolo.calc';
 const diaDe = (d: Date): string =>
   d.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
 
+/** «1 día», «29 días». */
+const dias = (n: number): string => `${n} ${n === 1 ? 'día' : 'días'}`;
+
 /** `2026-11-01` → `01/11/2026`. */
 const fechaCorta = (iso: string): string => iso.split('-').reverse().join('/');
 
@@ -187,7 +190,7 @@ export class CobrosService {
             origenId: alquiler.id,
             cobroId,
             creadoPorId: ctx.userId,
-            descripcion: `Punitorio ${prop.dias} días · ${alquiler.descripcion}`,
+            descripcion: `Punitorio ${dias(prop.dias)} · ${alquiler.descripcion}`,
           });
         }
       }
