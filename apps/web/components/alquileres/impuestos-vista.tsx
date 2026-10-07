@@ -56,6 +56,7 @@ import {
   Segmentado,
   VacioBloque,
 } from './piezas';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 const ICONO_CLASE: Record<ClaseServicio | 'poliza', string> = {
   impuesto: '🏛️',
@@ -544,7 +545,7 @@ function CuentaModal({
     const dto = { propiedadId, servicioId, numeroCuenta, aCargoDe, paga };
     const r = CuentaServicioInputSchema.safeParse(dto);
     if (!r.success) {
-      setError(r.error.issues[0]?.message ?? 'Revisá los datos.');
+      setError(primerMensaje(r.error, 'Revisá los datos.'));
       return;
     }
     setError(null);
@@ -751,7 +752,7 @@ function ServicioModal({
   async function guardar() {
     const r = ServicioInputSchema.safeParse({ nombre, clase });
     if (!r.success) {
-      setError(r.error.issues[0]?.message ?? 'Revisá los datos.');
+      setError(primerMensaje(r.error, 'Revisá los datos.'));
       return;
     }
     setError(null);

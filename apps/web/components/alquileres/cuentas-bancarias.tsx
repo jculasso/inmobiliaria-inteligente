@@ -12,6 +12,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { guardarCuentasBancarias } from '../../lib/alquileres-api';
 import { Campo, inputClass } from '../form-ui';
 import { CLASE_FOCO, Insignia, Panel } from './piezas';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 type Fila = Required<Pick<CuentaBancariaInput, 'banco' | 'tipo' | 'moneda' | 'principal'>> & {
   numero: string;
@@ -70,7 +71,7 @@ export function CuentasBancarias({
     for (const [i, f] of filas.entries()) {
       const r = CuentaBancariaInputSchema.safeParse(f);
       if (!r.success) {
-        setError(`Cuenta ${i + 1}: ${r.error.issues[0]?.message ?? 'revisá los datos.'}`);
+        setError(`Cuenta ${i + 1}: ${primerMensaje(r.error, 'revisá los datos.')}`);
         return;
       }
     }

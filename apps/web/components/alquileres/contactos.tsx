@@ -8,6 +8,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { guardarContactos } from '../../lib/alquileres-api';
 import { Campo, inputClass } from '../form-ui';
 import { CLASE_FOCO, Insignia, Panel } from './piezas';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 interface Fila {
   nombre: string;
@@ -51,7 +52,7 @@ export function Contactos({
     for (const [i, f] of filas.entries()) {
       const r = ContactoInputSchema.safeParse(f);
       if (!r.success) {
-        setError(`Contacto ${i + 1}: ${r.error.issues[0]?.message ?? 'revisá los datos.'}`);
+        setError(`Contacto ${i + 1}: ${primerMensaje(r.error, 'revisá los datos.')}`);
         return;
       }
     }

@@ -22,6 +22,7 @@ import { actualizarContrato, crearContrato } from '../../lib/alquileres-api';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { InputImporte, InputPorcentajeTexto } from '../input-importe';
 import { escribirImporte, leerImporte, leerNumero } from '../../lib/importe';
+import { mensajeLegible } from '../../lib/mensaje-zod';
 import { CLASE_FOCO, EncabezadoPagina } from './piezas';
 import { NOMBRE_INDICE, NOMBRE_PAPEL } from './nombres';
 
@@ -185,14 +186,24 @@ export function ContratoForm({
   /** Los problemas de cada paso, para avisar antes de guardar. */
   const problemas = useMemo(() => {
     const deSchema = ContratoInputSchema.safeParse(dto);
+    // Nunca el mensaje de Zod en inglés: «Array must contain at least 1
+    // element(s)» salía al lado de «El contrato no tiene tramos.».
     const mensajes = deSchema.success
       ? []
-      : deSchema.error.issues.map((i) => ({ campo: String(i.path[0] ?? ''), mensaje: i.message }));
+      : deSchema.error.issues.map((i) => ({
+          campo: String(i.path[0] ?? ''),
+          mensaje:
+            i.path[0] === 'tramos' && i.code === 'too_small'
+              ? 'El contrato no tiene tramos.'
+              : mensajeLegible(i.message),
+        }));
     const enPaso = (campos: string[]) =>
       mensajes.filter((m) => campos.includes(m.campo)).map((m) => m.mensaje);
+    // Lo mismo dicho por el schema y por la validación de @vacker/domain va una vez.
+    const sinRepetir = (xs: string[]) => [...new Set(xs)];
     return [
       [...(propiedadId ? [] : ['Elegí la propiedad.']), ...validarPartes(dto.partes)],
-      [
+      sinRepetir([
         ...(inicio && fin ? [] : ['Completá el inicio y el fin.']),
         ...enPaso([
           'fin',
@@ -206,10 +217,10 @@ export function ContratoForm({
           'ivaPct',
           'punitorioDiarioPct',
         ]),
-      ],
+      ]),
       // Sin fechas no hay tramos que validar, pero el paso tampoco está completo.
       inicio && fin
-        ? [...validarTramos(inicio, fin, dto.tramos), ...enPaso(['tramos'])]
+        ? sinRepetir([...validarTramos(inicio, fin, dto.tramos), ...enPaso(['tramos'])])
         : ['Completá el inicio y el fin en Condiciones.'],
     ];
   }, [dto, propiedadId, inicio, fin]);

@@ -17,6 +17,7 @@ import { useRefrescar } from '../../lib/refrescar';
 import { inputClass } from '../form-ui';
 import { CLASE_FOCO, Panel } from './piezas';
 import { InputImporteNumero } from '../input-importe';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 const TIPO: Record<CargoIngreso['tipo'], string> = {
   comision: 'Comisión',
@@ -57,7 +58,7 @@ export function CargosIngreso({
     for (const [i, f] of filas.entries()) {
       const r = CargoIngresoSchema.safeParse(f);
       if (!r.success) {
-        setError(`Fila ${i + 1}: ${r.error.issues[0]?.message ?? 'revisá los datos.'}`);
+        setError(`Fila ${i + 1}: ${primerMensaje(r.error, 'revisá los datos.')}`);
         return;
       }
     }

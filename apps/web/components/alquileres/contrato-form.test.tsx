@@ -137,4 +137,18 @@ describe('ContratoForm — alta en tres pasos', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('código 25');
     expect(push).not.toHaveBeenCalled();
   });
+
+  // Prueba en producción, 6/10/2026: «Array must contain at least 1 element(s)»
+  // al lado de «El contrato no tiene tramos.».
+  it('sin tramos lo dice una vez, en castellano, sin el mensaje de Zod', async () => {
+    render(<ContratoForm personas={[DUENO, INQ]} propiedades={[PROP]} />);
+    await completarPaso1();
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente →' }));
+    await userEvent.type(screen.getByLabelText(/Inicio/), '2026-01-01');
+    await userEvent.type(screen.getByLabelText(/^Fin/), '2026-12-31');
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente →' }));
+    const falta = screen.getByLabelText('Lo que falta');
+    expect(within(falta).getAllByText(/El contrato no tiene tramos\./)).toHaveLength(1);
+    expect(falta).not.toHaveTextContent(/must|Expected|Required|Invalid/);
+  });
 });

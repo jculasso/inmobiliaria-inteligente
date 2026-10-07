@@ -24,6 +24,7 @@ import { AccionFila, Bloque, CLASE_FOCO, Insignia, VacioBloque } from './piezas'
 import { InputImporte } from '../input-importe';
 import { leerImporte } from '../../lib/importe';
 import { useRefrescar } from '../../lib/refrescar';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 const num = (v: string) => leerImporte(v) ?? 0;
 
@@ -196,9 +197,7 @@ export function PolizaModal({
     };
     const r = PolizaInputSchema.safeParse(dto);
     if (!r.success) {
-      setError(
-        contratoId ? (r.error.issues[0]?.message ?? 'Revisá los datos.') : 'Elegí el contrato.',
-      );
+      setError(contratoId ? primerMensaje(r.error, 'Revisá los datos.') : 'Elegí el contrato.');
       return;
     }
     setError(null);
