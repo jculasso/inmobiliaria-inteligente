@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { EnvioMailDto } from '@vacker/types';
+import { nombreDelRango } from '@vacker/domain';
+import type { EnvioMailDto, InformePeriodoQuery } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { enviarMail, MailError } from '../../common/resend.client';
@@ -96,6 +97,39 @@ export class EnviosService {
   }
 
   /**
+   * Regla 95: el informe al propietario, como la liquidación. Uno a la vez: no
+   * hay envío masivo. Queda en el historial de la persona.
+   */
+  async informePropietario(
+    ctx: TenantContext,
+    personaId: string,
+    q: InformePeriodoQuery,
+    para: string[],
+  ): Promise<EnvioMailDto> {
+    const { buffer, nombreArchivo, informe } = await this.pdfs.informePropietario(
+      ctx,
+      personaId,
+      q,
+    );
+    const periodo = nombreDelRango(q.desde, q.hasta);
+    return this.mandar(ctx, {
+      para,
+      asunto: `Informe de ${periodo}`,
+      saludo: informe.persona.nombre,
+      lineas: [
+        `Te mandamos el informe de ${periodo}: lo que se cobró de tus alquileres, lo que se descontó, lo que se te liquidó y los reclamos de tus propiedades.`,
+      ],
+      adjunto: { nombre: `${nombreArchivo}.pdf`, contenido: buffer },
+      evento: {
+        entidad: 'persona',
+        entidadId: personaId,
+        personaId,
+        resumen: `Informe de ${periodo} enviado a ${para.join(', ')}`,
+      },
+    });
+  }
+
+  /**
    * Un mail redactado por el operador —el aviso al proveedor de un reclamo—,
    * con la misma salida que los recibos: a nombre de la inmobiliaria, desde
    * el dominio de la plataforma, respuestas al operador, firma al pie y el
@@ -129,7 +163,7 @@ ${parrafos.join('\n')}
       lineas: string[];
       adjunto: { nombre: string; contenido: Buffer };
       evento: {
-        entidad: 'cobro' | 'liquidacion';
+        entidad: 'cobro' | 'liquidacion' | 'persona';
         entidadId: string;
         personaId: string;
         resumen: string;

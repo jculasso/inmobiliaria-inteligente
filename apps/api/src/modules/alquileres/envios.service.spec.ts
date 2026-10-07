@@ -98,6 +98,40 @@ describe('EnviosService (punto 14: recibos y liquidaciones por mail)', () => {
   });
 });
 
+describe('EnviosService.informePropietario (regla 95)', () => {
+  it('manda el informe del período con su PDF, a una persona, y queda en su historial', async () => {
+    enviarMail.mockResolvedValueOnce({ id: 'm3' });
+    const { tx, servicio } = armar();
+    (servicio as unknown as { pdfs: Partial<ReciboService> }).pdfs.informePropietario = vi
+      .fn()
+      .mockResolvedValue({
+        buffer: Buffer.from('%PDF'),
+        nombreArchivo: 'Informe-Marta-Propietaria-2026-09',
+        informe: { persona: { id: 'p9', nombre: 'Marta Propietaria' } },
+      });
+    expect(
+      await servicio.informePropietario(CTX, 'p9', { desde: '2026-09', hasta: '2026-09' }, [
+        'marta@mail.com',
+      ]),
+    ).toEqual({ enviado: true, para: ['marta@mail.com'] });
+    const [mail] = enviarMail.mock.calls[0]!;
+    expect(mail).toMatchObject({
+      para: ['marta@mail.com'],
+      responderA: 'lucia@alteva.com',
+      asunto: 'Informe de septiembre 2026 · Alteva Propiedades',
+      adjuntos: [{ nombre: 'Informe-Marta-Propietaria-2026-09.pdf' }],
+    });
+    expect(mail.texto).toContain('Hola, Marta Propietaria:');
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({
+      accion: 'envio',
+      entidad: 'persona',
+      entidadId: 'p9',
+      personaId: 'p9',
+      resumen: 'Informe de septiembre 2026 enviado a marta@mail.com',
+    });
+  });
+});
+
 describe('EnviosService.mandarTexto (regla 73: el aviso al proveedor de un reclamo)', () => {
   it('sale igual que los recibos: a nombre de la inmobiliaria, respuestas al operador, con su firma', async () => {
     enviarMail.mockResolvedValueOnce({ id: 'm2' });

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  informePorDefecto,
   leerPeriodo,
+  leerPeriodoInforme,
+  parametrosDelInforme,
+  type PeriodoInforme,
   mesesDelPeriodo,
   nombreDelPeriodo,
   parametrosDelPeriodo,
@@ -69,5 +73,46 @@ describe('periodo-tablero', () => {
     expect(nombreDelPeriodo({ por: 'mes', mes: 10 }, 2026)).toBe('octubre 2026');
     expect(nombreDelPeriodo({ por: 'trimestre', q: 3 }, 2026)).toBe('Q3 2026');
     expect(nombreDelPeriodo({ por: 'anio' }, 2026)).toBe('2026');
+  });
+});
+
+// Regla 84: el informe al propietario usa el mismo selector, pero abre en el mes anterior.
+describe('el período del informe al propietario (regla 84)', () => {
+  it('al entrar, el mes anterior, ya cerrado; en enero, diciembre del año anterior', () => {
+    expect(informePorDefecto('2026-10-07')).toEqual({
+      anio: 2026,
+      periodo: { por: 'mes', mes: 9 },
+    });
+    expect(informePorDefecto('2027-01-15')).toEqual({
+      anio: 2026,
+      periodo: { por: 'mes', mes: 12 },
+    });
+    expect(leerPeriodoInforme({}, '2026-10-07')).toEqual(informePorDefecto('2026-10-07'));
+  });
+
+  it('lo que escribe en la dirección se vuelve a leer igual, y el de por defecto no escribe nada', () => {
+    const hoy = '2026-10-07';
+    expect(parametrosDelInforme(informePorDefecto(hoy), hoy)).toEqual([]);
+    const casos: PeriodoInforme[] = [
+      { anio: 2026, periodo: { por: 'mes', mes: 3 } },
+      { anio: 2026, periodo: { por: 'trimestre', q: 3 } },
+      { anio: 2026, periodo: { por: 'anio' } },
+      { anio: 2025, periodo: { por: 'mes', mes: 12 } },
+      { anio: 2025, periodo: { por: 'mes', mes: 4 } },
+      { anio: 2024, periodo: { por: 'trimestre', q: 1 } },
+    ];
+    for (const p of casos) {
+      const params = Object.fromEntries(parametrosDelInforme(p, hoy));
+      expect(leerPeriodoInforme(params, hoy), JSON.stringify(p)).toEqual(p);
+    }
+  });
+
+  it('un año fuera del selector o un período que no se entiende vuelven al de por defecto', () => {
+    const hoy = '2026-10-07';
+    expect(leerPeriodoInforme({ anio: '1999' }, hoy)).toEqual(informePorDefecto(hoy));
+    expect(leerPeriodoInforme({ periodo: 'mes', mes: '13' }, hoy)).toEqual(informePorDefecto(hoy));
+    expect(leerPeriodoInforme({ anio: 'x', periodo: 'semana' }, hoy)).toEqual(
+      informePorDefecto(hoy),
+    );
   });
 });

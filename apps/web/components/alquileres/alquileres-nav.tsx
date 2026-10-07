@@ -15,7 +15,17 @@ const TABS: Pestania[] = [
   },
   { href: '/alquileres/conceptos', label: 'Conceptos' },
   { href: '/alquileres/cobros', label: 'Cobros' },
-  { href: '/alquileres/liquidaciones', label: 'Liquidaciones' },
+  // El informe al propietario va con las liquidaciones: es lo que se le pagó
+  // y por qué (regla 96, Javier, 7/10/2026). En una segunda fila, para no
+  // volver a las pestañas que no entraban.
+  {
+    href: '/alquileres/liquidaciones',
+    label: 'Liquidaciones',
+    sub: [
+      { href: '/alquileres/liquidaciones', label: 'Liquidaciones' },
+      { href: '/alquileres/propietarios', label: 'Informe de propietarios' },
+    ],
+  },
   { href: '/alquileres/personas', label: 'Personas' },
   { href: '/alquileres/propiedades', label: 'Propiedades' },
   { href: '/alquileres/reclamos', label: 'Reclamos' },

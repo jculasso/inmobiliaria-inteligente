@@ -3,3 +3,4 @@ export * from './tasador';
 export * from './valuacion';
 export * from './alquileres';
 export * from './boletas';
+export * from './informe-propietario';

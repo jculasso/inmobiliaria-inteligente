@@ -38,6 +38,8 @@ import { FirmaService } from './firma/firma.service';
 import { FirmaManual, PROVEEDORES_FIRMA, type ProveedorFirma } from './firma/proveedor-firma';
 import { TableroAlquileresController } from './tablero-alquileres.controller';
 import { TableroAlquileresService } from './tablero-alquileres.service';
+import { InformePropietarioController } from './informe-propietario.controller';
+import { InformePropietarioService } from './informe-propietario.service';
 
 /** Módulo Alquileres: administración de contratos de alquiler. */
 @Module({
@@ -56,6 +58,7 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
     CobrosController,
     LiquidacionesController,
     TableroAlquileresController,
+    InformePropietarioController,
     FirmaController,
     FirmaAvisosController,
   ],
@@ -77,6 +80,7 @@ import { TableroAlquileresService } from './tablero-alquileres.service';
     CobrosService,
     LiquidacionesService,
     TableroAlquileresService,
+    InformePropietarioService,
     FirmaService,
     FirmaAvisosService,
     SupabaseStorageService,

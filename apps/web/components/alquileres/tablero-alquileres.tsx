@@ -19,7 +19,7 @@ import {
 import { Card, KpiCard, Modal } from '@vacker/ui';
 import { getDetalleTableroAlquileres } from '../../lib/alquileres-api';
 import { fmtFecha, fmtK, fmtMoneda, fmtNum } from '../../lib/format';
-import { ABREV_MES, NOMBRES_MES, periodosTranscurridos } from '../../lib/meses';
+import { ABREV_MES, periodosTranscurridos } from '../../lib/meses';
 import {
   mesesDelPeriodo,
   nombreDelPeriodo,
@@ -32,6 +32,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { PeriodosChart } from '../tablero/periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from '../tablero/periodos-tabla';
 import { CLASE_FOCO, CLASE_TH, EncabezadoPagina, Segmentado, TituloSeccion } from './piezas';
+import { FiltroAnio, FiltroPeriodo } from './selector-periodo';
 
 /** Las columnas que puede mostrar el detalle de un número. */
 type Columna =
@@ -256,36 +257,6 @@ function direccion(
   return `${pathname}${q.toString() ? `?${q}` : ''}`;
 }
 
-/**
- * El año de los meses. Como el filtro del Tablero Comercial, pero sin «Todos
- * los años»: el período es de un año.
- */
-function FiltroAnioAlquileres({
-  t,
-  anio,
-  cambiar,
-}: {
-  t: TableroAlquileresDto;
-  anio: number;
-  cambiar: (anio: number) => void;
-}) {
-  const hoy = Number(t.hoy.slice(0, 4));
-  return (
-    <select
-      aria-label="Año"
-      value={anio}
-      onChange={(e) => cambiar(Number(e.target.value))}
-      className={`h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink ${CLASE_FOCO}`}
-    >
-      {[hoy, hoy - 1, hoy - 2].map((a) => (
-        <option key={a} value={a}>
-          {a}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 const TIPOS: [FiltroTipoContrato, string][] = [
   ['todos', 'Todos'],
   ['vivienda', 'Particulares'],
@@ -307,82 +278,6 @@ function FiltroTipo({
 }) {
   return (
     <Segmentado etiqueta="Tipo de contrato" opciones={TIPOS} valor={tipo} onCambio={cambiar} />
-  );
-}
-
-const POR_PERIODO: [PeriodoTablero['por'], string][] = [
-  ['mes', 'Mes'],
-  ['trimestre', 'Trimestre'],
-  ['anio', 'Año'],
-];
-const TRIMESTRES = [1, 2, 3, 4].map(
-  (q) =>
-    [
-      String(q),
-      <span key={q} title={`${ABREV_MES[q * 3 - 3]}–${ABREV_MES[q * 3 - 1]}`}>
-        Q{q}
-      </span>,
-    ] as const,
-);
-
-/**
- * Regla 74: el período de toda la pantalla, con el aspecto del Tablero
- * Comercial —Mes (con el mes), Trimestre (Q1 a Q4) o Año—. Cambiarlo no le pide
- * nada al servidor: los doce meses ya están acá.
- */
-function FiltroPeriodo({
-  periodo,
-  porDefecto,
-  cambiar,
-}: {
-  periodo: PeriodoTablero;
-  /** El mes al que se vuelve al pasar a «Mes» desde el año entero. */
-  porDefecto: number;
-  cambiar: (p: PeriodoTablero) => void;
-}) {
-  const elegirPor = (por: PeriodoTablero['por']) => {
-    if (por === periodo.por) return;
-    if (por === 'anio') return cambiar({ por: 'anio' });
-    if (por === 'trimestre')
-      return cambiar({
-        por: 'trimestre',
-        q: Math.ceil((periodo.por === 'mes' ? periodo.mes : porDefecto) / 3),
-      });
-    // Del trimestre al mes: el mes en curso si está en ese trimestre; si no, su último mes.
-    const meses = mesesDelPeriodo(periodo);
-    cambiar({ por: 'mes', mes: meses.includes(porDefecto) ? porDefecto : meses.at(-1)! });
-  };
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Segmentado
-        etiqueta="Período"
-        opciones={POR_PERIODO}
-        valor={periodo.por}
-        onCambio={elegirPor}
-      />
-      {periodo.por === 'mes' && (
-        <select
-          aria-label="Mes"
-          value={periodo.mes}
-          onChange={(e) => cambiar({ por: 'mes', mes: Number(e.target.value) })}
-          className={`h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink ${CLASE_FOCO}`}
-        >
-          {NOMBRES_MES.map((m, i) => (
-            <option key={m} value={i + 1}>
-              {m}
-            </option>
-          ))}
-        </select>
-      )}
-      {periodo.por === 'trimestre' && (
-        <Segmentado
-          etiqueta="Trimestre"
-          opciones={TRIMESTRES}
-          valor={String(periodo.q)}
-          onCambio={(q) => cambiar({ por: 'trimestre', q: Number(q) })}
-        />
-      )}
-    </div>
   );
 }
 
@@ -1011,7 +906,7 @@ export function TableroAlquileres({
           porDefecto={periodoPorDefecto(t.hoy, t.anio).mes}
           cambiar={elegirPeriodo}
         />
-        <FiltroAnioAlquileres t={t} anio={anioElegido} cambiar={elegirAnio} />
+        <FiltroAnio hoy={t.hoy} anio={anioElegido} cambiar={elegirAnio} />
       </EncabezadoPagina>
 
       <div

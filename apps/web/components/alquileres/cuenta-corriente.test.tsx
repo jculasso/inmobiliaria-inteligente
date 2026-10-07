@@ -2,10 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { CuentaCorrienteDto, PersonaDto, PersonaFichaDto } from '@vacker/types';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => '/alquileres/personas/x',
+}));
 vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn() }));
 vi.mock('../../lib/abrir-pdf', () => ({ abrirPdfEnPestana: vi.fn() }));
-vi.mock('../../lib/alquileres-api', () => ({ anularCobro: vi.fn(), generarRecibo: vi.fn() }));
+const getInformePropietario = vi.fn();
+vi.mock('../../lib/alquileres-api', () => ({
+  anularCobro: vi.fn(),
+  generarRecibo: vi.fn(),
+  getInformePropietario: (...a: unknown[]) => getInformePropietario(...a),
+}));
 
 import { CuentaCorriente, detalleMovimiento } from './cuenta-corriente';
 
@@ -148,5 +156,66 @@ describe('CuentaCorriente', () => {
     expect(screen.getByRole('button', { pressed: true })).not.toHaveTextContent(/cuenta/i);
     fireEvent.click(screen.getByRole('button', { name: /Editar datos/ }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  // Regla 83 (Javier, 7/10/2026): la solapa «Informe» es solo de quien es propietario.
+  describe('la solapa Informe (regla 83)', () => {
+    const conContratos = (contratos: { papel: string; estado: string }[]) => {
+      const persona = { id: id(), nombre: 'Marta', tipo: 'fisica' } as unknown as PersonaDto;
+      return {
+        persona,
+        ficha: { persona, cuentas: [], contactos: [], contratos } as unknown as PersonaFichaDto,
+      };
+    };
+    const informe = {
+      hoy: '2026-10-07',
+      inicial: { anio: 2026, periodo: { por: 'mes', mes: 9 } },
+    } as const;
+
+    it('aparece para un propietario, y abre en la solapa de la dirección', () => {
+      getInformePropietario.mockReturnValue(new Promise(() => {}));
+      const { persona, ficha } = conContratos([{ papel: 'propietario', estado: 'vigente' }]);
+      render(
+        <CuentaCorriente
+          cuenta={cuenta(0)}
+          persona={persona}
+          cobros={[]}
+          ficha={ficha}
+          historial={[]}
+          solapaInicial="informe"
+          informe={informe}
+        />,
+      );
+      const solapas = within(screen.getByRole('group', { name: 'Solapas de la ficha' }));
+      expect(solapas.getByRole('button', { pressed: true })).toHaveTextContent('Informe');
+      // Con el mismo selector del Dashboard, en el mes anterior (regla 84).
+      expect(screen.getByRole('button', { name: 'Mes', pressed: true })).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'Mes' })).toHaveValue('9');
+      expect(screen.getByRole('status')).toHaveTextContent('Armando el informe de septiembre 2026');
+    });
+
+    it('no aparece para un inquilino ni para el dueño de un contrato en borrador', () => {
+      for (const contratos of [
+        [{ papel: 'inquilino', estado: 'vigente' }],
+        [{ papel: 'propietario', estado: 'borrador' }],
+      ]) {
+        const { persona, ficha } = conContratos(contratos);
+        const { unmount } = render(
+          <CuentaCorriente
+            cuenta={cuenta(0)}
+            persona={persona}
+            cobros={[]}
+            ficha={ficha}
+            historial={[]}
+            solapaInicial="informe"
+            informe={informe}
+          />,
+        );
+        expect(screen.queryByRole('button', { name: /Informe/ })).not.toBeInTheDocument();
+        // Pedida por la dirección, abre en el resumen.
+        expect(screen.getByRole('button', { pressed: true })).toHaveTextContent('Resumen');
+        unmount();
+      }
+    });
   });
 });
