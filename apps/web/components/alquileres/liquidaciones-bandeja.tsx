@@ -13,7 +13,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { anularLiquidacion, generarLiquidacionPdf } from '../../lib/alquileres-api';
 import { AnularModal } from './anular-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, nroDocumento } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import {
   AccionesFila,
@@ -33,8 +33,6 @@ import {
   LinkFila,
   VacioBloque,
 } from './piezas';
-
-const numero = (n: number) => String(n).padStart(6, '0');
 
 /** Cada propiedad en su renglón: «🏠 Córdoba 1452 3° B · Inquilino: Ana». */
 function Propiedades({ contratos }: { contratos: ContratoDeLiquidacion[] }) {
@@ -76,7 +74,7 @@ export function LiquidacionesBandeja({
   const soloEspera = pendientes.filter((p) => p.neto <= 0);
   const pdf = (l: LiquidacionResumenDto) =>
     abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), l.id), {
-      titulo: `Liquidación ${numero(l.numero)}`,
+      titulo: `Liquidación ${nroDocumento(l.numero)}`,
       onError: setError,
     });
   const abrir = (l: LiquidacionResumenDto) => router.push(`/alquileres/personas/${l.persona.id}`);
@@ -177,7 +175,7 @@ export function LiquidacionesBandeja({
                     >
                       <CabezaTarjeta
                         titulo={l.persona.nombre}
-                        detalle={`N.º ${numero(l.numero)} · ${fmtFecha(l.fecha)}`}
+                        detalle={`N.º ${nroDocumento(l.numero)} · ${fmtFecha(l.fecha)}`}
                         insignia={estado(l)}
                       />
                       <Propiedades contratos={l.contratos} />
@@ -188,13 +186,13 @@ export function LiquidacionesBandeja({
                     </button>
                     <AccionesFila
                       tarjeta
-                      nombre={`la liquidación ${numero(l.numero)}`}
+                      nombre={`la liquidación ${nroDocumento(l.numero)}`}
                       extra={
                         <AccionFila
                           tarjeta
                           icono="📄"
                           texto="PDF"
-                          etiqueta={`PDF de la liquidación ${numero(l.numero)}`}
+                          etiqueta={`PDF de la liquidación ${nroDocumento(l.numero)}`}
                           onClick={() => pdf(l)}
                         />
                       }
@@ -225,9 +223,9 @@ export function LiquidacionesBandeja({
                       <td className={CLASE_TD_FIJA}>
                         <LinkFila
                           href={`/alquileres/personas/${l.persona.id}`}
-                          etiqueta={`Liquidación ${numero(l.numero)}: abrir la cuenta de ${l.persona.nombre}`}
+                          etiqueta={`Liquidación ${nroDocumento(l.numero)}: abrir la cuenta de ${l.persona.nombre}`}
                         >
-                          {numero(l.numero)}
+                          {nroDocumento(l.numero)}
                         </LinkFila>
                       </td>
                       <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(l.fecha)}</td>
@@ -246,12 +244,12 @@ export function LiquidacionesBandeja({
                       <td className={`${CLASE_TD} text-muted`}>{l.registradoPor ?? '—'}</td>
                       <td className={CLASE_TD_ACCIONES}>
                         <AccionesFila
-                          nombre={`la liquidación ${numero(l.numero)}`}
+                          nombre={`la liquidación ${nroDocumento(l.numero)}`}
                           extra={
                             <AccionFila
                               icono="📄"
                               texto="PDF"
-                              etiqueta={`PDF de la liquidación ${numero(l.numero)}`}
+                              etiqueta={`PDF de la liquidación ${nroDocumento(l.numero)}`}
                               title="Abrir el PDF"
                               onClick={() => pdf(l)}
                             />
@@ -270,7 +268,7 @@ export function LiquidacionesBandeja({
       </Bloque>
       {aAnular && (
         <AnularModal
-          titulo={`Anular la liquidación ${numero(aAnular.numero)}`}
+          titulo={`Anular la liquidación ${nroDocumento(aAnular.numero)}`}
           detalle={`${aAnular.persona.nombre} · ${fmtMoneda(aAnular.neto, aAnular.moneda)}. Lo que incluía vuelve a quedar por liquidar. La liquidación no se borra: queda tachada, con el motivo y quién la anuló.`}
           anular={async (motivo) => anularLiquidacion(await getAccessToken(), aAnular.id, motivo)}
           onClose={() => setAAnular(null)}

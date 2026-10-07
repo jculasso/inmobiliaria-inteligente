@@ -20,7 +20,7 @@ import {
 } from '../../lib/alquileres-api';
 import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { cantidad, fmtFecha, fmtMoneda } from '../../lib/format';
+import { cantidad, fmtFecha, fmtMoneda, nroDocumento } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { Bloque, Confirmacion, EncabezadoPagina, VacioBloque } from './piezas';
 import { SelectorPersona } from './selector-persona';
@@ -29,7 +29,6 @@ import { InputImporte } from '../input-importe';
 import { escribirImporte, leerImporte } from '../../lib/importe';
 
 const numero = (s: string) => leerImporte(s) ?? Number.NaN;
-const recibo = (n: number) => String(n).padStart(6, '0');
 
 /** Lo que se escribe del punitorio de cada alquiler: el importe y, si se condona algo, el motivo. */
 interface Punitorio {
@@ -206,7 +205,7 @@ export function CobroForm({
   if (hecho) {
     return (
       <Confirmacion
-        titulo={`Recibo ${recibo(hecho.numero)} · ${fmtMoneda(hecho.importe, hecho.moneda)} de ${hecho.persona.nombre}`}
+        titulo={`Recibo ${nroDocumento(hecho.numero)} · ${fmtMoneda(hecho.importe, hecho.moneda)} de ${hecho.persona.nombre}`}
         detalle={
           <>
             {hecho.aFavor > 0 && (
@@ -230,7 +229,7 @@ export function CobroForm({
           variant="secondary"
           onClick={() =>
             abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), hecho.id), {
-              titulo: `Recibo ${recibo(hecho.numero)}`,
+              titulo: `Recibo ${nroDocumento(hecho.numero)}`,
               onError: setError,
             })
           }
@@ -245,7 +244,7 @@ export function CobroForm({
         </Button>
         {mandando && (
           <EnviarMailModal
-            titulo={`Enviar el recibo ${recibo(hecho.numero)} por mail`}
+            titulo={`Enviar el recibo ${nroDocumento(hecho.numero)} por mail`}
             personaId={hecho.persona.id}
             enviar={async (para) => enviarReciboPorMail(await getAccessToken(), hecho.id, para)}
             onClose={() => setMandando(false)}
@@ -405,7 +404,7 @@ export function CobroForm({
               <div className="border-t border-line px-4 py-3 text-sm text-ink">
                 {prep.creditos.map((c) => (
                   <p key={c.cobroId}>
-                    A su favor del recibo {recibo(c.numero)}:{' '}
+                    A su favor del recibo {nroDocumento(c.numero)}:{' '}
                     <span className="font-semibold tabular-nums">
                       {fmtMoneda(c.disponible, moneda)}
                     </span>

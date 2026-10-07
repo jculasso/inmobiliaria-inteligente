@@ -7,7 +7,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { anularCobro, generarRecibo } from '../../lib/alquileres-api';
 import { AnularModal } from './anular-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, nroDocumento } from '../../lib/format';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { paraBuscar } from './buscador';
 import { NOMBRE_MEDIO } from './medios';
@@ -32,8 +32,6 @@ import {
   Vacio,
 } from './piezas';
 
-const recibo = (n: number) => String(n).padStart(6, '0');
-
 /** Los últimos cobros, con su recibo. Cada uno lleva a la cuenta de quien pagó. */
 export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
   const router = useRouter();
@@ -46,7 +44,7 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
     const q = paraBuscar(busqueda.trim());
     if (!q) return visibles;
     return visibles.filter((c) =>
-      [recibo(c.numero), c.persona.nombre, NOMBRE_MEDIO[c.medio]].some((t) =>
+      [nroDocumento(c.numero), c.persona.nombre, NOMBRE_MEDIO[c.medio]].some((t) =>
         paraBuscar(t).includes(q),
       ),
     );
@@ -54,7 +52,7 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
 
   const descargar = (c: CobroResumenDto) =>
     abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), c.id), {
-      titulo: `Recibo ${recibo(c.numero)}`,
+      titulo: `Recibo ${nroDocumento(c.numero)}`,
       onError: setError,
     });
   const abrir = (c: CobroResumenDto) => router.push(`/alquileres/personas/${c.persona.id}`);
@@ -112,7 +110,7 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                   >
                     <CabezaTarjeta
                       titulo={c.persona.nombre}
-                      detalle={`Recibo ${recibo(c.numero)} · ${fmtFecha(c.fecha)}`}
+                      detalle={`Recibo ${nroDocumento(c.numero)} · ${fmtFecha(c.fecha)}`}
                       insignia={estado(c)}
                     />
                     <CamposTarjeta>
@@ -123,13 +121,13 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                   </button>
                   <AccionesFila
                     tarjeta
-                    nombre={`el recibo ${recibo(c.numero)}`}
+                    nombre={`el recibo ${nroDocumento(c.numero)}`}
                     extra={
                       <AccionFila
                         tarjeta
                         icono="📄"
                         texto="PDF"
-                        etiqueta={`PDF del recibo ${recibo(c.numero)}`}
+                        etiqueta={`PDF del recibo ${nroDocumento(c.numero)}`}
                         onClick={() => descargar(c)}
                       />
                     }
@@ -160,9 +158,9 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                     <td className={CLASE_TD_FIJA}>
                       <LinkFila
                         href={`/alquileres/personas/${c.persona.id}`}
-                        etiqueta={`Recibo ${recibo(c.numero)}: abrir la cuenta de ${c.persona.nombre}`}
+                        etiqueta={`Recibo ${nroDocumento(c.numero)}: abrir la cuenta de ${c.persona.nombre}`}
                       >
-                        {recibo(c.numero)}
+                        {nroDocumento(c.numero)}
                       </LinkFila>
                     </td>
                     <td className={`${CLASE_TD} tabular-nums text-muted`}>{fmtFecha(c.fecha)}</td>
@@ -175,12 +173,12 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
                     <td className={`${CLASE_TD} text-muted`}>{c.registradoPor ?? '—'}</td>
                     <td className={CLASE_TD_ACCIONES}>
                       <AccionesFila
-                        nombre={`el recibo ${recibo(c.numero)}`}
+                        nombre={`el recibo ${nroDocumento(c.numero)}`}
                         extra={
                           <AccionFila
                             icono="📄"
                             texto="PDF"
-                            etiqueta={`PDF del recibo ${recibo(c.numero)}`}
+                            etiqueta={`PDF del recibo ${nroDocumento(c.numero)}`}
                             title="Abrir el recibo"
                             onClick={() => descargar(c)}
                           />
@@ -198,7 +196,7 @@ export function CobrosLista({ cobros }: { cobros: CobroResumenDto[] }) {
       )}
       {aAnular && (
         <AnularModal
-          titulo={`Anular el recibo ${recibo(aAnular.numero)}`}
+          titulo={`Anular el recibo ${nroDocumento(aAnular.numero)}`}
           detalle={`${aAnular.persona.nombre} · ${fmtMoneda(aAnular.importe, aAnular.moneda)}. Lo que este cobro canceló vuelve a quedar pendiente, y el punitorio que se cobró con él se anula. El recibo no se borra: queda tachado, con el motivo y quién lo anuló.`}
           anular={async (motivo) => anularCobro(await getAccessToken(), aAnular.id, motivo)}
           onClose={() => setAAnular(null)}

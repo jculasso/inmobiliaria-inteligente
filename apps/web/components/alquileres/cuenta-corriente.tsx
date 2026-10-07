@@ -22,7 +22,7 @@ import {
   generarRecibo,
 } from '../../lib/alquileres-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, nroDocumento } from '../../lib/format';
 import { documentoLegible } from './personas-lista';
 import { PersonaFormModal } from './persona-form-modal';
 import { Bloque, CLASE_FOCO, CLASE_TH, EncabezadoPagina, Vacio, VacioBloque } from './piezas';
@@ -39,10 +39,25 @@ import {
   type Solapa,
 } from './ficha-persona';
 
-const recibo = (n: number) => String(n).padStart(6, '0');
 // Los botones de cada recibo y liquidación, con el mismo aspecto que los de las tarjetas (`AccionFila`).
 const BOTON = `rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`;
 const BOTON_ANULAR = `rounded px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/5 ${CLASE_FOCO}`;
+
+/**
+ * El detalle de un movimiento. La API arma «Cobro · recibo 27» y «Liquidación
+ * 19» con el número pelado; acá va con sus seis cifras, como en el PDF y en
+ * el resto de la pantalla («recibo 000027»).
+ */
+export function detalleMovimiento(x: {
+  tipo: 'concepto' | 'cobro' | 'liquidacion';
+  numero: number | null;
+  descripcion: string;
+}): string {
+  if (x.numero == null) return x.descripcion;
+  if (x.tipo === 'cobro') return `Cobro · recibo ${nroDocumento(x.numero)}`;
+  if (x.tipo === 'liquidacion') return `Liquidación ${nroDocumento(x.numero)}`;
+  return x.descripcion;
+}
 
 /** «Debe $ X», «A favor $ X» o «Al día»: el saldo dicho como lo diría una persona. */
 function Saldo({ saldo, moneda }: { saldo: number; moneda: 'ARS' | 'USD' }) {
@@ -91,12 +106,12 @@ export function CuentaCorriente({
 
   const descargar = (c: { id: string; numero: number }) =>
     abrirPdfEnPestana(async () => generarRecibo(await getAccessToken(), c.id), {
-      titulo: `Recibo ${recibo(c.numero)}`,
+      titulo: `Recibo ${nroDocumento(c.numero)}`,
       onError: setError,
     });
   const descargarLiquidacion = (l: { id: string; numero: number }) =>
     abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), l.id), {
-      titulo: `Liquidación ${recibo(l.numero)}`,
+      titulo: `Liquidación ${nroDocumento(l.numero)}`,
       onError: setError,
     });
 
@@ -161,7 +176,7 @@ export function CuentaCorriente({
                       key={c.cobroId}
                       className="flex items-baseline justify-between gap-3 px-4 py-2.5"
                     >
-                      <span className="text-ink">Sobrante del recibo {recibo(c.numero)}</span>
+                      <span className="text-ink">Sobrante del recibo {nroDocumento(c.numero)}</span>
                       <span className="shrink-0 font-semibold tabular-nums text-success">
                         − {fmtMoneda(c.disponible, m.moneda)}
                       </span>
@@ -197,7 +212,7 @@ export function CuentaCorriente({
                           className={`px-3 py-2 sm:px-4 ${x.anulado ? 'text-muted line-through' : 'text-ink'}`}
                         >
                           {x.contrato ? `${x.contrato.codigo} · ` : ''}
-                          {x.descripcion}
+                          {detalleMovimiento(x)}
                           <span className="block text-xs tabular-nums text-muted no-underline sm:hidden">
                             {fmtFecha(x.fecha)} · {x.debe ? 'debe' : 'haber'}{' '}
                             <span className="whitespace-nowrap">
@@ -234,7 +249,7 @@ export function CuentaCorriente({
               >
                 <span className="min-w-0">
                   <span className={`block ${c.anulado ? 'text-muted line-through' : 'text-ink'}`}>
-                    Recibo {recibo(c.numero)} · {fmtFecha(c.fecha)} ·{' '}
+                    Recibo {nroDocumento(c.numero)} · {fmtFecha(c.fecha)} ·{' '}
                     <span className="tabular-nums">{fmtMoneda(c.importe, c.moneda)}</span>
                   </span>
                   {c.registradoPor && (
@@ -245,7 +260,7 @@ export function CuentaCorriente({
                   <button
                     type="button"
                     onClick={() => descargar(c)}
-                    aria-label={`PDF del recibo ${recibo(c.numero)}`}
+                    aria-label={`PDF del recibo ${nroDocumento(c.numero)}`}
                     className={BOTON}
                   >
                     📄 PDF
@@ -255,7 +270,7 @@ export function CuentaCorriente({
                       type="button"
                       onClick={() =>
                         setAEnviar({
-                          titulo: `Enviar el recibo ${recibo(c.numero)} por mail`,
+                          titulo: `Enviar el recibo ${nroDocumento(c.numero)} por mail`,
                           enviar: async (para) =>
                             enviarReciboPorMail(await getAccessToken(), c.id, para),
                         })
@@ -270,7 +285,7 @@ export function CuentaCorriente({
                       type="button"
                       onClick={() =>
                         setAnulando({
-                          titulo: `Anular el recibo ${recibo(c.numero)}`,
+                          titulo: `Anular el recibo ${nroDocumento(c.numero)}`,
                           detalle:
                             'Lo que este cobro canceló vuelve a quedar pendiente, y el punitorio que se cobró con él se anula. El recibo no se borra: queda tachado, con el motivo.',
                           anular: async (motivo) =>
@@ -299,7 +314,7 @@ export function CuentaCorriente({
               >
                 <span className="min-w-0">
                   <span className={`block ${l.anulado ? 'text-muted line-through' : 'text-ink'}`}>
-                    Liquidación {recibo(l.numero)} · {fmtFecha(l.fecha)} ·{' '}
+                    Liquidación {nroDocumento(l.numero)} · {fmtFecha(l.fecha)} ·{' '}
                     <span className="tabular-nums">{fmtMoneda(l.neto, l.moneda)}</span>
                   </span>
                   {l.registradoPor && (
@@ -320,7 +335,7 @@ export function CuentaCorriente({
                   <button
                     type="button"
                     onClick={() => descargarLiquidacion(l)}
-                    aria-label={`PDF de la liquidación ${recibo(l.numero)}`}
+                    aria-label={`PDF de la liquidación ${nroDocumento(l.numero)}`}
                     className={BOTON}
                   >
                     📄 PDF
@@ -330,7 +345,7 @@ export function CuentaCorriente({
                       type="button"
                       onClick={() =>
                         setAEnviar({
-                          titulo: `Enviar la liquidación ${recibo(l.numero)} por mail`,
+                          titulo: `Enviar la liquidación ${nroDocumento(l.numero)} por mail`,
                           enviar: async (para) =>
                             enviarLiquidacionPorMail(await getAccessToken(), l.id, para),
                         })
@@ -345,7 +360,7 @@ export function CuentaCorriente({
                       type="button"
                       onClick={() =>
                         setAnulando({
-                          titulo: `Anular la liquidación ${recibo(l.numero)}`,
+                          titulo: `Anular la liquidación ${nroDocumento(l.numero)}`,
                           detalle:
                             'Lo que incluía vuelve a quedar por liquidar. La liquidación no se borra: queda tachada, con el motivo.',
                           anular: async (motivo) =>

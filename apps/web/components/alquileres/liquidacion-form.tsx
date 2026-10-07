@@ -22,13 +22,11 @@ import {
 } from '../../lib/alquileres-api';
 import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { fmtMoneda } from '../../lib/format';
+import { fmtMoneda, nroDocumento } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { CLASE_FOCO, Confirmacion, EncabezadoPagina } from './piezas';
 import { SelectorPersona } from './selector-persona';
 import { MEDIOS_COBRO, NOMBRE_MEDIO } from './medios';
-
-const numero = (n: number) => String(n).padStart(6, '0');
 
 /** «Inquilino: Ana» o «Inquilinos: Ana, Pedro». */
 export function inquilinosDe(c: ContratoDeLiquidacion | null): { rotulo: string; nombres: string } {
@@ -172,7 +170,7 @@ export function LiquidacionForm({
   if (hecha) {
     return (
       <Confirmacion
-        titulo={`Liquidación ${numero(hecha.numero)} · ${fmtMoneda(hecha.neto, hecha.moneda)} a ${hecha.persona.nombre}`}
+        titulo={`Liquidación ${nroDocumento(hecha.numero)} · ${fmtMoneda(hecha.neto, hecha.moneda)} a ${hecha.persona.nombre}`}
         detalle={
           error && (
             <p role="alert" className="text-sm font-medium text-danger">
@@ -189,7 +187,7 @@ export function LiquidacionForm({
           variant="secondary"
           onClick={() =>
             abrirPdfEnPestana(async () => generarLiquidacionPdf(await getAccessToken(), hecha.id), {
-              titulo: `Liquidación ${numero(hecha.numero)}`,
+              titulo: `Liquidación ${nroDocumento(hecha.numero)}`,
               onError: setError,
             })
           }
@@ -208,7 +206,7 @@ export function LiquidacionForm({
         </Button>
         {mandando && (
           <EnviarMailModal
-            titulo={`Enviar la liquidación ${numero(hecha.numero)} por mail`}
+            titulo={`Enviar la liquidación ${nroDocumento(hecha.numero)} por mail`}
             personaId={hecha.persona.id}
             enviar={async (para) =>
               enviarLiquidacionPorMail(await getAccessToken(), hecha.id, para)
