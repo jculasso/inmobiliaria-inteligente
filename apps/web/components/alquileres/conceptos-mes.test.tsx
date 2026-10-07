@@ -14,7 +14,7 @@ vi.mock('../../lib/alquileres-api', () => ({
   anularConcepto: vi.fn(),
 }));
 
-import { ConceptosMes } from './conceptos-mes';
+import { ConceptosMes, textoGeneracion } from './conceptos-mes';
 
 const C5 = '55555555-5555-4555-8555-555555555555';
 const k = (over: Partial<ConceptoDto>): ConceptoDto => ({
@@ -184,7 +184,9 @@ describe('ConceptosMes', () => {
     render(<ConceptosMes periodo="2026-12" conceptos={[]} contratos={[contrato]} />);
     fireEvent.click(screen.getByRole('button', { name: '⚙️ Generar diciembre' }));
     const estado = await screen.findByRole('status');
-    expect(estado).toHaveTextContent('Se generaron 300 conceptos de 78 contratos. 4 ya estaban.');
+    expect(estado).toHaveTextContent(
+      'Se generaron 300 conceptos nuevos. 4 ya estaban (se revisaron 78 contratos).',
+    );
     expect(estado).toHaveTextContent('5 (15/12 al 31/12)');
     expect(within(estado).getByRole('link', { name: 'Ir a indexar' })).toHaveAttribute(
       'href',
@@ -203,6 +205,7 @@ describe('ConceptosMes', () => {
     crearConceptoSuelto.mockResolvedValueOnce([k({}), k({})]);
     render(<ConceptosMes periodo="2026-11" conceptos={[]} contratos={[contrato]} />);
     fireEvent.click(screen.getByRole('button', { name: '＋ Gasto suelto' }));
+    fireEvent.change(screen.getByLabelText(/Contrato/), { target: { value: contrato.id } });
     fireEvent.change(screen.getByLabelText(/Lo debe/), { target: { value: 'propietario' } });
     const pagador = screen.getByLabelText(/Ya lo pagó/) as HTMLSelectElement;
     expect([...pagador.options].map((o) => o.value)).toEqual([
@@ -224,5 +227,31 @@ describe('ConceptosMes', () => {
       ),
     );
     expect(await screen.findByText(/el cargo y el reintegro a quien lo pagó/)).toBeInTheDocument();
+  });
+
+  // Prueba en producción, 6/10/2026: venía elegido el primer contrato y era
+  // fácil cargarle el gasto al equivocado.
+  it('gasto suelto: arranca sin contrato y no guarda hasta elegirlo', async () => {
+    crearConceptoSuelto.mockClear();
+    render(<ConceptosMes periodo="2026-11" conceptos={[]} contratos={[contrato]} />);
+    fireEvent.click(screen.getByRole('button', { name: '＋ Gasto suelto' }));
+    expect(screen.getByLabelText(/Contrato/)).toHaveValue('');
+    fireEvent.change(screen.getByLabelText(/Importe/), { target: { value: '1000' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar' }).closest('form')!);
+    expect(await screen.findByText('Elegí el contrato.')).toBeInTheDocument();
+    expect(crearConceptoSuelto).not.toHaveBeenCalled();
+  });
+
+  it('lo que informa «Generar» no afirma de cuántos contratos son los nuevos, y respeta el singular', () => {
+    const r = { periodo: '2026-10', sinIndexar: [] };
+    expect(textoGeneracion({ ...r, contratos: 11, creados: 11, existentes: 30 })).toBe(
+      'Se generaron 11 conceptos nuevos. 30 ya estaban (se revisaron 11 contratos).',
+    );
+    expect(textoGeneracion({ ...r, contratos: 1, creados: 1, existentes: 0 })).toBe(
+      'Se generó 1 concepto nuevo (se revisó 1 contrato).',
+    );
+    expect(textoGeneracion({ ...r, contratos: 4, creados: 0, existentes: 12 })).toBe(
+      'No había nada nuevo para generar: se revisaron 4 contratos.',
+    );
   });
 });
