@@ -1261,6 +1261,31 @@ export type Indicador = z.infer<typeof IndicadorSchema>;
 export const TRAMOS_MORA = ['1-30', '31-60', '61-90', '90+'] as const;
 export type TramoMora = (typeof TRAMOS_MORA)[number];
 
+/** Regla 77: la cartera y la deuda al cierre de un mes, sin las listas. */
+export const CierreTableroSchema = z.object({
+  mes: PeriodoSchema,
+  /** El último día del mes, u hoy si todavía no terminó. */
+  cierre: FechaIso,
+  vigentes: z.number().int(),
+  vivienda: z.number().int(),
+  comercial: z.number().int(),
+  alquilerMensual: z.array(
+    z.object({ moneda: MonedaAlquilerSchema, valor: z.number(), contratos: z.number().int() }),
+  ),
+  mora: z.array(
+    z.object({
+      moneda: MonedaAlquilerSchema,
+      valor: z.number(),
+      conceptos: z.number().int(),
+      inquilinos: z.number().int(),
+      tramos: z.array(
+        z.object({ tramo: z.enum(TRAMOS_MORA), valor: z.number(), conceptos: z.number().int() }),
+      ),
+    }),
+  ),
+});
+export type CierreTablero = z.infer<typeof CierreTableroSchema>;
+
 export const TableroAlquileresDtoSchema = z.object({
   hoy: FechaIso,
   mes: PeriodoSchema,
@@ -1325,15 +1350,32 @@ export const TableroAlquileresDtoSchema = z.object({
       tramos: z.array(z.object({ tramo: z.enum(TRAMOS_MORA), indicador: IndicadorSchema })),
     }),
   ),
-  /** Regla 29: lo emitido y lo cobrado al cierre de cada mes del año elegido. */
+  /**
+   * Regla 29: lo emitido y lo cobrado al cierre de cada mes del año elegido.
+   * Regla 75: también cuántos alquileres se emitieron, cuántos se cobraron del
+   * todo y lo cobrado hasta hoy, para que la pantalla sume el mes, el
+   * trimestre o el año sin pedir nada. `.default` por el orden de despliegue.
+   */
   evolucion: z.array(
     z.object({
       mes: PeriodoSchema,
       moneda: MonedaAlquilerSchema,
       emitido: z.number(),
+      /** Lo cobrado hasta el último día de ese mes. */
       cobrado: z.number(),
+      emitidos: z.number().int().default(0),
+      cobrados: z.number().int().default(0),
+      /** Lo cobrado hasta hoy de los alquileres de ese mes, aunque se haya cobrado después. */
+      cobradoHoy: z.number().default(0),
     }),
   ),
+  /**
+   * Regla 77: la foto de la cartera y de la deuda al cierre de cada mes del año
+   * elegido —su último día, o hoy si todavía no terminó—. Solo los números: la
+   * lista se pide al abrir la tarjeta (regla 79). `.default` por el orden de
+   * despliegue.
+   */
+  cierres: z.array(CierreTableroSchema).default([]),
   /** Regla 30: honorarios, gastos y punitorios cobrados por mes, del año elegido y del anterior. */
   ingresos: z.array(
     z.object({
@@ -1492,6 +1534,61 @@ export const TableroAlquileresQuerySchema = z.object({
   tipo: FiltroTipoContratoSchema.default('todos'),
 });
 export type TableroAlquileresQuery = z.infer<typeof TableroAlquileresQuerySchema>;
+
+/**
+ * Los números del tablero cuya lista se pide al abrirlos (regla 79): los
+ * flujos de un rango de meses —alquileres emitidos y cobrados, ingresos de la
+ * inmobiliaria y cada parte— y las fotos al cierre del rango —contratos
+ * vigentes, alquiler mensual y deuda vencida—.
+ */
+export const INDICADORES_DETALLE_TABLERO = [
+  'emitidos',
+  'cobrados',
+  'importeEmitido',
+  'importeCobrado',
+  'ingresos',
+  'honorarios',
+  'gastos',
+  'punitorios',
+  'comisiones',
+  'vigentes',
+  'alquilerMensual',
+  'mora',
+] as const;
+export type IndicadorDetalleTablero = (typeof INDICADORES_DETALLE_TABLERO)[number];
+
+/** Las partes de los ingresos de la inmobiliaria (regla 30): cada una y el total. */
+export const PARTES_INGRESOS = ['honorarios', 'gastos', 'punitorios', 'comisiones'] as const;
+export type ParteIngresos = (typeof PARTES_INGRESOS)[number];
+
+export const DetalleTableroQuerySchema = z
+  .object({
+    indicador: z.enum(INDICADORES_DETALLE_TABLERO),
+    /** El primer mes del período. */
+    desde: PeriodoSchema,
+    /** El último: las fotos son a su cierre (regla 77). */
+    hasta: PeriodoSchema,
+    tipo: FiltroTipoContratoSchema.default('todos'),
+    moneda: MonedaAlquilerSchema.default('ARS'),
+    /** Solo para `mora`: un tramo de antigüedad; sin él, toda la deuda. */
+    tramo: z.enum(TRAMOS_MORA).optional(),
+  })
+  .refine((q) => q.desde <= q.hasta, {
+    message: 'El período termina antes de empezar.',
+    path: ['hasta'],
+  })
+  .refine(
+    (q) =>
+      Number(q.hasta.slice(0, 4)) * 12 +
+        Number(q.hasta.slice(5)) -
+        (Number(q.desde.slice(0, 4)) * 12 + Number(q.desde.slice(5))) <
+      12,
+    {
+      message: 'El período es de un año como máximo.',
+      path: ['desde'],
+    },
+  );
+export type DetalleTableroQuery = z.infer<typeof DetalleTableroQuerySchema>;
 
 // --- Ficha de la persona (punto 14 de Javier, como «Clientes» de Gexion) ----------
 

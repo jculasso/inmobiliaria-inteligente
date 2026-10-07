@@ -1,6 +1,11 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
-import type { Indicador, TableroAlquileresDto } from '@vacker/types';
+import {
+  INDICADORES_DETALLE_TABLERO,
+  type FiltroTipoContrato,
+  type Indicador,
+  type TableroAlquileresDto,
+} from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import type { IndexacionesService } from './indexaciones.service';
 import type { LiquidacionesService } from './liquidaciones.service';
@@ -38,21 +43,38 @@ function contrato(over: Record<string, unknown> = {}) {
   };
 }
 
-function alquilerDelMes(id: string, importe: number, pagado: number) {
+/** Un alquiler del lado del inquilino, como lo lee `sqlAlquileres`. */
+function alquiler(
+  id: string,
+  importe: number,
+  cobrado: number,
+  over: Record<string, unknown> & { periodo?: string; alCierre?: number } = {},
+) {
+  const { periodo = '2026-10', alCierre = cobrado, ...resto } = over;
   return {
     id,
+    periodo,
     moneda: 'ARS',
     importe: dec(importe),
-    vencimiento: d('2026-10-05'),
-    descripcion: 'Alquiler octubre 2026',
-    contratoId: `c${id}`,
-    persona: { id: `inq-${id}`, nombre: `Inquilino ${id}` },
-    contrato: { codigo: id },
-    imputaciones: pagado ? [{ importe: dec(pagado) }] : [],
+    vencimiento: d(`${periodo}-05`),
+    descripcion: `Alquiler ${periodo}`,
+    contrato_id: `c${id}`,
+    tipo_contrato: 'vivienda',
+    persona_id: `inq-${id}`,
+    nombre: `Inquilino ${id}`,
+    cobrado: dec(cobrado),
+    cobrado_al_cierre: dec(alCierre),
+    ...resto,
   };
 }
 
-const mora = (id: string, vencimiento: string, saldo: number, persona = 'inq5') => ({
+const mora = (
+  id: string,
+  vencimiento: string,
+  saldo: number,
+  over: Record<string, unknown> = {},
+) => ({
+  cierre: HOY,
   id,
   moneda: 'ARS',
   vencimiento: d(vencimiento),
@@ -61,101 +83,171 @@ const mora = (id: string, vencimiento: string, saldo: number, persona = 'inq5') 
   saldo: dec(saldo),
   contrato_id: 'c5',
   codigo: '5',
-  persona_id: persona,
+  persona_id: 'inq5',
   nombre: 'Inquilina',
   tipo_contrato: 'vivienda',
+  ...over,
+});
+
+/** Un movimiento de ingresos, como lo lee `sqlMovimientosIngresos`. */
+const movimiento = (
+  id: string,
+  fecha: string,
+  tipo: string,
+  importe: number,
+  over: Record<string, unknown> = {},
+) => ({
+  id,
+  fecha: d(fecha),
+  moneda: 'ARS',
+  contrato_id: 'c5',
+  tipo_contrato: 'vivienda',
+  tipo,
+  importe: dec(importe),
+  descripcion: null,
+  persona_id: 'dueno',
+  nombre: 'Dueño',
+  ...over,
 });
 
 /** Los valores interpolados de cada `$queryRaw`, por servicio creado. */
 const rawCalls: unknown[][][] = [];
+/** Cuántas consultas hizo el último servicio creado (regla 82). */
+const consultas = { n: 0 };
 
-function servicio(
-  over: { contratos?: unknown[]; delMes?: unknown[]; mora?: unknown[]; evolucion?: unknown[] } = {},
-) {
+type Fixture = {
+  contratos?: ReturnType<typeof contrato>[];
+  alquileres?: ReturnType<typeof alquiler>[];
+  mora?: ReturnType<typeof mora>[];
+  movimientos?: ReturnType<typeof movimiento>[];
+};
+
+/**
+ * Una base de mentira que contesta cada consulta como lo haría la de verdad
+ * con las filas del fixture: filtra por los meses o las fechas que se le
+ * piden, y la de ingresos por mes agrupa como el `GROUP BY`. Así el tablero y
+ * el detalle leen las mismas filas, como en producción.
+ */
+function servicio(over: Fixture = {}) {
   const valores: unknown[][] = [];
   rawCalls.push(valores);
-  // En el orden en que el servicio consulta: morosidad, evolución, ingresos.
-  const respuestas: unknown[] = [
-    over.mora ?? [mora('m1', '2026-10-05', 250_000), mora('m2', '2026-08-05', 100_000)],
-    over.evolucion ?? [
-      {
-        periodo: '2026-10',
-        moneda: 'ARS',
-        tipo_contrato: 'vivienda',
-        emitido: dec(1_537_518),
-        cobrado: dec(1_287_518),
-      },
-    ],
-    [
-      {
-        mes: '2026-10',
-        moneda: 'ARS',
-        tipo_contrato: 'vivienda',
-        honorarios: dec(110_111.74),
-        gastos: dec(27_527.94),
-        punitorios: null,
-      },
-    ],
+  consultas.n = 0;
+  const alquileres = over.alquileres ?? [
+    alquiler('5', 1_137_518, 1_137_518),
+    alquiler('6', 400_000, 150_000),
   ];
+  const filasMora = over.mora ?? [
+    mora('m1', '2026-10-05', 250_000),
+    mora('m2', '2026-08-05', 100_000),
+  ];
+  const movimientos = over.movimientos ?? [
+    movimiento('h1', '2026-10-10', 'honorarios', 110_111.74),
+    movimiento('g1', '2026-10-06', 'gastos_adm', 27_527.94, {
+      persona_id: 'inq5',
+      nombre: 'Inquilina',
+    }),
+  ];
+  const contratos = over.contratos ?? [contrato()];
+  const iso = (x: unknown) => (x as Date).toISOString().slice(0, 10);
+  const enRango = (v: unknown[]) => {
+    const [desde, hasta] = v.filter((x) => x instanceof Date).map(iso);
+    return movimientos.filter((m) => iso(m.fecha) >= desde! && iso(m.fecha) < hasta!);
+  };
   const tx = {
-    alqContrato: { findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]) },
+    alqContrato: {
+      findMany: vi.fn(async (a: { where?: { id?: { in?: string[] } } }) => {
+        consultas.n++;
+        const ids = a.where?.id?.in;
+        return ids ? contratos.filter((c) => ids.includes(c.id)) : contratos;
+      }),
+    },
     alqReclamo: {
-      findMany: vi.fn().mockResolvedValue([
-        {
-          id: 'r1',
-          asunto: 'Pérdida de agua',
-          prioridad: 'alta',
-          contratoId: 'c5',
-          createdAt: new Date('2026-10-10T12:00:00Z'),
-        },
-      ]),
+      findMany: vi.fn(async () => {
+        consultas.n++;
+        return [
+          {
+            id: 'r1',
+            asunto: 'Pérdida de agua',
+            prioridad: 'alta',
+            contratoId: 'c5',
+            createdAt: new Date('2026-10-10T12:00:00Z'),
+          },
+        ];
+      }),
     },
     alqPoliza: {
-      findMany: vi.fn().mockResolvedValue([
-        {
-          id: 'p1',
-          contratoId: 'c5',
-          aseguradora: 'Sancor',
-          numero: '123',
-          hasta: d('2026-11-30'),
-          contrato: { codigo: '5', estado: 'vigente' },
-        },
-        {
-          id: 'p2',
-          contratoId: 'c9',
-          aseguradora: 'Otra',
-          numero: null,
-          hasta: d('2026-10-01'),
-          contrato: { codigo: '9', estado: 'finalizado' },
-        },
-      ]),
+      findMany: vi.fn(async () => {
+        consultas.n++;
+        return [
+          {
+            id: 'p1',
+            contratoId: 'c5',
+            aseguradora: 'Sancor',
+            numero: '123',
+            hasta: d('2026-11-30'),
+            contrato: { codigo: '5', estado: 'vigente' },
+          },
+          {
+            id: 'p2',
+            contratoId: 'c9',
+            aseguradora: 'Otra',
+            numero: null,
+            hasta: d('2026-10-01'),
+            contrato: { codigo: '9', estado: 'finalizado' },
+          },
+        ];
+      }),
     },
     alqBoleta: {
-      findMany: vi.fn().mockResolvedValue([
-        {
-          id: 'b1',
-          contratoId: 'c5',
-          cuota: '3/6',
-          vencimiento: d('2026-10-10'),
-          importe: dec(45_000),
-          cuenta: { servicio: { nombre: 'API' } },
-          poliza: null,
-        },
-      ]),
+      findMany: vi.fn(async () => {
+        consultas.n++;
+        return [
+          {
+            id: 'b1',
+            contratoId: 'c5',
+            cuota: '3/6',
+            vencimiento: d('2026-10-10'),
+            importe: dec(45_000),
+            cuenta: { servicio: { nombre: 'API' } },
+            poliza: null,
+          },
+        ];
+      }),
     },
-    alqConcepto: {
-      findMany: vi
-        .fn()
-        .mockResolvedValue(
-          over.delMes ?? [
-            alquilerDelMes('5', 1_137_518, 1_137_518),
-            alquilerDelMes('6', 400_000, 150_000),
-          ],
-        ),
-    },
-    $queryRaw: vi.fn(async (_t: TemplateStringsArray, ...v: unknown[]) => {
-      valores.push(v);
-      return respuestas.shift();
+    $queryRaw: vi.fn(async (q: Prisma.Sql) => {
+      consultas.n++;
+      valores.push(q.values);
+      const texto = q.sql;
+      if (texto.includes('unnest(')) {
+        const cierres = q.values[0] as string[];
+        return filasMora.filter((m) => cierres.includes(m.cierre));
+      }
+      if (texto.includes("k.tipo = 'alquiler'")) {
+        const [desde, hasta, ademas] = q.values as string[];
+        return alquileres.filter(
+          (k) => (k.periodo >= desde! && k.periodo <= hasta!) || k.periodo === ademas,
+        );
+      }
+      if (texto.includes('GROUP BY 1, 2, 3, 4')) {
+        const juntos = new Map<string, Record<string, unknown> & { importe: Prisma.Decimal }>();
+        for (const m of enRango(q.values)) {
+          const fila = {
+            mes: iso(m.fecha).slice(0, 7),
+            moneda: m.moneda,
+            tipo_contrato: m.tipo_contrato,
+            tipo: m.tipo,
+          };
+          const clave = JSON.stringify(fila);
+          const previo = juntos.get(clave);
+          juntos.set(clave, {
+            ...fila,
+            importe: previo ? previo.importe.add(m.importe) : m.importe,
+          });
+        }
+        return [...juntos.values()];
+      }
+      if (texto.includes('alq_liquidacion')) return enRango(q.values);
+      throw new Error(`Consulta inesperada: ${texto.slice(0, 80)}`);
     }),
   };
   const db = {
@@ -416,14 +508,30 @@ describe('TableroAlquileresService', () => {
   });
 
   // Como el Tablero Comercial: los gráficos van por año calendario.
-  it('los gráficos piden el año elegido, y los ingresos también el anterior', async () => {
+  it('los meses son del año elegido, y los ingresos también del anterior', async () => {
     await servicio().tablero(HOY, 2025);
-    const llamadas = rawCalls.at(-1)!;
-    expect(llamadas[1]).toEqual(expect.arrayContaining(['2025-01', '2025-12']));
-    const fechas = llamadas[2]!
+    const [alquileres, cierres, ingresos] = rawCalls.at(-1)!;
+    // Los doce meses del año elegido, y el mes en curso por la pantalla anterior.
+    expect(alquileres).toEqual(['2025-01', '2025-12', '2026-10']);
+    // La deuda al cierre de cada mes de 2025 y la de hoy.
+    expect(cierres![0]).toEqual([
+      '2025-01-31',
+      '2025-02-28',
+      '2025-03-31',
+      '2025-04-30',
+      '2025-05-31',
+      '2025-06-30',
+      '2025-07-31',
+      '2025-08-31',
+      '2025-09-30',
+      '2025-10-31',
+      '2025-11-30',
+      '2025-12-31',
+      HOY,
+    ]);
+    const fechas = ingresos!
       .filter((v: unknown) => v instanceof Date)
       .map((v) => (v as Date).toISOString().slice(0, 10));
-    // Hasta fin del año en curso: la tarjeta «Ingresos del mes» es siempre del mes de hoy.
     expect(fechas).toEqual(['2024-01-01', '2027-01-01', '2024-01-01', '2027-01-01']);
   });
 
@@ -481,28 +589,32 @@ describe('TableroAlquileresService', () => {
     });
 
     it('lo agregado en la base viene por tipo: con «todos» se suma, filtrado queda el suyo', async () => {
-      const evolucion = [
-        {
-          periodo: '2026-10',
-          moneda: 'ARS',
-          tipo_contrato: 'vivienda',
-          emitido: dec(1_000_000),
-          cobrado: dec(800_000),
-        },
-        {
-          periodo: '2026-10',
-          moneda: 'ARS',
-          tipo_contrato: 'comercial',
-          emitido: dec(500_000),
-          cobrado: dec(500_000),
-        },
+      const alquileres = [
+        alquiler('5', 1_000_000, 800_000),
+        alquiler('3', 500_000, 500_000, { tipo_contrato: 'comercial' }),
       ];
-      const t = await servicio({ contratos: cartera(), evolucion }).tableros(HOY, 2026);
+      const t = await servicio({ contratos: cartera(), alquileres }).tableros(HOY, 2026);
       expect(t.todos.evolucion).toEqual([
-        { mes: '2026-10', moneda: 'ARS', emitido: 1_500_000, cobrado: 1_300_000 },
+        {
+          mes: '2026-10',
+          moneda: 'ARS',
+          emitido: 1_500_000,
+          cobrado: 1_300_000,
+          emitidos: 2,
+          cobrados: 1,
+          cobradoHoy: 1_300_000,
+        },
       ]);
       expect(t.comercial.evolucion).toEqual([
-        { mes: '2026-10', moneda: 'ARS', emitido: 500_000, cobrado: 500_000 },
+        {
+          mes: '2026-10',
+          moneda: 'ARS',
+          emitido: 500_000,
+          cobrado: 500_000,
+          emitidos: 1,
+          cobrados: 1,
+          cobradoHoy: 500_000,
+        },
       ]);
       expect(t.vivienda.morosidad[0]!.total.valor).toBe(350_000);
       expect(t.comercial.morosidad).toEqual([]);
@@ -534,6 +646,312 @@ describe('TableroAlquileresService', () => {
       expect(t.filas.map((f) => [f.contrato, f.importe, f.fecha])).toEqual([
         ['7', 330_000, '2026-11-01'],
       ]);
+    });
+  });
+
+  // Reglas 74 a 82: el selector de período (Javier, 7/10/2026).
+  describe('el período: mes, trimestre y año (reglas 75 a 82)', () => {
+    const historia = () => [
+      contrato({
+        id: 'cA',
+        codigo: 'A',
+        inicio: d('2025-01-01'),
+        fin: d('2027-12-31'),
+        tramos: [
+          { numero: 1, desde: d('2025-01-01'), importe: dec(500_000) },
+          { numero: 2, desde: d('2026-05-01'), importe: dec(650_000) },
+        ],
+      }),
+      contrato({
+        id: 'cB',
+        codigo: 'B',
+        tipo: 'comercial',
+        estado: 'finalizado',
+        inicio: d('2024-06-01'),
+        fin: d('2026-05-31'),
+        tramos: [{ numero: 1, desde: d('2024-06-01'), importe: dec(300_000) }],
+      }),
+      contrato({
+        id: 'cC',
+        codigo: 'C',
+        inicio: d('2026-06-01'),
+        fin: d('2028-05-31'),
+        tramos: [{ numero: 1, desde: d('2026-06-01'), importe: dec(700_000) }],
+      }),
+      contrato({
+        id: 'cD',
+        codigo: 'D',
+        estado: 'rescindido',
+        inicio: d('2025-03-01'),
+        fin: d('2027-02-28'),
+        rescindidoEl: d('2026-02-15'),
+        tramos: [{ numero: 1, desde: d('2025-03-01'), importe: dec(200_000) }],
+      }),
+      // Terminó en enero y nadie lo finalizó: sigue «vigente» hoy, y lo estaba en marzo.
+      contrato({
+        id: 'cE',
+        codigo: 'E',
+        inicio: d('2024-01-01'),
+        fin: d('2026-01-31'),
+        tramos: [{ numero: 1, desde: d('2024-01-01'), importe: dec(100_000) }],
+      }),
+    ];
+    const de = (contratoId: string, tipo = 'vivienda') => ({
+      contrato_id: contratoId,
+      tipo_contrato: tipo,
+    });
+    const alquileres = [
+      alquiler('a1', 500_000, 500_000, { periodo: '2026-01', ...de('cA') }),
+      // Pagado en abril: al cierre de febrero no estaba cobrado.
+      alquiler('a2', 500_000, 500_000, { periodo: '2026-02', alCierre: 300_000, ...de('cA') }),
+      alquiler('a3', 300_000, 100_000, { periodo: '2026-02', ...de('cB', 'comercial') }),
+      alquiler('a4', 700_000, 0, { periodo: '2026-07', ...de('cC') }),
+      alquiler('a5', 650_000, 650_000, { periodo: '2026-10', ...de('cA') }),
+    ];
+    const movimientos = [
+      movimiento('h0', '2025-11-10', 'honorarios', 20_000, de('cA')),
+      movimiento('h1', '2026-01-12', 'honorarios', 25_000, de('cA')),
+      movimiento('g1', '2026-02-07', 'gastos_adm', 10_000, de('cA')),
+      movimiento('p1', '2026-02-20', 'punitorio', 3_000, de('cB', 'comercial')),
+      movimiento('c1', '2026-07-03', 'comision', 40_000, de('cC')),
+      movimiento('i1', '2026-07-03', 'informe', 5_000, de('cC')),
+    ];
+    const deudaMarzo = [
+      mora('m3', '2026-02-05', 80_000, { cierre: '2026-03-31', persona_id: 'inqA', ...de('cA') }),
+      mora('m4', '2026-03-05', 20_000, {
+        cierre: '2026-03-31',
+        persona_id: 'inqB',
+        ...de('cB', 'comercial'),
+      }),
+    ];
+    const fixture = () => ({
+      contratos: historia(),
+      alquileres,
+      movimientos,
+      mora: [...deudaMarzo, mora('m1', '2026-10-05', 250_000, de('cA'))],
+    });
+
+    // Regla 75.
+    it('regla 75: los alquileres llegan mes por mes: cuántos, cuánto y lo cobrado', async () => {
+      const t = await servicio(fixture()).tablero(HOY);
+      expect(t.evolucion.map((e) => [e.mes, e.emitidos, e.cobrados, e.emitido])).toEqual([
+        ['2026-01', 1, 1, 500_000],
+        ['2026-02', 2, 1, 800_000],
+        ['2026-07', 1, 0, 700_000],
+        ['2026-10', 1, 1, 650_000],
+      ]);
+    });
+
+    it('regla 76: lo cobrado hasta hoy y lo cobrado al cierre del mes son dos números', async () => {
+      const t = await servicio(fixture()).tablero(HOY);
+      const febrero = t.evolucion.find((e) => e.mes === '2026-02')!;
+      expect(febrero).toMatchObject({ cobradoHoy: 600_000, cobrado: 400_000 });
+    });
+
+    it('regla 77: cada mes cierra su último día; el mes en curso y los que vienen, hoy', async () => {
+      const t = await servicio(fixture()).tablero(HOY);
+      expect(t.cierres.map((c) => c.cierre)).toEqual([
+        '2026-01-31',
+        '2026-02-28',
+        '2026-03-31',
+        '2026-04-30',
+        '2026-05-31',
+        '2026-06-30',
+        '2026-07-31',
+        '2026-08-31',
+        '2026-09-30',
+        HOY,
+        HOY,
+        HOY,
+      ]);
+    });
+
+    it('regla 77: vigente al cierre es por fechas, no por el estado de hoy', async () => {
+      const t = await servicio(fixture()).tablero(HOY);
+      const al = (mes: string) => t.cierres.find((c) => c.mes === mes)!;
+      // Enero: los cuatro que habían empezado y no habían terminado (D se rescindió en febrero).
+      expect(al('2026-01').vigentes).toBe(4);
+      // Marzo: A, B (finalizado en mayo) y E (terminó en enero, sigue vigente); C empieza en junio.
+      expect(al('2026-03')).toMatchObject({ vigentes: 3, vivienda: 2, comercial: 1 });
+      // El alquiler de cada uno ese día: A todavía no había indexado.
+      expect(al('2026-03').alquilerMensual).toEqual([
+        { moneda: 'ARS', valor: 900_000, contratos: 3 },
+      ]);
+      // El mes en curso es a hoy: la misma cartera que viaja con su lista.
+      expect(al('2026-10').vigentes).toBe(t.cartera.vigentes.valor);
+      expect(al('2026-10').alquilerMensual[0]!.valor).toBe(
+        t.cartera.alquilerMensual[0]!.indicador.valor,
+      );
+      expect(t.cartera.vigentes.filas.map((f) => f.contrato)).toEqual(['A', 'C', 'E']);
+    });
+
+    it('regla 77: la deuda al cierre, con la antigüedad contada a esa fecha', async () => {
+      const t = await servicio(fixture()).tablero(HOY);
+      const marzo = t.cierres.find((c) => c.mes === '2026-03')!;
+      expect(marzo.mora).toEqual([
+        {
+          moneda: 'ARS',
+          valor: 100_000,
+          conceptos: 2,
+          inquilinos: 2,
+          tramos: [
+            { tramo: '1-30', valor: 20_000, conceptos: 1 },
+            { tramo: '31-60', valor: 80_000, conceptos: 1 },
+            { tramo: '61-90', valor: 0, conceptos: 0 },
+            { tramo: '90+', valor: 0, conceptos: 0 },
+          ],
+        },
+      ]);
+      // Un mes sin deuda al cierre no tiene filas; el mes en curso, la de hoy.
+      expect(t.cierres.find((c) => c.mes === '2026-05')!.mora).toEqual([]);
+      expect(t.cierres.find((c) => c.mes === '2026-10')!.mora[0]!.valor).toBe(
+        t.morosidad[0]!.total.valor,
+      );
+    });
+
+    // Regla 79: la lista que se pide al abrir la tarjeta suma exactamente la tarjeta.
+    const PERIODOS = [
+      ['un mes', '2026-02', '2026-02'],
+      ['un trimestre', '2026-01', '2026-03'],
+      ['el año', '2026-01', '2026-12'],
+    ] as const;
+    const FOTOS: string[] = ['vigentes', 'alquilerMensual', 'mora'];
+    const FLUJOS = INDICADORES_DETALLE_TABLERO.filter((i) => !FOTOS.includes(i));
+    const TIPOS: FiltroTipoContrato[] = ['todos', 'vivienda', 'comercial'];
+
+    /** Lo que la pantalla muestra para un flujo en un período: la suma de sus meses. */
+    function sumaDeLosMeses(
+      t: TableroAlquileresDto,
+      indicador: string,
+      desde: string,
+      hasta: string,
+    ) {
+      const enRango = (mes: string) => mes >= desde && mes <= hasta;
+      const evolucion = t.evolucion.filter((e) => enRango(e.mes) && e.moneda === 'ARS');
+      const ingresos = t.ingresos.filter((i) => enRango(i.mes) && i.moneda === 'ARS');
+      const sum = (xs: number[]) => Math.round(xs.reduce((s, x) => s + x, 0) * 100) / 100;
+      switch (indicador) {
+        case 'emitidos':
+          return sum(evolucion.map((e) => e.emitidos));
+        case 'cobrados':
+          return sum(evolucion.map((e) => e.cobrados));
+        case 'importeEmitido':
+          return sum(evolucion.map((e) => e.emitido));
+        case 'importeCobrado':
+          return sum(evolucion.map((e) => e.cobradoHoy));
+        case 'ingresos':
+          return sum(ingresos.map((i) => i.honorarios + i.gastos + i.punitorios + i.comisiones));
+        default:
+          return sum(ingresos.map((i) => i[indicador as 'honorarios']));
+      }
+    }
+    const sumaDeFilas = (ind: Indicador, cuenta: boolean) =>
+      cuenta
+        ? ind.filas.length
+        : Math.round(ind.filas.reduce((s, f) => s + (f.importe ?? 0), 0) * 100) / 100;
+
+    it.each(PERIODOS)(
+      'regla 79: cada flujo de %s, en los tres cortes: la lista suma la tarjeta',
+      async (_n, desde, hasta) => {
+        const svc = servicio(fixture());
+        const tableros = await svc.tableros(HOY, 2026);
+        for (const tipo of TIPOS)
+          for (const indicador of FLUJOS) {
+            const ind = await svc.detalle({ indicador, desde, hasta, tipo, moneda: 'ARS' }, HOY);
+            const nombre = `${indicador} ${tipo} ${desde}…${hasta}`;
+            expect(ind.valor, nombre).toBe(sumaDeLosMeses(tableros[tipo], indicador, desde, hasta));
+            const cuenta = indicador === 'emitidos' || indicador === 'cobrados';
+            expect(sumaDeFilas(ind, cuenta), nombre).toBe(ind.valor);
+          }
+      },
+    );
+
+    it('regla 79: los números del fixture no dan cero por casualidad', async () => {
+      const t = await servicio(fixture()).tablero(HOY);
+      expect(sumaDeLosMeses(t, 'importeEmitido', '2026-01', '2026-03')).toBe(1_300_000);
+      expect(sumaDeLosMeses(t, 'cobrados', '2026-01', '2026-03')).toBe(2);
+      expect(sumaDeLosMeses(t, 'comisiones', '2026-01', '2026-12')).toBe(45_000);
+      expect(sumaDeLosMeses(t, 'ingresos', '2026-01', '2026-03')).toBe(38_000);
+    });
+
+    it.each(TIPOS)(
+      'regla 79: las fotos al cierre de marzo y a hoy, %s: la lista suma la tarjeta',
+      async (tipo) => {
+        const svc = servicio(fixture());
+        const t = (await svc.tableros(HOY, 2026))[tipo];
+        for (const hasta of ['2026-03', '2026-10']) {
+          const c = t.cierres.find((x) => x.mes === hasta)!;
+          const q = { desde: hasta, hasta, tipo, moneda: 'ARS' as const };
+          const vigentes = await svc.detalle({ ...q, indicador: 'vigentes' }, HOY);
+          expect(vigentes.valor).toBe(c.vigentes);
+          expect(vigentes.filas.length).toBe(c.vigentes);
+          const alquiler = await svc.detalle({ ...q, indicador: 'alquilerMensual' }, HOY);
+          expect(alquiler.valor).toBe(c.alquilerMensual[0]?.valor ?? 0);
+          expect(sumaDeFilas(alquiler, false)).toBe(alquiler.valor);
+          const deuda = await svc.detalle({ ...q, indicador: 'mora' }, HOY);
+          expect(deuda.valor).toBe(c.mora[0]?.valor ?? 0);
+          for (const x of c.mora[0]?.tramos ?? []) {
+            const tramo = await svc.detalle({ ...q, indicador: 'mora', tramo: x.tramo }, HOY);
+            expect(tramo.valor).toBe(x.valor);
+            expect(tramo.filas.length).toBe(x.conceptos);
+          }
+        }
+      },
+    );
+
+    it('regla 79: las filas del detalle traen lo que sirve para revisarlas', async () => {
+      const svc = servicio(fixture());
+      const q = { tipo: 'todos', moneda: 'ARS' } as const;
+      const cobrado = await svc.detalle(
+        { ...q, indicador: 'importeCobrado', desde: '2026-02', hasta: '2026-02' },
+        HOY,
+      );
+      expect(cobrado.filas.map((f) => [f.contrato, f.importe, f.estado])).toEqual([
+        ['A', 500_000, 'Cobrado'],
+        ['B', 100_000, 'Pagó $ 100.000,00, falta $ 200.000,00'],
+      ]);
+      const comisiones = await svc.detalle(
+        { ...q, indicador: 'comisiones', desde: '2026-07', hasta: '2026-07' },
+        HOY,
+      );
+      expect(comisiones.filas.map((f) => [f.contrato, f.detalle, f.importe])).toEqual([
+        ['C', 'Comisión', 40_000],
+        ['C', 'Informe de garantía', 5_000],
+      ]);
+    });
+
+    it('regla 82: el tablero y el detalle hacen las mismas consultas con 5 o con 25 contratos', async () => {
+      const cuantas = async (n: number) => {
+        const ids = Array.from({ length: n }, (_, i) => `x${i}`);
+        const svc = servicio({
+          contratos: ids.map((id) => contrato({ id, codigo: id })),
+          alquileres: ids.flatMap((id) =>
+            ['2026-01', '2026-02', '2026-10'].map((periodo) =>
+              alquiler(`${id}-${periodo}`, 100_000, 50_000, { periodo, contrato_id: id }),
+            ),
+          ),
+          mora: ids.map((id) => mora(`m-${id}`, '2026-09-05', 10_000, { contrato_id: id })),
+          movimientos: ids.map((id) =>
+            movimiento(`h-${id}`, '2026-02-10', 'honorarios', 1_000, { contrato_id: id }),
+          ),
+        });
+        await svc.tableros(HOY, 2026);
+        const delTablero = consultas.n;
+        const delDetalle: number[] = [];
+        for (const indicador of INDICADORES_DETALLE_TABLERO) {
+          consultas.n = 0;
+          await svc.detalle(
+            { indicador, desde: '2026-01', hasta: '2026-12', tipo: 'todos', moneda: 'ARS' },
+            HOY,
+          );
+          delDetalle.push(consultas.n);
+        }
+        return { delTablero, delDetalle };
+      };
+      const cinco = await cuantas(5);
+      expect(await cuantas(25)).toEqual(cinco);
+      expect(cinco.delTablero).toBe(7);
+      expect(Math.max(...cinco.delDetalle)).toBeLessThanOrEqual(2);
     });
   });
 });

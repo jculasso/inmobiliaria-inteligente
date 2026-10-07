@@ -6,6 +6,7 @@ import {
   enLetras,
   importeEnLetras,
   cargoConIva,
+  cierreDelMes,
   estadoDeFirma,
   fechaDelIndice,
   generarPeriodo,
@@ -795,5 +796,19 @@ describe('alquilerDeHoy y proximoCambio (una sola definición)', () => {
     expect(
       proximoCambio([{ numero: 1, desde: '2026-01-01', importe: 1 }], '2026-06-15'),
     ).toBeNull();
+  });
+});
+
+// Regla 77: las fotos del tablero son al último día del mes, o a hoy.
+describe('cierreDelMes', () => {
+  it('un mes que ya terminó cierra su último día, con los bisiestos', () => {
+    expect(cierreDelMes('2026-03', '2026-10-07')).toBe('2026-03-31');
+    expect(cierreDelMes('2028-02', '2028-10-07')).toBe('2028-02-29');
+  });
+
+  it('el mes en curso, el que termina hoy y uno futuro cierran hoy', () => {
+    expect(cierreDelMes('2026-10', '2026-10-07')).toBe('2026-10-07');
+    expect(cierreDelMes('2026-10', '2026-10-31')).toBe('2026-10-31');
+    expect(cierreDelMes('2026-12', '2026-10-07')).toBe('2026-10-07');
   });
 });

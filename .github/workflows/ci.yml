@@ -165,6 +165,12 @@ jobs:
       - name: Aislamiento entre inmobiliarias y guardia de RLS
         run: pnpm --filter @vacker/api exec vitest run test/aislamiento.e2e-spec.ts test/rls-habilitada.e2e-spec.ts
 
+      # El SQL del tablero de Alquileres contra una base de verdad (regla 79):
+      # la lista de cada número suma el número. Va acá porque es el único job
+      # con Postgres; con una base de mentira no se puede probar una consulta.
+      - name: Tablero de Alquileres contra la base
+        run: pnpm --filter @vacker/api exec vitest run test/tablero-alquileres.e2e-spec.ts
+
       - name: Registro de PgBouncer si algo falla
         if: failure()
         run: cat /tmp/pgb/pgbouncer.log || true

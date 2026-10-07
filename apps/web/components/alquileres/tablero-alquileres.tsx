@@ -1,21 +1,34 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   DIAS_TABLERO_PROXIMOS,
+  TRAMOS_MORA,
+  type DetalleTableroQuery,
   type FilaTablero,
   type FiltroTipoContrato,
   type Indicador,
+  type IndicadorDetalleTablero,
   type MonedaAlquiler,
   type TableroAlquileresDto,
   type TablerosAlquileresDto,
+  type TramoMora,
 } from '@vacker/types';
-import { mesLargo } from '@vacker/domain';
 import { Card, KpiCard, Modal } from '@vacker/ui';
+import { getDetalleTableroAlquileres } from '../../lib/alquileres-api';
 import { fmtFecha, fmtK, fmtMoneda, fmtNum } from '../../lib/format';
 import { ABREV_MES, NOMBRES_MES, periodosTranscurridos } from '../../lib/meses';
+import {
+  mesesDelPeriodo,
+  nombreDelPeriodo,
+  parametrosDelPeriodo,
+  periodoPorDefecto,
+  rangoDelPeriodo,
+  type PeriodoTablero,
+} from '../../lib/periodo-tablero';
+import { getAccessToken } from '../../lib/supabase/client';
 import { PeriodosChart } from '../tablero/periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from '../tablero/periodos-tabla';
 import { CLASE_FOCO, CLASE_TH, EncabezadoPagina, Segmentado, TituloSeccion } from './piezas';
@@ -26,6 +39,7 @@ type Columna =
   | 'propiedad'
   | 'inquilino'
   | 'propietario'
+  | 'persona'
   | 'alquiler'
   | 'indexa'
   | 'vence'
@@ -35,14 +49,21 @@ type Columna =
   | 'importe'
   | 'estado';
 
+/** La lista de un número del período que se pide al abrirlo (regla 79). */
+type Pedido = Omit<DetalleTableroQuery, 'tipo'>;
+
 /**
  * El detalle de un número: la lista, con las columnas que sirven para ESE
  * número (Javier, 6/10/2026: «en cada uno pone información relevante»), y a
  * dónde ir a resolverlo si es una tarea.
+ *
+ * Lo que es a hoy viaja con el tablero (`indicador`); lo de un período se pide
+ * al abrirlo (`pedido`, regla 79).
  */
 interface Detalle {
   titulo: string;
-  indicador: Indicador;
+  indicador?: Indicador;
+  pedido?: Pedido;
   columnas: [Columna, string][];
   /** Si el número es un importe, la columna `importe` suma y lleva total. */
   total?: MonedaAlquiler;
@@ -91,6 +112,14 @@ const VISTAS = {
     ['fecha', 'Vence'],
     ['importe', 'Cobrado'],
     ['estado', 'Estado'],
+  ],
+  ingresos: [
+    ['fecha', 'Fecha'],
+    ['detalle', 'Concepto'],
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['persona', 'De quién'],
+    ['importe', 'Importe'],
   ],
   mora: [
     ['contrato', 'Contrato'],
@@ -187,7 +216,9 @@ const NOMBRE_TRAMO = {
 } as const;
 const plata = (n: number) => `$${fmtK(n)}`;
 const porcentaje = (n: number) => `${Math.round(n)}%`;
-const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
+/** Suma importes de a dos decimales sin arrastrar el error de la coma flotante. */
+const suma = (xs: number[]) => Math.round(xs.reduce((s, x) => s + x, 0) * 100) / 100;
+const plural = (n: number, uno: string, varios: string) => `${fmtNum(n)} ${n === 1 ? uno : varios}`;
 
 /**
  * Lo que suman las filas, moneda por moneda. Una lista puede mezclar pesos y
@@ -207,17 +238,27 @@ function fmtTotales(t: Record<MonedaAlquiler, number>, porDefecto: MonedaAlquile
   return (monedas.length ? monedas : [porDefecto]).map((m) => fmtMoneda(t[m], m)).join(' · ');
 }
 
-/** La dirección del tablero con su año y su tipo: se puede compartir o recargar y queda igual. */
-function direccion(pathname: string, hoy: string, anio: number, tipo: FiltroTipoContrato) {
+/**
+ * La dirección del tablero con su año, su tipo y su período: se puede
+ * compartir o recargar y queda igual.
+ */
+function direccion(
+  pathname: string,
+  hoy: string,
+  anio: number,
+  tipo: FiltroTipoContrato,
+  periodo: PeriodoTablero,
+) {
   const q = new URLSearchParams();
   if (anio !== Number(hoy.slice(0, 4))) q.set('anio', String(anio));
   if (tipo !== 'todos') q.set('tipo', tipo);
+  for (const [k, v] of parametrosDelPeriodo(periodo, hoy, anio)) q.set(k, v);
   return `${pathname}${q.toString() ? `?${q}` : ''}`;
 }
 
 /**
- * El año de los gráficos. Como el filtro del Tablero Comercial, pero sin
- * «Todos los años»: el gráfico es de doce meses de un año.
+ * El año de los meses. Como el filtro del Tablero Comercial, pero sin «Todos
+ * los años»: el período es de un año.
  */
 function FiltroAnioAlquileres({
   t,
@@ -269,11 +310,87 @@ function FiltroTipo({
   );
 }
 
+const POR_PERIODO: [PeriodoTablero['por'], string][] = [
+  ['mes', 'Mes'],
+  ['trimestre', 'Trimestre'],
+  ['anio', 'Año'],
+];
+const TRIMESTRES = [1, 2, 3, 4].map(
+  (q) =>
+    [
+      String(q),
+      <span key={q} title={`${ABREV_MES[q * 3 - 3]}–${ABREV_MES[q * 3 - 1]}`}>
+        Q{q}
+      </span>,
+    ] as const,
+);
+
+/**
+ * Regla 74: el período de toda la pantalla, con el aspecto del Tablero
+ * Comercial —Mes (con el mes), Trimestre (Q1 a Q4) o Año—. Cambiarlo no le pide
+ * nada al servidor: los doce meses ya están acá.
+ */
+function FiltroPeriodo({
+  periodo,
+  porDefecto,
+  cambiar,
+}: {
+  periodo: PeriodoTablero;
+  /** El mes al que se vuelve al pasar a «Mes» desde el año entero. */
+  porDefecto: number;
+  cambiar: (p: PeriodoTablero) => void;
+}) {
+  const elegirPor = (por: PeriodoTablero['por']) => {
+    if (por === periodo.por) return;
+    if (por === 'anio') return cambiar({ por: 'anio' });
+    if (por === 'trimestre')
+      return cambiar({
+        por: 'trimestre',
+        q: Math.ceil((periodo.por === 'mes' ? periodo.mes : porDefecto) / 3),
+      });
+    // Del trimestre al mes: el mes en curso si está en ese trimestre; si no, su último mes.
+    const meses = mesesDelPeriodo(periodo);
+    cambiar({ por: 'mes', mes: meses.includes(porDefecto) ? porDefecto : meses.at(-1)! });
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Segmentado
+        etiqueta="Período"
+        opciones={POR_PERIODO}
+        valor={periodo.por}
+        onCambio={elegirPor}
+      />
+      {periodo.por === 'mes' && (
+        <select
+          aria-label="Mes"
+          value={periodo.mes}
+          onChange={(e) => cambiar({ por: 'mes', mes: Number(e.target.value) })}
+          className={`h-9 rounded-brand border border-line bg-white px-2 text-sm text-ink ${CLASE_FOCO}`}
+        >
+          {NOMBRES_MES.map((m, i) => (
+            <option key={m} value={i + 1}>
+              {m}
+            </option>
+          ))}
+        </select>
+      )}
+      {periodo.por === 'trimestre' && (
+        <Segmentado
+          etiqueta="Trimestre"
+          opciones={TRIMESTRES}
+          valor={String(periodo.q)}
+          onCambio={(q) => cambiar({ por: 'trimestre', q: Number(q) })}
+        />
+      )}
+    </div>
+  );
+}
+
 /**
  * Cómo se reparte la cartera vigente entre particulares y comerciales. Una
  * fila por tipo, con su propia barra: cuántos contratos, cuánto alquiler por
  * mes y qué parte del total es. La barra única con la leyenda lejos «no se
- * entendía» (Javier, 6/10/2026). Tocar una fila filtra el tablero.
+ * entendía» (Javier, 6/10/2026). Tocar una fila filtra el tablero. Es a hoy.
  */
 function RepartoTipo({
   porTipo,
@@ -290,7 +407,7 @@ function RepartoTipo({
         <span aria-hidden>⚖️</span> Particulares y comerciales
         <span className="font-normal normal-case tracking-normal">
           {' '}
-          · qué parte del alquiler mensual en pesos es de cada tipo
+          · qué parte del alquiler mensual en pesos es de cada tipo, a hoy
         </span>
       </p>
       <ul className="mt-3 flex flex-col gap-3">
@@ -331,30 +448,122 @@ function RepartoTipo({
   );
 }
 
+type Moneda = MonedaAlquiler;
+const PARTES = [
+  ['honorarios', 'Honorarios', '🤝'],
+  ['gastos', 'Gastos adm.', '🗂️'],
+  ['punitorios', 'Punitorios', '⏱️'],
+  ['comisiones', 'Comisiones e informes', '📝'],
+] as const;
+
 /**
- * Contratos nuevos (punto 8, «es fundamental»): del año, por trimestre y mes a
- * mes, como las ventas del Tablero Comercial. Un contrato es «nuevo» en el mes
- * en que empieza.
+ * Lo que la pantalla muestra del período elegido. Los flujos —alquileres,
+ * ingresos, contratos nuevos— son la suma de sus meses (regla 75); las fotos
+ * —cartera y deuda— son las del cierre de su último mes, o las de hoy si el
+ * período llega a hoy (regla 77).
+ */
+function delPeriodo(t: TableroAlquileresDto, periodo: PeriodoTablero) {
+  const numeros = mesesDelPeriodo(periodo);
+  const meses = numeros.map((m) => `${t.anio}-${String(m).padStart(2, '0')}`);
+  const enPeriodo = (mes: string) => meses.includes(mes);
+
+  const evolucion = t.evolucion.filter((e) => enPeriodo(e.mes));
+  const cobranza = [...new Set(evolucion.map((e) => e.moneda))].sort().map((moneda) => {
+    const es = evolucion.filter((e) => e.moneda === moneda);
+    return {
+      moneda,
+      emitidos: suma(es.map((e) => e.emitidos)),
+      cobrados: suma(es.map((e) => e.cobrados)),
+      importeEmitido: suma(es.map((e) => e.emitido)),
+      importeCobrado: suma(es.map((e) => e.cobradoHoy)),
+      // Regla 76: se recalcula sobre los totales, nunca el promedio de los porcentajes.
+      alCierre: suma(es.map((e) => e.cobrado)),
+    };
+  });
+
+  const ingresosDe = (moneda: Moneda) => {
+    const is = t.ingresos.filter((i) => enPeriodo(i.mes) && i.moneda === moneda);
+    const partes = {
+      honorarios: suma(is.map((i) => i.honorarios)),
+      gastos: suma(is.map((i) => i.gastos)),
+      punitorios: suma(is.map((i) => i.punitorios)),
+      comisiones: suma(is.map((i) => i.comisiones ?? 0)),
+    };
+    return { moneda, ...partes, total: suma(Object.values(partes)) };
+  };
+  const ingresos = (['ARS', 'USD'] as const)
+    .map(ingresosDe)
+    .filter((i) => i.moneda === 'ARS' || i.total !== 0);
+
+  const nuevosFilas = numeros.flatMap((m) => t.nuevos.porMes[m - 1]?.filas ?? []);
+  const nuevos = {
+    indicador: { valor: nuevosFilas.length, filas: nuevosFilas } satisfies Indicador,
+    importe: suma(numeros.map((m) => t.nuevos.importePorMes[m - 1] ?? 0)),
+    anterior: suma(numeros.map((m) => t.nuevos.anterior[m - 1] ?? 0)),
+  };
+
+  const cierre = t.cierres.find((c) => c.mes === meses.at(-1));
+  // Sin cierres (la API todavía no los manda), lo de hoy.
+  const aHoy = !cierre || cierre.cierre >= t.hoy;
+  return {
+    nombre: nombreDelPeriodo(periodo, t.anio),
+    rango: rangoDelPeriodo(periodo, t.anio),
+    cobranza,
+    ingresos,
+    nuevos,
+    cierre,
+    aHoy,
+    alCierre: aHoy ? 'a hoy' : `al ${fmtFecha(cierre.cierre)}`,
+  };
+}
+
+/** Doce meses, o los cuatro trimestres sumados. */
+function agrupados(porMes: number[], trimestral: boolean) {
+  return trimestral ? [0, 1, 2, 3].map((q) => suma(porMes.slice(q * 3, q * 3 + 3))) : porMes;
+}
+
+/** Lo que tienen en común los dos gráficos: la escala del período y qué se marca. */
+function ejeDelPeriodo(t: TableroAlquileresDto, periodo: PeriodoTablero) {
+  const trimestral = periodo.por === 'trimestre';
+  return {
+    trimestral,
+    etiquetas: trimestral ? ['Q1', 'Q2', 'Q3', 'Q4'] : ABREV_MES,
+    transcurridos: periodosTranscurridos(t.anio, trimestral ? 'trimestre' : 'mes'),
+    // Con el año entero no se marca ningún mes: es todo el año (regla 80).
+    seleccionado: periodo.por === 'mes' ? periodo.mes : periodo.por === 'trimestre' ? periodo.q : 0,
+    pista: `tocá una barra o un ${trimestral ? 'trimestre' : 'mes'}`,
+    porMesOTrimestre: trimestral ? 'trimestre' : 'mes',
+    anchoMinimo: trimestral ? 'min-w-[34rem]' : 'min-w-[60rem]',
+  };
+}
+
+/**
+ * Contratos nuevos (punto 8, «es fundamental»): los del período, como las
+ * ventas del Tablero Comercial. Un contrato es «nuevo» en el mes en que
+ * empieza. Sigue al selector de la pantalla (regla 75): ya no tiene sus
+ * propias tarjetas Q1 a Q4.
  */
 function ContratosNuevos({
   t,
+  periodo,
+  elegir,
   onAbrir,
 }: {
   t: TableroAlquileresDto;
-  onAbrir: (titulo: string, ind: Indicador) => void;
+  periodo: PeriodoTablero;
+  elegir: (p: PeriodoTablero) => void;
+  onAbrir: (titulo: string, ind: Indicador, total?: Moneda) => void;
 }) {
-  const enCurso = t.anio === Number(t.hoy.slice(0, 4));
-  const [mes, setMes] = useState(enCurso ? Number(t.hoy.slice(5, 7)) : 12);
   const n = t.nuevos;
   if (n.porMes.length !== 12) return null;
-  const cantidades = n.porMes.map((i) => i.valor);
-  const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
-  const trimestre = (q: number) => cantidades.slice(q * 3, q * 3 + 3);
-  const delTrimestre = (q: number): Indicador => {
-    const filas = n.porMes.slice(q * 3, q * 3 + 3).flatMap((i) => i.filas);
-    return { valor: filas.length, filas };
-  };
-  const delAnio: Indicador = { valor: suma(cantidades), filas: n.porMes.flatMap((i) => i.filas) };
+  const p = delPeriodo(t, periodo);
+  const eje = ejeDelPeriodo(t, periodo);
+  const cantidades = agrupados(
+    n.porMes.map((i) => i.valor),
+    eje.trimestral,
+  );
+  const importes = agrupados(n.importePorMes, eje.trimestral);
+  const anteriores = agrupados(n.anterior, eje.trimestral);
   const filas: FilaPeriodos[] = [
     {
       label: 'Contratos nuevos',
@@ -365,92 +574,72 @@ function ContratosNuevos({
     },
     {
       label: `Nuevos ${t.anio - 1}`,
-      valores: n.anterior,
-      total: suma(n.anterior),
+      valores: anteriores,
+      total: suma(anteriores),
       formato: (x) => fmtNum(x),
     },
     {
       label: 'Alquiler inicial $',
-      valores: n.importePorMes,
-      total: suma(n.importePorMes),
+      valores: importes,
+      total: suma(importes),
       formato: plata,
       separa: true,
     },
   ];
+  const elegirBarra = (i: number) =>
+    elegir(eje.trimestral ? { por: 'trimestre', q: i } : { por: 'mes', mes: i });
   return (
     <section className="flex flex-col gap-2">
-      <TituloSeccion icono="🆕" detalle={`los que empiezan en ${t.anio}`}>
+      <TituloSeccion icono="🆕" detalle={`los que empiezan en ${p.nombre}`}>
         Contratos nuevos
       </TituloSeccion>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard
+          label={`Nuevos en ${p.nombre}`}
+          value={fmtNum(p.nuevos.indicador.valor)}
+          sub={`${fmtNum(p.nuevos.anterior)} en ${t.anio - 1}`}
+          icon="🆕"
+          tone="brand"
+          onClick={() => onAbrir(`Contratos nuevos de ${p.nombre}`, p.nuevos.indicador)}
+        />
         <Ancha>
           <KpiCard
-            label={`Nuevos en ${t.anio}`}
-            value={fmtNum(delAnio.valor)}
-            sub={`${fmtNum(suma(n.anterior))} en ${t.anio - 1}`}
-            icon="🆕"
-            tone="brand"
-            onClick={() => onAbrir(`Contratos nuevos de ${t.anio}`, delAnio)}
+            label="Alquiler inicial"
+            value={fmtMoneda(p.nuevos.importe, 'ARS')}
+            sub="de los nuevos, en pesos"
+            icon="💰"
+            onClick={() =>
+              onAbrir(`Alquiler inicial de los nuevos, ${p.nombre}`, p.nuevos.indicador, 'ARS')
+            }
           />
         </Ancha>
-        {[0, 1, 2, 3].map((q) => (
-          <KpiCard
-            key={q}
-            label={`Q${q + 1}`}
-            value={fmtNum(suma(trimestre(q)))}
-            sub={`${fmtNum(suma(n.anterior.slice(q * 3, q * 3 + 3)))} en ${t.anio - 1}`}
-            onClick={() => onAbrir(`Contratos nuevos · Q${q + 1} ${t.anio}`, delTrimestre(q))}
-          />
-        ))}
       </div>
       <Card className="p-0">
         <div className="flex flex-col gap-4 p-4">
           <PeriodosChart
-            titulo={`Contratos nuevos por mes de ${t.anio}`}
-            etiquetas={ABREV_MES}
+            titulo={`Contratos nuevos por ${eje.porMesOTrimestre} de ${t.anio}`}
+            etiquetas={eje.etiquetas}
             barras={cantidades}
-            linea={n.importePorMes}
+            linea={importes}
             formatoBarras={(x) => fmtNum(x)}
             formatoLinea={plata}
             nombreBarras="Contratos nuevos"
             nombreLinea="Alquiler inicial de los nuevos $"
             nombreLineaCorto="Alquiler inicial"
             barrasEnteras
-            transcurridos={periodosTranscurridos(t.anio, 'mes')}
-            seleccionado={mes}
-            onSelect={setMes}
-            pista="tocá una barra o un mes"
+            transcurridos={eje.transcurridos}
+            seleccionado={eje.seleccionado}
+            onSelect={elegirBarra}
+            pista={eje.pista}
           />
           <PeriodosTabla
-            titulo={`Contratos nuevos por mes de ${t.anio}`}
-            etiquetas={ABREV_MES}
+            titulo={`Contratos nuevos por ${eje.porMesOTrimestre} de ${t.anio}`}
+            etiquetas={eje.etiquetas}
             filas={filas}
-            seleccionado={mes}
-            onSelect={setMes}
-            anchoMinimo="min-w-[52rem]"
+            seleccionado={eje.seleccionado}
+            onSelect={elegirBarra}
+            anchoMinimo={eje.trimestral ? 'min-w-[34rem]' : 'min-w-[52rem]'}
           />
-          <p className="text-sm text-muted">
-            <span className="font-bold text-ink">{NOMBRES_MES[mes - 1]}</span>:{' '}
-            {fmtNum(cantidades[mes - 1]!)}{' '}
-            {cantidades[mes - 1] === 1 ? 'contrato nuevo' : 'contratos nuevos'}
-            {cantidades[mes - 1]! > 0 && (
-              <>
-                {' · '}
-                <button
-                  type="button"
-                  onClick={() =>
-                    onAbrir(
-                      `Contratos nuevos de ${NOMBRES_MES[mes - 1]!.toLowerCase()} ${t.anio}`,
-                      n.porMes[mes - 1]!,
-                    )
-                  }
-                  className="font-semibold text-brand-red hover:underline"
-                >
-                  ver cuáles
-                </button>
-              </>
-            )}
-          </p>
         </div>
       </Card>
     </section>
@@ -458,28 +647,48 @@ function ContratosNuevos({
 }
 
 /**
- * El año mes a mes, como la sección Alquileres del Tablero Comercial: el
- * gráfico de dos paneles —lo emitido y lo que gana la inmobiliaria— y, abajo,
- * la planilla con cada número. Tocar un mes lo marca en los dos.
+ * El año mes a mes —o por trimestre—, como la sección Alquileres del Tablero
+ * Comercial: el gráfico de dos paneles —lo emitido y lo que gana la
+ * inmobiliaria— y, abajo, la planilla con cada número. Tocar un mes o un
+ * trimestre lo elige en toda la pantalla (regla 80).
  */
-function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
-  const enCurso = t.anio === Number(t.hoy.slice(0, 4));
-  const [mes, setMes] = useState(enCurso ? Number(t.hoy.slice(5, 7)) : 12);
+function EvolucionAnual({
+  t,
+  periodo,
+  elegir,
+}: {
+  t: TableroAlquileresDto;
+  periodo: PeriodoTablero;
+  elegir: (p: PeriodoTablero) => void;
+}) {
+  const eje = ejeDelPeriodo(t, periodo);
   const meses = Array.from({ length: 12 }, (_, i) => `${t.anio}-${String(i + 1).padStart(2, '0')}`);
   // Los gráficos van en pesos, la moneda de toda la cartera de Vacker.
   const evolucion = (m: string) => t.evolucion.find((x) => x.mes === m && x.moneda === 'ARS');
   const ingreso = (m: string) => t.ingresos.find((x) => x.mes === m && x.moneda === 'ARS');
   const deIngreso = (campo: 'honorarios' | 'gastos' | 'punitorios' | 'comisiones') =>
-    meses.map((m) => ingreso(m)?.[campo] ?? 0);
+    agrupados(
+      meses.map((m) => ingreso(m)?.[campo] ?? 0),
+      eje.trimestral,
+    );
   const totalIngreso = (m: string) => {
     const i = ingreso(m);
     return i ? i.honorarios + i.gastos + i.punitorios + (i.comisiones ?? 0) : 0;
   };
 
-  const emitido = meses.map((m) => evolucion(m)?.emitido ?? 0);
-  const cobrado = meses.map((m) => evolucion(m)?.cobrado ?? 0);
-  const ingresos = meses.map(totalIngreso);
-  const ingresosAntes = meses.map((m) => totalIngreso(`${t.anio - 1}${m.slice(4)}`));
+  const emitido = agrupados(
+    meses.map((m) => evolucion(m)?.emitido ?? 0),
+    eje.trimestral,
+  );
+  const cobrado = agrupados(
+    meses.map((m) => evolucion(m)?.cobrado ?? 0),
+    eje.trimestral,
+  );
+  const ingresos = agrupados(meses.map(totalIngreso), eje.trimestral);
+  const ingresosAntes = agrupados(
+    meses.map((m) => totalIngreso(`${t.anio - 1}${m.slice(4)}`)),
+    eje.trimestral,
+  );
   const pctCobrado = (c: number, e: number) => (e > 0 ? (c / e) * 100 : 0);
 
   if (suma(emitido) === 0 && suma(ingresos) === 0) {
@@ -497,7 +706,7 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
     { label: 'Cobrado al cierre', valores: cobrado, total: suma(cobrado), formato: plata },
     {
       label: '% cobrado',
-      valores: meses.map((_, i) => pctCobrado(cobrado[i]!, emitido[i]!)),
+      valores: emitido.map((e, i) => pctCobrado(cobrado[i]!, e)),
       // Se recalcula sobre los totales: el promedio de los porcentajes mentiría.
       total: pctCobrado(suma(cobrado), suma(emitido)),
       formato: porcentaje,
@@ -525,13 +734,18 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
       formato: plata,
     },
   ];
-  const i = mes - 1;
+  const elegirBarra = (i: number) =>
+    elegir(eje.trimestral ? { por: 'trimestre', q: i } : { por: 'mes', mes: i });
+  // El pie es del período elegido: un mes, un trimestre o el año.
+  const p = delPeriodo(t, periodo);
+  const enPesos = p.cobranza.find((c) => c.moneda === 'ARS');
+  const ganado = p.ingresos.find((i) => i.moneda === 'ARS')?.total ?? 0;
 
   return (
     <div className="flex flex-col gap-4 p-4">
       <PeriodosChart
-        titulo={`Alquileres e ingresos por mes de ${t.anio}`}
-        etiquetas={ABREV_MES}
+        titulo={`Alquileres e ingresos por ${eje.porMesOTrimestre} de ${t.anio}`}
+        etiquetas={eje.etiquetas}
         barras={emitido}
         linea={ingresos}
         formatoBarras={plata}
@@ -539,41 +753,43 @@ function EvolucionAnual({ t }: { t: TableroAlquileresDto }) {
         nombreBarras="Alquileres emitidos $"
         nombreLinea="Ingresos de la inmobiliaria $"
         nombreLineaCorto="Ingresos"
-        transcurridos={periodosTranscurridos(t.anio, 'mes')}
-        seleccionado={mes}
-        onSelect={setMes}
-        pista="tocá una barra o un mes"
+        transcurridos={eje.transcurridos}
+        seleccionado={eje.seleccionado}
+        onSelect={elegirBarra}
+        pista={eje.pista}
       />
       <PeriodosTabla
-        titulo={`Alquileres e ingresos por mes de ${t.anio}`}
-        etiquetas={ABREV_MES}
+        titulo={`Alquileres e ingresos por ${eje.porMesOTrimestre} de ${t.anio}`}
+        etiquetas={eje.etiquetas}
         filas={filas}
-        seleccionado={mes}
-        onSelect={setMes}
-        anchoMinimo="min-w-[60rem]"
+        seleccionado={eje.seleccionado}
+        onSelect={elegirBarra}
+        anchoMinimo={eje.anchoMinimo}
       />
       <p className="text-sm text-muted">
-        <span className="font-bold text-ink">{NOMBRES_MES[i]}</span>: cobrado al cierre{' '}
-        {pct(cobrado[i]!, emitido[i]!)} de lo emitido · ingresos {fmtMoneda(ingresos[i]!, 'ARS')}
-        {ingresosAntes[i]! > 0 ? ` (${fmtMoneda(ingresosAntes[i]!, 'ARS')} en ${t.anio - 1})` : ''}
+        <span className="font-bold text-ink">{p.nombre}</span>: cobrado al cierre de cada mes{' '}
+        {pct(enPesos?.alCierre ?? 0, enPesos?.importeEmitido ?? 0)} de lo emitido · ingresos{' '}
+        {fmtMoneda(ganado, 'ARS')}
       </p>
     </div>
   );
 }
 
 /**
- * El tablero del módulo (reglas 26 a 32), armado con las piezas del Tablero
- * Comercial: tarjetas con ícono que se abren, rótulos de sección con ícono y el
- * gráfico de dos paneles con su planilla. Cada número con lupa abre la lista de
- * lo que cuenta, y esa lista suma el número: los dos llegan juntos de la API,
- * del mismo cálculo.
+ * El tablero del módulo (reglas 26 a 32 y 74 a 82), armado con las piezas del
+ * Tablero Comercial: tarjetas con ícono que se abren, rótulos de sección con
+ * ícono y el gráfico de dos paneles con su planilla. Cada número abre la lista
+ * de lo que cuenta, y esa lista suma el número: lo de hoy llega junto con el
+ * tablero; lo de un período se pide al abrirlo, a la misma cuenta.
  */
 export function TableroAlquileres({
   tableros,
   tipoInicial = 'todos',
+  periodoInicial,
 }: {
   tableros: TablerosAlquileresDto;
   tipoInicial?: FiltroTipoContrato;
+  periodoInicial?: PeriodoTablero;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -584,14 +800,24 @@ export function TableroAlquileres({
   const [tipo, setTipo] = useState<FiltroTipoContrato>(tipoInicial);
   const t = tableros[tipo];
   const [anioElegido, setAnioElegido] = useState(t.anio);
+  // Regla 74: los doce meses también están acá; cambiar de período tampoco pide nada.
+  const [periodo, setPeriodo] = useState<PeriodoTablero>(
+    periodoInicial ?? periodoPorDefecto(t.hoy, t.anio),
+  );
   const elegirTipo = (nuevo: FiltroTipoContrato) => {
     setTipo(nuevo);
     // La dirección acompaña, sin pedirle nada al servidor.
-    window.history.replaceState(null, '', direccion(pathname, t.hoy, t.anio, nuevo));
+    window.history.replaceState(null, '', direccion(pathname, t.hoy, t.anio, nuevo, periodo));
+  };
+  const elegirPeriodo = (nuevo: PeriodoTablero) => {
+    setPeriodo(nuevo);
+    window.history.replaceState(null, '', direccion(pathname, t.hoy, t.anio, tipo, nuevo));
   };
   const elegirAnio = (anio: number) => {
     setAnioElegido(anio);
-    startTransition(() => router.push(direccion(pathname, t.hoy, anio, tipo), { scroll: false }));
+    startTransition(() =>
+      router.push(direccion(pathname, t.hoy, anio, tipo, periodo), { scroll: false }),
+    );
   };
   const abrir =
     (
@@ -602,22 +828,80 @@ export function TableroAlquileres({
     ) =>
     () =>
       setDetalle({ titulo, indicador, columnas, ...extra });
-  const mes = mesLargo(`${t.mes}-01`);
-  const mesCorto = mes.split(' ')[0]!;
+
+  const p = delPeriodo(t, periodo);
+  /** Abre la lista de un número del período: se pide al abrirla (regla 79). */
+  const pedir =
+    (
+      titulo: string,
+      indicador: IndicadorDetalleTablero,
+      moneda: Moneda,
+      columnas: [Columna, string][],
+      extra: Partial<Detalle> & { tramo?: TramoMora } = {},
+    ) =>
+    () => {
+      const { tramo, ...resto } = extra;
+      setDetalle({
+        titulo,
+        pedido: { indicador, ...p.rango, moneda, ...(tramo ? { tramo } : {}) },
+        columnas,
+        ...resto,
+      });
+    };
+
+  // --- Las fotos (regla 77): a hoy, con su lista; al cierre, el número y la lista se pide ---
+  const vigentes = p.aHoy
+    ? {
+        valor: t.cartera.vigentes.valor,
+        vivienda: t.cartera.vivienda,
+        comercial: t.cartera.comercial,
+      }
+    : { valor: p.cierre!.vigentes, vivienda: p.cierre!.vivienda, comercial: p.cierre!.comercial };
+  const abrirVigentes = p.aHoy
+    ? abrir('Contratos vigentes, a hoy', t.cartera.vigentes, VISTAS.contratos)
+    : pedir(`Contratos vigentes ${p.alCierre}`, 'vigentes', 'ARS', VISTAS.contratos);
+  const alquilerMensual = p.aHoy
+    ? t.cartera.alquilerMensual.map((a) => ({
+        moneda: a.moneda,
+        valor: a.indicador.valor,
+        contratos: a.indicador.filas.length,
+        indicador: a.indicador as Indicador | undefined,
+      }))
+    : p.cierre!.alquilerMensual.map((a) => ({ ...a, indicador: undefined }));
+  const mora = p.aHoy
+    ? t.morosidad.map((m) => ({
+        moneda: m.moneda,
+        valor: m.total.valor,
+        conceptos: m.total.filas.length,
+        inquilinos: new Set(m.total.filas.map((f) => f.inquilino)).size,
+        indicador: m.total as Indicador | undefined,
+        tramos: m.tramos.map((x) => ({
+          tramo: x.tramo,
+          valor: x.indicador.valor,
+          conceptos: x.indicador.filas.length,
+          indicador: x.indicador as Indicador | undefined,
+        })),
+      }))
+    : p.cierre!.mora.map((m) => ({
+        ...m,
+        indicador: undefined,
+        tramos: TRAMOS_MORA.map((tramo) => ({
+          tramo,
+          valor: m.tramos.find((x) => x.tramo === tramo)?.valor ?? 0,
+          conceptos: m.tramos.find((x) => x.tramo === tramo)?.conceptos ?? 0,
+          indicador: undefined,
+        })),
+      }));
 
   // Las tres ventanas de vencimiento juntas, para la tarjeta de la cartera.
   const vencen90: Indicador = {
     valor: suma(t.tareas.vencen.map((v) => v.indicador.valor)),
     filas: t.tareas.vencen.flatMap((v) => v.indicador.filas),
   };
-  // Lo que ganó la inmobiliaria en el mes en curso, en pesos.
-  const ingresoMes = t.ingresos.find((i) => i.mes === t.mes && i.moneda === 'ARS');
-  const ganado = ingresoMes
-    ? ingresoMes.honorarios +
-      ingresoMes.gastos +
-      ingresoMes.punitorios +
-      (ingresoMes.comisiones ?? 0)
-    : 0;
+  // Lo que ganó la inmobiliaria en el período, en pesos.
+  const ingresoPesos = p.ingresos.find((i) => i.moneda === 'ARS')!;
+  const nombreCorto =
+    periodo.por === 'mes' ? NOMBRES_MES[periodo.mes - 1]!.toLowerCase() : p.nombre;
 
   type Tarea = {
     icono: string;
@@ -726,6 +1010,11 @@ export function TableroAlquileres({
           </span>
         )}
         <FiltroTipo tipo={tipo} cambiar={elegirTipo} />
+        <FiltroPeriodo
+          periodo={periodo}
+          porDefecto={periodoPorDefecto(t.hoy, t.anio).mes}
+          cambiar={elegirPeriodo}
+        />
         <FiltroAnioAlquileres t={t} anio={anioElegido} cambiar={elegirAnio} />
       </EncabezadoPagina>
 
@@ -734,55 +1023,68 @@ export function TableroAlquileres({
         className={`flex flex-col gap-5 transition-opacity ${actualizando ? 'pointer-events-none opacity-50' : ''}`}
       >
         <section className="flex flex-col gap-2">
-          <TituloSeccion icono="🏘️">Cartera</TituloSeccion>
+          <TituloSeccion icono="🏘️" detalle={p.alCierre}>
+            Cartera
+          </TituloSeccion>
           {/* Con alquileres en dólares hay una tarjeta más: cinco columnas, para que no quede una sola abajo. */}
           <div
-            className={`grid grid-cols-2 gap-3 ${t.cartera.alquilerMensual.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+            className={`grid grid-cols-2 gap-3 ${alquilerMensual.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
           >
             <Ancha>
               <KpiCard
                 label="Contratos vigentes"
-                value={fmtNum(t.cartera.vigentes.valor)}
-                sub={`${t.cartera.vivienda} ${t.cartera.vivienda === 1 ? 'particular' : 'particulares'} · ${t.cartera.comercial} ${t.cartera.comercial === 1 ? 'comercial' : 'comerciales'}`}
+                value={fmtNum(vigentes.valor)}
+                sub={`${plural(vigentes.vivienda, 'particular', 'particulares')} · ${plural(vigentes.comercial, 'comercial', 'comerciales')}`}
                 icon="📄"
                 tone="brand"
-                onClick={abrir('Contratos vigentes', t.cartera.vigentes, VISTAS.contratos)}
+                onClick={abrirVigentes}
               />
             </Ancha>
-            {t.cartera.alquilerMensual.map((a) => (
-              <Ancha key={a.moneda}>
-                <KpiCard
-                  label={a.moneda === 'USD' ? 'Alquiler mensual U$S' : 'Alquiler mensual'}
-                  value={fmtMoneda(a.indicador.valor, a.moneda)}
-                  sub={`de ${a.indicador.filas.length} ${a.indicador.filas.length === 1 ? 'contrato' : 'contratos'}${a.moneda === 'USD' ? ' en dólares' : ''}`}
-                  icon="💰"
-                  onClick={abrir(
-                    `Alquiler mensual${a.moneda === 'USD' ? ' en dólares' : ''}`,
-                    a.indicador,
-                    VISTAS.alquilerMensual,
-                    { total: a.moneda },
-                  )}
-                />
-              </Ancha>
-            ))}
+            {alquilerMensual.map((a) => {
+              const titulo = `Alquiler mensual${a.moneda === 'USD' ? ' en dólares' : ''}, ${p.alCierre}`;
+              return (
+                <Ancha key={a.moneda}>
+                  <KpiCard
+                    label={a.moneda === 'USD' ? 'Alquiler mensual U$S' : 'Alquiler mensual'}
+                    value={fmtMoneda(a.valor, a.moneda)}
+                    sub={`de ${plural(a.contratos, 'contrato', 'contratos')}${a.moneda === 'USD' ? ' en dólares' : ''}`}
+                    icon="💰"
+                    onClick={
+                      a.indicador
+                        ? abrir(titulo, a.indicador, VISTAS.alquilerMensual, { total: a.moneda })
+                        : pedir(titulo, 'alquilerMensual', a.moneda, VISTAS.alquilerMensual, {
+                            total: a.moneda,
+                          })
+                    }
+                  />
+                </Ancha>
+              );
+            })}
             <Ancha>
               <KpiCard
-                label={`Ingresos de ${mesCorto}`}
-                value={fmtMoneda(ganado, 'ARS')}
-                sub={
-                  ingresoMes
-                    ? `honorarios ${fmtMoneda(ingresoMes.honorarios, 'ARS')} · gastos ${fmtMoneda(ingresoMes.gastos, 'ARS')}`
-                    : 'de la inmobiliaria, cobrados'
-                }
+                label={`Ingresos de ${nombreCorto}`}
+                value={fmtMoneda(ingresoPesos.total, 'ARS')}
+                sub={`honorarios ${fmtMoneda(ingresoPesos.honorarios, 'ARS')} · gastos ${fmtMoneda(ingresoPesos.gastos, 'ARS')}`}
                 icon="🏦"
                 tone="success"
+                onClick={
+                  ingresoPesos.total
+                    ? pedir(
+                        `Ingresos de la inmobiliaria, ${p.nombre}`,
+                        'ingresos',
+                        'ARS',
+                        VISTAS.ingresos,
+                        { total: 'ARS' },
+                      )
+                    : undefined
+                }
               />
             </Ancha>
             <Ancha>
               <KpiCard
                 label="Vencen en 90 días"
                 value={fmtNum(vencen90.valor)}
-                sub="contratos para renovar"
+                sub="contratos para renovar, a hoy"
                 icon="📅"
                 tone={vencen90.valor ? 'warning' : 'default'}
                 onClick={abrir(
@@ -797,100 +1099,209 @@ export function TableroAlquileres({
         </section>
 
         <ContratosNuevos
-          key={`${t.anio}-${t.tipo}`}
           t={t}
-          onAbrir={(titulo, ind) => setDetalle({ titulo, indicador: ind, columnas: VISTAS.nuevos })}
+          periodo={periodo}
+          elegir={elegirPeriodo}
+          onAbrir={(titulo, ind, total) =>
+            setDetalle({ titulo, indicador: ind, columnas: VISTAS.nuevos, total })
+          }
         />
 
-        {t.cobranza.map((c) => (
-          <section key={c.moneda} className="flex flex-col gap-2">
-            <TituloSeccion icono="💵" detalle={c.moneda === 'USD' ? 'en dólares' : undefined}>
-              Cobranza de {mes}
-            </TituloSeccion>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <KpiCard
-                label="Alquileres emitidos"
-                value={fmtNum(c.emitidos.valor)}
-                sub="del mes"
-                icon="🧾"
-                onClick={abrir(`Alquileres emitidos de ${mes}`, c.emitidos, VISTAS.cobranza)}
-              />
-              <KpiCard
-                label="Alquileres cobrados"
-                value={fmtNum(c.cobrados.valor)}
-                sub={`${pct(c.cobrados.valor, c.emitidos.valor)} de los emitidos`}
-                icon="✅"
-                tone="success"
-                onClick={abrir(`Alquileres cobrados del todo, ${mes}`, c.cobrados, VISTAS.cobranza)}
-              />
-              <Ancha>
+        {p.cobranza.length === 0 ? (
+          <section className="flex flex-col gap-2">
+            <TituloSeccion icono="💵">Cobranza de {p.nombre}</TituloSeccion>
+            <Card className="py-4 text-sm text-muted">
+              No hay alquileres emitidos en {p.nombre}.
+            </Card>
+          </section>
+        ) : (
+          p.cobranza.map((c) => (
+            <section key={c.moneda} className="flex flex-col gap-2">
+              <TituloSeccion icono="💵" detalle={c.moneda === 'USD' ? 'en dólares' : undefined}>
+                Cobranza de {p.nombre}
+              </TituloSeccion>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <KpiCard
-                  label="Importe emitido"
-                  value={fmtMoneda(c.importeEmitido.valor, c.moneda)}
-                  sub="lo que hay que cobrar"
-                  icon="📄"
-                  onClick={abrir(`Importe emitido de ${mes}`, c.importeEmitido, VISTAS.cobranza, {
-                    total: c.moneda,
-                  })}
+                  label="Alquileres emitidos"
+                  value={fmtNum(c.emitidos)}
+                  sub={periodo.por === 'mes' ? 'del mes' : `de ${p.nombre}`}
+                  icon="🧾"
+                  onClick={pedir(
+                    `Alquileres emitidos de ${p.nombre}`,
+                    'emitidos',
+                    c.moneda,
+                    VISTAS.cobranza,
+                  )}
                 />
-              </Ancha>
-              <Ancha>
                 <KpiCard
-                  label="Importe cobrado"
-                  value={fmtMoneda(c.importeCobrado.valor, c.moneda)}
-                  sub={`${pct(c.importeCobrado.valor, c.importeEmitido.valor)} de lo emitido`}
-                  icon="💵"
+                  label="Alquileres cobrados"
+                  value={fmtNum(c.cobrados)}
+                  sub={`${pct(c.cobrados, c.emitidos)} de los emitidos`}
+                  icon="✅"
                   tone="success"
-                  onClick={abrir(`Importe cobrado de ${mes}`, c.importeCobrado, VISTAS.cobrado, {
-                    total: c.moneda,
-                  })}
+                  onClick={pedir(
+                    `Alquileres cobrados del todo, ${p.nombre}`,
+                    'cobrados',
+                    c.moneda,
+                    VISTAS.cobranza,
+                  )}
+                />
+                <Ancha>
+                  <KpiCard
+                    label="Importe emitido"
+                    value={fmtMoneda(c.importeEmitido, c.moneda)}
+                    sub="lo que hay que cobrar"
+                    icon="📄"
+                    onClick={pedir(
+                      `Importe emitido de ${p.nombre}`,
+                      'importeEmitido',
+                      c.moneda,
+                      VISTAS.cobranza,
+                      { total: c.moneda },
+                    )}
+                  />
+                </Ancha>
+                <Ancha>
+                  {/* Regla 76: lo cobrado hasta hoy, y cuánto de eso entró dentro de su mes. */}
+                  <KpiCard
+                    label="Importe cobrado"
+                    value={fmtMoneda(c.importeCobrado, c.moneda)}
+                    sub={`${pct(c.importeCobrado, c.importeEmitido)} de lo emitido · ${pct(c.alCierre, c.importeEmitido)} se cobró dentro del mes`}
+                    icon="💵"
+                    tone="success"
+                    onClick={pedir(
+                      `Importe cobrado de ${p.nombre}`,
+                      'importeCobrado',
+                      c.moneda,
+                      VISTAS.cobrado,
+                      { total: c.moneda },
+                    )}
+                  />
+                </Ancha>
+              </div>
+            </section>
+          ))
+        )}
+
+        {p.ingresos.map((i) => (
+          <section key={i.moneda} className="flex flex-col gap-2">
+            <TituloSeccion
+              icono="🏦"
+              detalle={`${p.nombre}${i.moneda === 'USD' ? ', en dólares' : ''}`}
+            >
+              Ingresos de la inmobiliaria
+            </TituloSeccion>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <Ancha>
+                <KpiCard
+                  label="Ingresos"
+                  value={fmtMoneda(i.total, i.moneda)}
+                  sub="cobrados y descontados"
+                  icon="🏦"
+                  tone="success"
+                  onClick={
+                    i.total
+                      ? pedir(
+                          `Ingresos de la inmobiliaria, ${p.nombre}`,
+                          'ingresos',
+                          i.moneda,
+                          VISTAS.ingresos,
+                          { total: i.moneda },
+                        )
+                      : undefined
+                  }
                 />
               </Ancha>
+              {PARTES.map(([parte, nombre, icono]) => (
+                <Ancha key={parte}>
+                  <KpiCard
+                    label={nombre}
+                    value={fmtMoneda(i[parte], i.moneda)}
+                    sub={`${pct(i[parte], i.total)} de los ingresos`}
+                    icon={icono}
+                    onClick={
+                      i[parte]
+                        ? pedir(`${nombre} · ${p.nombre}`, parte, i.moneda, VISTAS.ingresos, {
+                            total: i.moneda,
+                          })
+                        : undefined
+                    }
+                  />
+                </Ancha>
+              ))}
             </div>
           </section>
         ))}
 
         <section className="flex flex-col gap-2">
-          <TituloSeccion icono="⏳" detalle="deuda vencida de inquilinos, por antigüedad">
+          <TituloSeccion
+            icono="⏳"
+            detalle={`deuda vencida de inquilinos, por antigüedad, ${p.alCierre}`}
+          >
             Morosidad
           </TituloSeccion>
-          {t.morosidad.length === 0 ? (
-            <Card className="py-4 text-sm text-success">Ningún inquilino tiene deuda vencida.</Card>
+          {mora.length === 0 ? (
+            <Card className="py-4 text-sm text-success">
+              {p.aHoy
+                ? 'Ningún inquilino tiene deuda vencida.'
+                : `Ningún inquilino tenía deuda vencida ${p.alCierre}.`}
+            </Card>
           ) : (
-            t.morosidad.map((m) => (
-              <div key={m.moneda} className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-                <Ancha>
-                  <KpiCard
-                    label={`Deuda vencida${m.moneda === 'USD' ? ' U$S' : ''}`}
-                    value={fmtMoneda(m.total.valor, m.moneda)}
-                    sub={`${m.total.filas.length} ${m.total.filas.length === 1 ? 'concepto' : 'conceptos'} · ${new Set(m.total.filas.map((f) => f.inquilino)).size} inquilinos`}
-                    icon="⏳"
-                    tone="warning"
-                    onClick={abrir(
-                      `Deuda vencida de inquilinos${m.moneda === 'USD' ? ' en dólares' : ''}`,
-                      m.total,
-                      VISTAS.mora,
-                      { total: m.moneda },
-                    )}
-                  />
-                </Ancha>
-                {m.tramos.map((x) => (
-                  <Ancha key={x.tramo}>
+            mora.map((m) => {
+              const enDolares = m.moneda === 'USD' ? ' en dólares' : '';
+              return (
+                <div
+                  key={m.moneda}
+                  className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+                >
+                  <Ancha>
                     <KpiCard
-                      label={NOMBRE_TRAMO[x.tramo]}
-                      value={fmtMoneda(x.indicador.valor, m.moneda)}
-                      sub={`${x.indicador.filas.length} ${x.indicador.filas.length === 1 ? 'concepto' : 'conceptos'}`}
-                      onClick={abrir(
-                        `Deuda vencida · ${NOMBRE_TRAMO[x.tramo].toLowerCase()}`,
-                        x.indicador,
-                        VISTAS.mora,
-                        { total: m.moneda },
-                      )}
+                      label={`Deuda vencida${m.moneda === 'USD' ? ' U$S' : ''}`}
+                      value={fmtMoneda(m.valor, m.moneda)}
+                      sub={`${plural(m.conceptos, 'concepto', 'conceptos')} · ${plural(m.inquilinos, 'inquilino', 'inquilinos')}`}
+                      icon="⏳"
+                      tone="warning"
+                      onClick={
+                        m.indicador
+                          ? abrir(
+                              `Deuda vencida de inquilinos${enDolares}, a hoy`,
+                              m.indicador,
+                              VISTAS.mora,
+                              { total: m.moneda },
+                            )
+                          : pedir(
+                              `Deuda vencida de inquilinos${enDolares} ${p.alCierre}`,
+                              'mora',
+                              m.moneda,
+                              VISTAS.mora,
+                              { total: m.moneda },
+                            )
+                      }
                     />
                   </Ancha>
-                ))}
-              </div>
-            ))
+                  {m.tramos.map((x) => {
+                    const titulo = `Deuda vencida · ${NOMBRE_TRAMO[x.tramo].toLowerCase()}, ${p.alCierre}`;
+                    return (
+                      <Ancha key={x.tramo}>
+                        <KpiCard
+                          label={NOMBRE_TRAMO[x.tramo]}
+                          value={fmtMoneda(x.valor, m.moneda)}
+                          sub={plural(x.conceptos, 'concepto', 'conceptos')}
+                          onClick={
+                            x.indicador
+                              ? abrir(titulo, x.indicador, VISTAS.mora, { total: m.moneda })
+                              : pedir(titulo, 'mora', m.moneda, VISTAS.mora, {
+                                  total: m.moneda,
+                                  tramo: x.tramo,
+                                })
+                          }
+                        />
+                      </Ancha>
+                    );
+                  })}
+                </div>
+              );
+            })
           )}
         </section>
 
@@ -899,12 +1310,13 @@ export function TableroAlquileres({
             Alquileres e ingresos
           </TituloSeccion>
           <Card className="p-0">
-            <EvolucionAnual key={t.anio} t={t} />
+            <EvolucionAnual t={t} periodo={periodo} elegir={elegirPeriodo} />
           </Card>
         </section>
 
         <section className="flex flex-col gap-2">
-          <TituloSeccion icono="✅" detalle="tocá una para ver cuáles">
+          {/* Regla 78: lo que hay que hacer es siempre de hoy; no sigue al período. */}
+          <TituloSeccion icono="✅" detalle="a hoy · tocá una para ver cuáles">
             Lo que hay que hacer
           </TituloSeccion>
           <Card className="p-0">
@@ -949,7 +1361,16 @@ export function TableroAlquileres({
         </section>
       </div>
 
-      {detalle && <DetalleModal {...detalle} hoy={t.hoy} onClose={() => setDetalle(null)} />}
+      {detalle && (
+        <DetalleModal
+          // Una lista nueva arranca de cero: no muestra la anterior mientras carga.
+          key={`${detalle.titulo}|${JSON.stringify(detalle.pedido ?? null)}`}
+          {...detalle}
+          tipo={tipo}
+          hoy={t.hoy}
+          onClose={() => setDetalle(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1027,14 +1448,34 @@ function Celda({
 function DetalleModal({
   titulo,
   indicador,
+  pedido,
   columnas,
   total,
   accion,
+  tipo,
   hoy,
   onClose,
-}: Detalle & { hoy: string; onClose: () => void }) {
+}: Detalle & { tipo: FiltroTipoContrato; hoy: string; onClose: () => void }) {
   const router = useRouter();
-  const filas = indicador.filas;
+  // Regla 79: la lista de un número del período se pide al abrirla.
+  const [cargado, setCargado] = useState<Indicador | null>(indicador ?? null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    if (!pedido) return;
+    let cancelado = false;
+    getAccessToken()
+      .then((token) => getDetalleTableroAlquileres(token, { ...pedido, tipo }))
+      .then((ind) => {
+        if (!cancelado) setCargado(ind);
+      })
+      .catch(() => {
+        if (!cancelado) setError(true);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [pedido, tipo]);
+  const filas = cargado?.filas ?? [];
   // Una columna vacía en todas las filas no se muestra.
   const cols = columnas.filter(([c]) => filas.some((f) => f[c] != null && f[c] !== ''));
   const conTotal = total && cols.some(([c]) => c === 'importe');
@@ -1047,11 +1488,21 @@ function DetalleModal({
   return (
     <Modal
       title={titulo}
-      subtitle={`${filas.length} ${filas.length === 1 ? 'fila' : 'filas'}${filas.some((f) => f.href) ? ' · tocá una para abrir su ficha' : ''}`}
+      subtitle={
+        cargado
+          ? `${filas.length} ${filas.length === 1 ? 'fila' : 'filas'}${filas.some((f) => f.href) ? ' · tocá una para abrir su ficha' : ''}`
+          : undefined
+      }
       onClose={onClose}
       size="xl"
     >
-      {filas.length === 0 ? (
+      {error ? (
+        <p className="text-sm text-danger">No se pudo cargar la lista. Cerrala y probá de nuevo.</p>
+      ) : !cargado ? (
+        <p role="status" className="text-sm text-muted">
+          Cargando…
+        </p>
+      ) : filas.length === 0 ? (
         <p className="text-sm text-muted">Nada por ahora.</p>
       ) : (
         <div className="flex flex-col gap-3">
