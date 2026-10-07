@@ -95,3 +95,20 @@ export function fmtFechaDe(isoTimestamp: string | null | undefined): string {
     timeZone: ZONA_AR,
   });
 }
+
+/**
+ * Una cantidad con su palabra en singular o plural: «1 boleta», «3 boletas»,
+ * «1 día», «0 días». Las pantallas lo escribían a mano y varias se olvidaban
+ * del singular («1 días de atraso», «1 boletas»).
+ */
+export function cantidad(n: number, singular: string, plural = `${singular}s`): string {
+  return `${fmtNum(n)} ${n === 1 ? singular : plural}`;
+}
+
+/**
+ * El número de un recibo o una liquidación, como sale en el PDF: seis cifras
+ * («000027»). Cada pantalla tenía su copia, y donde faltaba se leía «recibo 27».
+ */
+export function nroDocumento(n: number): string {
+  return String(n).padStart(6, '0');
+}

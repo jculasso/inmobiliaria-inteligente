@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   LIMITE_CONCEPTOS_MES,
   recortarAlLimite,
@@ -17,7 +16,8 @@ import { mesLargo } from '@vacker/domain';
 import { Button, KpiCard } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularConcepto, generarPeriodo } from '../../lib/alquileres-api';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { cantidad, fmtFecha, fmtMoneda } from '../../lib/format';
+import { useRefrescar } from '../../lib/refrescar';
 import { AnularModal } from './anular-modal';
 import { ConceptoSueltoModal } from './concepto-suelto-modal';
 import {
@@ -340,6 +340,21 @@ function GrupoContrato({
 }
 
 /**
+ * Lo que hizo «Generar», dicho con lo que se sabe: cuántos conceptos nuevos,
+ * cuántos ya estaban y cuántos contratos se revisaron. Antes decía «Se
+ * generaron 11 conceptos de 11 contratos» cuando los nuevos eran de 3: la
+ * respuesta no dice de cuántos contratos son los nuevos, así que no se afirma.
+ */
+export function textoGeneracion(r: ResultadoGeneracionDto): string {
+  const revisados = `se ${r.contratos === 1 ? 'revisó' : 'revisaron'} ${cantidad(r.contratos, 'contrato')}`;
+  if (r.creados === 0) return `No había nada nuevo para generar: ${revisados}.`;
+  const nuevos = `Se ${r.creados === 1 ? 'generó' : 'generaron'} ${cantidad(r.creados, 'concepto nuevo', 'conceptos nuevos')}`;
+  return r.existentes > 0
+    ? `${nuevos}. ${cantidad(r.existentes, 'ya estaba', 'ya estaban')} (${revisados}).`
+    : `${nuevos} (${revisados}).`;
+}
+
+/**
  * Los conceptos de un mes y la generación del período (reglas 9 a 14).
  * «Generar» se puede apretar las veces que haga falta: la segunda vez solo
  * crea lo que falte (regla 10), por ejemplo un contrato cargado después.
@@ -353,7 +368,7 @@ export function ConceptosMes({
   conceptos: ConceptoDto[];
   contratos: ContratoResumenDto[];
 }) {
-  const router = useRouter();
+  const { refrescar, refrescando } = useRefrescar();
   const [resultado, setResultado] = useState<ResultadoGeneracionDto | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -369,7 +384,7 @@ export function ConceptosMes({
     setGenerando(true);
     try {
       setResultado(await generarPeriodo(await getAccessToken(), periodo));
-      router.refresh();
+      await refrescar();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el mes.');
     } finally {
@@ -385,7 +400,11 @@ export function ConceptosMes({
           ＋ Gasto suelto
         </Button>
         <Button variant="primary" size="sm" onClick={generar} disabled={generando}>
-          {generando ? 'Generando…' : `⚙️ Generar ${mesDe(periodo).split(' ')[0]}`}
+          {refrescando && generando
+            ? 'Actualizando…'
+            : generando
+              ? 'Generando…'
+              : `⚙️ Generar ${mesDe(periodo).split(' ')[0]}`}
         </Button>
       </EncabezadoPagina>
 
@@ -399,14 +418,7 @@ export function ConceptosMes({
           role="status"
           className="flex flex-col gap-1 rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink"
         >
-          <p>
-            {resultado.creados === 0
-              ? `No había nada nuevo para generar en ${resultado.contratos} contratos.`
-              : `Se generaron ${resultado.creados} conceptos de ${resultado.contratos} contratos.`}
-            {resultado.creados > 0 && resultado.existentes > 0
-              ? ` ${resultado.existentes} ya estaban.`
-              : ''}
-          </p>
+          <p>{textoGeneracion(resultado)}</p>
           {resultado.sinIndexar.length > 0 && (
             <p>
               Sin generar, porque el tramo no está indexado:{' '}
@@ -489,7 +501,8 @@ export function ConceptosMes({
           contratos={contratos}
           periodo={periodo}
           onClose={() => setSuelto(false)}
-          onSaved={(n) => {
+          onSaved={async (n) => {
+            await refrescar();
             setSuelto(false);
             setResultado(null);
             setAviso(
@@ -497,7 +510,6 @@ export function ConceptosMes({
                 ? `Se cargaron ${n} conceptos: el cargo y el reintegro a quien lo pagó.`
                 : 'Se cargó el gasto.',
             );
-            router.refresh();
           }}
         />
       )}
@@ -520,14 +532,14 @@ export function ConceptosMes({
             (await anularConcepto(await getAccessToken(), anulando.id, motivo)).anulados
           }
           onClose={() => setAnulando(null)}
-          onDone={(n) => {
+          onDone={async (n) => {
+            await refrescar();
             setAnulando(null);
             setAviso(
               n > 1
                 ? `Se anularon ${n} conceptos: el cargo y lo que tenía enlazado.`
                 : 'Se anuló el concepto.',
             );
-            router.refresh();
           }}
         />
       )}

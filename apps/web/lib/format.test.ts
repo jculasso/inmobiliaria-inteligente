@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { fmtFecha, fmtFechaDe, fmtFechaHora, fmtK, fmtNum, fmtUSD } from './format';
+import {
+  cantidad,
+  fmtFecha,
+  fmtFechaDe,
+  fmtFechaHora,
+  fmtK,
+  fmtNum,
+  fmtUSD,
+  nroDocumento,
+} from './format';
 
 describe('fmtUSD', () => {
   it('redondea y agrega separador de miles es-AR con prefijo $', () => {
@@ -71,5 +80,23 @@ describe('fmtFechaDe y fmtFechaHora', () => {
   it('vacío es una raya', () => {
     expect(fmtFechaDe(null)).toBe('—');
     expect(fmtFechaHora(undefined)).toBe('—');
+  });
+});
+
+describe('cantidad', () => {
+  it('singular con uno, plural con el resto', () => {
+    expect(cantidad(1, 'boleta')).toBe('1 boleta');
+    expect(cantidad(3, 'boleta')).toBe('3 boletas');
+    expect(cantidad(0, 'día')).toBe('0 días');
+    expect(cantidad(1, 'mes', 'meses')).toBe('1 mes');
+    expect(cantidad(2, 'mes', 'meses')).toBe('2 meses');
+    expect(cantidad(1500, 'concepto')).toBe('1.500 conceptos');
+  });
+});
+
+describe('nroDocumento', () => {
+  it('seis cifras, como en el PDF', () => {
+    expect(nroDocumento(27)).toBe('000027');
+    expect(nroDocumento(1234567)).toBe('1234567');
   });
 });

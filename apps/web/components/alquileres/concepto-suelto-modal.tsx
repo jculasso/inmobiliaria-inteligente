@@ -33,11 +33,14 @@ export function ConceptoSueltoModal({
   contratos: ContratoResumenDto[];
   periodo: string;
   onClose: () => void;
-  onSaved: (n: number) => void;
+  /** Si devuelve una promesa (el refresh de la página), el modal la espera ocupado. */
+  onSaved: (n: number) => void | Promise<void>;
 }) {
   // Los que tienen cuenta: no un borrador ni uno anulado.
   const vigentes = contratos.filter((c) => c.estado !== 'borrador' && c.estado !== 'anulado');
-  const [contratoId, setContratoId] = useState(vigentes[0]?.id ?? '');
+  // Sin elegir: con el primero preseleccionado era fácil cargarle el gasto al
+  // contrato equivocado (prueba en producción, 6/10/2026).
+  const [contratoId, setContratoId] = useState('');
   const [tipo, setTipo] = useState<TipoConceptoSuelto>('expensa');
   const [aCargoDe, setACargoDe] = useState<Parte>('inquilino');
   const [pagadoPor, setPagadoPor] = useState<Pagador>('nadie');
@@ -46,12 +49,17 @@ export function ConceptoSueltoModal({
   const [descripcion, setDescripcion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
 
   const otra: Parte = aCargoDe === 'inquilino' ? 'propietario' : 'inquilino';
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!contratoId) {
+      setError('Elegí el contrato.');
+      return;
+    }
     const monto = leerImporte(importe) ?? Number.NaN;
     if (!(monto > 0)) {
       setError('Cargá el importe.');
@@ -68,17 +76,20 @@ export function ConceptoSueltoModal({
       descripcion,
     };
     setGuardando(true);
+    let creados: number;
     try {
-      const creados = await crearConceptoSuelto(await getAccessToken(), dto);
-      onSaved(creados.length);
+      creados = (await crearConceptoSuelto(await getAccessToken(), dto)).length;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar.');
       setGuardando(false);
+      return;
     }
+    setActualizando(true);
+    await onSaved(creados);
   }
 
   return (
-    <Modal title="Gasto suelto" onClose={onClose}>
+    <Modal title="Gasto suelto" onClose={onClose} cerrable={!guardando}>
       <form onSubmit={guardar} className="flex flex-col gap-3">
         <Campo label="Contrato" requerido>
           <select
@@ -87,6 +98,7 @@ export function ConceptoSueltoModal({
             onChange={(e) => setContratoId(e.target.value)}
             required
           >
+            <option value="">Elegí el contrato…</option>
             {vigentes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.codigo} · {c.propiedad.direccion}
@@ -170,11 +182,11 @@ export function ConceptoSueltoModal({
           </p>
         )}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={guardando}>
             Cancelar
           </Button>
-          <Button type="submit" variant="primary" disabled={guardando || !contratoId}>
-            {guardando ? 'Guardando…' : 'Guardar'}
+          <Button type="submit" variant="primary" disabled={guardando}>
+            {actualizando ? 'Actualizando…' : guardando ? 'Guardando…' : 'Guardar'}
           </Button>
         </div>
       </form>
