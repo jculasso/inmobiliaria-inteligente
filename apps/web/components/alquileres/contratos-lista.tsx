@@ -88,11 +88,13 @@ export function ContratosLista({
         }
       >
         {fmtFecha(c.proximaIndexacion)}
-        {c.proximaIndexacion < hoy
-          ? c.proximaIndexacionEspera
-            ? ' · espera el índice'
-            : ' · vencida'
-          : ''}
+        {c.proximaIndexacion < hoy &&
+          (c.proximaIndexacionEspera ? (
+            // En su propia línea: al lado de la fecha no entraba y se cortaba bajo los íconos.
+            <span className="block text-xs text-muted">espera el índice</span>
+          ) : (
+            ' · vencida'
+          ))}
       </span>
     );
   const abrir = (c: ContratoResumenDto) => router.push(`/alquileres/contratos/${c.id}`);
