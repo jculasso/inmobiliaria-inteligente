@@ -12,7 +12,7 @@ import {
   type CandidatoDto,
   type PreparacionLiquidacionDto,
 } from '@vacker/types';
-import { Button } from '@vacker/ui';
+import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import {
   generarLiquidacionPdf,
@@ -122,6 +122,9 @@ export function LiquidacionForm({
   const [error, setError] = useState<string | null>(null);
   const [mandando, setMandando] = useState(false);
   const [hecha, setHecha] = useState<LiquidacionDto | null>(null);
+  // Liquidar mueve plata: se confirma con el neto y a quién (prueba en
+  // producción, 6/10/2026: se ejecutaba con el primer toque).
+  const [aConfirmar, setAConfirmar] = useState(false);
 
   useEffect(() => {
     if (!personaId) return;
@@ -164,6 +167,7 @@ export function LiquidacionForm({
       setError(err instanceof Error ? err.message : 'No se pudo liquidar.');
     } finally {
       setEnviando(false);
+      setAConfirmar(false);
     }
   }
 
@@ -375,10 +379,13 @@ export function LiquidacionForm({
             </span>
             <Button
               variant="primary"
-              onClick={confirmar}
+              onClick={() => {
+                setError(null);
+                setAConfirmar(true);
+              }}
               disabled={enviando || prep.aPagar.length === 0 || prep.neto < 0}
             >
-              {enviando ? 'Liquidando…' : 'Liquidar'}
+              Liquidar
             </Button>
           </div>
           {prep.neto < 0 && (
@@ -388,6 +395,38 @@ export function LiquidacionForm({
             </p>
           )}
         </>
+      )}
+
+      {aConfirmar && prep && (
+        <Modal
+          title={`Liquidar a ${prep.persona.nombre}`}
+          onClose={() => setAConfirmar(false)}
+          cerrable={!enviando}
+        >
+          <div className="flex flex-col gap-4">
+            <p className="text-sm leading-relaxed text-ink">
+              Se le liquidan{' '}
+              <span className="font-bold tabular-nums">{fmtMoneda(prep.neto, moneda)}</span> a{' '}
+              <span className="font-bold">{prep.persona.nombre}</span> por{' '}
+              {medio === 'otro' ? 'otro medio' : NOMBRE_MEDIO[medio].toLowerCase()}. Lo incluido
+              queda liquidado y sale en su cuenta corriente; si hubo un error, se anula con un
+              motivo.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setAConfirmar(false)}
+                disabled={enviando}
+              >
+                Cancelar
+              </Button>
+              <Button type="button" variant="primary" onClick={confirmar} disabled={enviando}>
+                {enviando ? 'Liquidando…' : 'Sí, liquidar'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {error && (
