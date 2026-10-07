@@ -354,8 +354,10 @@ describe('TableroAlquileresService', () => {
       ['5', 'Sancor N° 123', '2026-11-30', 'Vence en 41 días', '/alquileres/contratos/c5'],
     ]);
     expect(t.boletas.filas.map((f) => [f.contrato, f.detalle, f.importe, f.estado])).toEqual([
-      ['5', 'API cuota 3/6', 45_000, 'Vencida hace 10 días'],
+      ['5', 'API · cuota 3 de 6', 45_000, 'Vencida hace 10 días'],
     ]);
+    // Regla 45: lleva a la pestaña «Para pagar»; `?ver=control` ya no existe.
+    expect(t.boletas.filas[0]!.href).toBe('/alquileres/impuestos?ver=pagar');
   });
 
   // Javier, 6/10/2026: «Propietario, Inquilino, Importe Alquiler vigente, cuando indexa, cuando vence».

@@ -2240,6 +2240,67 @@ export const NOMBRE_QUIEN_PAGA: Record<QuienPaga, string> = {
   inquilino: 'El inquilino',
   propietario: 'El propietario',
 };
+export type ParteDeudora = z.infer<typeof ParteDeudoraSchema>;
+
+/**
+ * Qué pasa con la plata según quién debe la boleta y quién la paga (regla 46).
+ * Es la única redacción: la usan la lista de «Para pagar», la planilla y el
+ * alta del impuesto de una propiedad. La semántica es la de
+ * `conceptosDeBoleta` (API): si paga quien la debe no se carga nada; si paga
+ * la inmobiliaria se le cobra (o descuenta) a quien la debe; si paga la otra
+ * parte, a quien la debe se le carga y a quien la pagó se le reconoce.
+ *
+ * Antes se mostraba «la debe el inquilino · paga la inmobiliaria», que no
+ * decía qué pasaba con la plata (pedido de Javier, 7/10/2026).
+ */
+export function consecuenciaDeBoleta(
+  aCargoDe: ParteDeudora,
+  paga: QuienPaga,
+  conContrato = true,
+): string {
+  if (!conContrato) return 'Sin contrato ese mes: no se le carga a nadie, queda para control';
+  if (paga === aCargoDe) return `La paga el ${paga}: solo hay que pedirle el comprobante`;
+  if (paga === 'inmobiliaria')
+    return aCargoDe === 'inquilino'
+      ? 'La paga la inmobiliaria y se le cobra al inquilino en su próximo recibo'
+      : 'La paga la inmobiliaria y se le descuenta al propietario al liquidar';
+  return paga === 'inquilino'
+    ? 'La paga el inquilino y se le descuenta al propietario (al inquilino se le reconoce)'
+    : 'La paga el propietario y se le cobra al inquilino para devolvérsela';
+}
+
+/**
+ * Las seis combinaciones, en el orden en que se ofrecen al asignar un impuesto
+ * a una propiedad: un solo campo en vez de «La debe» y «La paga» (regla 46).
+ */
+export const COMBINACIONES_QUIEN_PAGA: readonly { aCargoDe: ParteDeudora; paga: QuienPaga }[] = [
+  { aCargoDe: 'inquilino', paga: 'inquilino' },
+  { aCargoDe: 'inquilino', paga: 'inmobiliaria' },
+  { aCargoDe: 'inquilino', paga: 'propietario' },
+  { aCargoDe: 'propietario', paga: 'propietario' },
+  { aCargoDe: 'propietario', paga: 'inmobiliaria' },
+  { aCargoDe: 'propietario', paga: 'inquilino' },
+];
+
+/**
+ * Después de pagada, si lo cargado a quien la debe ya se recuperó (regla 47).
+ * `null` cuando no hay nada que recuperar: la pagó quien la debía, o no había
+ * contrato ese mes.
+ */
+export function recuperoDeBoleta(b: {
+  aCargoDe: ParteDeudora;
+  paga: QuienPaga;
+  cargoRecuperado: boolean | null;
+}): string | null {
+  if (b.paga === b.aCargoDe || b.cargoRecuperado == null) return null;
+  if (b.aCargoDe === 'inquilino')
+    return b.cargoRecuperado
+      ? 'Ya se le cobró al inquilino'
+      : 'Falta cobrárselo al inquilino: va en su próximo recibo';
+  return b.cargoRecuperado
+    ? 'Ya se le descontó al propietario'
+    : 'Falta descontárselo al propietario: va en su próxima liquidación';
+}
 
 export const CuentaServicioInputSchema = z.object({
   propiedadId: z.string().uuid({ message: 'Elegí la propiedad.' }),
@@ -2317,8 +2378,31 @@ export const BoletaDtoSchema = z.object({
   registradoPor: z.string().nullable(),
   /** Lo cargado a las partes ya se cobró o liquidó: no se puede anular. */
   aplicada: z.boolean(),
+  /**
+   * Regla 47: lo que se le cargó a quien la debe ya se recuperó entero (todos
+   * sus conceptos a cobrar con saldo cero: cobrados o liquidados). `null`
+   * cuando no se le cargó nada a nadie. `.default` por el orden de despliegue.
+   */
+  cargoRecuperado: z.boolean().nullable().default(null),
 });
 export type BoletaDto = z.infer<typeof BoletaDtoSchema>;
+
+/**
+ * Regla 50: lo que la inmobiliaria ya pagó de boletas (cuotas de pólizas
+ * incluidas) y todavía no cobró ni descontó a quien las debe, de todos los
+ * meses, por moneda.
+ */
+export const AdelantadoBoletasDtoSchema = z.object({
+  porMoneda: z.array(
+    z.object({
+      moneda: MonedaAlquilerSchema,
+      importe: z.number(),
+      /** Cuántas boletas tienen algo sin recuperar. */
+      boletas: z.number().int(),
+    }),
+  ),
+});
+export type AdelantadoBoletasDto = z.infer<typeof AdelantadoBoletasDtoSchema>;
 
 /** Una fila de la planilla: la cuenta, lo cargado este mes y lo del mes anterior para copiar. */
 export const FilaPlanillaSchema = z.object({
@@ -2354,7 +2438,37 @@ export const PagarBoletaSchema = z.object({
   medio: MedioCobroSchema.default('transferencia'),
 });
 
-/** «4/6» del mes siguiente: lo que propone «Copiar el mes anterior». */
+/**
+ * La cuota como se lee (regla 51): «3/6» → «cuota 3 de 6». Escrita «3/6» se
+ * leía como una fecha («10/12», ¿10 de diciembre?). Se guarda igual que antes;
+ * solo cambia cómo se muestra. Una cuota con otra forma (anterior a la
+ * validación) se muestra tal cual.
+ */
+export function textoCuota(cuota: string | null | undefined): string {
+  if (!cuota) return '';
+  const m = cuota.match(/^(\d{1,2})\/(\d{1,2})$/);
+  return m ? `cuota ${Number(m[1])} de ${Number(m[2])}` : `cuota ${cuota}`;
+}
+
+/** «3/6» → `{ n: '3', de: '6' }`, para los dos campitos de la planilla. */
+export function partesDeCuota(cuota: string | null | undefined): { n: string; de: string } {
+  const m = cuota?.match(/^(\d{1,2})\/(\d{1,2})$/);
+  return m ? { n: String(Number(m[1])), de: String(Number(m[2])) } : { n: '', de: '' };
+}
+
+/**
+ * Los dos campitos de vuelta a como se guarda: «3» y «6» → «3/6»; los dos
+ * vacíos → `null`. Uno solo, o algo que no es un número, es un error (`false`).
+ */
+export function unirCuota(n: string, de: string): string | null | false {
+  const [a, b] = [n.trim(), de.trim()];
+  if (!a && !b) return null;
+  if (!/^\d{1,2}$/.test(a) || !/^\d{1,2}$/.test(b) || Number(a) < 1 || Number(a) > Number(b))
+    return false;
+  return `${Number(a)}/${Number(b)}`;
+}
+
+/** «4/6» del mes siguiente: lo que propone «Completar con el mes anterior». */
 export function cuotaSiguiente(cuota: string | null): string | null {
   const m = cuota?.match(/^(\d{1,2})\/(\d{1,2})$/);
   if (!m) return cuota;

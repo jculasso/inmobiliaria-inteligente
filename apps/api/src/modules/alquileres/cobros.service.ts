@@ -24,7 +24,7 @@ import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
-import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { IMPUTACION_ACTIVA, saldoDeConcepto } from './imputacion-activa';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
 
 /** El día (en la Argentina) de un instante, como `YYYY-MM-DD`. */
@@ -559,7 +559,6 @@ export class CobrosService {
     ]);
     const conceptos = filasConceptos.map((k) => {
       const importe = decToNum(k.importe);
-      const imputado = k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0);
       return {
         id: k.id,
         liquidado: k.liquidacionId != null,
@@ -568,7 +567,7 @@ export class CobrosService {
         moneda: k.moneda,
         importe,
         // Liquidado = saldado con el propietario (regla 20): no queda nada pendiente.
-        saldo: k.liquidacionId ? 0 : redondear2(importe - imputado),
+        saldo: saldoDeConcepto(k),
         vencimiento: fromDate(k.vencimiento)!,
         createdAt: k.createdAt,
         periodo: k.periodo,

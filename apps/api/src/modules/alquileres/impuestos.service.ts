@@ -10,7 +10,9 @@ import {
   CATALOGO_SUGERIDO,
   LIMITE_LISTA_CON_SONDA,
   NOMBRE_COBERTURA,
+  type AdelantadoBoletasDto,
   type BoletaDto,
+  type MonedaAlquiler,
   type ClaseServicio,
   type CoberturaPoliza,
   type CuentaServicio,
@@ -25,14 +27,14 @@ import {
   type ServicioDto,
   type ServicioInput,
 } from '@vacker/types';
-import { repartir, sumarDiasIso, sumarMesesIso } from '@vacker/domain';
+import { redondear2, repartir, sumarDiasIso, sumarMesesIso } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { repartoDe } from './conceptos.service';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
-import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { IMPUTACION_ACTIVA, saldoDeConcepto } from './imputacion-activa';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 type Parte = 'inquilino' | 'propietario';
@@ -314,7 +316,7 @@ export class ImpuestosService {
       if (!servicio) throw new NotFoundException('El impuesto o servicio no existe.');
       if (id) {
         const { count } = await tx.alqCuentaServicio.updateMany({ where: { id }, data: dto });
-        if (!count) throw new NotFoundException('La cuenta no existe.');
+        if (!count) throw new NotFoundException('Ese impuesto no está asignado a la propiedad.');
       }
       const c = id
         ? { id }
@@ -339,9 +341,11 @@ export class ImpuestosService {
         where: { id },
         select: { servicio: { select: { nombre: true } }, _count: { select: { boletas: true } } },
       });
-      if (!c) throw new NotFoundException('La cuenta no existe.');
+      if (!c) throw new NotFoundException('Ese impuesto no está asignado a la propiedad.');
       if (c._count.boletas)
-        throw new ConflictException(`Tiene ${c._count.boletas} boletas cargadas: no se borra.`);
+        throw new ConflictException(
+          `Tiene ${c._count.boletas} ${c._count.boletas === 1 ? 'boleta cargada' : 'boletas cargadas'}: no se quita.`,
+        );
       await tx.alqCuentaServicio.delete({ where: { id } });
       await registrarEventos(tx, ctx, {
         entidad: 'servicio',
@@ -434,11 +438,12 @@ export class ImpuestosService {
         ).map((c) => [c.id, c]),
       );
       const faltan = ids.filter((id) => !cuentas.has(id));
-      if (faltan.length) throw new NotFoundException('Alguna de las cuentas no existe.');
+      if (faltan.length)
+        throw new NotFoundException('Alguno de los impuestos ya no está asignado a su propiedad.');
       const claves = dto.boletas.map((b) => clavePeriodo(b.cuentaId, dto.periodo, b.cuota));
       if (new Set(claves).size !== claves.length)
         throw new BadRequestException(
-          'Hay dos boletas iguales en la planilla: misma cuenta y misma cuota.',
+          'Hay dos boletas iguales en la planilla: el mismo impuesto de la misma propiedad, con la misma cuota.',
         );
       const ya = new Set(
         (
@@ -826,12 +831,15 @@ export class ImpuestosService {
     return (await this.dtos(tx, [b]))[0]!;
   }
 
-  /** Los contratos, los nombres y si ya se aplicó: tres consultas para toda la lista. */
+  /**
+   * Los contratos, los nombres y lo cargado a las partes —si ya se aplicó algo
+   * y si se recuperó entero—: tres consultas para toda la lista.
+   */
   private async dtos(tx: Tx, filas: FilaBoleta[]): Promise<BoletaDto[]> {
     const contratoIds = [
       ...new Set(filas.map((f) => f.contratoId).filter((x): x is string => !!x)),
     ];
-    const [contratos, nombres, aplicados] = await Promise.all([
+    const [contratos, nombres, cargados] = await Promise.all([
       contratoIds.length
         ? tx.alqContrato.findMany({
             where: { id: { in: contratoIds } },
@@ -844,13 +852,23 @@ export class ImpuestosService {
       ),
       filas.length
         ? tx.alqConcepto.findMany({
-            where: { ...deBoletas(filas.map((f) => f.id)), ...APLICADO },
-            select: { claveGeneracion: true },
+            where: { ...deBoletas(filas.map((f) => f.id)), anuladoEn: null },
+            select: {
+              claveGeneracion: true,
+              sentido: true,
+              importe: true,
+              liquidacionId: true,
+              imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
+            },
           })
         : [],
     ]);
     const codigo = new Map(contratos.map((c) => [c.id, c.codigo]));
-    const conAplicado = new Set(aplicados.map((a) => a.claveGeneracion?.split('|')[1]));
+    const deLaBoleta = new Map<string, typeof cargados>();
+    for (const k of cargados) {
+      const id = k.claveGeneracion?.split('|')[1];
+      if (id) deLaBoleta.set(id, [...(deLaBoleta.get(id) ?? []), k]);
+    }
     return filas.map((f) => ({
       id: f.id,
       nombre: f.cuenta
@@ -873,9 +891,96 @@ export class ImpuestosService {
       pagadaEl: fromDate(f.pagadaEl),
       medio: (f.medio as MedioCobro | null) ?? null,
       registradoPor: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null,
-      aplicada: conAplicado.has(f.id),
+      ...estadoDeLoCargado(deLaBoleta.get(f.id) ?? []),
     }));
   }
+
+  /**
+   * Regla 50: lo que la inmobiliaria ya pagó de boletas —cuotas de pólizas
+   * incluidas— y todavía no cobró ni descontó a quien las debe: el saldo de
+   * sus conceptos a cobrar adelantados, de boletas pagadas y no anuladas, de
+   * todos los meses, por moneda. El saldo es el de la cuenta corriente
+   * (`saldoDeConcepto`): un cobro parcial descuenta lo cobrado, una
+   * liquidación lo salda. Dos consultas, sean diez boletas o mil.
+   */
+  async adelantado(): Promise<AdelantadoBoletasDto> {
+    return this.db.withTenant(async (tx) => {
+      const conceptos = await tx.alqConcepto.findMany({
+        where: {
+          sentido: 'a_cobrar',
+          adelantadoPorInmobiliaria: true,
+          anuladoEn: null,
+          liquidacionId: null,
+          claveGeneracion: { startsWith: 'bol|' },
+        },
+        select: {
+          claveGeneracion: true,
+          moneda: true,
+          importe: true,
+          liquidacionId: true,
+          imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
+        },
+      });
+      const pendientes = conceptos
+        .map((k) => ({
+          boletaId: k.claveGeneracion!.split('|')[1]!,
+          moneda: k.moneda as MonedaAlquiler,
+          saldo: saldoDeConcepto(k),
+        }))
+        .filter((k) => k.saldo > 0);
+      if (!pendientes.length) return { porMoneda: [] };
+      // Solo lo que la inmobiliaria ya pagó: lo pendiente todavía no es un adelanto.
+      const pagadas = new Set(
+        (
+          await tx.alqBoleta.findMany({
+            where: {
+              id: { in: [...new Set(pendientes.map((k) => k.boletaId))] },
+              pagadaEl: { not: null },
+              anuladoEn: null,
+            },
+            select: { id: true },
+          })
+        ).map((b) => b.id),
+      );
+      const porMoneda = new Map<MonedaAlquiler, { importe: number; boletas: Set<string> }>();
+      for (const k of pendientes) {
+        if (!pagadas.has(k.boletaId)) continue;
+        const m = porMoneda.get(k.moneda) ?? { importe: 0, boletas: new Set<string>() };
+        m.importe = redondear2(m.importe + k.saldo);
+        m.boletas.add(k.boletaId);
+        porMoneda.set(k.moneda, m);
+      }
+      return {
+        porMoneda: [...porMoneda]
+          .sort(([a], [b]) => (a === 'ARS' ? -1 : b === 'ARS' ? 1 : a < b ? -1 : 1))
+          .map(([moneda, m]) => ({ moneda, importe: m.importe, boletas: m.boletas.size })),
+      };
+    });
+  }
+}
+
+type ConceptoCargado = {
+  sentido: string;
+  importe: Prisma.Decimal;
+  liquidacionId: string | null;
+  imputaciones: { importe: Prisma.Decimal }[];
+};
+
+/**
+ * De lo que una boleta les cargó a las partes (sin lo anulado): si ya se
+ * aplicó algo —entonces no se anula— y si lo cargado a quien la debe se
+ * recuperó entero (regla 47). Sin conceptos a cobrar, no hay nada que
+ * recuperar: `null`.
+ */
+export function estadoDeLoCargado(conceptos: ConceptoCargado[]): {
+  aplicada: boolean;
+  cargoRecuperado: boolean | null;
+} {
+  const aCobrar = conceptos.filter((k) => k.sentido === 'a_cobrar');
+  return {
+    aplicada: conceptos.some((k) => k.liquidacionId != null || k.imputaciones.length > 0),
+    cargoRecuperado: aCobrar.length ? aCobrar.every((k) => saldoDeConcepto(k) <= 0) : null,
+  };
 }
 
 function cuentaDto(f: FilaCuenta, periodo: string): CuentaServicioDto {

@@ -7,6 +7,7 @@ import { PersonasController } from './personas.controller';
 import { PropiedadesAlquilerController } from './propiedades.controller';
 import { ContratosController } from './contratos.controller';
 import { IndexacionesController } from './indexaciones.controller';
+import { ImpuestosController } from './impuestos.controller';
 import { ConceptosController } from './conceptos.controller';
 import { CobrosController } from './cobros.controller';
 import { LiquidacionesController } from './liquidaciones.controller';
@@ -28,6 +29,7 @@ const CONTROLLERS = [
   PropiedadesAlquilerController,
   ContratosController,
   IndexacionesController,
+  ImpuestosController,
   ConceptosController,
   CobrosController,
   LiquidacionesController,

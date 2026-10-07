@@ -153,6 +153,16 @@ export class ImpuestosController {
     return this.impuestos.cargarLote(ctxDe(user), dto);
   }
 
+  @Get('boletas/adelantado')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({
+    summary:
+      'Adelantado sin recuperar: lo que la inmobiliaria pagó de boletas y todavía no cobró ni descontó, por moneda',
+  })
+  adelantado() {
+    return this.impuestos.adelantado();
+  }
+
   @Get('boletas')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({ summary: 'Boletas de un mes, o las pendientes vencidas o por vencer (control)' })
