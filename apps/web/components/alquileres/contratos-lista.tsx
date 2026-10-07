@@ -185,7 +185,9 @@ export function ContratosLista({
                 <tr>
                   <th className={`${CLASE_TH} left-0 z-30 border-r`}>Código</th>
                   <th className={CLASE_TH}>Propiedad</th>
-                  <th className={CLASE_TH}>Tipo</th>
+                  {/* Debajo de 1280 px la tabla no entraba y «Estado» quedaba tapado por los íconos;
+                      el tipo también se ve en la ficha y en el filtro del Dashboard. */}
+                  <th className={`${CLASE_TH} hidden xl:table-cell`}>Tipo</th>
                   <th className={CLASE_TH}>Inquilino</th>
                   <th className={CLASE_TH}>Vence</th>
                   <th className={`${CLASE_TH} text-right`}>Importe</th>
@@ -205,7 +207,9 @@ export function ContratosLista({
                         {unidad(c)}
                       </span>
                     </td>
-                    <td className={`${CLASE_TD} text-muted`}>{NOMBRE_TIPO_CONTRATO[c.tipo]}</td>
+                    <td className={`${CLASE_TD} hidden text-muted xl:table-cell`}>
+                      {NOMBRE_TIPO_CONTRATO[c.tipo]}
+                    </td>
                     <td className={`${CLASE_TD} text-muted`}>
                       <span className="block max-w-[160px] truncate" title={nombres(c.inquilinos)}>
                         {nombres(c.inquilinos)}
