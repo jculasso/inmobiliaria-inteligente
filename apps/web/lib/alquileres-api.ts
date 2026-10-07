@@ -918,7 +918,7 @@ export async function anularPoliza(accessToken: string, id: string, motivo: stri
   );
 }
 
-// --- Informe al propietario (reglas 83 a 97) -------------------------------------
+// --- Informe al propietario (reglas 83 a 98) -------------------------------------
 
 /** Regla 96: todos los propietarios del período, con lo mismo que el informe de cada uno. */
 export async function getInformePropietarios(accessToken: string, q: InformePeriodoQuery) {

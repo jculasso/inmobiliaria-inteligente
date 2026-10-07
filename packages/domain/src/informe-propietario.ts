@@ -1,4 +1,4 @@
-// El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 97).
+// El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 98).
 //
 // Javier, 7/10/2026: «un reporte para el propietario, donde le podemos
 // detallar los alquileres que cobró, los honorarios que pagó, los impuestos
@@ -169,10 +169,16 @@ export interface CadenaInforme {
   reintegros: number;
   /** Cobrado − descuentos + reintegros. */
   neto: number;
-  /** La parte del neto que ya se le liquidó. */
+  /** Lo que ya se le liquidó de lo del período. */
   liquidado: number;
-  /** La que va en la próxima liquidación. Negativa: se le descuenta en la próxima. */
+  /** Lo que va en la próxima liquidación a su favor: nunca negativo (regla 98). */
   pendiente: number;
+  /**
+   * Lo que se le descuenta en la próxima liquidación porque se le liquidó
+   * más de lo que deja el período: un arreglo cargado después de liquidar el
+   * alquiler, por ejemplo. Nunca negativo, y con `pendiente` en cero (regla 98).
+   */
+  aDescontar: number;
 }
 
 /** Un concepto con su renglón y su estado: lo que suma la cadena. */
@@ -185,7 +191,13 @@ export interface PartidaInforme extends EstadoDelConcepto {
  *
  *   alquiler − en espera = cobrado
  *   cobrado − honorarios − impuestos − expensas − arreglos − otros + reintegros = neto
- *   neto = liquidado + pendiente
+ *   neto = liquidado + pendiente − a descontar
+ *
+ * Regla 98 (decidido el 7/10/2026 por delegación de Javier): lo que falta
+ * liquidar nunca se muestra negativo. Si lo del período deja menos de lo que
+ * ya se le liquidó, «pendiente» es cero y la diferencia es «a descontar en
+ * la próxima liquidación»: pendiente = máx(0, neto − liquidado) y a
+ * descontar = máx(0, liquidado − neto).
  *
  * Lo que espera al inquilino no se cuenta en ningún lado salvo en «en
  * espera»: un honorario cuyo alquiler no se cobró todavía no se descontó.
@@ -217,6 +229,8 @@ export function cadenaDelInforme(partidas: PartidaInforme[]): CadenaInforme {
   const neto =
     cobrado - c.honorarios - c.impuestos - c.expensas - c.arreglos - c.otros + c.reintegros;
   const pesos = (x: number) => x / 100;
+  // `c.pendiente` es neto − liquidado, con signo: se parte en lo que va a su
+  // favor y lo que se le descuenta, para no mostrar un pendiente negativo.
   return {
     alquiler: pesos(c.alquiler),
     enEspera: pesos(c.enEspera),
@@ -229,7 +243,8 @@ export function cadenaDelInforme(partidas: PartidaInforme[]): CadenaInforme {
     reintegros: pesos(c.reintegros),
     neto: pesos(neto),
     liquidado: pesos(c.liquidado),
-    pendiente: pesos(c.pendiente),
+    pendiente: pesos(Math.max(0, c.pendiente)),
+    aDescontar: pesos(Math.max(0, -c.pendiente)),
   };
 }
 
@@ -248,6 +263,7 @@ export function sumarCadenas(cadenas: CadenaInforme[]): CadenaInforme {
     'neto',
     'liquidado',
     'pendiente',
+    'aDescontar',
   ] as const;
   const total = Object.fromEntries(claves.map((k) => [k, 0])) as unknown as CadenaInforme;
   for (const c of cadenas)

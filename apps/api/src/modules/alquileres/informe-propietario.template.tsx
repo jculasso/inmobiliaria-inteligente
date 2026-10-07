@@ -4,6 +4,8 @@ import { nombreDelRango } from '@vacker/domain';
 import {
   NOMBRE_CATEGORIA_PARTIDA,
   NOMBRE_ESTADO_RECLAMO,
+  estadoDePartida,
+  queSeDescuentaEnLaProxima,
   renglonesDeLaCadena,
   type CategoriaPartida,
   type InformePropietarioDto,
@@ -137,13 +139,18 @@ export function InformePropietarioDocument({
                   {c.moneda === 'USD' ? 'EN DÓLARES' : 'EN PESOS'}
                 </Text>
               )}
-              {renglonesDeLaCadena(c).map(([nombre, v, fuerte]) => (
-                <View key={nombre} style={e.fila}>
-                  <Text style={[{ width: '70%', fontSize: 9 }, fuerte ? { fontWeight: 700 } : {}]}>
-                    {nombre}
-                  </Text>
-                  <Text style={[e.colImporte, { width: '30%' }, fuerte ? { fontWeight: 700 } : {}]}>
-                    {plata(v, c.moneda)}
+              {renglonesDeLaCadena(c, queSeDescuentaEnLaProxima(i.partidas, c.moneda)).map((r) => (
+                <View key={r.nombre} style={e.fila} wrap={false}>
+                  <View style={{ width: '70%' }}>
+                    <Text style={[{ fontSize: 9 }, r.fuerte ? { fontWeight: 700 } : {}]}>
+                      {r.nombre}
+                    </Text>
+                    {r.detalle && <Text style={[e.nota, { marginTop: 2 }]}>{r.detalle}</Text>}
+                  </View>
+                  <Text
+                    style={[e.colImporte, { width: '30%' }, r.fuerte ? { fontWeight: 700 } : {}]}
+                  >
+                    {plata(r.importe, c.moneda)}
                   </Text>
                 </View>
               ))}
@@ -240,11 +247,7 @@ export function InformePropietarioDocument({
                         {p.nombre}
                       </Celda>
                       <Celda w="34%">{`${p.detalle} · ${p.contrato.codigo}`}</Celda>
-                      <Celda w="24%">
-                        {p.liquidacion
-                          ? `Liq. ${numero(p.liquidacion.numero)} del ${fecha(p.liquidacion.fecha)}`
-                          : 'Va en la próxima liquidación'}
-                      </Celda>
+                      <Celda w="24%">{estadoDePartida(p)}</Celda>
                       <Celda w="18%" der>
                         {plata(p.importe, p.moneda)}
                       </Celda>

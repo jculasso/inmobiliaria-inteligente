@@ -1,4 +1,4 @@
-// El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 97).
+// El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 98).
 // Javier, 7/10/2026: «cómo está funcionando su propiedad», para el
 // administrador y en un PDF para el propietario.
 import { z } from 'zod';
@@ -49,21 +49,39 @@ export const CadenaInformeSchema = z.object({
   reintegros: z.number(),
   neto: z.number(),
   liquidado: z.number(),
-  /** Negativo: se le descuenta en la próxima liquidación. */
+  /** Lo que va a su favor en la próxima liquidación: nunca negativo (regla 98). */
   pendiente: z.number(),
+  /**
+   * Lo que se le descuenta en la próxima liquidación porque ya se le liquidó
+   * más de lo que deja el período (regla 98). Con algo acá, `pendiente` es cero.
+   */
+  aDescontar: z.number(),
 });
 export type CadenaInformeDto = z.infer<typeof CadenaInformeSchema>;
 
+/** Un renglón de la cadena: el signo va en el nombre y el importe, en positivo. */
+export interface RenglonCadena {
+  nombre: string;
+  importe: number;
+  fuerte: boolean;
+  /** Qué es, cuando hace falta decirlo: lo que se descuenta en la próxima liquidación. */
+  detalle?: string;
+}
+
 /**
- * Los renglones de la cadena (regla 87), en el orden en que se leen, con el
- * signo en el nombre y el importe en positivo: `[nombre, importe, fuerte]`.
+ * Los renglones de la cadena (reglas 87 y 98), en el orden en que se leen.
  * Un descuento en cero no se lista; el alquiler, lo cobrado, el neto, lo
- * liquidado y lo pendiente, siempre. Una sola lista para la pantalla y el PDF.
+ * liquidado y lo pendiente, siempre —lo pendiente nunca negativo—, y «A
+ * descontar en la próxima liquidación» solo si hay algo, con `queSeDescuenta`
+ * (ver `queSeDescuentaEnLaProxima`). Una sola lista para la pantalla y el PDF.
  */
-export function renglonesDeLaCadena(c: CadenaInformeDto): [string, number, boolean][] {
-  const r: [string, number, boolean][] = [['Alquiler del período', c.alquiler, false]];
-  if (c.enEspera) r.push(['− El inquilino todavía no pagó', c.enEspera, false]);
-  r.push(['Cobrado', c.cobrado, true]);
+export function renglonesDeLaCadena(c: CadenaInformeDto, queSeDescuenta?: string): RenglonCadena[] {
+  const r: RenglonCadena[] = [
+    { nombre: 'Alquiler del período', importe: c.alquiler, fuerte: false },
+  ];
+  if (c.enEspera)
+    r.push({ nombre: '− El inquilino todavía no pagó', importe: c.enEspera, fuerte: false });
+  r.push({ nombre: 'Cobrado', importe: c.cobrado, fuerte: true });
   const descuentos: [string, number][] = [
     ['Honorarios', c.honorarios],
     ['Impuestos y servicios', c.impuestos],
@@ -71,15 +89,20 @@ export function renglonesDeLaCadena(c: CadenaInformeDto): [string, number, boole
     ['Arreglos', c.arreglos],
     ['Otros descuentos', c.otros],
   ];
-  for (const [nombre, v] of descuentos) if (v) r.push([`− ${nombre}`, v, false]);
-  if (c.reintegros) r.push(['+ Reintegros a su favor', c.reintegros, false]);
-  r.push(['Neto del período', c.neto, true]);
-  r.push(['Liquidado (transferido)', c.liquidado, false]);
-  r.push([
-    c.pendiente < 0 ? 'A descontar en la próxima liquidación' : 'Pendiente de liquidar',
-    Math.abs(c.pendiente),
-    false,
-  ]);
+  for (const [nombre, v] of descuentos)
+    if (v) r.push({ nombre: `− ${nombre}`, importe: v, fuerte: false });
+  if (c.reintegros)
+    r.push({ nombre: '+ Reintegros a su favor', importe: c.reintegros, fuerte: false });
+  r.push({ nombre: 'Neto del período', importe: c.neto, fuerte: true });
+  r.push({ nombre: 'Liquidado (transferido)', importe: c.liquidado, fuerte: false });
+  r.push({ nombre: 'Pendiente de liquidar', importe: c.pendiente, fuerte: false });
+  if (c.aDescontar)
+    r.push({
+      nombre: 'A descontar en la próxima liquidación',
+      importe: c.aDescontar,
+      fuerte: false,
+      ...(queSeDescuenta ? { detalle: queSeDescuenta } : {}),
+    });
   return r;
 }
 
@@ -228,3 +251,50 @@ export const InformePropietariosDtoSchema = z.object({
   totales: z.array(CadenaInformeSchema),
 });
 export type InformePropietariosDto = z.infer<typeof InformePropietariosDtoSchema>;
+
+/** Cómo se lee cada renglón de descuento suelto, en singular: «Arreglo: Plomería Juan…». */
+const SINGULAR_CATEGORIA: Record<CategoriaPartida, string> = {
+  honorarios: 'Honorarios',
+  impuestos: 'Impuesto',
+  expensas: 'Expensa',
+  arreglos: 'Arreglo',
+  otros: 'Otro descuento',
+  reintegros: 'Reintegro',
+};
+
+/**
+ * Regla 98: qué es lo que se le descuenta en la próxima liquidación —los
+ * descuentos del período que todavía no entraron en ninguna—, para decirlo
+ * al lado de «A descontar en la próxima liquidación»: «Arreglo: Plomería Juan
+ * (Cambio de canilla · reclamo 2)». Con el impuesto o la boleta en el detalle.
+ */
+export function queSeDescuentaEnLaProxima(
+  partidas: InformePropietarioDto['partidas'],
+  moneda: CadenaInformeDto['moneda'],
+): string {
+  return partidas
+    .filter((p) => p.moneda === moneda && p.categoria !== 'reintegros' && !p.liquidacion)
+    .map((p) =>
+      p.categoria === 'honorarios'
+        ? p.detalle
+        : `${SINGULAR_CATEGORIA[p.categoria]}: ${
+            // «TGI (Tasa municipal) cuota 9/12» ya dice el nombre; un arreglo no.
+            p.detalle.startsWith(p.nombre) ? p.detalle : `${p.nombre} (${p.detalle})`
+          }`,
+    )
+    .join(' · ');
+}
+
+/**
+ * Si un descuento (o un reintegro) del período ya entró en una liquidación, o
+ * va en la próxima (regla 98: «Se descontará en la próxima liquidación»). La
+ * misma frase en la pantalla y en el PDF.
+ */
+export function estadoDePartida(p: InformePropietarioDto['partidas'][number]): string {
+  const [hecho, falta] =
+    p.categoria === 'reintegros' ? ['Pagado', 'Se pagará'] : ['Descontado', 'Se descontará'];
+  if (!p.liquidacion) return `${falta} en la próxima liquidación`;
+  const n = String(p.liquidacion.numero).padStart(6, '0');
+  const dia = p.liquidacion.fecha.split('-').reverse().join('/');
+  return `${hecho} en la liquidación ${n} del ${dia}`;
+}

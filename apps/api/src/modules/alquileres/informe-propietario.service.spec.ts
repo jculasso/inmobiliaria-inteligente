@@ -1,7 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
-import { InformePeriodoQuerySchema, type InformePropietarioDto } from '@vacker/types';
+import {
+  InformePeriodoQuerySchema,
+  estadoDePartida,
+  queSeDescuentaEnLaProxima,
+  type InformePropietarioDto,
+} from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { InformePropietarioService } from './informe-propietario.service';
 
@@ -302,7 +307,8 @@ describe('InformePropietarioService', () => {
       reintegros: 0,
       neto: 810_854.33,
       liquidado: 853_200,
-      pendiente: -42_345.67,
+      pendiente: 0,
+      aDescontar: 42_345.67,
     });
     const cent = (x: number) => Math.round(x * 100);
     expect(cent(c.alquiler) - cent(c.enEspera)).toBe(cent(c.cobrado));
@@ -315,7 +321,7 @@ describe('InformePropietarioService', () => {
         cent(c.otros) +
         cent(c.reintegros),
     ).toBe(cent(c.neto));
-    expect(cent(c.liquidado) + cent(c.pendiente)).toBe(cent(c.neto));
+    expect(cent(c.liquidado) + cent(c.pendiente) - cent(c.aDescontar)).toBe(cent(c.neto));
   });
 
   it('regla 86: solo lo suyo como propietario; lo de la inquilina y lo de otro dueño no entran', async () => {
@@ -323,6 +329,44 @@ describe('InformePropietarioService', () => {
     expect(i.contratos.map((c) => c.codigo)).toEqual(['ALT-0001', 'ALT-0002']);
     expect(i.partidas.some((p) => p.categoria === 'reintegros')).toBe(false);
     expect(i.resumen.every((c) => c.alquiler !== 1_500_000)).toBe(true);
+  });
+
+  // El caso de Marcela Ibarra en Alteva, octubre de 2026: el alquiler ya se le
+  // liquidó y después se cargó el gasto del reclamo 2, a cargo del propietario,
+  // que todavía no se descontó. Salía «Pendiente de liquidar −$ 15.000».
+  it('regla 98: un arreglo posterior a la liquidación va a descontar, sin pendiente negativo', async () => {
+    const f = fixture();
+    f.contratos = [contrato(C1, 'ALT-0001')];
+    f.conceptos = [
+      concepto(C1, 'alquiler', 'a_pagar', 674_605, liquidado),
+      concepto(C1, 'honorarios', 'a_cobrar', 65_301.76, liquidado),
+      concepto(C1, 'reparacion', 'a_cobrar', 15_000, {
+        claveGeneracion: `prov|comp-${C1}|${DUENA}`,
+        claveOrigen: `comp-${C1}`,
+        descripcion: 'Plomero: cambio de canilla (Plomero Juan)',
+      }),
+    ];
+    f.inquilino = [{ ...delInquilino(C1, 674_605), importe: dec(674_605) }];
+    const i = await servicio(f).s.informe(DUENA, SEPT, HOY);
+    expect(ars(i)).toMatchObject({
+      alquiler: 674_605,
+      cobrado: 674_605,
+      honorarios: 65_301.76,
+      arreglos: 15_000,
+      neto: 594_303.24,
+      liquidado: 609_303.24,
+      pendiente: 0,
+      aDescontar: 15_000,
+    });
+    const arreglo = i.partidas.find((x) => x.categoria === 'arreglos')!;
+    expect(arreglo).toMatchObject({ nombre: 'Plomero Juan', importe: 15_000, liquidacion: null });
+    expect(estadoDePartida(arreglo)).toBe('Se descontará en la próxima liquidación');
+    expect(queSeDescuentaEnLaProxima(i.partidas, 'ARS')).toBe(
+      'Arreglo: Plomero Juan (Cambio de canilla · reclamo 7)',
+    );
+    // La fila de la tabla dice lo mismo.
+    const t = await servicio(f).s.propietarios(SEPT, HOY);
+    expect(t.filas[0]!.monedas[0]).toMatchObject({ pendiente: 0, aDescontar: 15_000 });
   });
 
   it('regla 88: pesos y dólares no se mezclan', async () => {

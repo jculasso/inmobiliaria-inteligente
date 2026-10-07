@@ -303,7 +303,9 @@ suite('Informe al propietario contra la base (reglas 86 a 93)', () => {
         reintegros: 0,
         neto: 823_200,
         liquidado: 853_200,
-        pendiente: -30_000,
+        // Regla 98: las expensas, cargadas después de liquidar, van a descontar.
+        pendiente: 0,
+        aDescontar: 30_000,
       },
     ]);
   });
