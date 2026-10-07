@@ -25,6 +25,9 @@ import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { plata } from './historial';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
+
+/** «1 día», «29 días». */
+const enDias = (n: number): string => `${n} ${n === 1 ? 'día' : 'días'}`;
 import { IndexacionesService } from './indexaciones.service';
 import { LiquidacionesService } from './liquidaciones.service';
 
@@ -255,7 +258,7 @@ export class TableroAlquileresService {
         if (c >= total) return 'Cobrado';
         if (c > 0) return `Pagó ${plata(c, moneda)}, falta ${plata(redondear2(total - c), moneda)}`;
         const vence = fromDate(k.vencimiento)!;
-        return vence < hoy ? `Vencido hace ${-diasHasta(vence)} días` : 'Pendiente';
+        return vence < hoy ? `Vencido hace ${enDias(-diasHasta(vence))}` : 'Pendiente';
       };
       const fila = (k: (typeof ks)[number], importe: number): FilaTablero =>
         filaDe(k.contratoId, {
@@ -489,9 +492,9 @@ export class TableroAlquileresService {
               importe: decToNum(c.depositoImporte),
               estado:
                 c.estado === 'vigente'
-                  ? `Termina en ${diasHasta(terminaEl(c))} días`
+                  ? `Termina en ${enDias(diasHasta(terminaEl(c)))}`
                   : terminaEl(c) <= hoy
-                    ? `Terminó hace ${-diasHasta(terminaEl(c))} días`
+                    ? `Terminó hace ${enDias(-diasHasta(terminaEl(c)))}`
                     : (NOMBRE_ESTADO_CONTRATO[c.estado as EstadoContrato] ?? c.estado),
             }),
           ),
@@ -567,7 +570,7 @@ export class TableroAlquileresService {
                 detalle: `${p.aseguradora}${p.numero ? ` N° ${p.numero}` : ''}`,
                 fecha: hastaP,
                 dias: diasHasta(hastaP),
-                estado: hastaP < hoy ? 'Vencida' : `Vence en ${diasHasta(hastaP)} días`,
+                estado: hastaP < hoy ? 'Vencida' : `Vence en ${enDias(diasHasta(hastaP))}`,
               });
             }),
         ),
@@ -586,10 +589,10 @@ export class TableroAlquileresService {
                 importe: decToNum(b.importe),
                 estado:
                   vence < hoy
-                    ? `Vencida hace ${-diasHasta(vence)} días`
+                    ? `Vencida hace ${enDias(-diasHasta(vence))}`
                     : vence === hoy
                       ? 'Vence hoy'
-                      : `Vence en ${diasHasta(vence)} días`,
+                      : `Vence en ${enDias(diasHasta(vence))}`,
               });
             }),
         ),
