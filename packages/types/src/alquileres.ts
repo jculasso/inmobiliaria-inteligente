@@ -1918,10 +1918,37 @@ export const GenerarDesdePlantillaSchema = z.object({ plantillaId: z.string().uu
 
 export const TipoReclamoSchema = z.enum(['mantenimiento', 'administrativo', 'cobranza', 'otro']);
 export const PrioridadReclamoSchema = z.enum(['baja', 'media', 'alta', 'urgente']);
-export const EstadoReclamoSchema = z.enum(['abierto', 'en_curso', 'resuelto', 'cerrado']);
+/**
+ * Tres estados (Javier, 7/10/2026: «como está no sirve»): «Cerrado» se fue,
+ * porque no se distinguía de «Resuelto». Los reclamos que estaban cerrados
+ * pasan a resueltos (migración 20261022100000_reclamos_circuito) — regla 67.
+ */
+export const EstadoReclamoSchema = z.enum(['abierto', 'en_curso', 'resuelto']);
+/**
+ * El estado tal como puede llegar de afuera: una pantalla vieja que todavía
+ * manda «cerrado», o una fila que la migración no alcanzó, se leen como
+ * «resuelto». No se rechaza: el que lo manda quería lo mismo (regla 68).
+ */
+export const EstadoReclamoEntradaSchema = z.preprocess(
+  (v) => (v === 'cerrado' ? 'resuelto' : v),
+  EstadoReclamoSchema,
+);
 export type TipoReclamo = z.infer<typeof TipoReclamoSchema>;
 export type PrioridadReclamo = z.infer<typeof PrioridadReclamoSchema>;
 export type EstadoReclamo = z.infer<typeof EstadoReclamoSchema>;
+/** Los que todavía piden algo: la lista «Abiertos» y el Dashboard («Reclamos abiertos»). */
+export const ESTADOS_RECLAMO_ABIERTOS = [
+  'abierto',
+  'en_curso',
+] as const satisfies readonly EstadoReclamo[];
+/** Quién termina pagando el gasto: se le carga al propietario o al inquilino, o es de la inmobiliaria. */
+export const ACargoDeSchema = z.enum(['propietario', 'inquilino', 'inmobiliaria']);
+export type ACargoDe = z.infer<typeof ACargoDeSchema>;
+export const NOMBRE_A_CARGO_DE: Record<ACargoDe, string> = {
+  propietario: 'Propietario',
+  inquilino: 'Inquilino',
+  inmobiliaria: 'Inmobiliaria',
+};
 export const NOMBRE_TIPO_RECLAMO: Record<TipoReclamo, string> = {
   mantenimiento: 'Mantenimiento',
   administrativo: 'Administrativo',
@@ -1934,11 +1961,16 @@ export const NOMBRE_PRIORIDAD: Record<PrioridadReclamo, string> = {
   alta: 'Alta',
   urgente: 'Urgente',
 };
+/**
+ * La prioridad con su nombre, como se lee suelta en una insignia o en el
+ * Dashboard: «Prioridad media», no «Media» (regla 69).
+ */
+export const nombrePrioridad = (p: PrioridadReclamo) =>
+  `Prioridad ${NOMBRE_PRIORIDAD[p].toLowerCase()}`;
 export const NOMBRE_ESTADO_RECLAMO: Record<EstadoReclamo, string> = {
   abierto: 'Abierto',
   en_curso: 'En curso',
   resuelto: 'Resuelto',
-  cerrado: 'Cerrado',
 };
 
 export const ReclamoInputSchema = z
@@ -1983,7 +2015,7 @@ export type ReclamoInput = z.input<typeof ReclamoInputSchema>;
 export type Reclamo = z.output<typeof ReclamoInputSchema>;
 
 export const CambioReclamoSchema = z.object({
-  estado: EstadoReclamoSchema.optional(),
+  estado: EstadoReclamoEntradaSchema.optional(),
   prioridad: PrioridadReclamoSchema.optional(),
   asignadoAId: z.string().uuid().nullable().optional(),
   proveedorId: z.string().uuid().nullable().optional(),
@@ -2012,7 +2044,7 @@ export const ReclamoResumenDtoSchema = z.object({
   asunto: z.string(),
   tipo: TipoReclamoSchema,
   prioridad: PrioridadReclamoSchema,
-  estado: EstadoReclamoSchema,
+  estado: EstadoReclamoEntradaSchema,
   contrato: z
     .object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() })
     .nullable(),
@@ -2024,10 +2056,35 @@ export const ReclamoResumenDtoSchema = z.object({
   actualizado: z.string(),
 });
 export type ReclamoResumenDto = z.infer<typeof ReclamoResumenDtoSchema>;
+/**
+ * Un comprobante de proveedor cargado desde el reclamo: «Gastos del arreglo»
+ * en la ficha (regla 71). Los anulados se ven, tachados, y no suman.
+ */
+export const GastoDelReclamoSchema = z.object({
+  id: z.string().uuid(),
+  fecha: FechaIso,
+  proveedor: z.string(),
+  descripcion: z.string(),
+  importe: z.number(),
+  moneda: MonedaAlquilerSchema,
+  aCargoDe: ACargoDeSchema,
+  estado: z.enum(['pendiente', 'pagado', 'anulado']),
+});
+export type GastoDelReclamo = z.infer<typeof GastoDelReclamoSchema>;
+
 export const ReclamoDtoSchema = ReclamoResumenDtoSchema.extend({
   descripcion: z.string().nullable(),
   asignadoAId: z.string().uuid().nullable(),
   abiertoPor: z.string().nullable(),
+  /** Cómo ubicar a quien lo sigue, para que el proveedor coordine (regla 73). */
+  contactoLoSigue: z
+    .object({ telefono: z.string().nullable(), email: z.string().nullable() })
+    .nullable(),
+  /** El inquilino del contrato, que es quien le abre la puerta al proveedor (regla 73). */
+  inquilino: z.object({ nombre: z.string(), telefono: z.string().nullable() }).nullable(),
+  gastos: z.array(GastoDelReclamoSchema),
+  /** Lo que suman los gastos no anulados, por moneda. */
+  totalGastos: z.array(z.object({ moneda: MonedaAlquilerSchema, importe: z.number() })),
   notas: z.array(
     z.object({
       id: z.string().uuid(),
@@ -2038,6 +2095,76 @@ export const ReclamoDtoSchema = ReclamoResumenDtoSchema.extend({
   ),
 });
 export type ReclamoDto = z.infer<typeof ReclamoDtoSchema>;
+
+/**
+ * «Avisar al proveedor» (regla 73): el mail se redacta en la pantalla, se
+ * puede editar, y la API lo manda SOLO al email del proveedor del reclamo —
+ * el destinatario no viaja en el pedido.
+ */
+export const AvisoProveedorSchema = z.object({
+  asunto: z.string().trim().min(3, 'Escribí el asunto.').max(200),
+  cuerpo: z.string().trim().min(10, 'Escribí el mail.').max(5000),
+});
+export type AvisoProveedor = z.output<typeof AvisoProveedorSchema>;
+
+/** Lo que hace falta para redactar el aviso: el reclamo tal como lo devuelve la API. */
+type ReclamoParaAviso = Pick<
+  ReclamoDto,
+  | 'numero'
+  | 'asunto'
+  | 'descripcion'
+  | 'prioridad'
+  | 'contrato'
+  | 'inquilino'
+  | 'asignadoA'
+  | 'contactoLoSigue'
+  | 'proveedor'
+>;
+
+/** La línea del inquilino, con o sin su teléfono: el tilde la cambia por la otra. */
+export function lineaInquilino(
+  inquilino: NonNullable<ReclamoDto['inquilino']>,
+  conTelefono: boolean,
+): string {
+  return `Inquilino: ${inquilino.nombre}${conTelefono && inquilino.telefono ? ` · tel. ${inquilino.telefono}` : ''}`;
+}
+
+/**
+ * El mail al proveedor, ya redactado (regla 73). La firma —quien lo manda y
+ * la inmobiliaria— la agrega la API, como en los recibos.
+ */
+export function redactarAvisoProveedor(
+  r: ReclamoParaAviso,
+  incluirTelefono: boolean,
+): { asunto: string; cuerpo: string } {
+  const donde = r.contrato?.propiedad ?? null;
+  const contacto = r.contactoLoSigue
+    ? [r.contactoLoSigue.telefono && `tel. ${r.contactoLoSigue.telefono}`, r.contactoLoSigue.email]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
+  const lineas = [
+    `Hola, ${r.proveedor?.nombre ?? ''}:`.replace(', :', ':'),
+    '',
+    donde
+      ? `Te escribimos por un arreglo en ${donde}.`
+      : 'Te escribimos por un arreglo que necesitamos.',
+    '',
+    `Qué pasa: ${r.asunto}.`.replace(/\.\.$/, '.'),
+    ...(r.descripcion ? [r.descripcion] : []),
+    '',
+    `${nombrePrioridad(r.prioridad)}.`,
+    ...(r.inquilino ? ['', lineaInquilino(r.inquilino, incluirTelefono)] : []),
+    '',
+    r.asignadoA
+      ? `Para coordinar, en la inmobiliaria lo sigue ${r.asignadoA}${contacto ? ` (${contacto})` : ''}.`
+      : 'Para coordinar, respondé este mail.',
+  ];
+  return {
+    asunto: [`Reclamo ${r.numero}`, r.asunto, donde].filter(Boolean).join(' · '),
+    cuerpo: lineas.join('\n'),
+  };
+}
 export const UsuarioMiniSchema = z.object({ id: z.string().uuid(), nombre: z.string() });
 export const ReclamosQuerySchema = z.object({
   estado: z.enum(['abiertos', 'todos']).default('abiertos'),
@@ -2148,10 +2275,6 @@ export const NOMBRE_TIPO_COMPROBANTE: Record<z.infer<typeof TipoComprobanteSchem
   ticket: 'Ticket',
   otro: 'Otro',
 };
-/** Quién termina pagando el gasto: se le carga al propietario o al inquilino, o es de la inmobiliaria. */
-export const ACargoDeSchema = z.enum(['propietario', 'inquilino', 'inmobiliaria']);
-export type ACargoDe = z.infer<typeof ACargoDeSchema>;
-
 export const ComprobanteInputSchema = z
   .object({
     proveedorId: z.string().uuid({ message: 'Elegí el proveedor.' }),
@@ -2167,6 +2290,12 @@ export const ComprobanteInputSchema = z
     importe: z.number().positive('El importe tiene que ser mayor a cero.'),
     moneda: MonedaAlquilerSchema.default('ARS'),
     aCargoDe: ACargoDeSchema.default('propietario'),
+    /** El reclamo cuyo arreglo es este gasto, si se cargó desde el reclamo (regla 70). */
+    reclamoId: z
+      .string()
+      .uuid()
+      .nullish()
+      .transform((v) => v ?? null),
     /** Si ya se le pagó al proveedor al cargarlo. */
     pagado: z.boolean().default(false),
     medio: MedioCobroSchema.default('transferencia'),
@@ -2196,6 +2325,8 @@ export const ComprobanteDtoSchema = z.object({
   registradoPor: z.string().nullable(),
   /** Lo cargado a la parte ya se cobró o liquidó: no se puede anular. */
   aplicado: z.boolean(),
+  /** El reclamo del que salió, con su número para el link «Reclamo N» (regla 72). */
+  reclamo: z.object({ id: z.string().uuid(), numero: z.number().int() }).nullable(),
 });
 export type ComprobanteDto = z.infer<typeof ComprobanteDtoSchema>;
 export const PagarComprobanteSchema = z.object({

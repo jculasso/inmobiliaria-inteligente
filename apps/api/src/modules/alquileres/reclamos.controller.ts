@@ -1,10 +1,22 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  AvisoProveedorSchema,
   CambioReclamoSchema,
   ReclamoInputSchema,
   ReclamosQuerySchema,
   ROLES_ADMINISTRACION_ALQUILERES,
+  type AvisoProveedor,
   type CambioReclamo,
   type Reclamo,
 } from '@vacker/types';
@@ -72,5 +84,21 @@ export class ReclamosController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.reclamos.cambiar(ctxDe(user), id, cambio);
+  }
+
+  @Post(':id/avisar-proveedor')
+  @HttpCode(200)
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({
+    summary: 'Le manda al proveedor del reclamo el mail que redactó el operador',
+    description:
+      'Sale solo al email del proveedor del reclamo (el pedido no trae destinatario), a nombre de la inmobiliaria y con las respuestas al operador. Sin proveedor o sin email: 400. Queda en el historial del reclamo.',
+  })
+  avisarProveedor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(AvisoProveedorSchema)) aviso: AvisoProveedor,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.reclamos.avisarProveedor(ctxDe(user), id, aviso);
   }
 }

@@ -98,6 +98,34 @@ describe('EnviosService (punto 14: recibos y liquidaciones por mail)', () => {
   });
 });
 
+describe('EnviosService.mandarTexto (regla 73: el aviso al proveedor de un reclamo)', () => {
+  it('sale igual que los recibos: a nombre de la inmobiliaria, respuestas al operador, con su firma', async () => {
+    enviarMail.mockResolvedValueOnce({ id: 'm2' });
+    const { tx, servicio } = armar();
+    await servicio.mandarTexto(CTX, {
+      para: ['juan@plomeria.com'],
+      asunto: 'Reclamo 7 · Pérdida de agua · Mendoza 3340 2° C',
+      cuerpo: 'Hola, Juan:\n\nQué pasa: <pérdida> de agua.\nGotea la ducha.',
+    });
+    const [mail] = enviarMail.mock.calls[0]!;
+    expect(mail).toMatchObject({
+      de: '"Alteva Propiedades" <alteva-propiedades@avisos.inmobiliariainteligente.net>',
+      para: ['juan@plomeria.com'],
+      responderA: 'lucia@alteva.com',
+      // El asunto lo escribió el operador: va tal cual.
+      asunto: 'Reclamo 7 · Pérdida de agua · Mendoza 3340 2° C',
+    });
+    expect(mail.adjuntos).toBeUndefined();
+    expect(mail.texto).toBe(
+      'Hola, Juan:\n\nQué pasa: <pérdida> de agua.\nGotea la ducha.\n\nSaludos,\nLucía Operadora\nAlteva Propiedades',
+    );
+    // El texto del operador se escapa en el HTML.
+    expect(mail.html).toContain('<p>Qué pasa: &lt;pérdida&gt; de agua.<br>Gotea la ducha.</p>');
+    // El rastro lo deja quien llama (el reclamo), no este servicio.
+    expect(tx.alqEvento.createMany).not.toHaveBeenCalled();
+  });
+});
+
 describe('limitarEnvios (auditoría de seguridad del 6/10/2026)', () => {
   it('corta al pasar el tope de la hora, por inmobiliaria', async () => {
     const { limitarEnvios, TOPE_MAILS_POR_HORA } = await import('./envios.service');

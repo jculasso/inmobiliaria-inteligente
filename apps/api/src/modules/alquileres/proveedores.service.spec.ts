@@ -11,6 +11,7 @@ const C5 = '55555555-5555-4555-8555-555555555555';
 const D1 = '11111111-1111-4111-8111-111111111111';
 const D2 = '12121212-1212-4121-8121-121212121212';
 const INQ = '22222222-2222-4222-8222-222222222222';
+const RECLAMO = '33333333-3333-4333-8333-333333333333';
 
 function armar(over: { aplicados?: number } = {}) {
   const tx = {
@@ -52,10 +53,16 @@ function armar(over: { aplicados?: number } = {}) {
         medio: null,
         creadoPorId: 'u1',
         anuladoEn: null,
+        reclamo: null as { id: string; numero: number } | null,
       })),
       update: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    alqReclamo: {
+      findUnique: vi.fn().mockResolvedValue({ numero: 7, contratoId: C5 }),
+      update: vi.fn(),
+    },
+    alqReclamoNota: { create: vi.fn() },
     alqConcepto: {
       createMany: vi.fn(),
       count: vi.fn().mockResolvedValue(over.aplicados ?? 0),
@@ -144,5 +151,63 @@ describe('ProveedoresService (entrega 18: «les paga la inmobiliaria y se lo ret
         aCargoDe: 'propietario',
       }).success,
     ).toBe(false);
+  });
+});
+
+// Javier, 7/10/2026: el gasto del arreglo se carga desde el reclamo y queda enlazado.
+describe('ProveedoresService · el gasto del arreglo de un reclamo (reglas 70 a 72)', () => {
+  it('regla 70: el comprobante queda enlazado al reclamo, y el historial del reclamo lo cuenta', async () => {
+    const { tx, servicio } = armar();
+    await servicio.cargarComprobante(CTX, comprobante({ reclamoId: RECLAMO }));
+    expect(tx.alqComprobante.create.mock.calls[0]![0].data).toMatchObject({
+      reclamoId: RECLAMO,
+      contratoId: C5,
+    });
+    expect(tx.alqReclamoNota.create.mock.calls[0]![0].data).toMatchObject({
+      reclamoId: RECLAMO,
+      tenantId: 't1',
+      texto: 'Gasto del arreglo: Juan Plomero, $ 85.000,00, a cargo del propietario.',
+    });
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0].resumen).toContain('reclamo 7');
+  });
+
+  it('regla 70: un reclamo que no es de la inmobiliaria se rechaza, sin cargar nada', async () => {
+    const { tx, servicio } = armar();
+    tx.alqReclamo.findUnique.mockResolvedValueOnce(null);
+    await expect(
+      servicio.cargarComprobante(CTX, comprobante({ reclamoId: RECLAMO })),
+    ).rejects.toThrow('El reclamo no existe.');
+    expect(tx.alqComprobante.create).not.toHaveBeenCalled();
+    expect(tx.alqConcepto.createMany).not.toHaveBeenCalled();
+  });
+
+  it('regla 70: el gasto del arreglo va al contrato del reclamo, no a otro', async () => {
+    const { tx, servicio } = armar();
+    tx.alqReclamo.findUnique.mockResolvedValueOnce({
+      numero: 7,
+      contratoId: '66666666-6666-4666-8666-666666666666',
+    });
+    await expect(
+      servicio.cargarComprobante(CTX, comprobante({ reclamoId: RECLAMO })),
+    ).rejects.toMatchObject({ status: 400, message: expect.stringContaining('otro contrato') });
+    expect(tx.alqComprobante.create).not.toHaveBeenCalled();
+  });
+
+  it('regla 70: sin reclamo, el comprobante se carga como siempre', async () => {
+    const { tx, servicio } = armar();
+    await servicio.cargarComprobante(CTX, comprobante());
+    expect(tx.alqComprobante.create.mock.calls[0]![0].data.reclamoId).toBeNull();
+    expect(tx.alqReclamo.findUnique).not.toHaveBeenCalled();
+    expect(tx.alqReclamoNota.create).not.toHaveBeenCalled();
+  });
+
+  it('regla 72: el comprobante dice de qué reclamo salió', async () => {
+    const { tx, servicio } = armar();
+    tx.alqComprobante.findUnique.mockImplementationOnce(async ({ where }) => ({
+      ...(await armar().tx.alqComprobante.findUnique({ where })),
+      reclamo: { id: RECLAMO, numero: 7 },
+    }));
+    const c = await servicio.cargarComprobante(CTX, comprobante({ reclamoId: RECLAMO }));
+    expect(c.reclamo).toEqual({ id: RECLAMO, numero: 7 });
   });
 });

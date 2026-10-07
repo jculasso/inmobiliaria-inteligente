@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   DIAS_TABLERO_PROXIMOS,
+  ESTADOS_RECLAMO_ABIERTOS,
   NOMBRE_ESTADO_CONTRATO,
+  PrioridadReclamoSchema,
   TRAMOS_MORA,
+  nombrePrioridad,
   textoCuota,
   type EstadoContrato,
   type FiltroTipoContrato,
@@ -550,7 +553,7 @@ export class TableroAlquileresService {
                 detalle: r.asunto,
                 fecha: fromDate(r.createdAt),
                 dias: diasInclusive(fromDate(r.createdAt)!, hoy) - 1,
-                estado: `Prioridad ${r.prioridad}`,
+                estado: nombrePrioridad(PrioridadReclamoSchema.catch('media').parse(r.prioridad)),
               }),
             ),
         ),
@@ -712,7 +715,7 @@ export class TableroAlquileresService {
          ORDER BY mes, moneda`,
       // Reclamos abiertos o en curso (entrega 15).
       tx.alqReclamo.findMany({
-        where: { estado: { in: ['abierto', 'en_curso'] } },
+        where: { estado: { in: [...ESTADOS_RECLAMO_ABIERTOS] } },
         select: { id: true, asunto: true, prioridad: true, contratoId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),

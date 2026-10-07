@@ -109,7 +109,7 @@ export function ReclamosLista({
                       {r.contrato ? `${r.contrato.codigo} · ${r.contrato.propiedad}` : '—'}
                     </CampoTarjeta>
                     <CampoTarjeta etiqueta="Prioridad">
-                      {<PrioridadBadge prioridad={r.prioridad} />}
+                      <PrioridadBadge prioridad={r.prioridad} corta />
                     </CampoTarjeta>
                     <CampoTarjeta etiqueta="De">{r.persona?.nombre ?? '—'}</CampoTarjeta>
                     <CampoTarjeta etiqueta="Lo sigue">{r.asignadoA ?? 'Sin asignar'}</CampoTarjeta>
@@ -159,7 +159,7 @@ export function ReclamosLista({
                     <td className={`${CLASE_TD} text-muted`}>{r.persona?.nombre ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>{NOMBRE_TIPO_RECLAMO[r.tipo]}</td>
                     <td className={CLASE_TD}>
-                      <PrioridadBadge prioridad={r.prioridad} />
+                      <PrioridadBadge prioridad={r.prioridad} corta />
                     </td>
                     <td className={CLASE_TD}>
                       <EstadoReclamoBadge estado={r.estado} />

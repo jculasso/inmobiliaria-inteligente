@@ -1,12 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
+  ESTADOS_RECLAMO_ABIERTOS,
+  EstadoReclamoEntradaSchema,
   LIMITE_LISTA_CON_SONDA,
   NOMBRE_ESTADO_RECLAMO,
   NOMBRE_PRIORIDAD,
   ROLES_ADMINISTRACION_ALQUILERES,
   puedeAdministrarAlquileres,
+  type AvisoProveedor,
   type CambioReclamo,
+  type EnvioMailDto,
+  type EstadoReclamo,
+  type GastoDelReclamo,
   type Reclamo,
   type ReclamoDto,
   type ReclamoResumenDto,
@@ -14,12 +20,22 @@ import {
 } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
+import { decToNum, fromDate } from '../tablero/tablero.util';
+import { EnviosService } from './envios.service';
 import { nombresDeUsuarios, registrarEventos } from './historial';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 type FilaReclamo = Prisma.AlqReclamoGetPayload<object>;
 
 const ORDEN_PRIORIDAD = { urgente: 0, alta: 1, media: 2, baja: 3 } as const;
+
+/**
+ * El estado guardado, con «cerrado» leído como «resuelto» (regla 68): una
+ * fila que la migración no alcanzó —o que escribió una API vieja en la
+ * ventana del deploy— se ve y se compara como lo que es.
+ */
+const estadoDe = (estado: string): EstadoReclamo =>
+  EstadoReclamoEntradaSchema.catch('abierto').parse(estado);
 
 /**
  * Reclamos de inquilinos y propietarios (entrega 15, como Gexion): asunto,
@@ -33,7 +49,10 @@ const ORDEN_PRIORIDAD = { urgente: 0, alta: 1, media: 2, baja: 3 } as const;
  */
 @Injectable()
 export class ReclamosService {
-  constructor(private readonly db: TenantPrismaService) {}
+  constructor(
+    private readonly db: TenantPrismaService,
+    private readonly envios: EnviosService,
+  ) {}
 
   async listar(q: {
     estado: 'abiertos' | 'todos';
@@ -43,7 +62,7 @@ export class ReclamosService {
     return this.db.withTenant(async (tx) => {
       const filas = await tx.alqReclamo.findMany({
         where: {
-          ...(q.estado === 'abiertos' ? { estado: { in: ['abierto', 'en_curso'] } } : {}),
+          ...(q.estado === 'abiertos' ? { estado: { in: [...ESTADOS_RECLAMO_ABIERTOS] } } : {}),
           ...(q.contratoId ? { contratoId: q.contratoId } : {}),
           ...(q.personaId ? { personaId: q.personaId } : {}),
         },
@@ -112,13 +131,14 @@ export class ReclamosService {
       if (!r) throw new NotFoundException('El reclamo no existe.');
       const partes: string[] = [];
       const data: Prisma.AlqReclamoUncheckedUpdateInput = {};
-      if (cambio.estado && cambio.estado !== r.estado) {
+      const antes = estadoDe(r.estado);
+      if (cambio.estado && cambio.estado !== antes) {
         partes.push(
-          `Estado: ${NOMBRE_ESTADO_RECLAMO[r.estado as keyof typeof NOMBRE_ESTADO_RECLAMO]} → ${NOMBRE_ESTADO_RECLAMO[cambio.estado]}.`,
+          `Estado: ${NOMBRE_ESTADO_RECLAMO[antes]} → ${NOMBRE_ESTADO_RECLAMO[cambio.estado]}.`,
         );
         data.estado = cambio.estado;
-        data.cerradoEn =
-          cambio.estado === 'cerrado' || cambio.estado === 'resuelto' ? new Date() : null;
+        // `cerrado_en`: cuándo se dio por resuelto. Reabrirlo lo borra.
+        data.cerradoEn = cambio.estado === 'resuelto' ? new Date() : null;
       }
       if (cambio.prioridad && cambio.prioridad !== r.prioridad) {
         partes.push(`Prioridad: ${NOMBRE_PRIORIDAD[cambio.prioridad].toLowerCase()}.`);
@@ -158,6 +178,55 @@ export class ReclamosService {
   }
 
   /**
+   * Avisarle al proveedor por mail (regla 73). Sale SOLO al email del
+   * proveedor del reclamo —el pedido no trae destinatario: no se puede usar
+   * para escribirle a cualquiera—, con el texto que el operador revisó.
+   * Después de que Resend lo aceptó, queda en el historial del reclamo.
+   */
+  async avisarProveedor(
+    ctx: TenantContext,
+    id: string,
+    aviso: AvisoProveedor,
+  ): Promise<EnvioMailDto> {
+    const r = await this.db.withTenant(async (tx) => {
+      const r = await tx.alqReclamo.findUnique({
+        where: { id },
+        select: {
+          numero: true,
+          contratoId: true,
+          personaId: true,
+          proveedor: { select: { nombre: true, email: true } },
+        },
+      });
+      if (!r) throw new NotFoundException('El reclamo no existe.');
+      if (!r.proveedor)
+        throw new BadRequestException(
+          'El reclamo no tiene proveedor: elegilo en «Actualizar» y guardá antes de avisarle.',
+        );
+      if (!r.proveedor.email)
+        throw new BadRequestException(
+          `${r.proveedor.nombre} no tiene email: cargáselo en Gastos › Proveedores.`,
+        );
+      return { ...r, proveedor: { nombre: r.proveedor.nombre, email: r.proveedor.email } };
+    });
+    const { nombre, email } = r.proveedor;
+    await this.envios.mandarTexto(ctx, { para: [email], ...aviso });
+    await this.db.withTenant(async (tx) => {
+      await tx.alqReclamo.update({ where: { id }, data: { updatedAt: new Date() } });
+      await this.nota(tx, ctx, id, `Se avisó a ${nombre} por mail (${email}).`);
+      await registrarEventos(tx, ctx, {
+        entidad: 'reclamo',
+        entidadId: id,
+        contratoId: r.contratoId,
+        personaId: r.personaId,
+        accion: 'envio',
+        resumen: `Reclamo ${r.numero}: aviso a ${nombre} por mail (${email})`,
+      });
+    });
+    return { enviado: true, para: [email] };
+  }
+
+  /**
    * Quiénes pueden seguir un reclamo: los usuarios activos que entran al
    * módulo. La misma regla que valida `quienLoSigue` al guardar (regla 61).
    */
@@ -187,21 +256,72 @@ export class ReclamosService {
     });
   }
 
+  /**
+   * La ficha: el reclamo con su historial, sus gastos del arreglo, quién lo
+   * sigue con su contacto y el inquilino. Un número fijo de consultas, tenga
+   * los gastos y las notas que tenga.
+   */
   private async obtenerEn(tx: Tx, id: string): Promise<ReclamoDto> {
     const r = await tx.alqReclamo.findUnique({
       where: { id },
-      include: { notas: { orderBy: { en: 'desc' } } },
+      include: {
+        notas: { orderBy: { en: 'desc' } },
+        comprobantes: {
+          orderBy: [{ fecha: 'asc' }, { createdAt: 'asc' }],
+          include: { proveedor: { select: { nombre: true } } },
+        },
+      },
     });
     if (!r) throw new NotFoundException('El reclamo no existe.');
-    const [resumen] = await this.resumenes(tx, [r]);
-    const abiertoPor = r.creadoPorId
-      ? ((await nombresDeUsuarios(tx, [r.creadoPorId])).get(r.creadoPorId) ?? null)
-      : null;
+    const usuarioIds = [r.creadoPorId, r.asignadoAId].filter((x): x is string => !!x);
+    const [[resumen], usuarios, inquilino] = await Promise.all([
+      this.resumenes(tx, [r]),
+      usuarioIds.length
+        ? tx.usuario.findMany({
+            where: { id: { in: usuarioIds } },
+            select: { id: true, nombre: true, telefono: true, email: true },
+          })
+        : [],
+      // El inquilino del contrato: es quien le abre la puerta al proveedor.
+      r.contratoId
+        ? tx.alqContratoParte.findFirst({
+            where: { contratoId: r.contratoId, papel: 'inquilino' },
+            orderBy: { personaId: 'asc' },
+            select: { persona: { select: { nombre: true, telefono: true } } },
+          })
+        : null,
+    ]);
+    const u = new Map(usuarios.map((x) => [x.id, x]));
+    const loSigue = r.asignadoAId ? u.get(r.asignadoAId) : undefined;
+    const gastos: GastoDelReclamo[] = r.comprobantes.map((c) => ({
+      id: c.id,
+      fecha: fromDate(c.fecha)!,
+      proveedor: c.proveedor.nombre,
+      descripcion: c.descripcion,
+      importe: decToNum(c.importe),
+      moneda: c.moneda as GastoDelReclamo['moneda'],
+      aCargoDe: c.aCargoDe as GastoDelReclamo['aCargoDe'],
+      estado: c.anuladoEn ? 'anulado' : c.pagadoEl ? 'pagado' : 'pendiente',
+    }));
+    const total = new Map<GastoDelReclamo['moneda'], number>();
+    for (const g of gastos)
+      if (g.estado !== 'anulado') total.set(g.moneda, (total.get(g.moneda) ?? 0) + g.importe);
     return {
       ...resumen!,
       descripcion: r.descripcion,
       asignadoAId: r.asignadoAId,
-      abiertoPor,
+      abiertoPor: r.creadoPorId ? (u.get(r.creadoPorId)?.nombre ?? null) : null,
+      contactoLoSigue: loSigue
+        ? { telefono: loSigue.telefono ?? null, email: loSigue.email || null }
+        : null,
+      inquilino: inquilino?.persona
+        ? { nombre: inquilino.persona.nombre, telefono: inquilino.persona.telefono ?? null }
+        : null,
+      gastos,
+      totalGastos: [...total].map(([moneda, importe]) => ({
+        moneda,
+        importe: Math.round(importe * 100) / 100,
+      })),
       notas: r.notas.map((n) => ({
         id: n.id,
         en: n.en.toISOString(),
@@ -255,7 +375,7 @@ export class ReclamosService {
         asunto: r.asunto,
         tipo: r.tipo as ReclamoResumenDto['tipo'],
         prioridad: r.prioridad as ReclamoResumenDto['prioridad'],
-        estado: r.estado as ReclamoResumenDto['estado'],
+        estado: estadoDe(r.estado),
         contrato: k
           ? {
               id: k.id,

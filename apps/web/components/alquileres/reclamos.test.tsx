@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReclamoDto } from '@vacker/types';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ProveedorDto, ReclamoDto } from '@vacker/types';
 
 const cambiarReclamo = vi.fn();
 const crearReclamo = vi.fn();
+const avisarProveedor = vi.fn();
+const cargarComprobante = vi.fn();
 const VENDEDOR = '77777777-7777-4777-8777-777777777777';
 const PLOMERO = '88888888-8888-4888-8888-888888888888';
 vi.mock('next/navigation', () => ({
@@ -16,6 +18,8 @@ vi.mock('../../lib/supabase/client', () => ({
 vi.mock('../../lib/alquileres-api', () => ({
   cambiarReclamo: (...a: unknown[]) => cambiarReclamo(...a),
   crearReclamo: (...a: unknown[]) => crearReclamo(...a),
+  avisarProveedor: (...a: unknown[]) => avisarProveedor(...a),
+  cargarComprobante: (...a: unknown[]) => cargarComprobante(...a),
   listUsuariosAsignables: vi
     .fn()
     .mockResolvedValue([{ id: '44444444-4444-4444-8444-444444444444', nombre: 'Lucía Operadora' }]),
@@ -30,7 +34,7 @@ vi.mock('../../lib/alquileres-api', () => ({
   ]),
 }));
 
-import { ReclamoFicha } from './reclamo-ficha';
+import { ReclamoFicha as Ficha } from './reclamo-ficha';
 import { ReclamosLista } from './reclamos-lista';
 import { NuevoReclamoModal } from './reclamos-piezas';
 
@@ -54,6 +58,10 @@ const R: ReclamoDto = {
   descripcion: 'Gotea la canilla de la ducha.',
   asignadoAId: null,
   abiertoPor: 'Javier',
+  contactoLoSigue: null,
+  inquilino: { nombre: 'Ana Inquilina', telefono: '341 444-0000' },
+  gastos: [],
+  totalGastos: [],
   notas: [
     {
       id: '66666666-6666-4666-8666-666666666666',
@@ -63,6 +71,26 @@ const R: ReclamoDto = {
     },
   ],
 };
+
+const PROVEEDORES: ProveedorDto[] = [
+  {
+    id: PLOMERO,
+    nombre: 'Juan Plomero',
+    rubro: 'plomero',
+    cuit: null,
+    telefono: '341 555-1234',
+    email: 'juan@plomeria.com',
+    alias: null,
+    cbu: null,
+    obs: null,
+    pendiente: 0,
+    comprobantes: 0,
+  },
+];
+/** La ficha con los proveedores del módulo, como la arma la página. */
+const ReclamoFicha = ({ reclamo }: { reclamo: ReclamoDto }) => (
+  <Ficha reclamo={reclamo} proveedores={PROVEEDORES} />
+);
 
 describe('Reclamos (entrega 15)', () => {
   it('la ficha muestra el contrato, quién lo abrió y el historial', () => {
@@ -223,5 +251,189 @@ describe('Reclamos · quién lo sigue y el proveedor (reglas 60 a 66)', () => {
     expect(screen.getByRole('columnheader', { name: 'Lo sigue' })).toBeInTheDocument();
     expect(screen.getAllByText('Juan Plomero')).toHaveLength(2);
     expect(screen.getAllByText('Sin proveedor')).toHaveLength(2);
+  });
+});
+
+// Javier, 7/10/2026: «como está no sirve». Reglas 67 a 73.
+describe('Reclamos · el circuito del reclamo (reglas 67 a 73)', () => {
+  const PROVEEDOR = {
+    id: PLOMERO,
+    nombre: 'Juan Plomero',
+    telefono: '341 555-1234',
+    email: 'juan@plomeria.com',
+  };
+
+  it('regla 67: el estado se elige entre Abierto, En curso y Resuelto; «Cerrado» no está', () => {
+    render(<ReclamoFicha reclamo={R} />);
+    const opciones = within(screen.getByLabelText('Estado'))
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    expect(opciones).toEqual(['Abierto', 'En curso', 'Resuelto']);
+  });
+
+  it('regla 69: arriba de la ficha la prioridad dice «Prioridad alta», no «Alta»', () => {
+    render(<ReclamoFicha reclamo={R} />);
+    expect(screen.getByText('Prioridad alta')).toBeInTheDocument();
+    // «Alta» sola queda solo como opción del select de Prioridad, que ya tiene su rótulo.
+    expect(screen.queryByText(/^Alta$/, { ignore: 'option, script, style' })).toBeNull();
+  });
+
+  it('regla 70: «Cargar el gasto del arreglo» abre el formulario con el proveedor y el contrato del reclamo', async () => {
+    cargarComprobante.mockResolvedValueOnce({});
+    render(<ReclamoFicha reclamo={{ ...R, proveedor: PROVEEDOR }} />);
+    fireEvent.click(screen.getByRole('button', { name: /Cargar el gasto del arreglo/ }));
+    const dialogo = within(screen.getByRole('dialog'));
+    expect(dialogo.getByLabelText(/^Proveedor/)).toHaveValue(PLOMERO);
+    // El contrato es el del reclamo, fijo: no se elige.
+    expect(dialogo.getByText('ALT-0005 · Mendoza 3340')).toBeInTheDocument();
+    fireEvent.change(dialogo.getByLabelText(/Qué se hizo/), {
+      target: { value: 'Cambio de flexible' },
+    });
+    fireEvent.change(dialogo.getByLabelText(/Importe/), { target: { value: '85.000' } });
+    fireEvent.click(dialogo.getByRole('button', { name: 'Cargar' }));
+    await waitFor(() =>
+      expect(cargarComprobante).toHaveBeenCalledWith(
+        'token',
+        expect.objectContaining({
+          reclamoId: R.id,
+          proveedorId: PLOMERO,
+          contratoId: R.contrato!.id,
+          importe: 85_000,
+        }),
+      ),
+    );
+  });
+
+  it('regla 70: sin proveedor en el reclamo, el gasto se carga igual y el proveedor se elige ahí', async () => {
+    cargarComprobante.mockResolvedValueOnce({});
+    render(<ReclamoFicha reclamo={R} />);
+    fireEvent.click(screen.getByRole('button', { name: /Cargar el gasto del arreglo/ }));
+    const dialogo = within(screen.getByRole('dialog'));
+    const proveedor = dialogo.getByLabelText(/^Proveedor/);
+    expect(proveedor).toHaveDisplayValue('Elegí el proveedor…');
+    fireEvent.change(dialogo.getByLabelText(/Qué se hizo/), { target: { value: 'Pintura' } });
+    fireEvent.change(dialogo.getByLabelText(/Importe/), { target: { value: '1.000' } });
+    fireEvent.click(dialogo.getByRole('button', { name: 'Cargar' }));
+    expect(await dialogo.findByRole('alert')).toHaveTextContent('Elegí el proveedor.');
+    fireEvent.change(proveedor, { target: { value: PLOMERO } });
+    fireEvent.click(dialogo.getByRole('button', { name: 'Cargar' }));
+    await waitFor(() =>
+      expect(cargarComprobante).toHaveBeenLastCalledWith(
+        'token',
+        expect.objectContaining({ reclamoId: R.id, proveedorId: PLOMERO }),
+      ),
+    );
+  });
+
+  it('regla 71: «Gastos del arreglo» lista fecha, proveedor, importe, a cargo de quién y estado, con el total', () => {
+    render(
+      <ReclamoFicha
+        reclamo={{
+          ...R,
+          gastos: [
+            {
+              id: '99999999-9999-4999-8999-999999999999',
+              fecha: '2026-10-07',
+              proveedor: 'Juan Plomero',
+              descripcion: 'Cambio de flexible',
+              importe: 85_000,
+              moneda: 'ARS',
+              aCargoDe: 'propietario',
+              estado: 'pendiente',
+            },
+            {
+              id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              fecha: '2026-10-08',
+              proveedor: 'Juan Plomero',
+              descripcion: 'Error de carga',
+              importe: 10_000,
+              moneda: 'ARS',
+              aCargoDe: 'inquilino',
+              estado: 'anulado',
+            },
+          ],
+          totalGastos: [{ moneda: 'ARS', importe: 85_000 }],
+        }}
+      />,
+    );
+    const tabla = within(screen.getByRole('table'));
+    expect(tabla.getAllByRole('columnheader').map((c) => c.textContent)).toEqual([
+      'Fecha',
+      'Proveedor',
+      'Qué se hizo',
+      'A cargo de',
+      'Importe',
+      'Estado',
+    ]);
+    expect(tabla.getByText('07/10/2026')).toBeInTheDocument();
+    expect(tabla.getByText('Propietario')).toBeInTheDocument();
+    expect(tabla.getByText('A pagar')).toBeInTheDocument();
+    expect(tabla.getByText('Anulado')).toBeInTheDocument();
+    // En el celular, tarjetas.
+    expect(screen.getByRole('list', { name: 'Gastos del arreglo' })).toBeInTheDocument();
+    expect(screen.getByText('Total del arreglo').parentElement).toHaveTextContent('$ 85.000,00');
+  });
+
+  it('regla 71: sin gastos, lo dice', () => {
+    render(<ReclamoFicha reclamo={R} />);
+    expect(screen.getByText('Todavía no se cargó ningún gasto del arreglo.')).toBeInTheDocument();
+  });
+
+  it('regla 73: «Avisar al proveedor» abre el mail redactado y no manda nada hasta «Enviar»', async () => {
+    avisarProveedor.mockResolvedValueOnce({ enviado: true, para: ['juan@plomeria.com'] });
+    render(
+      <ReclamoFicha
+        reclamo={{
+          ...R,
+          proveedor: PROVEEDOR,
+          asignadoA: 'Lucía Operadora',
+          contactoLoSigue: { telefono: null, email: 'lucia@alteva.com' },
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Avisar al proveedor/ }));
+    expect(avisarProveedor).not.toHaveBeenCalled();
+    const dialogo = within(screen.getByRole('dialog'));
+    expect(dialogo.getByLabelText(/^Asunto/)).toHaveValue(
+      'Reclamo 7 · Pérdida de agua en el baño · Mendoza 3340',
+    );
+    const mail = dialogo.getByLabelText(/^Mail/) as HTMLTextAreaElement;
+    expect(mail.value).toContain('Mendoza 3340');
+    expect(mail.value).toContain('Gotea la canilla de la ducha.');
+    expect(mail.value).toContain('Prioridad alta.');
+    expect(mail.value).toContain('Inquilino: Ana Inquilina · tel. 341 444-0000');
+    expect(mail.value).toContain('lo sigue Lucía Operadora (lucia@alteva.com)');
+    // El tilde, marcado por defecto, saca el teléfono.
+    const tilde = dialogo.getByLabelText('Incluir el teléfono del inquilino');
+    expect(tilde).toBeChecked();
+    fireEvent.click(tilde);
+    expect(mail.value).toContain('Inquilino: Ana Inquilina\n');
+    expect(mail.value).not.toContain('341 444-0000');
+    fireEvent.click(dialogo.getByRole('button', { name: /Enviar/ }));
+    await waitFor(() =>
+      expect(avisarProveedor).toHaveBeenCalledWith('token', R.id, {
+        asunto: 'Reclamo 7 · Pérdida de agua en el baño · Mendoza 3340',
+        cuerpo: expect.not.stringContaining('341 444-0000'),
+      }),
+    );
+    expect(await dialogo.findByRole('status')).toHaveTextContent(
+      'Enviado a Juan Plomero (juan@plomeria.com)',
+    );
+  });
+
+  it('regla 73: si el proveedor no tiene email, el botón explica dónde cargarlo en vez de fallar', () => {
+    render(<ReclamoFicha reclamo={{ ...R, proveedor: { ...PROVEEDOR, email: null } }} />);
+    expect(screen.getByRole('button', { name: /Avisar al proveedor/ })).toBeDisabled();
+    expect(screen.getByText(/Cargale un email al proveedor en/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Gastos › Proveedores' })).toHaveAttribute(
+      'href',
+      '/alquileres/proveedores',
+    );
+  });
+
+  it('regla 73: sin proveedor, el botón dice que primero hay que elegirlo', () => {
+    render(<ReclamoFicha reclamo={R} />);
+    expect(screen.getByRole('button', { name: /Avisar al proveedor/ })).toBeDisabled();
+    expect(screen.getByText(/Elegí el proveedor en «Actualizar»/)).toBeInTheDocument();
   });
 });
