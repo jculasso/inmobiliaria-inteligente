@@ -2,3 +2,4 @@
 export * from './tasador';
 export * from './valuacion';
 export * from './alquileres';
+export * from './boletas';

@@ -4,6 +4,7 @@ import {
   DIAS_TABLERO_PROXIMOS,
   NOMBRE_ESTADO_CONTRATO,
   TRAMOS_MORA,
+  textoCuota,
   type EstadoContrato,
   type FiltroTipoContrato,
   type FilaTablero,
@@ -581,9 +582,9 @@ export class TableroAlquileresService {
               const vence = fromDate(b.vencimiento)!;
               return filaDe(b.contratoId, {
                 id: b.id,
-                href: '/alquileres/impuestos?ver=control',
+                href: '/alquileres/impuestos?ver=pagar',
                 moneda: 'ARS',
-                detalle: `${b.cuenta ? b.cuenta.servicio.nombre : `Póliza ${b.poliza?.aseguradora ?? ''}`}${b.cuota ? ` cuota ${b.cuota}` : ''}`,
+                detalle: `${b.cuenta ? b.cuenta.servicio.nombre : `Póliza ${b.poliza?.aseguradora ?? ''}`}${b.cuota ? ` · ${textoCuota(b.cuota)}` : ''}`,
                 fecha: vence,
                 dias: diasHasta(vence),
                 importe: decToNum(b.importe),

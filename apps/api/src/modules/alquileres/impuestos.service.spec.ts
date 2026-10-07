@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { LoteBoletasSchema, PolizaInputSchema, cuotaSiguiente } from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { mocksDeHistorial } from './historial.testing';
-import { ImpuestosService, conceptosDeBoleta, contratoDelMes } from './impuestos.service';
+import {
+  ImpuestosService,
+  conceptosDeBoleta,
+  contratoDelMes,
+  estadoDeLoCargado,
+} from './impuestos.service';
 
 const CTX = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
 const C5 = '55555555-5555-4555-8555-555555555555';
@@ -310,9 +315,209 @@ describe('ImpuestosService (entrega 19)', () => {
     expect(tx.alqBoleta.updateMany.mock.calls[0]![0].where).toEqual({ id: { in: ['b3'] } });
   });
 
-  it('«Copiar el mes anterior» propone la cuota siguiente', () => {
+  it('«Completar con el mes anterior» propone la cuota siguiente', () => {
     expect(cuotaSiguiente('3/6')).toBe('4/6');
     expect(cuotaSiguiente('6/6')).toBeNull();
     expect(cuotaSiguiente(null)).toBeNull();
+  });
+
+  describe('regla 47: si lo cargado a quien la debe ya se recuperó', () => {
+    const dec = (n: number) => new Prisma.Decimal(n);
+    const k = (sentido: string, importe: number, imputado: number[] = [], liquidada = false) => ({
+      sentido,
+      importe: dec(importe),
+      liquidacionId: liquidada ? 'l1' : null,
+      imputaciones: imputado.map((i) => ({ importe: dec(i) })),
+    });
+
+    it('regla 47: cobrado entero, recuperado; con un cobro parcial, no', () => {
+      expect(estadoDeLoCargado([k('a_cobrar', 45_000, [45_000])])).toEqual({
+        aplicada: true,
+        cargoRecuperado: true,
+      });
+      expect(estadoDeLoCargado([k('a_cobrar', 45_000, [20_000])])).toEqual({
+        aplicada: true,
+        cargoRecuperado: false,
+      });
+    });
+
+    it('regla 47: al propietario, liquidado es descontado; si falta uno de los dos dueños, no', () => {
+      expect(
+        estadoDeLoCargado([k('a_cobrar', 27_000, [], true), k('a_cobrar', 18_000, [], true)]),
+      ).toEqual({ aplicada: true, cargoRecuperado: true });
+      expect(
+        estadoDeLoCargado([k('a_cobrar', 27_000, [], true), k('a_cobrar', 18_000)]).cargoRecuperado,
+      ).toBe(false);
+    });
+
+    it('regla 47: sin nada a cobrar —la pagó quien la debía, o sin contrato—, no hay recupero', () => {
+      expect(estadoDeLoCargado([])).toEqual({ aplicada: false, cargoRecuperado: null });
+      // El reconocimiento a quien la pagó no es un cargo a recuperar.
+      expect(estadoDeLoCargado([k('a_pagar', 30_000)]).cargoRecuperado).toBeNull();
+    });
+
+    it('regla 47: la lista de boletas trae `cargoRecuperado` sin una consulta por fila', async () => {
+      const consultas = async (n: number) => {
+        const { tx, servicio } = armar();
+        const filas = Array.from({ length: n }, (_, i) => ({
+          id: `b${i}`,
+          contratoId: C5,
+          cuentaId: API,
+          polizaId: null,
+          cuenta: {
+            numeroCuenta: '12-345',
+            servicio: { nombre: 'API', clase: 'impuesto' },
+            propiedad: { direccion: 'Mendoza 3340', unidad: null },
+          },
+          poliza: null,
+          periodo: '2026-10',
+          cuota: null,
+          vencimiento: d('2026-10-10'),
+          importe: dec(1000),
+          moneda: 'ARS',
+          aCargoDe: 'inquilino',
+          paga: 'inmobiliaria',
+          pagadaEl: d('2026-10-09'),
+          anuladoEn: null,
+          medio: 'transferencia',
+          creadoPorId: 'u1',
+        }));
+        tx.alqBoleta.findMany.mockResolvedValue(filas);
+        (tx.alqContrato as Record<string, unknown>).findMany = vi
+          .fn()
+          .mockResolvedValue([{ id: C5, codigo: 'ALT-0005' }]);
+        tx.alqConcepto.findMany.mockResolvedValue(
+          filas.map((f, i) => ({
+            claveGeneracion: `bol|${f.id}|c|${INQ}`,
+            ...k('a_cobrar', 1000, i % 2 ? [1000] : [400]),
+          })),
+        );
+        const dtos = await servicio.boletas({ ver: 'mes', periodo: '2026-10' });
+        expect(dtos.map((b) => b.cargoRecuperado)).toEqual(filas.map((_, i) => i % 2 === 1));
+        return [tx.alqBoleta.findMany, tx.alqConcepto.findMany, tx.usuario.findMany].map(
+          (f) => f.mock.calls.length,
+        );
+      };
+      expect(await consultas(5)).toEqual(await consultas(25));
+    });
+  });
+
+  describe('regla 50: «Adelantado sin recuperar»', () => {
+    const dec = (n: number) => new Prisma.Decimal(n);
+    type Boleta = { id: string; pagadaEl: Date | null; anuladoEn: Date | null };
+    /** Una base de juguete que aplica el `where` que arma el servicio. */
+    function conBase(
+      boletas: Boleta[],
+      conceptos: {
+        boletaId: string;
+        importe: number;
+        moneda?: string;
+        imputado?: number[];
+        liquidacionId?: string | null;
+        anuladoEn?: Date | null;
+        adelantado?: boolean;
+        sentido?: string;
+      }[],
+    ) {
+      const { tx, servicio } = armar();
+      tx.alqConcepto.findMany.mockImplementation(
+        async (args: {
+          where: { sentido: string; adelantadoPorInmobiliaria: boolean; anuladoEn: null };
+        }) =>
+          conceptos
+            .filter(
+              (c) =>
+                (c.sentido ?? 'a_cobrar') === args.where.sentido &&
+                (c.adelantado ?? true) === args.where.adelantadoPorInmobiliaria &&
+                (c.anuladoEn ?? null) === args.where.anuladoEn,
+            )
+            .map((c) => ({
+              claveGeneracion: `bol|${c.boletaId}|c|${INQ}`,
+              moneda: c.moneda ?? 'ARS',
+              importe: dec(c.importe),
+              liquidacionId: c.liquidacionId ?? null,
+              imputaciones: (c.imputado ?? []).map((i) => ({ importe: dec(i) })),
+            })),
+      );
+      tx.alqBoleta.findMany.mockImplementation(
+        async (args: { where: { id: { in: string[] }; anuladoEn: null } }) => {
+          expect(args.where).toMatchObject({ pagadaEl: { not: null }, anuladoEn: null });
+          return boletas.filter(
+            (b) => args.where.id.in.includes(b.id) && b.pagadaEl && !b.anuladoEn,
+          );
+        },
+      );
+      return { tx, servicio };
+    }
+    const PAGADA = d('2026-10-09');
+
+    it('regla 50: suma lo pagado por la inmobiliaria que falta recuperar; un cobro parcial descuenta lo cobrado', async () => {
+      const { servicio } = conBase(
+        [
+          { id: 'b1', pagadaEl: PAGADA, anuladoEn: null },
+          { id: 'b2', pagadaEl: PAGADA, anuladoEn: null },
+        ],
+        [
+          { boletaId: 'b1', importe: 45_000, imputado: [20_000] },
+          { boletaId: 'b2', importe: 30_000 },
+        ],
+      );
+      expect(await servicio.adelantado()).toEqual({
+        porMoneda: [{ moneda: 'ARS', importe: 55_000, boletas: 2 }],
+      });
+    });
+
+    it('regla 50: no cuentan la boleta anulada, la que todavía no se pagó, la cobrada entera ni la liquidada', async () => {
+      const { servicio } = conBase(
+        [
+          { id: 'anulada', pagadaEl: PAGADA, anuladoEn: d('2026-10-10') },
+          { id: 'sinPagar', pagadaEl: null, anuladoEn: null },
+          { id: 'cobrada', pagadaEl: PAGADA, anuladoEn: null },
+          { id: 'liquidada', pagadaEl: PAGADA, anuladoEn: null },
+          { id: 'conceptoAnulado', pagadaEl: PAGADA, anuladoEn: null },
+          { id: 'laPagoOtro', pagadaEl: PAGADA, anuladoEn: null },
+        ],
+        [
+          { boletaId: 'anulada', importe: 10_000 },
+          { boletaId: 'sinPagar', importe: 10_000 },
+          { boletaId: 'cobrada', importe: 10_000, imputado: [6_000, 4_000] },
+          { boletaId: 'liquidada', importe: 10_000, liquidacionId: 'l1' },
+          { boletaId: 'conceptoAnulado', importe: 10_000, anuladoEn: d('2026-10-10') },
+          // La pagó el inquilino: no es un adelanto de la inmobiliaria.
+          { boletaId: 'laPagoOtro', importe: 10_000, adelantado: false },
+        ],
+      );
+      expect(await servicio.adelantado()).toEqual({ porMoneda: [] });
+    });
+
+    it('regla 50: por moneda, pesos primero (una cuota de póliza en dólares no se suma a los pesos)', async () => {
+      const { servicio } = conBase(
+        [
+          { id: 'poliza', pagadaEl: PAGADA, anuladoEn: null },
+          { id: 'api', pagadaEl: PAGADA, anuladoEn: null },
+        ],
+        [
+          { boletaId: 'poliza', importe: 120, moneda: 'USD' },
+          { boletaId: 'api', importe: 45_000 },
+        ],
+      );
+      expect((await servicio.adelantado()).porMoneda).toEqual([
+        { moneda: 'ARS', importe: 45_000, boletas: 1 },
+        { moneda: 'USD', importe: 120, boletas: 1 },
+      ]);
+    });
+
+    it('regla 50: las mismas consultas con 5 boletas que con 25', async () => {
+      const consultas = async (n: number) => {
+        const ids = Array.from({ length: n }, (_, i) => `b${i}`);
+        const { tx, servicio } = conBase(
+          ids.map((id) => ({ id, pagadaEl: PAGADA, anuladoEn: null })),
+          ids.map((boletaId) => ({ boletaId, importe: 1000 })),
+        );
+        expect((await servicio.adelantado()).porMoneda[0]!.boletas).toBe(n);
+        return [tx.alqConcepto.findMany, tx.alqBoleta.findMany].map((f) => f.mock.calls.length);
+      };
+      expect(await consultas(5)).toEqual(await consultas(25));
+    });
   });
 });
