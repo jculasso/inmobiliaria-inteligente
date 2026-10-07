@@ -267,6 +267,7 @@ function aDto(
     valorRequerido: p.estado === 'lista' ? p.valorRequerido : null,
     importePropuesto: p.estado === 'lista' ? p.importe : null,
     falta: p.estado === 'pendiente_indice' ? p.falta : [],
-    vencida: desde <= hoy,
+    // Regla 7: si el índice todavía no se publicó, no está vencida: espera el índice.
+    vencida: desde <= hoy && p.estado !== 'pendiente_indice',
   };
 }

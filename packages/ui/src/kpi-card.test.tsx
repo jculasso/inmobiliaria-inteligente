@@ -10,6 +10,13 @@ describe('KpiCard', () => {
     expect(screen.getByText('12 operaciones')).toBeInTheDocument();
   });
 
+  // Conceptos, 7/10/2026: «$ 8.693.426,49 · U$S 1.627,05» en una línea se pisaba con la tarjeta de al lado.
+  it('dos monedas van una por línea', () => {
+    render(<KpiCard label="A cobrar" value="$ 8.693.426,49 · U$S 1.627,05" />);
+    expect(screen.getByText('$ 8.693.426,49')).toHaveClass('block');
+    expect(screen.getByText('U$S 1.627,05')).toHaveClass('block');
+  });
+
   it('no rompe si no hay sub', () => {
     render(<KpiCard label="Puntas" value="8" />);
     expect(screen.getByText('Puntas')).toBeInTheDocument();

@@ -113,7 +113,9 @@ describe('IndexacionesService.bandeja (reglas 5 a 7)', () => {
       estado: 'pendiente_indice',
       falta: ['el IPC de julio de 2026'],
       importePropuesto: null,
-      vencida: true,
+      // Ya empezó, pero sin índice no es «vencida»: espera el índice (regla 7).
+      // Antes decía `true` y el Dashboard la contaba entre las vencidas.
+      vencida: false,
     });
   });
 

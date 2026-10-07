@@ -638,7 +638,8 @@ export function TableroAlquileres({
     },
     {
       icono: '📈',
-      titulo: `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días`,
+      // Incluye las que ya empezaron y esperan un índice que no salió: no son vencidas (regla 7).
+      titulo: `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días o que esperan el índice`,
       ind: t.tareas.indexacionesProximas,
       columnas: VISTAS.indexaciones,
       accion: aIndexar,

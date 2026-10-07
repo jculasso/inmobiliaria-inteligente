@@ -81,9 +81,18 @@ export function ContratosLista({
     c.proximaIndexacion == null ? (
       '—'
     ) : (
-      <span className={c.proximaIndexacion < hoy ? 'font-semibold text-danger' : ''}>
+      // Si ya empezó pero el índice no salió, no está vencida: espera el índice (regla 7).
+      <span
+        className={
+          c.proximaIndexacion < hoy && !c.proximaIndexacionEspera ? 'font-semibold text-danger' : ''
+        }
+      >
         {fmtFecha(c.proximaIndexacion)}
-        {c.proximaIndexacion < hoy ? ' · vencida' : ''}
+        {c.proximaIndexacion < hoy
+          ? c.proximaIndexacionEspera
+            ? ' · espera el índice'
+            : ' · vencida'
+          : ''}
       </span>
     );
   const abrir = (c: ContratoResumenDto) => router.push(`/alquileres/contratos/${c.id}`);
