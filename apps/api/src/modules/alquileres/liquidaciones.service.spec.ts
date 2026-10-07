@@ -57,7 +57,16 @@ const alquilerDelInquilino = (pagado: number) => ({
   imputaciones: pagado ? [{ importe: dec(pagado) }] : [],
 });
 
-function makeTx(over: { delDueno?: unknown[]; delInquilino?: unknown[]; marcados?: number } = {}) {
+function makeTx(
+  over: {
+    delDueno?: unknown[];
+    delInquilino?: unknown[];
+    marcados?: number;
+    /** Partes ya separadas por pagos parciales (las que busca `origenId` o `liquidacionId`). */
+    separadas?: unknown[];
+    posterior?: unknown;
+  } = {},
+) {
   const deDueno = over.delDueno ?? [delDueno(), honorarios()];
   return {
     ...mocksDeHistorial(),
@@ -71,13 +80,21 @@ function makeTx(over: { delDueno?: unknown[]; delInquilino?: unknown[]; marcados
     $queryRaw: vi.fn(async () => (deDueno as { id: string }[]).map((k) => ({ id: k.id }))),
     alqConcepto: {
       // La primera consulta trae lo del propietario; la segunda, lo del inquilino de esos contratos.
-      findMany: vi.fn(async (args: { where: { contratoId?: unknown } }) =>
-        args.where.contratoId &&
-        typeof args.where.contratoId === 'object' &&
-        'in' in (args.where.contratoId as object)
-          ? (over.delInquilino ?? [alquilerDelInquilino(1_137_518)])
-          : deDueno,
+      findMany: vi.fn(
+        async (args: {
+          where: { contratoId?: unknown; origenId?: unknown; liquidacionId?: unknown };
+        }) =>
+          args.where.origenId || args.where.liquidacionId
+            ? (over.separadas ?? [])
+            : args.where.contratoId &&
+                typeof args.where.contratoId === 'object' &&
+                'in' in (args.where.contratoId as object)
+              ? (over.delInquilino ?? [alquilerDelInquilino(1_137_518)])
+              : deDueno,
       ),
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findFirst: vi.fn().mockResolvedValue(over.posterior ?? null),
       updateMany: vi.fn(async (args: { where: { id?: { in: string[] } } }) => ({
         count: over.marcados ?? args.where.id?.in.length ?? 0,
       })),
@@ -161,11 +178,59 @@ describe('LiquidacionesService (reglas 20 a 22)', () => {
     await expect(svc.liquidar(CTX, input())).rejects.toThrow(/espera a que paguen los inquilinos/);
   });
 
-  it('un pago parcial del inquilino todavía no libera el alquiler', async () => {
+  // Regla 22, desde el 6/10/2026: un pago parcial libera la misma proporción.
+  it('un pago parcial del inquilino libera la proporción cobrada; el resto espera', async () => {
     const prep = await new LiquidacionesService(
-      makeDb(makeTx({ delInquilino: [alquilerDelInquilino(1_000_000)] })),
+      makeDb(makeTx({ delInquilino: [alquilerDelInquilino(568_759)] })),
     ).preparar(DUENO, 'ARS', '2026-11-12');
-    expect(prep.aPagar).toEqual([]);
+    expect(prep.aPagar.map((x) => [x.descripcion, x.importe])).toEqual([
+      ['Alquiler noviembre 2026 · parte cobrada', 568_759],
+    ]);
+    expect(prep.aDescontar.map((x) => x.importe)).toEqual([55_055.87]);
+    expect(prep.enEspera.map((x) => x.importe)).toEqual([568_759, 55_055.87]);
+  });
+
+  it('al liquidar un pago parcial, separa la parte cobrada y deja el resto en el original', async () => {
+    const tx = makeTx({ delInquilino: [alquilerDelInquilino(568_759)] });
+    // El candado y después el UPDATE que achica los dos originales.
+    tx.$executeRaw.mockResolvedValueOnce(1).mockResolvedValueOnce(2);
+    const r = await new LiquidacionesService(makeDb(tx)).liquidar(CTX, input());
+    expect(r.neto).toBe(513_703.13);
+    const separadas = tx.alqConcepto.createMany.mock.calls[0]![0].data;
+    expect(
+      separadas.map((x: { importe: number; liquidacionId: string; claveGeneracion: string }) => [
+        x.importe,
+        x.liquidacionId,
+        x.claveGeneracion.endsWith('|liq:liq'),
+      ]),
+    ).toEqual([
+      [568_759, 'liq', true],
+      [55_055.87, 'liq', true],
+    ]);
+    // Nada se marca entero: los dos conceptos entraron en parte.
+    expect(tx.alqConcepto.updateMany.mock.calls[0]![0].where.id?.in).toEqual([]);
+    // El original se achica en la misma transacción (un UPDATE para todos).
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+  });
+
+  it('anular devuelve cada parte separada a su concepto original', async () => {
+    const tx = makeTx({
+      separadas: [{ id: 'sep', origenId: 'orig', importe: dec(568_759) }],
+    });
+    await new LiquidacionesService(makeDb(tx)).anular(CTX, 'liq', 'Error de carga');
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.alqConcepto.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['sep'] } } });
+  });
+
+  it('no se anula si el resto ya se liquidó en una liquidación posterior', async () => {
+    const tx = makeTx({
+      separadas: [{ id: 'sep', origenId: 'orig', importe: dec(568_759) }],
+      posterior: { liquidacion: { numero: 7 } },
+    });
+    await expect(
+      new LiquidacionesService(makeDb(tx)).anular(CTX, 'liq', 'Error de carga'),
+    ).rejects.toThrow(/liquidación 000007: anulá esa primero/);
+    expect(tx.alqConcepto.deleteMany).not.toHaveBeenCalled();
   });
 
   // Regla 21.

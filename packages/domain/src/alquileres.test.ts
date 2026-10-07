@@ -663,6 +663,48 @@ describe('proponerLiquidacion (reglas 20 a 22)', () => {
     expect(p.enEspera).toEqual([]);
   });
 
+  // Regla 22 (desde el 6/10/2026): un pago parcial libera la misma proporción.
+  // Es el caso de ALT-0004 en Alteva: el inquilino pagó $ 200.000 de un
+  // alquiler de $ 415.427, con dos dueños al 50%.
+  describe('pago parcial del inquilino', () => {
+    const dueno = { ...alquiler, saldo: 207_713.5 };
+    const hon = { ...honorarios, saldo: 20_106.67 };
+    const pago = new Map([[`${parte}#alquiler`, 200_000 / 415_427]]);
+
+    it('se le liquida la proporción cobrada y el resto queda en espera', () => {
+      const p = proponerLiquidacion([dueno, hon], pago);
+      expect(p.aPagar).toEqual([{ ...dueno, saldo: 100_000, parcial: true }]);
+      expect(p.aDescontar).toEqual([{ ...hon, saldo: 9_680, parcial: true }]);
+      expect(p.enEspera.map((x) => [x.id, x.saldo])).toEqual([
+        ['alq', 107_713.5],
+        ['hon', 10_426.67],
+      ]);
+      expect(p.neto).toBe(90_320);
+    });
+
+    it('lo ya liquidado no se vuelve a liquidar: con el pago completo entra el resto', () => {
+      const resto = { ...dueno, saldo: 107_713.5, yaLiquidado: 100_000 };
+      const p = proponerLiquidacion([resto], new Map([[`${parte}#alquiler`, 1]]));
+      expect(p.aPagar).toEqual([resto]);
+      expect(p.enEspera).toEqual([]);
+    });
+
+    it('si no pagó nada más desde la última liquidación, no entra nada', () => {
+      const resto = { ...dueno, saldo: 107_713.5, yaLiquidado: 100_000 };
+      const p = proponerLiquidacion([resto], pago);
+      expect(p.aPagar).toEqual([]);
+      expect(p.enEspera).toEqual([resto]);
+    });
+
+    it('un segundo pago parcial libera solo la diferencia', () => {
+      const resto = { ...dueno, saldo: 107_713.5, yaLiquidado: 100_000 };
+      const p = proponerLiquidacion([resto], new Map([[`${parte}#alquiler`, 0.75]]));
+      // 75% de 207.713,50 = 155.785,13; ya se liquidaron 100.000.
+      expect(p.aPagar.map((x) => x.saldo)).toEqual([55_785.13]);
+      expect(p.enEspera.map((x) => x.saldo)).toEqual([51_928.37]);
+    });
+  });
+
   it('un reintegro a su favor se le paga', () => {
     const reintegro = {
       id: 'rei',

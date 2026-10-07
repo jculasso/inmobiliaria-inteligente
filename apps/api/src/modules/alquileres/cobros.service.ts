@@ -25,6 +25,14 @@ import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { hoyArgentina } from '../protocolo/protocolo.calc';
+
+/** El día (en la Argentina) de un instante, como `YYYY-MM-DD`. */
+const diaDe = (d: Date): string =>
+  d.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+
+/** `2026-11-01` → `01/11/2026`. */
+const fechaCorta = (iso: string): string => iso.split('-').reverse().join('/');
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -327,7 +335,7 @@ export class CobrosService {
       const posterior = c.imputaciones[0]?.registradaEnCobro.numero;
       if (posterior != null) {
         throw new BadRequestException(
-          `El saldo a favor de este cobro se usó en el recibo ${posterior}: anulá ese primero.`,
+          `El saldo a favor de este cobro se usó en el recibo ${String(posterior).padStart(6, '0')}: anulá ese primero.`,
         );
       }
       if (c.conceptos.some((k) => k.imputaciones.length > 0)) {
@@ -365,7 +373,7 @@ export class CobrosService {
         });
         if (liquidado?.liquidacion) {
           throw new BadRequestException(
-            `Lo que canceló este cobro ya se le liquidó al propietario (liquidación ${liquidado.liquidacion.numero}): anulá esa primero.`,
+            `Lo que canceló este cobro ya se le liquidó al propietario (liquidación ${String(liquidado.liquidacion.numero).padStart(6, '0')}): anulá esa primero.`,
           );
         }
       }
@@ -381,7 +389,7 @@ export class CobrosService {
         data: {
           anuladoEn: ahora,
           anuladoPorId: ctx.userId,
-          motivoAnulacion: `Anulación del recibo ${c.numero}`,
+          motivoAnulacion: `Anulación del recibo ${String(c.numero).padStart(6, '0')}`,
         },
       });
       const fila = await tx.alqCobro.findUniqueOrThrow({ where: { id }, include: INCLUIR_COBRO });
@@ -438,12 +446,19 @@ export class CobrosService {
           const cs = cobros.filter((c) => c.moneda === moneda);
           const ls = liquidaciones.filter((l) => l.moneda === moneda);
           const movimientos = [
+            // Un concepto entra en la cuenta cuando se carga, o antes si su
+            // vencimiento ya pasó (lo generado tarde). Por vencimiento, una
+            // cuota de noviembre aparecía después de cobros de octubre y el
+            // saldo intermedio quedaba negativo (pasada de pruebas, 6/10/2026).
             ...ks.map((k) => ({
               id: k.id,
               tipo: 'concepto' as const,
-              fecha: k.vencimiento,
+              fecha: k.vencimiento < diaDe(k.createdAt) ? k.vencimiento : diaDe(k.createdAt),
               orden: k.createdAt.getTime(),
-              descripcion: k.descripcion,
+              descripcion:
+                k.vencimiento > diaDe(k.createdAt)
+                  ? `${k.descripcion} · vence el ${fechaCorta(k.vencimiento)}`
+                  : k.descripcion,
               contrato: k.contrato ? { id: k.contrato.id, codigo: k.contrato.codigo } : null,
               debe: k.sentido === 'a_cobrar' ? k.importe : 0,
               haber: k.sentido === 'a_pagar' ? k.importe : 0,
@@ -455,7 +470,7 @@ export class CobrosService {
               tipo: 'cobro' as const,
               fecha: c.fecha,
               orden: c.createdAt.getTime(),
-              descripcion: `Cobro · recibo ${c.numero}`,
+              descripcion: `Cobro · recibo ${String(c.numero).padStart(6, '0')}`,
               contrato: null,
               debe: 0,
               haber: c.importe,
@@ -467,7 +482,7 @@ export class CobrosService {
               tipo: 'liquidacion' as const,
               fecha: l.fecha,
               orden: l.createdAt.getTime(),
-              descripcion: `Liquidación ${l.numero}`,
+              descripcion: `Liquidación ${String(l.numero).padStart(6, '0')}`,
               contrato: null,
               debe: l.neto,
               haber: 0,
@@ -480,9 +495,15 @@ export class CobrosService {
             if (!m.anulado) saldo = redondear2(saldo + m.debe - m.haber);
             return { ...m, saldo };
           });
+          const hoy = hoyArgentina();
           return {
             moneda,
             saldo,
+            aVencer: redondear2(
+              ks
+                .filter((k) => !k.anulado && k.saldo > 0 && k.vencimiento > hoy)
+                .reduce((s, k) => s + (k.sentido === 'a_cobrar' ? k.saldo : -k.saldo), 0),
+            ),
             movimientos: conSaldo,
             pendientes: ks
               .filter((k) => !k.anulado && k.saldo > 0)

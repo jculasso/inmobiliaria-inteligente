@@ -338,7 +338,7 @@ describe('CobrosService.anular (regla 19)', () => {
     });
     expect(tx.alqConcepto.updateMany.mock.calls[0]![0]).toMatchObject({
       where: { cobroId: 'nuevo', anuladoEn: null },
-      data: { motivoAnulacion: 'Anulación del recibo 8' },
+      data: { motivoAnulacion: 'Anulación del recibo 000008' },
     });
   });
 
@@ -353,7 +353,7 @@ describe('CobrosService.anular (regla 19)', () => {
       },
     });
     await expect(new CobrosService(makeDb(tx)).anular(CTX, 'viejo', 'x x x')).rejects.toThrow(
-      'El saldo a favor de este cobro se usó en el recibo 9: anulá ese primero.',
+      'El saldo a favor de este cobro se usó en el recibo 000009: anulá ese primero.',
     );
     expect(tx.alqCobro.updateMany).not.toHaveBeenCalled();
   });
@@ -374,7 +374,7 @@ describe('CobrosService.anular · liquidaciones (regla 22)', () => {
     });
     tx.alqConcepto.findFirst.mockResolvedValue({ liquidacion: { numero: 3 } });
     await expect(new CobrosService(makeDb(tx)).anular(CTX, 'nuevo', 'x x x')).rejects.toThrow(
-      'ya se le liquidó al propietario (liquidación 3)',
+      'ya se le liquidó al propietario (liquidación 000003)',
     );
     expect(tx.alqConcepto.findFirst.mock.calls[0]![0].where).toMatchObject({
       sentido: 'a_pagar',
@@ -440,6 +440,46 @@ describe('CobrosService.cuenta (reglas 18 y 24)', () => {
     expect(pendiente).toBeCloseTo(ars.saldo, 2);
   });
 
+  // Pasada de pruebas del 6/10/2026: por vencimiento, la cuota de noviembre y
+  // unas expensas que vencían el 10 aparecían DESPUÉS del cobro que las pagó, y
+  // el saldo intermedio quedaba negativo.
+  it('un concepto entra cuando se carga, no cuando vence; lo que vence después se avisa', async () => {
+    const cargado = new Date('2026-10-06T12:00:00Z');
+    const expensas = concepto({
+      tipo: 'expensa',
+      importe: dec(45_000),
+      vencimiento: d('2026-10-10'),
+      createdAt: cargado,
+      descripcion: 'Expensas de octubre',
+      imputaciones: [{ importe: dec(45_000) }],
+    });
+    const cuota = concepto({
+      tipo: 'comision',
+      importe: dec(363_000),
+      vencimiento: d('2099-11-01'),
+      createdAt: cargado,
+      descripcion: 'Comisión inicial 2 de 2',
+    });
+    const pago = cobro({
+      fecha: d('2026-10-06'),
+      createdAt: new Date('2026-10-06T13:00:00Z'),
+      importe: dec(45_000),
+      imputaciones: [{ importe: dec(45_000), concepto: { sentido: 'a_cobrar' } }],
+    });
+    const ars = (
+      await new CobrosService(
+        makeDb(makeTx({ conceptos: [expensas, cuota], cobros: [pago] })),
+      ).cuenta(PERSONA)
+    ).monedas[0]!;
+    expect(ars.movimientos.map((m) => [m.fecha, m.descripcion, m.saldo])).toEqual([
+      ['2026-10-06', 'Expensas de octubre · vence el 10/10/2026', 45_000],
+      ['2026-10-06', 'Comisión inicial 2 de 2 · vence el 01/11/2099', 408_000],
+      ['2026-10-06', 'Cobro · recibo 000007', 363_000],
+    ]);
+    expect(ars.movimientos.every((m) => m.saldo >= 0)).toBe(true);
+    expect(ars.aVencer).toBe(363_000);
+  });
+
   it('lo anulado se ve pero no mueve el saldo', async () => {
     const ars = (await new CobrosService(makeDb(escenario())).cuenta(PERSONA)).monedas.find(
       (m) => m.moneda === 'ARS',
@@ -473,7 +513,7 @@ describe('CobrosService.cuenta (reglas 18 y 24)', () => {
     expect(ars.saldo).toBe(0);
     expect(ars.movimientos.at(-1)).toMatchObject({
       tipo: 'liquidacion',
-      descripcion: 'Liquidación 3',
+      descripcion: 'Liquidación 000003',
       debe: 1_027_406.26,
     });
   });

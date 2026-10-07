@@ -74,6 +74,13 @@ describe('Recibo (regla 23)', () => {
     expect(t).toContain('$ 103.181,00');
   });
 
+  // Pasada de pruebas del 6/10/2026: las líneas sumaban más que el total.
+  it('con saldo a favor, muestra la resta que lleva de los conceptos al total', async () => {
+    const t = await texto(cobro());
+    expect(t).toContain('Conceptos cancelados');
+    expect(t).toContain('Menos lo pagado con saldo a favor');
+  });
+
   it('un recibo anulado lo dice con su motivo', async () => {
     expect(
       await texto(

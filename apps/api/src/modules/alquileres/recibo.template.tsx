@@ -63,6 +63,9 @@ export function crearEstilos(red: string) {
     colImporte: { width: '24%', textAlign: 'right' },
     nota: { fontSize: 7.5, color: MUTED },
     total: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 10 },
+    subtotal: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 4 },
+    subtotalLabel: { fontSize: 8.5, color: MUTED },
+    subtotalValor: { fontSize: 9, width: 110, textAlign: 'right' },
     totalLabel: { fontSize: 9, fontWeight: 700, color: MUTED },
     totalValor: { fontSize: 14, fontWeight: 800 },
     aFavor: { textAlign: 'right', marginTop: 4, fontSize: 9, color: MUTED },
@@ -107,6 +110,16 @@ export function ReciboDocument({
   colorPrimario: string | null;
 }) {
   const e = crearEstilos(colorPrimario || DANGER);
+  const centavos = (n: number) => Math.round(n * 100);
+  const saldoUsado =
+    cobro.imputaciones
+      .filter((i) => i.deSaldoAFavor != null)
+      .reduce((s, i) => s + centavos(i.sentido === 'a_pagar' ? -i.importe : i.importe), 0) / 100;
+  const cancelado =
+    cobro.imputaciones.reduce(
+      (s, i) => s + centavos(i.sentido === 'a_pagar' ? -i.importe : i.importe),
+      0,
+    ) / 100;
   const numero = String(cobro.numero).padStart(6, '0');
   return (
     <Document title={`Recibo ${numero} — ${tenantNombre}`} author={tenantNombre}>
@@ -174,6 +187,21 @@ export function ReciboDocument({
           </View>
         ))}
 
+        {saldoUsado > 0 && (
+          // Lo pagado con saldo a favor figura entre los conceptos pero no es
+          // plata de este recibo: sin esta resta, las líneas sumaban más que el
+          // total (pasada de pruebas del 6/10/2026).
+          <>
+            <View style={e.subtotal}>
+              <Text style={e.subtotalLabel}>Conceptos cancelados</Text>
+              <Text style={e.subtotalValor}>{pesos(cancelado, cobro.moneda)}</Text>
+            </View>
+            <View style={e.subtotal}>
+              <Text style={e.subtotalLabel}>Menos lo pagado con saldo a favor</Text>
+              <Text style={e.subtotalValor}>− {pesos(saldoUsado, cobro.moneda)}</Text>
+            </View>
+          </>
+        )}
         <View style={e.total}>
           <Text style={e.totalLabel}>TOTAL RECIBIDO</Text>
           <Text style={e.totalValor}>{pesos(cobro.importe, cobro.moneda)}</Text>
