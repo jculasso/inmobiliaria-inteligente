@@ -87,9 +87,10 @@ describe('la cadena cierra al centavo (regla 87)', () => {
       reintegros: 0,
       neto: 890_854.33,
       liquidado: 903_200,
-      pendiente: -12_345.67,
+      pendiente: 0,
+      aDescontar: 12_345.67,
     });
-    expect(c.neto).toBeCloseTo(c.liquidado + c.pendiente, 2);
+    expect(c.neto).toBeCloseTo(c.liquidado + c.pendiente - c.aDescontar, 2);
   });
 
   it('un pago parcial libera la misma proporción del alquiler y de sus honorarios (regla 22)', () => {
@@ -152,7 +153,8 @@ describe('la cadena cierra al centavo (regla 87)', () => {
       reintegros: 8_000,
       neto: -77_000,
       liquidado: -50_000,
-      pendiente: -27_000,
+      pendiente: 0,
+      aDescontar: 27_000,
     });
   });
 
@@ -160,6 +162,62 @@ describe('la cadena cierra al centavo (regla 87)', () => {
     const a = cadena([alquiler({ base: 0.1 })], new Map([[`${PARTE}#alquiler`, 1]]));
     const b = cadena([alquiler({ base: 0.2 })], new Map([[`${PARTE}#alquiler`, 1]]));
     expect(sumarCadenas([a, b]).cobrado).toBe(0.3);
+  });
+});
+
+describe('lo que falta liquidar nunca es negativo (regla 98)', () => {
+  // El caso de Marcela Ibarra en Alteva (octubre de 2026): el alquiler ya se
+  // liquidó y después se cargó un arreglo a cargo del propietario que todavía
+  // no se descontó. Antes salía «Pendiente de liquidar −$ 15.000».
+  it('alquiler liquidado y un arreglo posterior sin liquidar: a descontar, no pendiente negativo', () => {
+    const parte = 'alq|c1|2026-10|2026-10-01';
+    const c = cadena(
+      [
+        alquiler({ base: 674_605, liquidado: true, clave: `${parte}|alquiler|a_pagar|dueno` }),
+        honorarios({
+          base: 65_301.76,
+          liquidado: true,
+          clave: `${parte}|honorarios|a_cobrar|dueno`,
+        }),
+        alquiler({
+          id: 'arreglo',
+          tipo: 'reparacion',
+          sentido: 'a_cobrar',
+          base: 15_000,
+          clave: 'prov|comp-reclamo-2|dueno',
+        }),
+      ],
+      new Map([[`${parte}#alquiler`, 1]]),
+    );
+    expect(c).toMatchObject({
+      alquiler: 674_605,
+      cobrado: 674_605,
+      honorarios: 65_301.76,
+      arreglos: 15_000,
+      neto: 594_303.24,
+      liquidado: 609_303.24,
+      pendiente: 0,
+      aDescontar: 15_000,
+    });
+    const cent = (x: number) => Math.round(x * 100);
+    expect(cent(c.liquidado) + cent(c.pendiente) - cent(c.aDescontar)).toBe(cent(c.neto));
+  });
+
+  it('si lo pendiente a su favor supera lo que se le descuenta, queda neto y no hay nada a descontar', () => {
+    // Septiembre cobrado sin liquidar y una TGI: se compensan en la próxima.
+    const c = cadena(
+      [alquiler(), gasto('tgi', 'impuesto', 12_345.67)],
+      new Map([[`${PARTE}#alquiler`, 1]]),
+    );
+    expect(c).toMatchObject({ pendiente: 987_654.33, aDescontar: 0, liquidado: 0 });
+  });
+
+  it('los totales suman lo pendiente y lo a descontar de cada propietario por separado', () => {
+    const t = sumarCadenas([
+      cadena([alquiler()], new Map([[`${PARTE}#alquiler`, 1]])),
+      cadena([gasto('tgi', 'impuesto', 100)], new Map()),
+    ]);
+    expect(t).toMatchObject({ pendiente: 1_000_000, aDescontar: 100, neto: 999_900 });
   });
 });
 

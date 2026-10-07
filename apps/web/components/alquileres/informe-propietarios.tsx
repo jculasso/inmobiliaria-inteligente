@@ -29,7 +29,9 @@ const CLASE_TABLA = CLASE_TABLA_ANCHA.replace('sm:block', 'lg:block');
 const CLASE_TARJETAS = 'rounded-brand border border-line bg-white lg:hidden';
 
 /** Lo que muestra cada columna de plata: la tabla y las tarjetas leen lo mismo. */
-const COLUMNAS: [string, (c: CadenaInformeDto) => number][] = [
+// La de «Pendiente de liquidar» lleva debajo, si hay, lo que se le descuenta en
+// la próxima (regla 98): así no hace falta otra columna y la tabla no crece.
+const COLUMNAS: [string, (c: CadenaInformeDto) => number, boolean?][] = [
   ['Cobrado', (c) => c.cobrado],
   ['Honorarios', (c) => c.honorarios],
   [
@@ -37,22 +39,30 @@ const COLUMNAS: [string, (c: CadenaInformeDto) => number][] = [
     (c) => Math.round((c.impuestos + c.expensas + c.arreglos + c.otros) * 100) / 100,
   ],
   ['Liquidado', (c) => c.liquidado],
-  ['Pendiente de liquidar', (c) => c.pendiente],
+  ['Pendiente de liquidar', (c) => c.pendiente, true],
 ];
 
 /** Una línea por moneda: pesos y dólares no se suman (regla 88). */
 function PorMoneda({
   monedas,
   valor,
+  conADescontar = false,
 }: {
   monedas: CadenaInformeDto[];
   valor: (c: CadenaInformeDto) => number;
+  /** Regla 98: debajo de lo pendiente, lo que se le descuenta en la próxima. */
+  conADescontar?: boolean;
 }) {
   return (
     <>
       {monedas.map((c) => (
         <span key={c.moneda} className="block whitespace-nowrap tabular-nums">
           {fmtMoneda(valor(c), c.moneda)}
+          {conADescontar && c.aDescontar > 0 && (
+            <span className="block text-xs font-normal text-warning">
+              a descontar {fmtMoneda(c.aDescontar, c.moneda)}
+            </span>
+          )}
         </span>
       ))}
     </>
@@ -138,9 +148,13 @@ export function InformePropietarios({
                     <span className="mt-2 block text-sm text-muted">Sin movimientos</span>
                   ) : (
                     <CamposTarjeta>
-                      {COLUMNAS.map(([nombre, valor]) => (
+                      {COLUMNAS.map(([nombre, valor, conADescontar]) => (
                         <CampoTarjeta key={nombre} etiqueta={nombre}>
-                          <PorMoneda monedas={f.monedas} valor={valor} />
+                          <PorMoneda
+                            monedas={f.monedas}
+                            valor={valor}
+                            conADescontar={conADescontar}
+                          />
                         </CampoTarjeta>
                       ))}
                     </CamposTarjeta>
@@ -181,9 +195,13 @@ export function InformePropietarios({
                         Sin movimientos
                       </td>
                     ) : (
-                      COLUMNAS.map(([nombre, valor]) => (
+                      COLUMNAS.map(([nombre, valor, conADescontar]) => (
                         <td key={nombre} className={`${CLASE_TD} text-right text-ink`}>
-                          <PorMoneda monedas={f.monedas} valor={valor} />
+                          <PorMoneda
+                            monedas={f.monedas}
+                            valor={valor}
+                            conADescontar={conADescontar}
+                          />
                         </td>
                       ))
                     )}
@@ -202,9 +220,13 @@ export function InformePropietarios({
                         {datos.filas.reduce((s, f) => s + f.contratos, 0)} contratos
                       </span>
                     </td>
-                    {COLUMNAS.map(([nombre, valor]) => (
+                    {COLUMNAS.map(([nombre, valor, conADescontar]) => (
                       <td key={nombre} className={`${CLASE_TD} text-right`}>
-                        <PorMoneda monedas={datos.totales} valor={valor} />
+                        <PorMoneda
+                          monedas={datos.totales}
+                          valor={valor}
+                          conADescontar={conADescontar}
+                        />
                       </td>
                     ))}
                     <td className={`${CLASE_TD} text-right tabular-nums`}>

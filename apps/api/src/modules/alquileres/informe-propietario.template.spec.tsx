@@ -30,7 +30,8 @@ function informe(over: Partial<InformePropietarioDto> = {}): InformePropietarioD
         reintegros: 0,
         neto: 810_854.33,
         liquidado: 853_200,
-        pendiente: -42_345.67,
+        pendiente: 0,
+        aDescontar: 42_345.67,
       },
     ],
     deuda: [
@@ -132,11 +133,19 @@ describe('Informe al propietario en PDF (regla 95)', () => {
     expect(t).toContain('septiembre 2026');
     expect(t).toContain('Neto del período');
     expect(t).toContain('$ 810.854,33');
-    // Regla 87: pendiente negativo se dice como lo que es.
+    // Regla 98: nada de pendiente negativo; lo que falta descontar, en su renglón y con qué es.
+    expect(t).toContain('Pendiente de liquidar');
+    expect(t).not.toContain('-$');
     expect(t).toContain('A descontar en la próxima liquidación');
+    expect(t).toContain('$ 42.345,67');
+    // Qué es: la TGI, que todavía no se descontó (las expensas ya entraron en la 12).
+    expect(t).toContain('Impuesto: TGI (Tasa municipal) cuota 9/12');
+    expect(t).not.toContain('Expensa: Expensas extraordinarias');
+    expect(t).toContain('Se descontará en la próxima liquidación');
     expect(t).toContain('El inquilino debe hoy $ 200.000,00');
     expect(t).toContain('PROPIEDAD: Córdoba 1452 3° B');
     expect(t).toContain('Liq. 000012 del 10/09/2026');
+    expect(t).toContain('Descontado en la liquidación 000012 del 10/09/2026');
     // Regla 91: cada impuesto con su nombre; las extraordinarias, en su línea.
     expect(t).toContain('TGI (Tasa municipal)');
     expect(t).toContain('Expensas extraordinarias');
@@ -169,16 +178,25 @@ describe('Informe al propietario en PDF (regla 95)', () => {
     expect(familias.every((f) => f.startsWith('Montserrat'))).toBe(true);
   });
 
-  it('regla 87: los renglones siempre dicen alquiler, cobrado, neto, liquidado y pendiente', () => {
-    const r = renglonesDeLaCadena({ ...informe().resumen[0]!, impuestos: 0, expensas: 0 });
-    expect(r.map(([n]) => n)).toEqual([
-      'Alquiler del período',
-      'Cobrado',
-      '− Honorarios',
-      '− Arreglos',
-      'Neto del período',
-      'Liquidado (transferido)',
-      'A descontar en la próxima liquidación',
+  it('reglas 87 y 98: los renglones siempre dicen alquiler, cobrado, neto, liquidado y pendiente', () => {
+    const r = renglonesDeLaCadena(
+      { ...informe().resumen[0]!, impuestos: 0, expensas: 0 },
+      'Arreglo: Plomero Juan (reclamo 2)',
+    );
+    expect(r.map((x) => [x.nombre, x.importe])).toEqual([
+      ['Alquiler del período', 1_000_000],
+      ['Cobrado', 1_000_000],
+      ['− Honorarios', 96_800],
+      ['− Arreglos', 50_000],
+      ['Neto del período', 810_854.33],
+      ['Liquidado (transferido)', 853_200],
+      ['Pendiente de liquidar', 0],
+      ['A descontar en la próxima liquidación', 42_345.67],
     ]);
+    expect(r.at(-1)!.detalle).toBe('Arreglo: Plomero Juan (reclamo 2)');
+    // Sin nada a descontar, ese renglón no está.
+    expect(
+      renglonesDeLaCadena({ ...informe().resumen[0]!, aDescontar: 0 }).map((x) => x.nombre),
+    ).not.toContain('A descontar en la próxima liquidación');
   });
 });

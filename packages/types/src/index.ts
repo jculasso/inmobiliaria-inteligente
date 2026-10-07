@@ -42,5 +42,5 @@ export * from './protocolo';
 export * from './reporte-protocolo';
 export * from './publicacion';
 export * from './alquileres';
-// El informe al propietario (reglas 83 a 97 de la spec de alquileres).
+// El informe al propietario (reglas 83 a 98 de la spec de alquileres).
 export * from './informe-propietario';

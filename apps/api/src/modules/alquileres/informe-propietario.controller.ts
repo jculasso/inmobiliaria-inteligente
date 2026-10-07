@@ -31,7 +31,7 @@ const HASTA = {
 };
 
 /**
- * El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 97): lo
+ * El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 98): lo
  * que cobró, lo que se le descontó, lo que se le liquidó y los reclamos de sus
  * propiedades en un período. Lo ve quien administra el módulo; el propietario
  * recibe el PDF por mail y no entra (regla 83).

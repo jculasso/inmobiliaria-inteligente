@@ -114,7 +114,7 @@ interface Lectura {
 }
 
 /**
- * El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 97).
+ * El informe al propietario (spec alquileres-fase-1.md, reglas 83 a 98).
  *
  * Una sola lectura para un propietario o para todos —`leer`—, con un número
  * fijo de consultas (regla 97), y un solo armado —`armar`—: la fila de la

@@ -48,7 +48,8 @@ const cadena = (over: Partial<CadenaInformeDto> = {}): CadenaInformeDto => ({
   reintegros: 0,
   neto: 810_854.33,
   liquidado: 853_200,
-  pendiente: -42_345.67,
+  pendiente: 0,
+  aDescontar: 42_345.67,
   ...over,
 });
 
@@ -174,7 +175,9 @@ describe('La solapa Informe del propietario', () => {
       '− Arreglos$ 50.000,00',
       'Neto del período$ 810.854,33',
       'Liquidado (transferido)$ 853.200,00',
-      'A descontar en la próxima liquidación$ 42.345,67',
+      'Pendiente de liquidar$ 0,00',
+      // Regla 98: lo que falta descontar, en su renglón y diciendo qué es.
+      'A descontar en la próxima liquidaciónImpuesto: TGI (Tasa municipal) cuota 9/12$ 42.345,67',
     ]);
     expect(screen.getByRole('note')).toHaveTextContent('El inquilino debe hoy $ 200.000,00');
   });
@@ -188,10 +191,12 @@ describe('La solapa Informe del propietario', () => {
     );
     expect(
       within(screen.getByRole('list', { name: 'Expensas' })).getByRole('listitem'),
-    ).toHaveTextContent(/Expensas extraordinarias.*Descontado en la Liquidación 000012/);
+    ).toHaveTextContent(
+      /Expensas extraordinarias.*Descontado en la liquidación 000012 del 10\/09\/2026/,
+    );
     expect(
       within(screen.getByRole('list', { name: 'Impuestos y servicios' })).getByRole('listitem'),
-    ).toHaveTextContent(/TGI \(Tasa municipal\).*Va en la próxima liquidación/);
+    ).toHaveTextContent(/TGI \(Tasa municipal\).*Se descontará en la próxima liquidación/);
     const reclamos = within(screen.getByRole('list', { name: 'Reclamos' })).getAllByRole(
       'listitem',
     );
@@ -329,6 +334,19 @@ describe('Informe de propietarios (regla 96)', () => {
     );
     // Los totales, uno por moneda (regla 88).
     expect(screen.getByRole('row', { name: /Total/ })).toHaveTextContent('U$S 800,00');
+  });
+
+  // Regla 98: sin pendiente negativo; lo que se descuenta en la próxima va debajo, sin otra columna.
+  it('lo que se le descuenta en la próxima va debajo del pendiente, sin sumar columnas', () => {
+    tabla();
+    expect(screen.getAllByRole('columnheader')).toHaveLength(7);
+    const fila = screen.getByRole('row', { name: /Marta Propietaria/ });
+    expect(fila).toHaveTextContent('a descontar $ 42.345,67');
+    expect(fila).not.toHaveTextContent('-$');
+    const tarjetas = within(screen.getByRole('list', { name: 'Propietarios' }));
+    expect(tarjetas.getByRole('button', { name: /Marta Propietaria/ })).toHaveTextContent(
+      'a descontar $ 42.345,67',
+    );
   });
 
   it('en el teléfono, tarjetas que abren el informe con el mismo período', () => {

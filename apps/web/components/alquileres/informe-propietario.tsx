@@ -7,6 +7,8 @@ import { nombreDelRango } from '@vacker/domain';
 import {
   NOMBRE_CATEGORIA_PARTIDA,
   NOMBRE_ESTADO_RECLAMO,
+  estadoDePartida,
+  queSeDescuentaEnLaProxima,
   renglonesDeLaCadena,
   type CategoriaPartida,
   type InformePropietarioDto,
@@ -220,11 +222,18 @@ function Resumen({ informe }: { informe: InformePropietarioDto }) {
             titulo={`Resumen${informe.resumen.length > 1 ? ` en ${c.moneda === 'ARS' ? 'pesos' : 'dólares'}` : ''}`}
           >
             <ul aria-label={`Resumen en ${c.moneda}`} className="divide-y divide-line text-sm">
-              {renglonesDeLaCadena(c).map(([nombre, v, fuerte]) => (
-                <Renglon key={nombre} importe={fmtMoneda(v, c.moneda)} fuerte={fuerte}>
-                  {nombre}
-                </Renglon>
-              ))}
+              {renglonesDeLaCadena(c, queSeDescuentaEnLaProxima(informe.partidas, c.moneda)).map(
+                (r) => (
+                  <Renglon
+                    key={r.nombre}
+                    importe={fmtMoneda(r.importe, c.moneda)}
+                    fuerte={r.fuerte}
+                    detalle={r.detalle}
+                  >
+                    {r.nombre}
+                  </Renglon>
+                ),
+              )}
             </ul>
           </Bloque>
         ))}
@@ -349,7 +358,7 @@ function Descuentos({ informe }: { informe: InformePropietarioDto }) {
                     <Renglon
                       key={p.conceptoId}
                       importe={fmtMoneda(p.importe, p.moneda)}
-                      detalle={`${p.detalle !== p.nombre ? `${p.detalle} · ` : ''}${p.contrato.codigo} · ${p.liquidacion ? `Descontado en la ${liq(p.liquidacion)}` : 'Va en la próxima liquidación'}`}
+                      detalle={`${p.detalle !== p.nombre ? `${p.detalle} · ` : ''}${p.contrato.codigo} · ${estadoDePartida(p)}`}
                     >
                       {p.nombre}
                     </Renglon>
