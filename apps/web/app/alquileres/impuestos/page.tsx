@@ -1,18 +1,25 @@
 import { PeriodoSchema, puedeAdministrarAlquileres } from '@vacker/types';
 import { requireServerPrincipal } from '../../../lib/server-principal';
 import {
+  getAdelantadoBoletas,
   getPlanillaBoletas,
   listBoletas,
-  listContratos,
-  listPolizas,
   listPropiedadesAlquiler,
   listServicios,
 } from '../../../lib/alquileres-api';
-import { ImpuestosVista } from '../../../components/alquileres/impuestos-vista';
+import {
+  ImpuestosVista,
+  vistaImpuestos,
+  type DatosImpuestos,
+} from '../../../components/alquileres/impuestos-vista';
 import { hoyIso } from '../../../lib/format';
 
 export const metadata = { title: 'Impuestos y servicios · Alquileres' };
 
+/**
+ * Tres pestañas, tres trabajos (regla 45): pagar y controlar, cargar el mes,
+ * y configurar qué tiene cada propiedad. Cada una pide solo lo suyo.
+ */
 export default async function ImpuestosPage({
   searchParams,
 }: {
@@ -23,32 +30,27 @@ export default async function ImpuestosPage({
   const q = await searchParams;
   const pedido = PeriodoSchema.safeParse(q.periodo);
   const periodo = pedido.success ? pedido.data : hoyIso().slice(0, 7);
-  const ver = q.ver === 'control' ? 'control' : 'mes';
+  const ver = vistaImpuestos(q.ver);
   const t = ctx.accessToken;
-  const [planilla, boletas, control, servicios, propiedades, polizas, contratos] =
-    await Promise.all([
-      getPlanillaBoletas(t, periodo),
+
+  let datos: DatosImpuestos;
+  if (ver === 'pagar') {
+    const [boletas, control, adelantado] = await Promise.all([
       listBoletas(t, { periodo, ver: 'mes' }),
       listBoletas(t, { ver: 'control' }),
+      getAdelantadoBoletas(t),
+    ]);
+    datos = { ver, boletas, control, adelantado };
+  } else if (ver === 'cargar') {
+    datos = { ver, planilla: await getPlanillaBoletas(t, periodo) };
+  } else {
+    const [planilla, servicios, propiedades] = await Promise.all([
+      getPlanillaBoletas(t, periodo),
       listServicios(t),
       listPropiedadesAlquiler(t),
-      listPolizas(t),
-      listContratos(t),
     ]);
-  return (
-    <ImpuestosVista
-      key={periodo}
-      periodo={periodo}
-      ver={ver}
-      planilla={planilla}
-      boletas={boletas}
-      control={control}
-      servicios={servicios}
-      // Las cuentas ya vienen en la planilla: pedirlas aparte era leerlas dos veces.
-      cuentas={planilla.filas.map((f) => f.cuenta)}
-      propiedades={propiedades}
-      polizas={polizas}
-      contratos={contratos}
-    />
-  );
+    // Los impuestos de cada propiedad ya vienen en la planilla: pedirlos aparte era leerlos dos veces.
+    datos = { ver, cuentas: planilla.filas.map((f) => f.cuenta), servicios, propiedades };
+  }
+  return <ImpuestosVista key={`${periodo}|${ver}`} periodo={periodo} datos={datos} />;
 }

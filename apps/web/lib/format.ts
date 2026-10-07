@@ -40,6 +40,19 @@ export function fmtFecha(iso: string | null | undefined): string {
   return `${dia}/${mes}/${anio}`;
 }
 
+const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+/**
+ * Un día con su nombre, corto: «lun 06/10». Para lo que vence en estos días,
+ * donde el día de la semana dice más que el año. Sin zona: es un día
+ * calendario, no un momento.
+ */
+export function fmtDiaCorto(iso: string): string {
+  const [anio, mes, dia] = iso.slice(0, 10).split('-').map(Number) as [number, number, number];
+  const semana = DIAS_CORTOS[new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay()];
+  return `${semana} ${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}`;
+}
+
 /**
  * Monto de alquileres en su moneda, siempre con centavos: «$ 250.000,00» o
  * «U$S 1.200,00». Javier, 6/10/2026: un importe redondo sin «,00» al lado de

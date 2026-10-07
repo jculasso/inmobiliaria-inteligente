@@ -31,6 +31,7 @@ import {
   PlanillaBoletasDtoSchema,
   LoteBoletasResultadoSchema,
   BoletaDtoSchema,
+  AdelantadoBoletasDtoSchema,
   PolizaDtoSchema,
   type ServicioInput,
   type CuentaServicioInput,
@@ -834,6 +835,11 @@ export async function listBoletas(
   return apiFetch(`/alquileres/boletas${p.toString() ? `?${p}` : ''}`, z.array(BoletaDtoSchema), {
     accessToken,
   });
+}
+
+/** Regla 50: lo que la inmobiliaria pagó de boletas y falta recuperar, por moneda. */
+export async function getAdelantadoBoletas(accessToken: string) {
+  return apiFetch('/alquileres/boletas/adelantado', AdelantadoBoletasDtoSchema, { accessToken });
 }
 
 export async function pagarBoleta(
