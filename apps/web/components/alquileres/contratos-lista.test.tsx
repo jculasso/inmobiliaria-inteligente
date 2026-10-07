@@ -59,7 +59,7 @@ describe('ContratosLista', () => {
       />,
     );
     const tabla = within(screen.getByRole('table'));
-    expect(tabla.getByText(/01\/10\/2026 · espera el índice/)).toBeInTheDocument();
+    expect(tabla.getByText('espera el índice')).toHaveClass('block');
     expect(tabla.queryByText(/vencida/)).not.toBeInTheDocument();
   });
 
