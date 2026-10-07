@@ -3,6 +3,7 @@ import { requireServerPrincipal } from '../../lib/server-principal';
 import { getResumenAlquileres, getTablerosAlquileres } from '../../lib/alquileres-api';
 import { ComoEmpezar } from '../../components/alquileres/como-empezar';
 import { TableroAlquileres } from '../../components/alquileres/tablero-alquileres';
+import { leerPeriodo } from '../../lib/periodo-tablero';
 
 export const metadata = { title: 'Alquileres' };
 
@@ -10,7 +11,13 @@ export const metadata = { title: 'Alquileres' };
 export default async function AlquileresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; tipo?: string }>;
+  searchParams: Promise<{
+    anio?: string;
+    tipo?: string;
+    periodo?: string;
+    mes?: string;
+    q?: string;
+  }>;
 }) {
   const ctx = await requireServerPrincipal();
   // El layout ya muestra «no tenés acceso». Esto evita además pedirle datos a
@@ -29,5 +36,14 @@ export default async function AlquileresPage({
   // Regla 32: una inmobiliaria que recién prende el módulo no ve tarjetas en
   // cero, que se leen como un error. Ve cómo empezar.
   if (resumen.contratos === 0) return <ComoEmpezar resumen={resumen} />;
-  return <TableroAlquileres key={tableros.todos.anio} tableros={tableros} tipoInicial={tipo} />;
+  // Regla 74: el período de toda la pantalla viene en la dirección; sin él, el mes en curso.
+  const { hoy, anio: anioTablero } = tableros.todos;
+  return (
+    <TableroAlquileres
+      key={anioTablero}
+      tableros={tableros}
+      tipoInicial={tipo}
+      periodoInicial={leerPeriodo(params, hoy, anioTablero)}
+    />
+  );
 }

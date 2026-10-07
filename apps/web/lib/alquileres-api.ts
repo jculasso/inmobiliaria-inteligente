@@ -7,6 +7,8 @@ import {
   type CambioFirmaManualInput,
   TableroAlquileresDtoSchema,
   TablerosAlquileresDtoSchema,
+  IndicadorSchema,
+  type DetalleTableroQuery,
   LiquidacionDtoSchema,
   LiquidacionResumenDtoSchema,
   PendienteLiquidarDtoSchema,
@@ -319,6 +321,22 @@ export async function getTablerosAlquileres(accessToken: string, anio?: number) 
     TablerosAlquileresDtoSchema,
     { accessToken },
   );
+}
+
+/**
+ * Regla 79: la lista de un número del período, pedida al abrir su tarjeta.
+ * Suma exactamente lo que muestra la tarjeta.
+ */
+export async function getDetalleTableroAlquileres(accessToken: string, q: DetalleTableroQuery) {
+  const params = new URLSearchParams({
+    indicador: q.indicador,
+    desde: q.desde,
+    hasta: q.hasta,
+    tipo: q.tipo,
+    moneda: q.moneda,
+  });
+  if (q.tramo) params.set('tramo', q.tramo);
+  return apiFetch(`/alquileres/tablero/detalle?${params}`, IndicadorSchema, { accessToken });
 }
 
 export async function getTableroAlquileres(

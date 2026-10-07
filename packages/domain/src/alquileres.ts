@@ -28,6 +28,20 @@ export function diasDelMes(anio: number, mes: number): number {
 }
 
 /**
+ * El cierre de un mes para las fotos del tablero de Alquileres (regla 77): su
+ * último día, u hoy si todavía no terminó. Un mes que todavía no empezó
+ * también cierra hoy: no hay foto del futuro.
+ *
+ * Lo usan el tablero, para cada número, y el detalle, para su lista: la misma
+ * fecha en los dos lados.
+ */
+export function cierreDelMes(mes: string, hoy: string): string {
+  const [a, m] = mes.split('-').map(Number) as [number, number];
+  const ultimo = `${mes}-${String(diasDelMes(a, m)).padStart(2, '0')}`;
+  return ultimo < hoy ? ultimo : hoy;
+}
+
+/**
  * Suma meses conservando el día; si el mes destino es más corto, queda en su
  * último día (31/01 + 1 mes = 28/02 o 29/02).
  */
