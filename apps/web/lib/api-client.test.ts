@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { apiFetch, ApiError } from './api-client';
+import { apiFetch, apiFetchArchivo, apiFetchForm, ApiError } from './api-client';
 
 const schema = z.object({ id: z.string() });
 
@@ -104,5 +104,60 @@ describe('apiFetch', () => {
     await expect(
       apiFetch('/tablero/operaciones', schema, { accessToken: 't' }),
     ).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('apiFetchForm', () => {
+  it('manda los campos junto al archivo, con el método pedido', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const file = new File(['PK'], 'Contrato.docx');
+    await apiFetchForm('/alquileres/plantillas/p1/archivo', schema, {
+      accessToken: 't',
+      file,
+      campos: { nombre: 'Locación', tipoContrato: '' },
+      method: 'PUT',
+    });
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(init.method).toBe('PUT');
+    const form = init.body as FormData;
+    expect(form.get('nombre')).toBe('Locación');
+    expect(form.get('tipoContrato')).toBe('');
+    expect((form.get('file') as File).name).toBe('Contrato.docx');
+  });
+});
+
+describe('apiFetchArchivo', () => {
+  it('devuelve los bytes y el nombre completo, con acentos y extensión', async () => {
+    const blob = new Blob(['PK']);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: async () => blob,
+        headers: new Headers({
+          'content-disposition':
+            'attachment; filename="Contrato Pe_a.docx"; filename*=UTF-8\'\'Contrato%20Pe%C3%B1a.docx',
+        }),
+      }),
+    );
+    expect(await apiFetchArchivo('/x', { accessToken: 't' })).toEqual({
+      blob,
+      nombre: 'Contrato Peña.docx',
+    });
+  });
+
+  it('un error de la API llega con su mensaje', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: { code: 'bad_request', message: 'La plantilla no existe.' } }),
+      }),
+    );
+    await expect(apiFetchArchivo('/x', { accessToken: 't', method: 'POST' })).rejects.toThrow(
+      'La plantilla no existe.',
+    );
   });
 });
