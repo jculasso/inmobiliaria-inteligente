@@ -162,4 +162,20 @@ describe('CobroForm', () => {
     );
     expect(gastos()).not.toBeChecked();
   });
+
+  // Prueba en producción, 6/10/2026: «1 días de atraso».
+  it('el punitorio dice «1 día» en singular', async () => {
+    const p = prep();
+    await abrir({ ...p, deudas: [{ ...p.deudas[0]!, punitorio: { dias: 1, importe: 1_137.52 } }] });
+    expect(screen.getByText(/Punitorio: 1 día de atraso/)).toBeInTheDocument();
+  });
+
+  // Accesibilidad: cada casilla de «Lo que debe» se nombra por su concepto.
+  it('cada casilla de lo que debe tiene el nombre del concepto', async () => {
+    await abrir();
+    expect(screen.getByRole('checkbox', { name: '5 · Alquiler noviembre 2026' })).toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: '5 · Gastos administrativos noviembre 2026' }),
+    ).toBeInTheDocument();
+  });
 });

@@ -20,7 +20,7 @@ import {
 } from '../../lib/alquileres-api';
 import { EnviarMailModal } from './enviar-mail-modal';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { cantidad, fmtFecha, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { Bloque, Confirmacion, EncabezadoPagina, VacioBloque } from './piezas';
 import { SelectorPersona } from './selector-persona';
@@ -316,6 +316,9 @@ export function CobroForm({
                       <label className="flex items-start gap-3">
                         <input
                           type="checkbox"
+                          // Un nombre corto y claro para el lector de pantalla:
+                          // el de la etiqueta entera incluía fechas e importes.
+                          aria-label={`${d.contrato ? `${d.contrato.codigo} · ` : ''}${d.descripcion}`}
                           className="mt-1 h-4 w-4 accent-brand-red"
                           checked={elegido}
                           onChange={(e) => {
@@ -358,7 +361,7 @@ export function CobroForm({
                       {d.punitorio && elegido && (
                         <div className="ml-7 grid gap-2 rounded-brand bg-surface p-3 sm:grid-cols-[auto_10rem_1fr] sm:items-end">
                           <p className="text-xs text-muted sm:pb-2.5">
-                            Punitorio: {d.punitorio.dias} días de atraso,{' '}
+                            Punitorio: {cantidad(d.punitorio.dias, 'día')} de atraso,{' '}
                             {fmtMoneda(d.punitorio.importe, moneda)}
                           </p>
                           <Campo label="Se cobra">
