@@ -1,4 +1,5 @@
 import type { ZodType, ZodTypeDef } from 'zod';
+import { mensajeLegible } from './mensaje-zod';
 
 export class ApiError extends Error {
   status?: number;
@@ -69,9 +70,10 @@ function mensajeDeError(errorBody: ApiErrorBody | null, fallback: string): strin
   // Solo usamos el detalle si es un error de validación por campo; para otros
   // (Prisma manda `details` como string[]) caemos al mensaje genérico en vez
   // de renderizar `undefined`.
-  if (esDetalleCampo(detalle)) {
-    return detalle.path ? `${detalle.path}: ${detalle.message}` : detalle.message;
-  }
+  // Solo el mensaje: con el nombre del campo delante salía «cuit: El CUIT/CUIL
+  // no es válido…», la clave interna a la vista (prueba en producción,
+  // 6/10/2026). Y si el mensaje es el de Zod en inglés, uno en castellano.
+  if (esDetalleCampo(detalle)) return mensajeLegible(detalle.message);
   return errorBody?.error?.message ?? fallback;
 }
 

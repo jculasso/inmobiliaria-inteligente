@@ -58,6 +58,47 @@ describe('apiFetch', () => {
     );
   });
 
+  // Prueba en producción, 6/10/2026: «cuit: El CUIT/CUIL no es válido…».
+  it('un error de validación muestra el mensaje, sin la clave del campo delante', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: {
+            code: 'bad_request',
+            message: 'Error de validación.',
+            details: [{ path: 'cuit', message: 'El CUIT/CUIL no es válido: revisá los números.' }],
+          },
+        }),
+      }),
+    );
+    const error = await apiFetch('/alquileres/personas', schema, { accessToken: 't' }).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as Error).message).toBe('El CUIT/CUIL no es válido: revisá los números.');
+  });
+
+  it('un detalle con el mensaje de Zod en inglés se dice en castellano', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: {
+            code: 'bad_request',
+            message: 'Error de validación.',
+            details: [{ path: 'tramos', message: 'Array must contain at least 1 element(s)' }],
+          },
+        }),
+      }),
+    );
+    await expect(apiFetch('/x', schema, { accessToken: 't' })).rejects.toThrow(/^Revisá los datos/);
+  });
+
   it('lanza ApiError si el body no matchea el schema', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
     await expect(
