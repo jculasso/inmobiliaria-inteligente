@@ -34,7 +34,9 @@ export class ReclamosController {
 
   @Get('usuarios')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'A quién se le puede asignar un reclamo' })
+  @ApiOperation({
+    summary: 'Quiénes pueden seguir un reclamo: usuarios activos con un rol que entra al módulo',
+  })
   usuarios() {
     return this.reclamos.usuarios();
   }
@@ -48,7 +50,10 @@ export class ReclamosController {
 
   @Post()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Abre un reclamo' })
+  @ApiOperation({
+    summary: 'Abre un reclamo, con quién lo sigue y el proveedor',
+    description: 'Quien lo sigue tiene que estar activo y entrar al módulo: si no, 400.',
+  })
   crear(
     @Body(new ZodValidationPipe(ReclamoInputSchema)) dto: Reclamo,
     @CurrentUser() user: AuthPrincipal,
@@ -58,7 +63,9 @@ export class ReclamosController {
 
   @Patch(':id')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Cambia estado, prioridad o asignado, o agrega una nota' })
+  @ApiOperation({
+    summary: 'Cambia estado, prioridad, quién lo sigue o el proveedor, o agrega una nota',
+  })
   cambiar(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(CambioReclamoSchema)) cambio: CambioReclamo,

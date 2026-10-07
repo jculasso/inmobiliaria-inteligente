@@ -17,15 +17,25 @@ import { cambiarReclamo } from '../../lib/alquileres-api';
 import { fmtFechaDe, fmtFechaHora } from '../../lib/format';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { Bloque, Dato, EncabezadoPagina, Panel, VacioBloque } from './piezas';
-import { EstadoReclamoBadge, PrioridadBadge, useUsuarios } from './reclamos-piezas';
+import {
+  ContactoProveedor,
+  EstadoReclamoBadge,
+  PrioridadBadge,
+  SelectLoSigue,
+  SelectProveedor,
+  useProveedores,
+  useUsuarios,
+} from './reclamos-piezas';
 
-/** Un reclamo: qué pasa, de quién, quién lo tiene, y su historial de notas. */
+/** Un reclamo: qué pasa, de quién, quién lo sigue, quién lo arregla, y su historial de notas. */
 export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
   const router = useRouter();
   const usuarios = useUsuarios();
+  const proveedores = useProveedores();
   const [estado, setEstado] = useState<EstadoReclamo>(r.estado);
   const [prioridad, setPrioridad] = useState<PrioridadReclamo>(r.prioridad);
   const [asignado, setAsignado] = useState(r.asignadoAId ?? '');
+  const [proveedor, setProveedor] = useState(r.proveedor?.id ?? '');
   const [nota, setNota] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -33,6 +43,7 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
     estado !== r.estado ||
     prioridad !== r.prioridad ||
     asignado !== (r.asignadoAId ?? '') ||
+    proveedor !== (r.proveedor?.id ?? '') ||
     nota.trim() !== '';
 
   async function guardar() {
@@ -43,6 +54,7 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
         ...(estado !== r.estado ? { estado } : {}),
         ...(prioridad !== r.prioridad ? { prioridad } : {}),
         ...(asignado !== (r.asignadoAId ?? '') ? { asignadoAId: asignado || null } : {}),
+        ...(proveedor !== (r.proveedor?.id ?? '') ? { proveedorId: proveedor || null } : {}),
         nota: nota.trim() || null,
       });
       setNota('');
@@ -89,7 +101,10 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
             {fmtFechaDe(r.abierto)}
             {r.abiertoPor ? ` · ${r.abiertoPor}` : ''}
           </Dato>
-          <Dato etiqueta="Asignado a">{r.asignadoA ?? 'Sin asignar'}</Dato>
+          <Dato etiqueta="Lo sigue">{r.asignadoA ?? 'Sin asignar'}</Dato>
+          <Dato etiqueta="Proveedor">
+            <ContactoProveedor proveedor={r.proveedor} />
+          </Dato>
         </dl>
         {r.descripcion && (
           <p className="mt-3 whitespace-pre-line text-sm text-ink">{r.descripcion}</p>
@@ -97,7 +112,7 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
       </Panel>
       <Panel icono="✍️" titulo="Actualizar">
         <div className="flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Campo label="Estado">
               <select
                 className={inputClass}
@@ -124,20 +139,18 @@ export function ReclamoFicha({ reclamo: r }: { reclamo: ReclamoDto }) {
                 ))}
               </select>
             </Campo>
-            <Campo label="Asignado a">
-              <select
-                className={inputClass}
-                value={asignado}
-                onChange={(e) => setAsignado(e.target.value)}
-              >
-                <option value="">Sin asignar</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre}
-                  </option>
-                ))}
-              </select>
-            </Campo>
+            <SelectLoSigue
+              usuarios={usuarios}
+              value={asignado}
+              onChange={setAsignado}
+              actual={r.asignadoAId ? { id: r.asignadoAId, nombre: r.asignadoA } : null}
+            />
+            <SelectProveedor
+              proveedores={proveedores}
+              value={proveedor}
+              onChange={setProveedor}
+              actual={r.proveedor}
+            />
           </div>
           <Campo
             label="Nota"

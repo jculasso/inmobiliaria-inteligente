@@ -1962,7 +1962,14 @@ export const ReclamoInputSchema = z
       .uuid()
       .nullish()
       .transform((v) => v ?? null),
+    /** «Lo sigue»: alguien que entra al módulo (`ROLES_ADMINISTRACION_ALQUILERES`); lo valida la API. */
     asignadoAId: z
+      .string()
+      .uuid()
+      .nullish()
+      .transform((v) => v ?? null),
+    /** Quién lo arregla: uno de los Proveedores del módulo. */
+    proveedorId: z
       .string()
       .uuid()
       .nullish()
@@ -1979,6 +1986,7 @@ export const CambioReclamoSchema = z.object({
   estado: EstadoReclamoSchema.optional(),
   prioridad: PrioridadReclamoSchema.optional(),
   asignadoAId: z.string().uuid().nullable().optional(),
+  proveedorId: z.string().uuid().nullable().optional(),
   /** Lo que se hizo o se habló: queda en el historial del reclamo. */
   nota: z
     .string()
@@ -1988,6 +1996,15 @@ export const CambioReclamoSchema = z.object({
     .transform((v) => (v ? v : null)),
 });
 export type CambioReclamo = z.output<typeof CambioReclamoSchema>;
+
+/** El proveedor de un reclamo, con lo necesario para llamarlo o escribirle. */
+export const ProveedorDelReclamoSchema = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  telefono: z.string().nullable(),
+  email: z.string().nullable(),
+});
+export type ProveedorDelReclamo = z.infer<typeof ProveedorDelReclamoSchema>;
 
 export const ReclamoResumenDtoSchema = z.object({
   id: z.string().uuid(),
@@ -2000,7 +2017,9 @@ export const ReclamoResumenDtoSchema = z.object({
     .object({ id: z.string().uuid(), codigo: z.string(), propiedad: z.string() })
     .nullable(),
   persona: z.object({ id: z.string().uuid(), nombre: z.string() }).nullable(),
+  /** «Lo sigue»: el nombre, aunque esa persona ya no use Alquileres (una fila vieja no se pierde). */
   asignadoA: z.string().nullable(),
+  proveedor: ProveedorDelReclamoSchema.nullable(),
   abierto: z.string(),
   actualizado: z.string(),
 });
