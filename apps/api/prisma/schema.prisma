@@ -1164,20 +1164,25 @@ model AlqReclamo {
   estado      String    @default("abierto")
   contratoId  String?   @map("contrato_id") @db.Uuid
   personaId   String?   @map("persona_id") @db.Uuid
+  /// «Lo sigue»: un usuario con un rol de ROLES_ADMINISTRACION_ALQUILERES (lo valida la API).
   asignadoAId String?   @map("asignado_a_id") @db.Uuid
+  /// Quién lo arregla. Borrar el proveedor deja el reclamo «Sin proveedor».
+  proveedorId String?   @map("proveedor_id") @db.Uuid
   creadoPorId String?   @map("creado_por_id") @db.Uuid
   cerradoEn   DateTime? @map("cerrado_en") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  notas  AlqReclamoNota[]
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proveedor AlqProveedor?    @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+  notas     AlqReclamoNota[]
 
   @@unique([tenantId, numero])
   @@index([tenantId])
   @@index([tenantId, estado])
   @@index([contratoId])
   @@index([personaId])
+  @@index([proveedorId])
   @@map("alq_reclamo")
 }
 
@@ -1217,6 +1222,7 @@ model AlqProveedor {
 
   tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   comprobantes AlqComprobante[]
+  reclamos     AlqReclamo[]
 
   @@index([tenantId])
   @@map("alq_proveedor")

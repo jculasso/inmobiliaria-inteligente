@@ -47,7 +47,11 @@ export function ReclamosDelContrato({
                     {r.numero} · {r.asunto}
                   </span>
                   <span className="block text-xs text-muted">
-                    {fmtFechaDe(r.abierto)} · {r.asignadoA ?? 'sin asignar'}
+                    {[
+                      fmtFechaDe(r.abierto),
+                      `Lo sigue: ${r.asignadoA ?? 'sin asignar'}`,
+                      `Proveedor: ${r.proveedor?.nombre ?? 'sin proveedor'}`,
+                    ].join(' · ')}
                   </span>
                 </span>
                 <span className="flex gap-1">

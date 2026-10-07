@@ -51,6 +51,8 @@ export function ReclamosLista({
         r.contrato?.codigo,
         r.contrato?.propiedad,
         r.persona?.nombre,
+        r.asignadoA,
+        r.proveedor?.nombre,
       ].some((t) => paraBuscar(t).includes(q)),
     );
   }, [reclamos, busqueda]);
@@ -72,7 +74,7 @@ export function ReclamosLista({
       <BarraLista
         busqueda={busqueda}
         onBusqueda={setBusqueda}
-        placeholder="Buscar por número, asunto, contrato o persona…"
+        placeholder="Buscar por número, asunto, contrato, persona o proveedor…"
         visibles={filtrados.length}
         total={reclamos.length}
         nombre="reclamos"
@@ -110,8 +112,9 @@ export function ReclamosLista({
                       {<PrioridadBadge prioridad={r.prioridad} />}
                     </CampoTarjeta>
                     <CampoTarjeta etiqueta="De">{r.persona?.nombre ?? '—'}</CampoTarjeta>
-                    <CampoTarjeta etiqueta="Asignado a">
-                      {r.asignadoA ?? 'Sin asignar'}
+                    <CampoTarjeta etiqueta="Lo sigue">{r.asignadoA ?? 'Sin asignar'}</CampoTarjeta>
+                    <CampoTarjeta etiqueta="Proveedor">
+                      {r.proveedor?.nombre ?? 'Sin proveedor'}
                     </CampoTarjeta>
                   </CamposTarjeta>
                 </Tarjeta>
@@ -129,7 +132,8 @@ export function ReclamosLista({
                   <th className={CLASE_TH}>Tipo</th>
                   <th className={CLASE_TH}>Prioridad</th>
                   <th className={CLASE_TH}>Estado</th>
-                  <th className={CLASE_TH}>Asignado a</th>
+                  <th className={CLASE_TH}>Lo sigue</th>
+                  <th className={CLASE_TH}>Proveedor</th>
                   <th className={CLASE_TH}>Abierto</th>
                 </tr>
               </thead>
@@ -161,6 +165,9 @@ export function ReclamosLista({
                       <EstadoReclamoBadge estado={r.estado} />
                     </td>
                     <td className={`${CLASE_TD} text-muted`}>{r.asignadoA ?? 'Sin asignar'}</td>
+                    <td className={`${CLASE_TD} text-muted`}>
+                      {r.proveedor?.nombre ?? 'Sin proveedor'}
+                    </td>
                     <td className={`${CLASE_TD} tabular-nums text-muted`}>
                       {fmtFechaDe(r.abierto)}
                     </td>

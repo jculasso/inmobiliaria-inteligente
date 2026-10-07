@@ -9,11 +9,12 @@ import {
   type ContratoResumenDto,
   type EstadoReclamo,
   type PrioridadReclamo,
+  type ProveedorDelReclamo,
   type TipoReclamo,
 } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { crearReclamo, listUsuariosAsignables } from '../../lib/alquileres-api';
+import { crearReclamo, listProveedores, listUsuariosAsignables } from '../../lib/alquileres-api';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { Insignia, type TonoInsignia } from './piezas';
 import { primerMensaje } from '../../lib/mensaje-zod';
@@ -42,27 +43,103 @@ export const PrioridadBadge = ({ prioridad }: { prioridad: PrioridadReclamo }) =
   </Insignia>
 );
 
-/** Los usuarios a los que se les puede asignar un reclamo. */
-export function useUsuarios() {
-  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string }[]>([]);
+type Opcion = { id: string; nombre: string };
+
+/**
+ * Una lista que se pide al abrir: `null` mientras no llegó (o si falló). Sin
+ * la lista el reclamo se abre igual, sin asignar y sin proveedor.
+ */
+function useLista(pedir: (token: string) => Promise<Opcion[]>): Opcion[] | null {
+  const [xs, setXs] = useState<Opcion[] | null>(null);
   useEffect(() => {
     let vigente = true;
     (async () => {
       try {
-        const xs = await listUsuariosAsignables(await getAccessToken());
-        if (vigente) setUsuarios(xs);
+        const lista = await pedir(await getAccessToken());
+        if (vigente) setXs(lista.map(({ id, nombre }) => ({ id, nombre })));
       } catch {
-        /* sin la lista se puede abrir igual, sin asignar */
+        /* queda en null: se puede seguir sin elegir */
       }
     })();
     return () => {
       vigente = false;
     };
-  }, []);
-  return usuarios;
+  }, [pedir]);
+  return xs;
 }
 
-/** Abrir un reclamo: de un contrato (y su inquilino), con tipo, prioridad y a quién se le asigna. */
+/** Quiénes pueden seguir un reclamo: los que entran al módulo (la API ya los filtra). */
+export const useUsuarios = () => useLista(listUsuariosAsignables);
+/** Los proveedores del módulo, para elegir quién arregla el reclamo. */
+export const useProveedores = () => useLista(listProveedores);
+
+/**
+ * «Lo sigue». Si el reclamo ya lo tenía alguien que no está en la lista —un
+ * vendedor, de antes de la regla 61— se muestra como la opción actual, marcada,
+ * para que guardar otro cambio no lo pierda en silencio (regla 63).
+ */
+export function SelectLoSigue({
+  usuarios,
+  value,
+  onChange,
+  actual,
+}: {
+  usuarios: Opcion[] | null;
+  value: string;
+  onChange: (id: string) => void;
+  /** El que tiene hoy el reclamo, con su nombre. */
+  actual?: { id: string; nombre: string | null } | null;
+}) {
+  const fuera = actual && !(usuarios ?? []).some((u) => u.id === actual.id) ? actual : null;
+  return (
+    <Campo label="Lo sigue">
+      <select className={inputClass} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Sin asignar</option>
+        {fuera && (
+          <option value={fuera.id}>
+            {fuera.nombre ?? 'Otro usuario'}
+            {usuarios ? ' · no usa Alquileres' : ''}
+          </option>
+        )}
+        {(usuarios ?? []).map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.nombre}
+          </option>
+        ))}
+      </select>
+    </Campo>
+  );
+}
+
+/** «Proveedor»: quién lo arregla, de la lista de Proveedores. */
+export function SelectProveedor({
+  proveedores,
+  value,
+  onChange,
+  actual,
+}: {
+  proveedores: Opcion[] | null;
+  value: string;
+  onChange: (id: string) => void;
+  actual?: Pick<ProveedorDelReclamo, 'id' | 'nombre'> | null;
+}) {
+  const fuera = actual && !(proveedores ?? []).some((p) => p.id === actual.id) ? actual : null;
+  return (
+    <Campo label="Proveedor">
+      <select className={inputClass} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Sin proveedor</option>
+        {fuera && <option value={fuera.id}>{fuera.nombre}</option>}
+        {(proveedores ?? []).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nombre}
+          </option>
+        ))}
+      </select>
+    </Campo>
+  );
+}
+
+/** Abrir un reclamo: de un contrato (y su inquilino), con tipo, prioridad, quién lo sigue y el proveedor. */
 export function NuevoReclamoModal({
   contratos,
   contratoFijo,
@@ -75,12 +152,14 @@ export function NuevoReclamoModal({
   onCreado: (id: string) => void;
 }) {
   const usuarios = useUsuarios();
+  const proveedores = useProveedores();
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [tipo, setTipo] = useState<TipoReclamo>('mantenimiento');
   const [prioridad, setPrioridad] = useState<PrioridadReclamo>('media');
   const [contratoId, setContratoId] = useState(contratoFijo ?? '');
   const [asignadoAId, setAsignadoAId] = useState('');
+  const [proveedorId, setProveedorId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -93,6 +172,7 @@ export function NuevoReclamoModal({
       contratoId: contratoId || null,
       personaId: null,
       asignadoAId: asignadoAId || null,
+      proveedorId: proveedorId || null,
     };
     const r = ReclamoInputSchema.safeParse(dto);
     if (!r.success) {
@@ -149,7 +229,7 @@ export function NuevoReclamoModal({
             onChange={(e) => setDescripcion(e.target.value)}
           />
         </Campo>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Tipo">
             <select
               className={inputClass}
@@ -176,20 +256,12 @@ export function NuevoReclamoModal({
               ))}
             </select>
           </Campo>
-          <Campo label="Asignado a">
-            <select
-              className={inputClass}
-              value={asignadoAId}
-              onChange={(e) => setAsignadoAId(e.target.value)}
-            >
-              <option value="">Sin asignar</option>
-              {usuarios.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
-          </Campo>
+          <SelectLoSigue usuarios={usuarios} value={asignadoAId} onChange={setAsignadoAId} />
+          <SelectProveedor
+            proveedores={proveedores}
+            value={proveedorId}
+            onChange={setProveedorId}
+          />
         </div>
         {error && (
           <p role="alert" className="text-sm font-medium text-danger">
@@ -206,5 +278,30 @@ export function NuevoReclamoModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** El teléfono como link para llamar: solo dígitos y el «+» del principio. */
+export function hrefTelefono(telefono: string): string {
+  return `tel:${telefono.trim().replace(/(?!^\+)[^\d]/g, '')}`;
+}
+
+/** El proveedor de un reclamo, con su teléfono y su email para llamarlo o escribirle. */
+export function ContactoProveedor({ proveedor: p }: { proveedor: ProveedorDelReclamo | null }) {
+  if (!p) return <>Sin proveedor</>;
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span className="font-semibold">{p.nombre}</span>
+      {p.telefono && (
+        <a href={hrefTelefono(p.telefono)} className="text-ink underline-offset-2 hover:underline">
+          📞 {p.telefono}
+        </a>
+      )}
+      {p.email && (
+        <a href={`mailto:${p.email}`} className="text-ink underline-offset-2 hover:underline">
+          ✉️ {p.email}
+        </a>
+      )}
+    </span>
   );
 }
