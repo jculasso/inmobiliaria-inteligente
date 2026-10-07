@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { VISTAS_IMPUESTOS } from './impuestos-vistas';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { agruparPorUrgencia, mesLargo } from '@vacker/domain';
@@ -70,22 +71,6 @@ export const ICONO_CLASE: Record<ClaseServicio | 'poliza', string> = {
 
 // --- Las tres pestañas (regla 45) ----------------------------------------------------
 
-export type VistaImpuestos = 'pagar' | 'cargar' | 'propiedades';
-const VISTAS: readonly (readonly [VistaImpuestos, string])[] = [
-  ['pagar', 'Para pagar'],
-  ['cargar', 'Cargar el mes'],
-  ['propiedades', 'Qué tiene cada propiedad'],
-];
-
-/**
- * La pestaña pedida por `?ver=`. Lo desconocido —y los `?ver=control` y
- * `?ver=mes` de antes del 7/10/2026, que pueden haber quedado en un marcador—
- * abre «Para pagar».
- */
-export function vistaImpuestos(ver: string | undefined): VistaImpuestos {
-  return VISTAS.some(([v]) => v === ver) ? (ver as VistaImpuestos) : 'pagar';
-}
-
 /** Lo que pide cada pestaña: la página no lee lo de las otras dos. */
 export type DatosImpuestos =
   | { ver: 'pagar'; boletas: BoletaDto[]; control: BoletaDto[]; adelantado: AdelantadoBoletasDto }
@@ -116,7 +101,7 @@ export function ImpuestosVista({ periodo, datos }: { periodo: string; datos: Dat
       </EncabezadoPagina>
       <Segmentado
         etiqueta="Qué hacer"
-        opciones={VISTAS}
+        opciones={VISTAS_IMPUESTOS}
         valor={datos.ver}
         hrefDe={(v) => `?periodo=${periodo}&ver=${v}`}
       />
