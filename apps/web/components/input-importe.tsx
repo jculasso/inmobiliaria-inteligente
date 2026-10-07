@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { escribirImporte, leerImporte, leerNumero } from '../lib/importe';
 import { inputClass } from './form-ui';
 
@@ -25,6 +25,10 @@ export function InputImporte({
   React.InputHTMLAttributes<HTMLInputElement>,
   'value' | 'onChange' | 'type' | 'inputMode'
 >) {
+  // Un campo en cero («0,00») se selecciona entero al entrar: si no, el cursor
+  // queda al final, lo escrito se suma detrás («0,0030000») y se lee 0
+  // (prueba en producción, 6/10/2026, con el informe de garantía).
+  const recienEnfocado = useRef(false);
   return (
     <div className={`relative ${className}`}>
       <span
@@ -41,7 +45,21 @@ export function InputImporte({
         className={`${inputClass} text-right tabular-nums ${moneda === 'USD' ? 'pl-12' : 'pl-7'}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={(e) => {
+          if (leerImporte(value) === 0) {
+            e.currentTarget.setSelectionRange(0, e.currentTarget.value.length);
+            recienEnfocado.current = true;
+          }
+          rest.onFocus?.(e);
+        }}
+        onMouseUp={(e) => {
+          // El clic que enfocó soltaría la selección al levantar el dedo.
+          if (recienEnfocado.current) e.preventDefault();
+          recienEnfocado.current = false;
+          rest.onMouseUp?.(e);
+        }}
         onBlur={(e) => {
+          recienEnfocado.current = false;
           const n = leerImporte(value);
           if (n != null && !Number.isNaN(n)) onChange(escribirImporte(n));
           rest.onBlur?.(e);
