@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   VARIABLES_PLANTILLA,
   type ContratoResumenDto,
@@ -15,6 +14,7 @@ import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { Campo, inputClass } from '../form-ui';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { CLASE_FOCO, EncabezadoPagina, Panel } from './piezas';
+import { useRefrescar } from '../../lib/refrescar';
 
 /** Para qué contratos sirve una plantilla, dicho igual en la lista, en el formulario y al borrarla. */
 const PARA: Record<TipoContrato | '', string> = {
@@ -37,7 +37,7 @@ export function PlantillasVista({
   modelo: string;
   contratos: ContratoResumenDto[];
 }) {
-  const router = useRouter();
+  const { refrescar, refrescando } = useRefrescar();
   const [editando, setEditando] = useState<PlantillaDto | 'nueva' | null>(
     plantillas.length === 0 ? 'nueva' : null,
   );
@@ -82,8 +82,10 @@ export function PlantillasVista({
         editando === 'nueva' || !editando ? null : editando.id,
         { nombre, tipoContrato: tipo || null, cuerpo },
       );
+      // Se cierra el editor con la lista nueva ya a la vista: antes, unos
+      // segundos decía «Todavía no hay plantillas» con la recién guardada.
+      await refrescar();
       setEditando(null);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar.');
     } finally {
@@ -238,7 +240,7 @@ export function PlantillasVista({
                   Cancelar
                 </Button>
                 <Button variant="primary" size="sm" onClick={guardar} disabled={guardando}>
-                  {guardando ? 'Guardando…' : 'Guardar'}
+                  {refrescando ? 'Actualizando…' : guardando ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
             </div>
@@ -258,7 +260,7 @@ export function PlantillasVista({
           detalle={<DatoBorrado etiqueta="Para">{PARA[aBorrar.tipoContrato ?? '']}</DatoBorrado>}
           onConfirm={async () => {
             await borrarPlantilla(await getAccessToken(), aBorrar.id);
-            router.refresh();
+            await refrescar();
           }}
           onClose={() => setABorrar(null)}
         />

@@ -20,7 +20,8 @@ export function DatosContratoModal({
 }: {
   contratoId: string;
   onClose: () => void;
-  onSaved: () => void;
+  /** Si devuelve una promesa (el refresh de la página), el modal la espera ocupado. */
+  onSaved: () => void | Promise<void>;
 }) {
   const [contrato, setContrato] = useState<ContratoDto | null>(null);
   const [fechaFirma, setFechaFirma] = useState('');
@@ -29,6 +30,7 @@ export function DatosContratoModal({
   const [obs, setObs] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
 
   useEffect(() => {
     let vigente = true;
@@ -60,11 +62,13 @@ export function DatosContratoModal({
         diaPagoPropietario: Number(diaPagoPropietario),
         obs: obs || null,
       });
-      onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar.');
       setGuardando(false);
+      return;
     }
+    setActualizando(true);
+    await onSaved();
   }
 
   const dias = Array.from({ length: 28 }, (_, i) => i + 1);
@@ -73,6 +77,7 @@ export function DatosContratoModal({
       title={contrato ? `Editar el contrato ${contrato.codigo}` : 'Editar el contrato'}
       subtitle="Está vigente: se edita lo que no toca plata."
       onClose={onClose}
+      cerrable={!guardando}
     >
       {!contrato && !error ? (
         <p className="text-sm text-muted">Cargando…</p>
@@ -132,7 +137,7 @@ export function DatosContratoModal({
               Cancelar
             </Button>
             <Button variant="primary" onClick={guardar} disabled={guardando || !contrato}>
-              {guardando ? 'Guardando…' : 'Guardar'}
+              {actualizando ? 'Actualizando…' : guardando ? 'Guardando…' : 'Guardar'}
             </Button>
           </div>
         </div>

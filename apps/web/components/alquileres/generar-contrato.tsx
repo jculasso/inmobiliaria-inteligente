@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import type { ContratoDto, DocumentoContratoDto, PlantillaDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { generarDesdePlantilla, vistaPreviaPlantilla } from '../../lib/alquileres-api';
 import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
 import { inputClass } from '../form-ui';
+import { useRefrescar } from '../../lib/refrescar';
 import { Panel } from './piezas';
 
 /**
@@ -25,7 +25,7 @@ export function GenerarContrato({
   plantillas: PlantillaDto[];
   documento: DocumentoContratoDto | null;
 }) {
-  const router = useRouter();
+  const { refrescar, refrescando } = useRefrescar();
   const sirven = plantillas.filter((p) => !p.tipoContrato || p.tipoContrato === contrato.tipo);
   const [plantillaId, setPlantillaId] = useState(sirven[0]?.id ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,8 @@ export function GenerarContrato({
     setGenerando(true);
     try {
       await generarDesdePlantilla(await getAccessToken(), contrato.id, plantillaId);
-      router.refresh();
+      // Ocupado hasta que el documento nuevo aparece abajo, en la firma.
+      await refrescar();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar.');
     } finally {
@@ -96,11 +97,13 @@ export function GenerarContrato({
               onClick={generar}
               disabled={generando || !plantillaId}
             >
-              {generando
-                ? 'Generando…'
-                : documento
-                  ? '📝 Volver a generar el PDF'
-                  : '📝 Generar el PDF del contrato'}
+              {refrescando
+                ? 'Actualizando…'
+                : generando
+                  ? 'Generando…'
+                  : documento
+                    ? '📝 Volver a generar el PDF'
+                    : '📝 Generar el PDF del contrato'}
             </Button>
           </div>
           <p className="text-xs text-muted">
