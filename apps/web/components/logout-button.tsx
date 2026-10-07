@@ -5,8 +5,19 @@ import { Button } from '@vacker/ui';
 import { createClient } from '../lib/supabase/client';
 
 /** `redirectTo`: adónde ir tras cerrar sesión. Default `/` (Home). El panel de
- * admin lo pasa como `/admin` para volver a su propio login (no a la Home). */
-export function LogoutButton({ redirectTo = '/' }: { redirectTo?: string }) {
+ * admin lo pasa como `/admin` para volver a su propio login (no a la Home).
+ *
+ * `compacto`: en el teléfono es un botón de ícono de 40px (con su nombre para
+ * el lector de pantalla); desde `sm`, el de siempre con el texto. Lo usa la
+ * cabecera de los módulos, que en 375px empujaba el título hasta la mitad de
+ * la pantalla (prueba en producción, 6/10/2026). */
+export function LogoutButton({
+  redirectTo = '/',
+  compacto = false,
+}: {
+  redirectTo?: string;
+  compacto?: boolean;
+}) {
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
@@ -24,9 +35,39 @@ export function LogoutButton({ redirectTo = '/' }: { redirectTo?: string }) {
     window.location.replace(redirectTo);
   }
 
+  const texto = loading ? 'Saliendo…' : 'Cerrar sesión';
+  if (!compacto) {
+    return (
+      <Button variant="secondary" size="sm" onClick={handleLogout} disabled={loading}>
+        {texto}
+      </Button>
+    );
+  }
   return (
-    <Button variant="secondary" size="sm" onClick={handleLogout} disabled={loading}>
-      {loading ? 'Saliendo…' : 'Cerrar sesión'}
+    <Button
+      variant="secondary"
+      size="sm"
+      onClick={handleLogout}
+      disabled={loading}
+      aria-label={texto}
+      title={texto}
+      className="max-sm:h-10 max-sm:w-10 max-sm:px-0"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-5 w-5 sm:hidden"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <path d="M16 17l5-5-5-5" />
+        <path d="M21 12H9" />
+      </svg>
+      <span className="max-sm:hidden">{texto}</span>
     </Button>
   );
 }

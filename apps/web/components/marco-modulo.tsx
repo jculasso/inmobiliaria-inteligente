@@ -97,7 +97,7 @@ export function MarcoModulo({
   titulo,
   nav,
   children,
-  className = 'mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10',
+  className = 'mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-10',
   contenido = 'mt-6',
 }: {
   principal: AuthPrincipal;
@@ -109,30 +109,49 @@ export function MarcoModulo({
 }) {
   return (
     <main className={className} style={tenantBrandStyle(principal.tenant.config)}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
+      {/* En el teléfono, una sola fila compacta: logo más chico, sin el email
+          (queda el avatar) y «Cerrar sesión» como ícono. En 375px la cabecera
+          empujaba el título de la página hasta y≈275 de 812 (prueba en
+          producción, 6/10/2026). Desde `sm`, igual que siempre. */}
+      <div className="flex items-center justify-between gap-3 sm:flex-wrap sm:gap-4">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <Avatar
+            nombre={principal.tenant.nombre}
+            fotoUrl={principal.tenant.config.logoUrl}
+            size="md"
+            className="sm:hidden"
+          />
           <Avatar
             nombre={principal.tenant.nombre}
             fotoUrl={principal.tenant.config.logoUrl}
             size="lg"
+            className="max-sm:hidden"
           />
           <div className="min-w-0">
             <MarcaPlataforma />
-            <div className="mt-1 flex flex-wrap items-center gap-2.5">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h1 className="text-xl font-extrabold text-ink sm:text-2xl">{titulo}</h1>
               <MenuModulos modulos={principal.tenant.modulos} />
             </div>
           </div>
         </div>
-        <div className="flex max-w-full flex-col items-end gap-2">
+        <div className="flex shrink-0 items-center gap-2 sm:max-w-full sm:flex-col sm:items-end">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="min-w-0 truncate text-sm text-muted">{principal.email}</span>
-            <Avatar nombre={principal.nombre} fotoUrl={principal.fotoUrl} size="md" />
+            <span className="hidden min-w-0 truncate text-sm text-muted sm:inline">
+              {principal.email}
+            </span>
+            <Avatar
+              nombre={principal.nombre}
+              fotoUrl={principal.fotoUrl}
+              size="md"
+              title={principal.email}
+              className="max-sm:h-10 max-sm:w-10"
+            />
           </div>
-          <LogoutButton />
+          <LogoutButton compacto />
         </div>
       </div>
-      {nav && <div className="mt-5">{nav}</div>}
+      {nav && <div className="mt-3 sm:mt-5">{nav}</div>}
       <div className={contenido}>{children}</div>
     </main>
   );

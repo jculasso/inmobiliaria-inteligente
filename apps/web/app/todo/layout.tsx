@@ -13,7 +13,7 @@ export default async function TodoLayout({ children }: { children: ReactNode }) 
     <MarcoModulo
       principal={principal}
       titulo="To Do List"
-      className="mx-auto flex h-dvh max-w-4xl flex-col px-4 py-8 sm:px-6 sm:py-10"
+      className="mx-auto flex h-dvh max-w-4xl flex-col px-4 py-4 sm:px-6 sm:py-10"
       contenido="mt-6 flex min-h-0 flex-1 flex-col"
     >
       {children}
