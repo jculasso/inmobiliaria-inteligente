@@ -338,12 +338,13 @@ export const correrPeriodo = (periodo: string, n: number) =>
   sumarMesesIso(`${periodo}-01`, n).slice(0, 7);
 
 /** El mes que se está mirando, con flechas al anterior y al siguiente. El mes viaja en la dirección (`?periodo=`). */
-export function NavegadorMes({ periodo }: { periodo: string }) {
+export function NavegadorMes({ periodo, conservar = '' }: { periodo: string; conservar?: string }) {
+  // `conservar` («&ver=cargar»): lo demás de la dirección, para no perder la pestaña al cambiar de mes.
   const flecha = `rounded-brand px-2.5 py-1 text-lg text-muted hover:text-ink ${CLASE_FOCO}`;
   return (
     <div className="flex items-center gap-1 rounded-brand border border-line bg-white">
       <Link
-        href={`?periodo=${correrPeriodo(periodo, -1)}`}
+        href={`?periodo=${correrPeriodo(periodo, -1)}${conservar}`}
         aria-label="Mes anterior"
         className={flecha}
       >
@@ -353,7 +354,7 @@ export function NavegadorMes({ periodo }: { periodo: string }) {
         {mesTitulo(periodo)}
       </span>
       <Link
-        href={`?periodo=${correrPeriodo(periodo, 1)}`}
+        href={`?periodo=${correrPeriodo(periodo, 1)}${conservar}`}
         aria-label="Mes siguiente"
         className={flecha}
       >

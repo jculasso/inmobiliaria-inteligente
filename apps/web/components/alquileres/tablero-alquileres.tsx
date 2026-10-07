@@ -706,7 +706,7 @@ export function TableroAlquileres({
       ind: t.tareas.boletas,
       columnas: VISTAS.boletas,
       total: 'ARS',
-      accion: { href: '/alquileres/impuestos?ver=control', texto: 'Ir a impuestos y servicios' },
+      accion: { href: '/alquileres/impuestos?ver=pagar', texto: 'Ir a «Para pagar»' },
     },
   ];
 

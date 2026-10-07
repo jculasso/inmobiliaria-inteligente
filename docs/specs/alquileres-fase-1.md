@@ -342,6 +342,85 @@ PDF generado desde la plantilla.
 32. Una inmobiliaria con el módulo prendido y sin contratos ve el tablero con
     un mensaje que explica cómo empezar, **no** tarjetas en cero.
 
+### Impuestos y servicios (entrega 19; rediseñada el 7/10/2026)
+
+Pedido de Javier: la pantalla «no se entiende». Mezclaba tres trabajos —
+configurar una vez, cargar una vez por mes, pagar y controlar todos los días—
+en cinco bloques apilados, y «la debe · paga» no decía qué pasaba con la plata.
+
+45. `/alquileres/impuestos` tiene **tres pestañas**, elegidas por `?ver=`:
+    «Para pagar» (`pagar`, la de entrada), «Cargar el mes» (`cargar`) y «Qué
+    tiene cada propiedad» (`propiedades`). Un `?ver=` desconocido —y el
+    `?ver=control` de antes— abre «Para pagar»; cambiar de mes no cambia de
+    pestaña. Las **pólizas no están** en esta pantalla: se dan de alta y se
+    anulan en la ficha del contrato. Sus cuotas son boletas y aparecen en
+    «Para pagar». La tarjeta de boletas del Dashboard lleva a `?ver=pagar`.
+46. Quién debe una boleta y quién la paga se dice con **una sola frase**, la
+    misma en «Para pagar», en «Cargar el mes» y en el alta del impuesto de una
+    propiedad (`consecuenciaDeBoleta`, en `@vacker/types`):
+
+    | La debe     | La paga         | Frase                                                                               |
+    | ----------- | --------------- | ----------------------------------------------------------------------------------- |
+    | inquilino   | el inquilino    | La paga el inquilino: solo hay que pedirle el comprobante                           |
+    | propietario | el propietario  | La paga el propietario: solo hay que pedirle el comprobante                         |
+    | inquilino   | la inmobiliaria | La paga la inmobiliaria y se le cobra al inquilino en su próximo recibo             |
+    | propietario | la inmobiliaria | La paga la inmobiliaria y se le descuenta al propietario al liquidar                |
+    | propietario | el inquilino    | La paga el inquilino y se le descuenta al propietario (al inquilino se le reconoce) |
+    | inquilino   | el propietario  | La paga el propietario y se le cobra al inquilino para devolvérsela                 |
+
+    Sin contrato ese mes, cualquiera sea la combinación: «Sin contrato ese mes:
+    no se le carga a nadie, queda para control». El alta tiene **un solo
+    campo**, «Quién la paga y a quién se le carga», con las seis frases; la API
+    sigue recibiendo `aCargoDe` y `paga`.
+
+47. Una boleta **pagada** que le cargó algo a quien la debe dice si ya se
+    recuperó: «Ya se le cobró al inquilino», «Ya se le descontó al
+    propietario», o lo que falta («Falta descontárselo al propietario: va en
+    su próxima liquidación»; «Falta cobrárselo al inquilino: va en su próximo
+    recibo»). Recuperada (`cargoRecuperado`) = todos sus conceptos a cobrar no
+    anulados tienen saldo cero, con el mismo saldo de la cuenta corriente
+    (`saldoDeConcepto`: importe − imputaciones activas; liquidado = 0). Si no
+    se le cargó nada a nadie es `null` y no se dice nada.
+48. «Para pagar» agrupa por urgencia, y cada boleta queda en **un solo**
+    grupo: **Vencidas** (pendientes con vencimiento anterior a hoy, de
+    cualquier mes), **Esta semana** (pendientes que vencen de hoy a 7 días, de
+    cualquier mes), **Más adelante en {mes}** (pendientes del mes elegido que
+    vencen después) y **Pagadas de {mes}**. Las anuladas del mes van aparte,
+    detrás de «Ver anuladas». Cada fila dice qué es («TGI · cuota 10 de 12»),
+    la propiedad y el contrato, «venció el lun 06/10» o «vence el vie 10/10»,
+    la frase de la regla 46 (o la de la 47, ya pagada), el importe, y un botón
+    con texto: «Registrar pago» si la paga la inmobiliaria, «Trajo el
+    comprobante» si la paga una parte. Anular es una acción secundaria, con
+    texto. Quién la cargó no se repite en cada fila.
+49. Las tarjetas de «Para pagar» tienen **un horizonte cada una**: «Vencidas»
+    = importe y cantidad del grupo Vencidas; «Vencen esta semana» = los del
+    grupo Esta semana, **sin** las vencidas; «Comprobantes que faltan» =
+    vencidas que paga el inquilino o el propietario; «Adelantado sin
+    recuperar», la regla 50.
+50. **Adelantado sin recuperar** = lo que la inmobiliaria ya pagó de boletas
+    —cuotas de pólizas incluidas— y todavía no cobró ni descontó: la suma del
+    saldo (`saldoDeConcepto`) de los conceptos a cobrar adelantados por la
+    inmobiliaria de boletas **pagadas y no anuladas**, de todos los meses,
+    **por moneda**. Un cobro parcial descuenta lo cobrado; una liquidación lo
+    salda; una boleta o un concepto anulados no cuentan; lo que todavía no se
+    pagó no es un adelanto. Lo calcula la API (`GET
+/alquileres/boletas/adelantado`) con un número fijo de consultas.
+51. La cuota se carga en **dos campos** («[3] de [6]»), se guarda como hasta
+    ahora («3/6», `CuotaSchema` no cambia) y en toda la pantalla se **muestra**
+    «cuota 3 de 6» (`textoCuota`): «10/12» se leía como una fecha. Uno solo de
+    los dos números, letras o una cuota mayor que el total no se guardan, y el
+    aviso nombra el impuesto y la propiedad.
+52. «Cargar el mes» es una tabla con títulos (Impuesto · Cuota · Vence ·
+    Importe), agrupada por propiedad, con el importe del mes anterior en cada
+    fila y lo ya cargado como «✓ Ya cargada: $ X, vence dd/mm». El pie dice
+    «N boletas para guardar · $ X» y el botón «Guardar N boletas». **Después
+    de guardar**, el aviso del resultado no convive con un contador en cero:
+    el pie muestra solo el aviso, hasta que se escribe otra cosa.
+53. «Qué tiene cada propiedad» lista **todas** las propiedades, también las
+    que no tienen ningún impuesto asignado, con «Asignar». Debajo, más chico,
+    el catálogo de la inmobiliaria. Ningún texto visible usa «cuenta» como
+    jerga por «impuesto de la propiedad».
+
 ## 6. Casos borde
 
 - **La fila vieja**: contratos migrados de Gexion sin algún dato (sin
@@ -448,6 +527,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 36                | Unit del tablero: contrato vigente sin documento firmado aparece en «a completar»                                                                                                                   |
 | 38 – 44           | Unit de `plantilla-word`, `plantilla-modelo` y `plantillas.service` (validación, lista ↔ datos, sin PDF, consultas fijas); web: `plantillas-vista` y `generar-contrato`                             |
 | 26 – 32           | Unit de los cálculos del tablero + test de que cada drill-down suma su tarjeta                                                                                                                      |
+| 45 – 53           | Types y domain: `boletas.test.ts`; API: `impuestos.service.spec.ts` (recupero, adelantado con cobro parcial y anulada, consultas fijas); web: `impuestos.test.tsx`                                  |
 | §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                       |
 | Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                         |
 | Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                 |
