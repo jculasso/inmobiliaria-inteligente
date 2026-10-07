@@ -104,4 +104,13 @@ describe('ContratoFicha — acciones según el estado (reglas 2 y 3)', () => {
     expect(screen.getByText('$ 250.000,00')).toBeInTheDocument();
     expect(screen.getByText('A indexar')).toBeInTheDocument();
   });
+
+  // No hay generación automática: los alquileres salen de «Generar» en Conceptos.
+  it('activar dice la verdad: entra en «Generar» de Conceptos, no se genera solo', async () => {
+    render(<ContratoFicha contrato={base} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Activar contrato' }));
+    const dialogo = within(screen.getByRole('dialog'));
+    expect(dialogo.getByText(/entra cada mes en «Generar» de Conceptos/)).toBeInTheDocument();
+    expect(dialogo.queryByText(/genera sus alquileres/)).not.toBeInTheDocument();
+  });
 });
