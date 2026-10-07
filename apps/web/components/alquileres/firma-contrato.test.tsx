@@ -89,4 +89,44 @@ describe('FirmaContrato', () => {
       screen.getByText(/Sin enviar → Enviado a firmar · a mano · Se marcó como enviado\./),
     ).toBeInTheDocument();
   });
+
+  // Prueba en producción, 6/10/2026: con todos en «Firmó» desaparecía el botón
+  // y el PDF firmado no se podía subir nunca.
+  it('firmado sin el PDF firmado: deja subirlo, y no ofrece marcar como vencido', () => {
+    render(<FirmaContrato contratoId="c" documento={doc({ estadoFirma: 'firmado' })} />);
+    expect(screen.getByRole('button', { name: 'Subir el contrato firmado' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Marcar como vencido' })).not.toBeInTheDocument();
+  });
+
+  it('firmado con el PDF firmado: deja reemplazarlo', () => {
+    render(
+      <FirmaContrato
+        contratoId="c"
+        documento={doc({ estadoFirma: 'firmado', tieneFirmado: true })}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Reemplazar el contrato firmado' }),
+    ).toBeInTheDocument();
+  });
+
+  // Generar el PDF desde la plantilla refresca la página: el panel tiene que
+  // mostrar el documento nuevo sin recargar.
+  it('cuando la página trae el documento nuevo, se ve sin recargar', () => {
+    const { rerender } = render(<FirmaContrato contratoId="c" documento={null} />);
+    expect(screen.getByText(/Todavía no se cargó el PDF del contrato/)).toBeInTheDocument();
+    rerender(
+      <FirmaContrato contratoId="c" documento={doc({ estadoFirma: 'sin_enviar', eventos: [] })} />,
+    );
+    expect(screen.queryByText(/Todavía no se cargó el PDF del contrato/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Contrato 5.pdf' })).toBeInTheDocument();
+  });
+
+  it('un refresh que trae lo mismo no borra las firmas sin guardar', () => {
+    const { rerender } = render(<FirmaContrato contratoId="c" documento={doc()} />);
+    fireEvent.change(screen.getByLabelText('Firma de Dueño'), { target: { value: 'firmado' } });
+    rerender(<FirmaContrato contratoId="c" documento={doc()} />);
+    expect(screen.getByLabelText('Firma de Dueño')).toHaveValue('firmado');
+    expect(screen.getByRole('button', { name: 'Guardar las firmas' })).toBeInTheDocument();
+  });
 });
