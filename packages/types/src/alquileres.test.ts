@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CuentaBancariaInputSchema,
   PersonaInputSchema,
+  PlantillaMetadatosSchema,
   PropiedadAlquilerInputSchema,
   agruparPorContrato,
   cbuValido,
@@ -157,6 +158,26 @@ describe('CUIT, CBU y alias (punto 14)', () => {
     );
     expect(PersonaInputSchema.parse({ nombre: 'Ana', cuit: '20-12345678-6' }).cuit).toBe(
       '20123456786',
+    );
+  });
+});
+
+describe('PlantillaMetadatosSchema (viaja en un formulario multipart)', () => {
+  it('«Para contratos» sin elegir llega como texto vacío y queda en null', () => {
+    expect(PlantillaMetadatosSchema.parse({ nombre: ' Locación ', tipoContrato: '' })).toEqual({
+      nombre: 'Locación',
+      tipoContrato: null,
+    });
+    expect(PlantillaMetadatosSchema.parse({ nombre: 'X' }).tipoContrato).toBeNull();
+    expect(
+      PlantillaMetadatosSchema.parse({ nombre: 'X', tipoContrato: 'comercial' }).tipoContrato,
+    ).toBe('comercial');
+  });
+
+  it('pide un nombre y un tipo que exista', () => {
+    expect(PlantillaMetadatosSchema.safeParse({ nombre: '  ' }).success).toBe(false);
+    expect(PlantillaMetadatosSchema.safeParse({ nombre: 'X', tipoContrato: 'otro' }).success).toBe(
+      false,
     );
   });
 });

@@ -1119,18 +1119,27 @@ model AlqGarantia {
   @@map("alq_garantia")
 }
 
-/// Una plantilla de contrato de la inmobiliaria, con variables {{así}} que se
-/// completan con los datos del contrato para generar el PDF que se firma.
+/// Una plantilla de contrato de la inmobiliaria: un Word (.docx) con
+/// marcadores {así} que se completan con los datos del contrato y se descarga
+/// para revisar y firmar. Las de antes del 7/10/2026 son texto (`cuerpo`), ya
+/// no generan y quedan para que se reemplacen por un Word.
 model AlqPlantilla {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  nombre       String
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  nombre          String
   /// vivienda | comercial | null (sirve para los dos)
-  tipoContrato String?  @map("tipo_contrato")
-  cuerpo       String
-  creadoPorId  String?  @map("creado_por_id") @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tipoContrato    String?   @map("tipo_contrato")
+  /// Solo las plantillas de texto del editor anterior.
+  cuerpo          String?
+  /// Clave del .docx en el bucket privado `alquileres-contratos`.
+  archivo         String?
+  nombreArchivo   String?   @map("nombre_archivo")
+  /// Bytes del .docx.
+  tamano          Int?
+  archivoSubidoEl DateTime? @map("archivo_subido_el") @db.Timestamptz(6)
+  creadoPorId     String?   @map("creado_por_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

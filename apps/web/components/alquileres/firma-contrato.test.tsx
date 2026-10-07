@@ -110,8 +110,8 @@ describe('FirmaContrato', () => {
     ).toBeInTheDocument();
   });
 
-  // Generar el PDF desde la plantilla refresca la página: el panel tiene que
-  // mostrar el documento nuevo sin recargar.
+  // Cuando la página se refresca con un documento nuevo, el panel tiene que
+  // mostrarlo sin recargar.
   it('cuando la página trae el documento nuevo, se ve sin recargar', () => {
     const { rerender } = render(<FirmaContrato contratoId="c" documento={null} />);
     expect(screen.getByText(/Todavía no se cargó el PDF del contrato/)).toBeInTheDocument();

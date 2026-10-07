@@ -3,7 +3,6 @@ import {
   alertaIndice,
   alquilerDeHoy,
   proximoCambio,
-  completarPlantilla,
   enLetras,
   importeEnLetras,
   cargoConIva,
@@ -753,7 +752,7 @@ describe('redondear2', () => {
   });
 });
 
-describe('enLetras y plantillas (entrega 15)', () => {
+describe('enLetras (entrega 15)', () => {
   it('números en letras, como en un contrato', () => {
     expect(enLetras(350_000)).toBe('trescientos cincuenta mil');
     expect(enLetras(1_137_518)).toBe('un millón ciento treinta y siete mil quinientos dieciocho');
@@ -769,15 +768,6 @@ describe('enLetras y plantillas (entrega 15)', () => {
       'pesos doscientos cincuenta y cuatro mil cien con 50/100',
     );
     expect(importeEnLetras(1500, 'USD')).toBe('dólares estadounidenses mil quinientos');
-  });
-
-  it('completa las variables y deja a la vista las que faltan', () => {
-    expect(
-      completarPlantilla('Entre {{propietarios}} y {{ inquilinos }}, por {{nada}}.', {
-        propietarios: 'Juan',
-        inquilinos: 'Ana',
-      }),
-    ).toBe('Entre Juan y Ana, por [falta: nada].');
   });
 });
 
