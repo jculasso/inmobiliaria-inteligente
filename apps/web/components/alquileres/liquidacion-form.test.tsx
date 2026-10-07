@@ -142,6 +142,13 @@ describe('LiquidacionForm', () => {
     });
     render(<LiquidacionForm propietarios={propietarios} personaInicial={DUENO} hoy="2026-11-12" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Liquidar' }));
+    // Mueve plata: primero se confirma, con el neto y a quién.
+    expect(liquidar).not.toHaveBeenCalled();
+    const dialogo = within(screen.getByRole('dialog'));
+    expect(dialogo.getByText(/Se le liquidan/)).toHaveTextContent(
+      /Se le liquidan \$ [\d.,]+ a Juan Propietario por transferencia/,
+    );
+    fireEvent.click(dialogo.getByRole('button', { name: 'Sí, liquidar' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Liquidación 000003 · $ 886.707,26 a Juan Propietario',
     );
