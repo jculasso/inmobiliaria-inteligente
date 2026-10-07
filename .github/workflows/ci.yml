@@ -168,6 +168,11 @@ jobs:
       # El SQL del tablero de Alquileres contra una base de verdad (regla 79):
       # la lista de cada número suma el número. Va acá porque es el único job
       # con Postgres; con una base de mentira no se puede probar una consulta.
+      # El servicio importa `@vacker/types` y `@vacker/domain`, que se usan
+      # compilados: `^...` construye las dependencias de la API, no la API.
+      - name: Compilar los paquetes que usa la API
+        run: pnpm turbo run build --filter=@vacker/api^...
+
       - name: Tablero de Alquileres contra la base
         run: pnpm --filter @vacker/api exec vitest run test/tablero-alquileres.e2e-spec.ts
 
