@@ -487,7 +487,8 @@ describe('TableroAlquileres', () => {
         />,
       );
       expect(tarjeta(/^Ingresos: \$ 105\.000/)).toBeInTheDocument();
-      expect(tarjeta(/^Ingresos de Q1 2026: \$ 105\.000/)).toBeInTheDocument();
+      // Una sola vez: la Cartera ya no repite el total.
+      expect(screen.queryByRole('button', { name: /^Ingresos de / })).toBeNull();
       fireEvent.click(tarjeta(/^Honorarios: \$ 100\.000/));
       await within(screen.getByRole('dialog')).findByRole('table');
       expect(getDetalle).toHaveBeenCalledWith(

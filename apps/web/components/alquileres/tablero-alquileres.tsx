@@ -898,10 +898,6 @@ export function TableroAlquileres({
     valor: suma(t.tareas.vencen.map((v) => v.indicador.valor)),
     filas: t.tareas.vencen.flatMap((v) => v.indicador.filas),
   };
-  // Lo que ganó la inmobiliaria en el período, en pesos.
-  const ingresoPesos = p.ingresos.find((i) => i.moneda === 'ARS')!;
-  const nombreCorto =
-    periodo.por === 'mes' ? NOMBRES_MES[periodo.mes - 1]!.toLowerCase() : p.nombre;
 
   type Tarea = {
     icono: string;
@@ -1026,9 +1022,13 @@ export function TableroAlquileres({
           <TituloSeccion icono="🏘️" detalle={p.alCierre}>
             Cartera
           </TituloSeccion>
-          {/* Con alquileres en dólares hay una tarjeta más: cinco columnas, para que no quede una sola abajo. */}
+          {/*
+            Los ingresos del período tienen su sección, con el desglose: acá
+            eran la misma cifra dos veces (Javier, 7/10/2026). Con alquileres
+            en dólares hay una tarjeta más.
+          */}
           <div
-            className={`grid grid-cols-2 gap-3 ${alquilerMensual.length > 1 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+            className={`grid grid-cols-2 gap-3 ${alquilerMensual.length > 1 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}
           >
             <Ancha>
               <KpiCard
@@ -1060,26 +1060,6 @@ export function TableroAlquileres({
                 </Ancha>
               );
             })}
-            <Ancha>
-              <KpiCard
-                label={`Ingresos de ${nombreCorto}`}
-                value={fmtMoneda(ingresoPesos.total, 'ARS')}
-                sub={`honorarios ${fmtMoneda(ingresoPesos.honorarios, 'ARS')} · gastos ${fmtMoneda(ingresoPesos.gastos, 'ARS')}`}
-                icon="🏦"
-                tone="success"
-                onClick={
-                  ingresoPesos.total
-                    ? pedir(
-                        `Ingresos de la inmobiliaria, ${p.nombre}`,
-                        'ingresos',
-                        'ARS',
-                        VISTAS.ingresos,
-                        { total: 'ARS' },
-                      )
-                    : undefined
-                }
-              />
-            </Ancha>
             <Ancha>
               <KpiCard
                 label="Vencen en 90 días"
