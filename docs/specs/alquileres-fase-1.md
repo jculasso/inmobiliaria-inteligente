@@ -269,6 +269,45 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
       `/webhooks/firma/<proveedor>` y, antes de mirarlos, el adaptador
       valida que sean auténticos.
 
+### Contrato desde plantilla (entrega 15; en Word desde el 7/10/2026)
+
+Pedido de Javier: la inmobiliaria sube **su propio contrato en Word** y de
+cada contrato se descarga el Word completo. Reemplaza al editor de texto y al
+PDF generado desde la plantilla.
+
+38. Una inmobiliaria tiene **varias plantillas** de contrato. Cada una es un
+    Word (`.docx`, hasta 5 MB) con un nombre y para qué contratos sirve
+    (particulares, comerciales o los dos). El archivo se guarda en el bucket
+    privado de los contratos, bajo la carpeta de la inmobiliaria; reemplazarlo
+    sube uno nuevo y borra el anterior, y borrar la plantilla borra su Word.
+39. Donde va un dato, el Word lleva un **marcador entre llaves**:
+    `{contrato.codigo}`. Una parte que aparece solo si se cumple algo va entre
+    `{#deposito}…{/deposito}` (con `{^deposito}…`, solo si no se cumple), y una
+    que se repite por cada tramo, propietario, inquilino o garante, entre
+    `{#tramos}…{/tramos}`; adentro valen los campos de la lista (`{desde}`) y
+    los datos del contrato. Los marcadores son **una sola lista**
+    (`MARCADORES_PLANTILLA`, en `@vacker/types`), con descripción y ejemplo.
+40. Al **subir o reemplazar** el Word se revisan todos los marcadores contra
+    esa lista. Uno desconocido o mal escrito (con sugerencia), con llaves
+    dobles, una sección que no se cierra o se cierra con otro nombre, o un
+    campo de lista usado fuera de su lista **rechaza la subida** con un mensaje
+    en castellano que nombra cada uno. Lo que no es un `.docx` por su
+    contenido —no por su nombre— se rechaza.
+41. Desde un contrato no anulado se elige una plantilla de Word que sirva para
+    su tipo y se **descarga el Word completo**, llamado
+    `Contrato-<código>.docx`. Un dato opcional que falta (la fecha de firma,
+    el depósito) queda vacío; uno que el contrato necesita y falta dice
+    «[sin cargar]». Un contrato sin depósito no imprime «[sin depósito]»: la
+    cláusula va dentro de `{#deposito}`.
+42. Descargarlo **no genera un PDF ni lo guarda** como el documento del
+    contrato: el PDF que se firma se sube a mano en «Documento y firma»
+    (regla 33). Cada descarga queda en el historial del contrato.
+43. Las plantillas de **texto** del editor anterior quedan en la lista,
+    marcadas, y ya no generan: se reemplazan por un Word o se borran.
+44. Se descarga un **Word de ejemplo** con cada marcador explicado y un
+    contrato de locación armado con ellos. Es una plantilla válida: subirlo
+    tal cual funciona.
+
 ### Migración
 
 25. Al día de corte, cada persona migrada tiene un concepto «Saldo inicial»
@@ -339,7 +378,8 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 - **Proveedores** y sus pagos.
 - **Cupones de cobro SIRO / Roela** y cualquier otro servicio de recaudación.
 - **La conexión con un proveedor de firma** (queda prevista, ver reglas
-  33–36) y la **generación del contrato desde plantilla**.
+  33–36). La **generación del contrato desde plantilla** llegó en la entrega
+  15 y es en Word desde el 7/10/2026 (reglas 38–44).
 - **Pólizas de seguro** y sellados.
 - **Contratos de venta financiada** y loteos.
 - **Portal** de propietarios e inquilinos con usuario propio.
@@ -406,6 +446,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 33, 34            | Unit de estados de firma: transiciones válidas, registro de cada cambio, aviso ajeno rechazado                                                                                                      |
 | 35                | Unit con un adaptador de prueba: el módulo funciona entero contra un proveedor simulado                                                                                                             |
 | 36                | Unit del tablero: contrato vigente sin documento firmado aparece en «a completar»                                                                                                                   |
+| 38 – 44           | Unit de `plantilla-word`, `plantilla-modelo` y `plantillas.service` (validación, lista ↔ datos, sin PDF, consultas fijas); web: `plantillas-vista` y `generar-contrato`                             |
 | 26 – 32           | Unit de los cálculos del tablero + test de que cada drill-down suma su tarjeta                                                                                                                      |
 | §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                       |
 | Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                         |
