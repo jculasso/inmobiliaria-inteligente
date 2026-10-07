@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   CargoIngresoSchema,
   type CargoIngreso,
@@ -13,6 +12,8 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cargarCargosIngreso } from '../../lib/alquileres-api';
 import { fmtMoneda, hoyIso } from '../../lib/format';
+import { useEstadoDelServidor } from '../../lib/estado-del-servidor';
+import { useRefrescar } from '../../lib/refrescar';
 import { inputClass } from '../form-ui';
 import { CLASE_FOCO, Panel } from './piezas';
 import { InputImporteNumero } from '../input-importe';
@@ -41,8 +42,10 @@ export function CargosIngreso({
   moneda: MonedaAlquiler;
   cargos: CargosIngresoDto;
 }) {
-  const router = useRouter();
-  const [filas, setFilas] = useState<CargoIngreso[]>(cargos.propuesta);
+  const { refrescar, refrescando } = useRefrescar();
+  // La propuesta cambia con la página (al activar el contrato, por ejemplo):
+  // copiarla una sola vez al montar dejaba la de antes.
+  const [filas, setFilas] = useEstadoDelServidor<CargoIngreso[]>(cargos.propuesta);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const cambiar = (i: number, c: Partial<CargoIngreso>) =>
@@ -61,11 +64,13 @@ export function CargosIngreso({
     setCargando(true);
     try {
       await cargarCargosIngreso(await getAccessToken(), contratoId, filas);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron cargar.');
       setCargando(false);
+      return;
     }
+    await refrescar();
+    setCargando(false);
   }
 
   const detalle =
@@ -194,7 +199,7 @@ export function CargosIngreso({
             onClick={cargar}
             disabled={cargando || filas.length === 0}
           >
-            {cargando ? 'Cargando…' : 'Cargar los cargos'}
+            {refrescando ? 'Actualizando…' : cargando ? 'Cargando…' : 'Cargar los cargos'}
           </Button>
         </div>
         {error && (

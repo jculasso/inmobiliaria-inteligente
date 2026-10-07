@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   GarantiaInputSchema,
   NOMBRE_TIPO_GARANTIA,
@@ -13,6 +12,7 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { guardarGarantias } from '../../lib/alquileres-api';
 import { fmtFecha } from '../../lib/format';
+import { useRefrescar } from '../../lib/refrescar';
 import { Campo, inputClass } from '../form-ui';
 import { CLASE_FOCO, Insignia, Panel, type TonoInsignia } from './piezas';
 
@@ -59,7 +59,7 @@ export function Garantias({
   garantias: GarantiaDto[];
   garantes: { personaId: string; nombre: string }[];
 }) {
-  const router = useRouter();
+  const { refrescar, refrescando } = useRefrescar();
   const [editando, setEditando] = useState(false);
   const [filas, setFilas] = useState<Fila[]>(garantias.map(deDto));
   const [error, setError] = useState<string | null>(null);
@@ -85,8 +85,10 @@ export function Garantias({
     setGuardando(true);
     try {
       await guardarGarantias(await getAccessToken(), contratoId, datos);
+      // Se sale de la edición con la lista nueva ya a la vista: antes, unos
+      // segundos se veía la vieja, sin la garantía recién cargada.
+      await refrescar();
       setEditando(false);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron guardar.');
     } finally {
@@ -100,7 +102,15 @@ export function Garantias({
       titulo="Garantías"
       derecha={
         !editando && (
-          <Button variant="secondary" size="sm" onClick={() => setEditando(true)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              // Con lo que dice la página ahora, no con lo que había al montar.
+              setFilas(garantias.map(deDto));
+              setEditando(true);
+            }}
+          >
             {garantias.length ? '✏️ Editar' : '＋ Agregar garantías'}
           </Button>
         )
@@ -259,6 +269,7 @@ export function Garantias({
               <Button
                 variant="secondary"
                 size="sm"
+                disabled={guardando}
                 onClick={() => {
                   setFilas(garantias.map(deDto));
                   setEditando(false);
@@ -268,7 +279,7 @@ export function Garantias({
                 Cancelar
               </Button>
               <Button variant="primary" size="sm" onClick={guardar} disabled={guardando}>
-                {guardando ? 'Guardando…' : 'Guardar'}
+                {refrescando ? 'Actualizando…' : guardando ? 'Guardando…' : 'Guardar'}
               </Button>
             </div>
           </div>

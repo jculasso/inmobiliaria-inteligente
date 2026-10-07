@@ -20,25 +20,31 @@ export function AnularModal<T = unknown>({
   detalle: ReactNode;
   anular: (motivo: string) => Promise<T>;
   onClose: () => void;
-  onDone: (resultado: T) => void;
+  /** Si devuelve una promesa (el refresh de la página), el modal la espera ocupado. */
+  onDone: (resultado: T) => void | Promise<void>;
 }) {
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
 
   async function anular() {
     setError(null);
     setEnviando(true);
+    let resultado: T;
     try {
-      onDone(await ejecutar(motivo));
+      resultado = await ejecutar(motivo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo anular.');
       setEnviando(false);
+      return;
     }
+    setActualizando(true);
+    await onDone(resultado);
   }
 
   return (
-    <Modal title={titulo} onClose={onClose}>
+    <Modal title={titulo} onClose={onClose} cerrable={!enviando}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1 text-sm text-muted">{detalle}</div>
         <Campo
@@ -67,7 +73,7 @@ export function AnularModal<T = unknown>({
             onClick={anular}
             disabled={enviando || motivo.trim().length < 3}
           >
-            {enviando ? 'Anulando…' : 'Anular'}
+            {actualizando ? 'Actualizando…' : enviando ? 'Anulando…' : 'Anular'}
           </Button>
         </div>
       </div>
