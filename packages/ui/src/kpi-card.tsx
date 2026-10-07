@@ -49,7 +49,10 @@ function Lupa() {
 export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: KpiCardProps) {
   const content = (
     <>
-      <div className="flex items-center gap-1.5">
+      {/* Las tarjetas de una fila tienen el mismo ancho: si son angostas, la etiqueta reserva dos
+          líneas. Así una de dos («Contratos vigentes») y una de una («Alquiler mensual») dejan
+          el número a la misma altura (Dashboard de Alquileres, 7/10/2026). */}
+      <div className="flex items-start gap-1.5 @max-[17rem]:min-h-[34px]">
         {icon && (
           <span aria-hidden className="text-base leading-none">
             {icon}

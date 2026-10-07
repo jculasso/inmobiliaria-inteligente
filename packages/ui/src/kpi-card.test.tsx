@@ -17,6 +17,14 @@ describe('KpiCard', () => {
     expect(screen.getByText('U$S 1.627,05')).toHaveClass('block');
   });
 
+  // Dashboard de Alquileres, 7/10/2026: con etiquetas de una y de dos líneas los números quedaban desparejos.
+  it('en tarjetas angostas la etiqueta reserva dos líneas, para que los números queden alineados', () => {
+    render(<KpiCard label="Contratos vigentes" value="10" />);
+    expect(screen.getByText('Contratos vigentes').parentElement).toHaveClass(
+      '@max-[17rem]:min-h-[34px]',
+    );
+  });
+
   it('no rompe si no hay sub', () => {
     render(<KpiCard label="Puntas" value="8" />);
     expect(screen.getByText('Puntas')).toBeInTheDocument();
