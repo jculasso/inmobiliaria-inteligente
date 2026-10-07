@@ -189,6 +189,24 @@ const plata = (n: number) => `$${fmtK(n)}`;
 const porcentaje = (n: number) => `${Math.round(n)}%`;
 const suma = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
 
+/**
+ * Lo que suman las filas, moneda por moneda. Una lista puede mezclar pesos y
+ * dólares (un contrato en U$S entre los propietarios a liquidar), y sumarlos
+ * juntos da un número que no es de ninguna moneda. La fila sin moneda va en la
+ * del número.
+ */
+function totalesPorMoneda(filas: FilaTablero[], porDefecto: MonedaAlquiler) {
+  const t: Record<MonedaAlquiler, number> = { ARS: 0, USD: 0 };
+  for (const f of filas) t[f.moneda ?? porDefecto] += f.importe ?? 0;
+  return t;
+}
+
+/** «$ 1.928.307,62 · U$S 1.409,25»: cada moneda con lo suyo, sin la que está en cero. */
+function fmtTotales(t: Record<MonedaAlquiler, number>, porDefecto: MonedaAlquiler) {
+  const monedas = (['ARS', 'USD'] as const).filter((m) => t[m] !== 0);
+  return (monedas.length ? monedas : [porDefecto]).map((m) => fmtMoneda(t[m], m)).join(' · ');
+}
+
 /** La dirección del tablero con su año y su tipo: se puede compartir o recargar y queda igual. */
 function direccion(pathname: string, hoy: string, anio: number, tipo: FiltroTipoContrato) {
   const q = new URLSearchParams();
@@ -891,7 +909,7 @@ export function TableroAlquileres({
           <Card className="p-0">
             <ul className="divide-y divide-line">
               {tareas.map((x) => {
-                const importe = x.total ? suma(x.ind.filas.map((f) => f.importe ?? 0)) : 0;
+                const importes = x.total ? totalesPorMoneda(x.ind.filas, x.total) : null;
                 return (
                   <li key={x.titulo}>
                     <button
@@ -910,9 +928,9 @@ export function TableroAlquileres({
                         {x.titulo}
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
-                        {importe > 0 && (
+                        {importes && x.total && (importes.ARS !== 0 || importes.USD !== 0) && (
                           <span className="hidden whitespace-nowrap text-xs tabular-nums text-muted sm:inline">
-                            {fmtMoneda(importe, 'ARS')}
+                            {fmtTotales(importes, x.total)}
                           </span>
                         )}
                         <span
@@ -1019,6 +1037,9 @@ function DetalleModal({
   // Una columna vacía en todas las filas no se muestra.
   const cols = columnas.filter(([c]) => filas.some((f) => f[c] != null && f[c] !== ''));
   const conTotal = total && cols.some(([c]) => c === 'importe');
+  // El total es lo que suman las filas, por moneda. No `indicador.valor`: en
+  // las tareas es la CANTIDAD de filas, y salía «Total $ 5,00».
+  const textoTotal = total ? fmtTotales(totalesPorMoneda(filas, total), total) : '';
   const ir = (f: FilaTablero) => {
     if (f.href) router.push(f.href);
   };
@@ -1121,14 +1142,7 @@ function DetalleModal({
                         key={c}
                         className={`px-3 py-2 ${c === 'importe' ? 'whitespace-nowrap text-right tabular-nums' : ''}`}
                       >
-                        {i === 0
-                          ? 'Total'
-                          : c === 'importe'
-                            ? fmtMoneda(
-                                indicador.valor || suma(filas.map((f) => f.importe ?? 0)),
-                                total,
-                              )
-                            : ''}
+                        {i === 0 ? 'Total' : c === 'importe' ? textoTotal : ''}
                       </td>
                     ))}
                   </tr>
@@ -1139,10 +1153,7 @@ function DetalleModal({
           {(conTotal || accion) && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
               {conTotal ? (
-                <p className="text-sm font-bold text-ink sm:hidden">
-                  Total{' '}
-                  {fmtMoneda(indicador.valor || suma(filas.map((f) => f.importe ?? 0)), total)}
-                </p>
+                <p className="text-sm font-bold text-ink sm:hidden">Total {textoTotal}</p>
               ) : (
                 <span />
               )}
