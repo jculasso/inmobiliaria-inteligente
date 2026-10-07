@@ -159,6 +159,17 @@ export function cuandoVence(b: BoletaDto, hoy: string): string {
 export function lineaDePlata(b: BoletaDto): { texto: string; tono: 'muted' | 'exito' | 'aviso' } {
   const recupero = b.estado === 'pagada' && b.contrato ? recuperoDeBoleta(b) : null;
   if (recupero) return { texto: recupero, tono: b.cargoRecuperado ? 'exito' : 'aviso' };
+  // Todavía sin pagar, pero lo que se le cargó a la parte ya se cobró o se
+  // descontó: decir «se le cobra en su próximo recibo» era falso (la póliza de
+  // ALT-0011 en la prueba del 7/10/2026). Falta solo el pago, o el comprobante.
+  if (b.estado === 'pendiente' && b.contrato && b.cargoRecuperado) {
+    const ya = recuperoDeBoleta(b);
+    if (ya)
+      return {
+        texto: `${ya}: falta ${b.paga === 'inmobiliaria' ? 'que la inmobiliaria la pague' : 'el comprobante'}`,
+        tono: 'muted',
+      };
+  }
   return { texto: consecuenciaDeBoleta(b.aCargoDe, b.paga, b.contrato != null), tono: 'muted' };
 }
 const CLASE_TONO = { muted: 'text-muted', exito: 'text-success', aviso: 'text-warning' };
@@ -338,13 +349,24 @@ function GrupoBoletas({
   const resumen = `${cantidad(boletas.length, 'boleta')} · ${sumaPorMoneda(boletas)}${detalle ? ` · ${detalle}` : ''}`;
   return (
     <Bloque icono={icono} titulo={titulo} detalle={resumen}>
-      <ListaTarjetas etiqueta={titulo}>
+      {/* Tarjetas hasta 1024 px: en una tablet la tabla no entraba y el importe
+          quedaba cortado a la derecha (prueba del 7/10/2026). */}
+      <ListaTarjetas etiqueta={titulo} hasta="lg">
         {boletas.map((b) => (
           <TarjetaBoleta key={b.id} b={b} hoy={hoy} onPagar={onPagar} onAnular={onAnular} />
         ))}
       </ListaTarjetas>
-      <div className="hidden overflow-x-auto sm:block">
-        <table className="w-full text-sm" aria-label={titulo}>
+      <div className="hidden overflow-x-auto lg:block">
+        {/* Anchos fijos: cada grupo es su propia tabla, y con anchos automáticos
+            las columnas de «Vencidas» y «Esta semana» no quedaban alineadas. */}
+        <table className="w-full table-fixed text-sm" aria-label={titulo}>
+          <colgroup>
+            <col className="w-36" />
+            <col />
+            <col className="w-44" />
+            <col className="w-32" />
+            <col className="w-56" />
+          </colgroup>
           <thead>
             <tr>
               <th className={CLASE_TH}>Vence</th>
@@ -445,7 +467,7 @@ function FilaBoleta({ b, hoy, onPagar, onAnular }: PropsBoleta) {
       >
         {cuandoVence(b, hoy)}
       </td>
-      <td className="min-w-[16rem] px-3 py-2">
+      <td className="px-3 py-2">
         <span className="font-semibold text-ink">
           <span aria-hidden>{ICONO_CLASE[b.clase]} </span>
           {queEs(b)}
@@ -725,6 +747,7 @@ function ImpuestosPorPropiedad({
       {aBorrar && (
         <ConfirmarBorradoModal
           titulo={`Quitar ${aBorrar.servicio.nombre} de esta propiedad`}
+          verbo={{ boton: 'Sí, quitar', enCurso: 'Quitando…' }}
           descripcion="Se quita solo si nunca tuvo boletas."
           detalle={<DatoBorrado etiqueta="Propiedad">{aBorrar.propiedad.direccion}</DatoBorrado>}
           onConfirm={async () => {

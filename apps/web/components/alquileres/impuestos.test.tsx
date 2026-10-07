@@ -318,6 +318,55 @@ describe('«Para pagar» (reglas 46 a 50)', () => {
   });
 });
 
+describe('prueba en Alteva del 7/10/2026', () => {
+  it('regla 47: sin pagar, pero lo cargado ya se cobró: no dice «en su próximo recibo»', () => {
+    const b = boleta({
+      estado: 'pendiente',
+      vencimiento: '2026-10-06',
+      aplicada: true,
+      cargoRecuperado: true,
+    });
+    pagar({ boletas: [b], control: [b] });
+    const fila = tabla('Vencidas');
+    expect(
+      fila.getByText('Ya se le cobró al inquilino: falta que la inmobiliaria la pague'),
+    ).toBeInTheDocument();
+    expect(fila.queryByText(/en su próximo recibo/)).toBeNull();
+  });
+
+  it('regla 48: tarjetas hasta 1024 px, y la tabla con anchos fijos para que los grupos se alineen', () => {
+    const b = boleta();
+    pagar({ boletas: [b], control: [] });
+    const lista = screen.getAllByRole('list', { name: /Más adelante/ })[0]!;
+    expect(lista.className).toContain('lg:hidden');
+    expect(lista.className).not.toContain('sm:hidden');
+    const t = screen.getByRole('table', { name: /Más adelante/ });
+    expect(t.parentElement!.className).toContain('lg:block');
+    expect(t.className).toContain('table-fixed');
+    expect(t.querySelectorAll('colgroup col')).toHaveLength(5);
+  });
+
+  it('regla 51: una cuota mayor que el total dice eso, no «van los dos números»', async () => {
+    render(<PlanillaBoletas planilla={planilla} mes="noviembre de 2026" />);
+    fireEvent.change(screen.getByLabelText('Importe de EPE de Mendoza 3340'), {
+      target: { value: '30.000' },
+    });
+    fireEvent.change(screen.getByLabelText('Vencimiento de EPE de Mendoza 3340'), {
+      target: { value: '2026-11-10' },
+    });
+    fireEvent.change(screen.getByLabelText('Cuota de EPE de Mendoza 3340'), {
+      target: { value: '13' },
+    });
+    fireEvent.change(screen.getByLabelText('Total de cuotas de EPE de Mendoza 3340'), {
+      target: { value: '12' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar 1 boleta' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'EPE de Mendoza 3340: la cuota 13 no puede ser mayor que el total, 12.',
+    );
+  });
+});
+
 describe('«Cargar el mes» (reglas 51 y 52)', () => {
   it('regla 52: tabla con títulos por propiedad, la cuota en dos campitos y el importe del mes anterior', () => {
     render(<PlanillaBoletas planilla={planilla} mes="noviembre de 2026" />);

@@ -21,9 +21,21 @@ import { CLASE_FOCO } from './piezas';
  * `etiqueta` la nombra para lectores de pantalla (y deja que los tests digan
  * qué vista están mirando).
  */
-export function ListaTarjetas({ children, etiqueta }: { children: ReactNode; etiqueta: string }) {
+export function ListaTarjetas({
+  children,
+  etiqueta,
+  hasta = 'sm',
+}: {
+  children: ReactNode;
+  etiqueta: string;
+  /** Hasta qué ancho van las tarjetas: `lg` para tablas que en una tablet no entran. */
+  hasta?: 'sm' | 'lg';
+}) {
   return (
-    <ul aria-label={etiqueta} className="flex flex-col gap-2 p-3 sm:hidden">
+    <ul
+      aria-label={etiqueta}
+      className={`flex flex-col gap-2 p-3 ${hasta === 'lg' ? 'lg:hidden' : 'sm:hidden'}`}
+    >
       {children}
     </ul>
   );

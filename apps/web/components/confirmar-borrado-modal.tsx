@@ -19,6 +19,7 @@ export function ConfirmarBorradoModal({
   detalle,
   onConfirm,
   onClose,
+  verbo = { boton: 'Sí, borrar', enCurso: 'Borrando…' },
 }: {
   titulo: string;
   /** Bajada del modal: qué implica borrar esto. */
@@ -27,6 +28,8 @@ export function ConfirmarBorradoModal({
   detalle: ReactNode;
   onConfirm: () => Promise<void>;
   onClose: () => void;
+  /** El botón dice lo mismo que el título: «Quitar …» no confirma con «Sí, borrar». */
+  verbo?: { boton: string; enCurso: string };
 }) {
   const [borrando, setBorrando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +67,7 @@ export function ConfirmarBorradoModal({
             onClick={() => void confirmar()}
             disabled={borrando}
           >
-            {borrando ? 'Borrando…' : 'Sí, borrar'}
+            {borrando ? verbo.enCurso : verbo.boton}
           </Button>
         </div>
       </div>

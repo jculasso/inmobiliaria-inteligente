@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  problemaDeCuota,
   BoletaDtoSchema,
   COMBINACIONES_QUIEN_PAGA,
   CuotaSchema,
@@ -125,5 +126,16 @@ describe('regla 51: la cuota se carga «3 de 6», se guarda «3/6» y se lee «c
     expect(unirCuota('tres', '6')).toBe(false);
     expect(unirCuota('7', '6')).toBe(false);
     expect(unirCuota('0', '6')).toBe(false);
+  });
+});
+
+describe('regla 51: el aviso de una cuota dice qué corregir', () => {
+  it('vacía sirve; un solo número, letras, cero o mayor que el total, no', () => {
+    expect(problemaDeCuota('', '')).toBeNull();
+    expect(problemaDeCuota('3', '6')).toBeNull();
+    expect(problemaDeCuota('3', '')).toBe('la cuota va con los dos números, por ejemplo «3 de 6»');
+    expect(problemaDeCuota('a', '6')).toBe('la cuota va con números, por ejemplo «3 de 6»');
+    expect(problemaDeCuota('0', '6')).toBe('la cuota empieza en 1');
+    expect(problemaDeCuota('13', '12')).toBe('la cuota 13 no puede ser mayor que el total, 12');
   });
 });

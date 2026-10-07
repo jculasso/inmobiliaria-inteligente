@@ -10,6 +10,7 @@ import {
   cuotaSiguiente,
   partesDeCuota,
   textoCuota,
+  problemaDeCuota,
   unirCuota,
   type FilaPlanilla,
   type LoteBoletasResultado,
@@ -90,7 +91,7 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
       const quien = `${cuenta.servicio.nombre} de ${cuenta.propiedad.direccion}`;
       const cuota = unirCuota(c.n, c.de);
       if (cuota === false) {
-        setError(`${quien}: la cuota va con los dos números, por ejemplo «3 de 6».`);
+        setError(`${quien}: ${problemaDeCuota(c.n, c.de) ?? 'revisá la cuota'}.`);
         return;
       }
       const b = { cuentaId, cuota, vencimiento: c.vencimiento, importe: num(c.importe) };
