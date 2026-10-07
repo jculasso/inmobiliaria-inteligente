@@ -48,9 +48,19 @@ export default async function ContratoPage({ params }: { params: Promise<{ id: s
         moneda={contrato.moneda}
         cargos={completo.cargos}
       />
-      <DepositoPanel contratoId={id} deposito={completo.deposito} />
+      <DepositoPanel
+        contratoId={id}
+        deposito={completo.deposito}
+        propietarios={contrato.partes.filter((p) => p.papel === 'propietario').map((p) => p.nombre)}
+      />
       <Garantias contratoId={id} garantias={completo.garantias} garantes={garantes} />
-      <Polizas polizas={polizas} contratos={[]} contratoFijo={id} moneda={contrato.moneda} />
+      <Polizas
+        polizas={polizas}
+        contratos={[]}
+        contratoFijo={id}
+        moneda={contrato.moneda}
+        sePuedeAgregar={contrato.estado === 'vigente'}
+      />
       <GenerarContrato contrato={contrato} plantillas={plantillas} documento={documento} />
       <FirmaContrato contratoId={id} documento={documento} />
       <ReclamosDelContrato contrato={contrato} reclamos={reclamos} />

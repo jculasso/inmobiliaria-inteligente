@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { sumarDiasIso } from '@vacker/domain';
 import {
   DIAS_TABLERO_PROXIMOS,
@@ -24,6 +23,7 @@ import { AnularModal } from './anular-modal';
 import { AccionFila, Bloque, CLASE_FOCO, Insignia, VacioBloque } from './piezas';
 import { InputImporte } from '../input-importe';
 import { leerImporte } from '../../lib/importe';
+import { useRefrescar } from '../../lib/refrescar';
 
 const num = (v: string) => leerImporte(v) ?? 0;
 
@@ -43,6 +43,7 @@ export function Polizas({
   contratoFijo,
   moneda,
   titulo = 'Pólizas de seguro',
+  sePuedeAgregar = true,
 }: {
   polizas: PolizaDto[];
   contratos: ContratoResumenDto[];
@@ -50,8 +51,10 @@ export function Polizas({
   /** La moneda del contrato, cuando la lista es de uno. */
   moneda?: MonedaAlquiler;
   titulo?: string;
+  /** En la ficha de un contrato, solo si está vigente: a uno rescindido no se le asegura nada. */
+  sePuedeAgregar?: boolean;
 }) {
-  const router = useRouter();
+  const { refrescar } = useRefrescar();
   const [nueva, setNueva] = useState(false);
   const [aAnular, setAAnular] = useState<PolizaDto | null>(null);
   return (
@@ -60,9 +63,11 @@ export function Polizas({
       titulo={titulo}
       detalle={polizas.length ? `${polizas.length}` : undefined}
       acciones={
-        <Button variant="secondary" size="sm" onClick={() => setNueva(true)}>
-          ＋ Nueva póliza
-        </Button>
+        sePuedeAgregar && (
+          <Button variant="secondary" size="sm" onClick={() => setNueva(true)}>
+            ＋ Nueva póliza
+          </Button>
+        )
       }
     >
       {polizas.length === 0 ? (
@@ -122,9 +127,9 @@ export function Polizas({
           contratoFijo={contratoFijo}
           monedaFija={moneda}
           onClose={() => setNueva(false)}
-          onDone={() => {
+          onDone={async () => {
+            await refrescar();
             setNueva(false);
-            router.refresh();
           }}
         />
       )}
@@ -134,9 +139,9 @@ export function Polizas({
           detalle={`${aAnular.aseguradora} · ${aAnular.contrato.codigo}. Se anulan las cuotas sin pagar y lo que se les cargó a las partes; lo ya pagado queda.`}
           anular={async (motivo) => anularPoliza(await getAccessToken(), aAnular.id, motivo)}
           onClose={() => setAAnular(null)}
-          onDone={() => {
+          onDone={async () => {
+            await refrescar();
             setAAnular(null);
-            router.refresh();
           }}
         />
       )}
@@ -155,7 +160,8 @@ export function PolizaModal({
   contratoFijo?: string;
   monedaFija?: MonedaAlquiler;
   onClose: () => void;
-  onDone: () => void;
+  /** Si devuelve una promesa (el refresh de la página), el modal la espera ocupado. */
+  onDone: () => void | Promise<void>;
 }) {
   const [contratoId, setContratoId] = useState(contratoFijo ?? '');
   const [moneda, setMoneda] = useState<MonedaAlquiler>(monedaFija ?? 'ARS');
@@ -171,6 +177,7 @@ export function PolizaModal({
   const [paga, setPaga] = useState<QuienPaga>('inmobiliaria');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
 
   async function guardar() {
     const dto = {
@@ -198,11 +205,13 @@ export function PolizaModal({
     setEnviando(true);
     try {
       await crearPoliza(await getAccessToken(), dto);
-      onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar.');
       setEnviando(false);
+      return;
     }
+    setActualizando(true);
+    await onDone();
   }
 
   return (
@@ -210,6 +219,7 @@ export function PolizaModal({
       title="Nueva póliza"
       subtitle="Cada cuota se carga como una boleta, una por mes desde el primer vencimiento."
       onClose={onClose}
+      cerrable={!enviando}
       size="lg"
     >
       <div className="flex flex-col gap-3">
@@ -344,11 +354,11 @@ export function PolizaModal({
           </p>
         )}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={enviando}>
             Cancelar
           </Button>
           <Button variant="primary" onClick={guardar} disabled={enviando}>
-            {enviando ? 'Guardando…' : 'Guardar'}
+            {actualizando ? 'Actualizando…' : enviando ? 'Guardando…' : 'Guardar'}
           </Button>
         </div>
       </div>
