@@ -421,6 +421,42 @@ en cinco bloques apilados, y «la debe · paga» no decía qué pasaba con la pl
     el catálogo de la inmobiliaria. Ningún texto visible usa «cuenta» como
     jerga por «impuesto de la propiedad».
 
+### Reclamos: quién lo sigue y quién lo arregla (7/10/2026)
+
+Pedido de Javier: «los reclamos se los asignás a los vendedores, eso está
+mal». El campo «Asignado a» listaba a todos los usuarios activos, vendedores
+incluidos. Pasa a ser dos campos.
+
+60. Un reclamo tiene **«Lo sigue»** —la persona de la inmobiliaria que lo
+    gestiona— y **«Proveedor»** —quién lo arregla—. Los dos son opcionales; en
+    blanco se leen «Sin asignar» y «Sin proveedor». «Lo sigue» reemplaza a
+    «Asignado a» (la columna `asignado_a_id` es la misma).
+61. «Lo sigue» ofrece solo a los usuarios **activos** con algún rol que entra
+    al módulo (`ROLES_ADMINISTRACION_ALQUILERES`: administración, dirección,
+    admin). Un vendedor, un team leader o un publicador no aparecen.
+62. Es un **permiso**, no un filtro de la pantalla: la API rechaza con 400, y
+    un mensaje que nombra a la persona, abrir o reasignar un reclamo a
+    alguien que no entra al módulo o que está inactivo. Alguien que además de
+    vendedor es de dirección o admin sí puede seguirlo.
+63. Un reclamo que ya lo seguía alguien que hoy no califica **conserva su
+    nombre** en la lista y en la ficha. En la ficha, el campo lo muestra como
+    la opción actual, marcada «Nombre · no usa Alquileres», para no perderlo
+    en silencio: guardar otro cambio no lo toca ni falla, y pasarlo a otra
+    persona válida o a «Sin asignar» funciona.
+64. «Proveedor» se elige de la lista de **Proveedores** del módulo. Uno que no
+    es de la inmobiliaria se rechaza («El proveedor no existe.»), en la API y
+    en la base (clave foránea con la inmobiliaria adelante).
+65. Cada cambio deja su nota en el historial del reclamo: «Lo sigue: X.» o
+    «Sin asignar.»; «Proveedor: X.» o «Sin proveedor.».
+66. El proveedor se ve en la lista (columna y tarjeta), en la ficha y en los
+    reclamos del contrato. En la ficha, su teléfono y su email son enlaces
+    para llamarlo o escribirle. La lista trae los proveedores en una sola
+    consulta, no una por reclamo.
+
+Borrar un proveedor (solo se puede si no tiene comprobantes) deja sus
+reclamos «Sin proveedor»; el historial de cada uno conserva la nota con el
+nombre.
+
 ## 6. Casos borde
 
 - **La fila vieja**: contratos migrados de Gexion sin algún dato (sin
@@ -528,6 +564,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 38 – 44           | Unit de `plantilla-word`, `plantilla-modelo` y `plantillas.service` (validación, lista ↔ datos, sin PDF, consultas fijas); web: `plantillas-vista` y `generar-contrato`                             |
 | 26 – 32           | Unit de los cálculos del tablero + test de que cada drill-down suma su tarjeta                                                                                                                      |
 | 45 – 53           | Types y domain: `boletas.test.ts`; API: `impuestos.service.spec.ts` (recupero, adelantado con cobro parcial y anulada, consultas fijas); web: `impuestos.test.tsx`                                  |
+| 60 – 66           | Unit de `reclamos.service` (`regla 6x` en el nombre: vendedor y team leader rechazados, fila vieja que se vuelve a guardar, proveedor ajeno, notas); web: `reclamos.test.tsx`                       |
 | §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                       |
 | Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                         |
 | Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                 |
