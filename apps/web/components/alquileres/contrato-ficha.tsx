@@ -17,12 +17,14 @@ import { EstadoContratoBadge } from './estado-contrato';
 import { NOMBRE_INDICE, NOMBRE_PAPEL } from './nombres';
 import { Dato, EncabezadoPagina, Panel, Registrado } from './piezas';
 import { fmtPct, variacionEntre } from '../../lib/importe';
+import { useRefrescar } from '../../lib/refrescar';
 
 const fmtIndice = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 4 });
 
 /** La ficha de un contrato, con las acciones que corresponden a su estado (reglas 2 y 3). */
 export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const router = useRouter();
+  const { refrescar, refrescando } = useRefrescar();
   const [confirmar, setConfirmar] = useState<null | 'vigente' | 'finalizado' | 'rescindido'>(null);
   const [fecha, setFecha] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +50,10 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
     setEnviando(true);
     try {
       await cambiarEstadoContrato(await getAccessToken(), contrato.id, cambio);
+      // El modal se cierra con la página nueva ya a la vista: cerrarlo antes
+      // dejaba unos segundos el contrato en «Borrador» con «Activar contrato».
+      await refrescar();
       setConfirmar(null);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cambiar el estado.');
     } finally {
@@ -61,7 +65,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
     vigente: {
       titulo: 'Activar el contrato',
       detalle:
-        'Desde ahora el contrato genera sus alquileres cada mes y ya no se edita completo: cambia por indexación o rescisión.',
+        'Desde ahora entra cada mes en «Generar» de Conceptos y ya no se edita completo: cambia por indexación, extensión o rescisión.',
       boton: 'Activar',
     },
     finalizado: {
@@ -265,9 +269,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         <ExtenderModal
           contrato={contrato}
           onClose={() => setAccion(null)}
-          onDone={() => {
+          onDone={async () => {
+            await refrescar();
             setAccion(null);
-            router.refresh();
           }}
         />
       )}
@@ -275,9 +279,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         <DatosContratoModal
           contratoId={contrato.id}
           onClose={() => setAccion(null)}
-          onSaved={() => {
+          onSaved={async () => {
+            await refrescar();
             setAccion(null);
-            router.refresh();
           }}
         />
       )}
@@ -287,9 +291,9 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           detalle="Tiene historia: no se borra, queda anulado y tachado, con el motivo y quién lo anuló. Sus conceptos pendientes se anulan. Si ya tiene cobros o liquidaciones, primero hay que anular esos."
           anular={async (motivo) => anularContrato(await getAccessToken(), contrato.id, motivo)}
           onClose={() => setAccion(null)}
-          onDone={() => {
+          onDone={async () => {
+            await refrescar();
             setAccion(null);
-            router.refresh();
           }}
         />
       )}
@@ -320,6 +324,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
             setConfirmar(null);
             setError(null);
           }}
+          cerrable={!enviando}
         >
           <div className="flex flex-col gap-3">
             <p className="text-sm leading-relaxed text-ink">{textos[confirmar].detalle}</p>
@@ -341,7 +346,12 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
               </p>
             )}
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setConfirmar(null)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setConfirmar(null)}
+                disabled={enviando}
+              >
                 Cancelar
               </Button>
               <Button
@@ -356,7 +366,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
                   )
                 }
               >
-                {enviando ? 'Guardando…' : textos[confirmar].boton}
+                {refrescando ? 'Actualizando…' : enviando ? 'Guardando…' : textos[confirmar].boton}
               </Button>
             </div>
           </div>
