@@ -14,7 +14,7 @@ vi.mock('../../lib/alquileres-api', () => ({
 }));
 
 import { CargosIngreso } from './cargos-ingreso';
-import { ExtenderModal } from './extender-modal';
+import { ExtenderModal, textoExtension } from './extender-modal';
 
 const C = '55555555-5555-4555-8555-555555555555';
 
@@ -103,5 +103,61 @@ describe('Contrato completo (entrega 14)', () => {
         importeBase: null,
       }),
     );
+  });
+
+  // Prueba en producción, 6/10/2026: extendiendo 6 meses decía «tramos de 12».
+  it('extender: el texto dice los tramos que se van a crear', () => {
+    expect(textoExtension('2026-11-01', '2027-04-30', 12, 'ICL')).toBe(
+      'Se suma un tramo de 6 meses que se indexa con ICL como los demás.',
+    );
+    expect(textoExtension('2026-11-01', '2028-10-31', 12, 'ICL')).toBe(
+      'Se suman 2 tramos de 12 meses que se indexan con ICL como los demás.',
+    );
+    expect(textoExtension('2026-11-01', '2027-12-31', 12, 'ICL')).toBe(
+      'Se suman 2 tramos de 12 meses (el último de 2 meses) que se indexan con ICL como los demás.',
+    );
+    expect(textoExtension('2026-11-01', '2026-11-15', 12, 'ICL')).toBe(
+      'Se suma un tramo del 01/11/2026 al 15/11/2026 que se indexa con ICL como los demás.',
+    );
+  });
+
+  it('extender: al cambiar los meses, cambia el texto', () => {
+    const contrato = {
+      id: C,
+      codigo: 'ALT-0090',
+      fin: '2026-10-31',
+      ajuste: 'indexado',
+      indice: 'ICL',
+      periodicidadMeses: 12,
+    } as ContratoDto;
+    render(<ExtenderModal contrato={contrato} onClose={vi.fn()} onDone={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Cuántos meses'), { target: { value: '6' } });
+    expect(screen.getByText(/Se suma un tramo de 6 meses/)).toBeInTheDocument();
+  });
+
+  // Al activar el contrato, la página trae la propuesta: el panel la muestra
+  // sin recargar.
+  it('cargos: cuando la página trae otra propuesta, se ve sin recargar', () => {
+    const cargos = (importe: number) => ({
+      cargados: false,
+      valorTotal: 0,
+      meses: 24,
+      propuesta: [
+        {
+          tipo: 'sellado' as const,
+          descripcion: 'Sellado',
+          aCargoDe: 'inquilino' as const,
+          importe,
+          vencimiento: '2026-02-20',
+          moneda: null,
+        },
+      ],
+    });
+    const { rerender } = render(
+      <CargosIngreso contratoId={C} estado="vigente" moneda="ARS" cargos={cargos(1000)} />,
+    );
+    expect(screen.getByText(/Total:/).parentElement).toHaveTextContent('$ 1.000,00');
+    rerender(<CargosIngreso contratoId={C} estado="vigente" moneda="ARS" cargos={cargos(2000)} />);
+    expect(screen.getByText(/Total:/).parentElement).toHaveTextContent('$ 2.000,00');
   });
 });
