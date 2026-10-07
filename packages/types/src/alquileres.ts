@@ -2487,6 +2487,19 @@ export function unirCuota(n: string, de: string): string | null | false {
   return `${Number(a)}/${Number(b)}`;
 }
 
+/** Por qué no sirve una cuota (`null` si sirve): el aviso dice qué corregir. */
+export function problemaDeCuota(n: string, de: string): string | null {
+  const [a, b] = [n.trim(), de.trim()];
+  if (!a && !b) return null;
+  if (!a || !b) return 'la cuota va con los dos números, por ejemplo «3 de 6»';
+  if (!/^\d{1,2}$/.test(a) || !/^\d{1,2}$/.test(b))
+    return 'la cuota va con números, por ejemplo «3 de 6»';
+  if (Number(a) < 1) return 'la cuota empieza en 1';
+  if (Number(a) > Number(b))
+    return `la cuota ${Number(a)} no puede ser mayor que el total, ${Number(b)}`;
+  return null;
+}
+
 /** «4/6» del mes siguiente: lo que propone «Completar con el mes anterior». */
 export function cuotaSiguiente(cuota: string | null): string | null {
   const m = cuota?.match(/^(\d{1,2})\/(\d{1,2})$/);
