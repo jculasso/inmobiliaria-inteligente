@@ -14,11 +14,15 @@ import {
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cargarLoteBoletas } from '../../lib/alquileres-api';
-import { fmtMoneda } from '../../lib/format';
+import { cantidad, fmtMoneda } from '../../lib/format';
 import { inputClass } from '../form-ui';
 import { Bloque, VacioBloque } from './piezas';
 import { escribirImporte, leerImporte } from '../../lib/importe';
 import { InputImporte } from '../input-importe';
+import { primerMensaje } from '../../lib/mensaje-zod';
+
+/** Termina la oración con un punto, sin duplicar el que ya trae. */
+const conPunto = (t: string) => (/[.!?…]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
 
 type Carga = { cuota: string; vencimiento: string; importe: string };
 const VACIA: Carga = { cuota: '', vencimiento: '', importe: '' };
@@ -73,8 +77,13 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
       const r = BoletaItemSchema.safeParse(b);
       if (!r.success) {
         const f = planilla.filas.find((x) => x.cuenta.id === b.cuentaId)!;
+        // El mensaje del schema ya trae su punto («La cuota va como 3/6.»):
+        // agregarle otro decía «3/6..» (prueba en producción, 6/10/2026).
+        const motivo = b.vencimiento
+          ? primerMensaje(r.error, 'revisá los datos')
+          : 'falta el vencimiento';
         setError(
-          `${f.cuenta.servicio.nombre} de ${f.cuenta.propiedad.direccion}: ${b.vencimiento ? (r.error.issues[0]?.message ?? 'revisá los datos') : 'falta el vencimiento'}.`,
+          conPunto(`${f.cuenta.servicio.nombre} de ${f.cuenta.propiedad.direccion}: ${motivo}`),
         );
         return;
       }
@@ -98,7 +107,7 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
     <Bloque
       icono="📝"
       titulo={`Cargar boletas de ${mes}`}
-      detalle={`${planilla.filas.length} cuentas`}
+      detalle={cantidad(planilla.filas.length, 'cuenta')}
       acciones={
         <Button
           variant="secondary"
@@ -130,7 +139,8 @@ export function PlanillaBoletas({ planilla, mes }: { planilla: PlanillaBoletasDt
           <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line px-4 py-3">
             {resultado && (
               <p role="status" className="mr-auto text-sm text-success">
-                Se cargaron {resultado.creadas} {resultado.creadas === 1 ? 'boleta' : 'boletas'}
+                Se {resultado.creadas === 1 ? 'cargó' : 'cargaron'}{' '}
+                {cantidad(resultado.creadas, 'boleta')}
                 {resultado.repetidas ? `; ${resultado.repetidas} ya estaban` : ''}
                 {resultado.sinContrato
                   ? `; ${resultado.sinContrato} sin contrato ese mes, solo para control`

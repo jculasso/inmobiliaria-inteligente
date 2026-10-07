@@ -108,7 +108,7 @@ describe('Impuestos y servicios (entrega 19)', () => {
         boletas: [{ cuentaId: API, cuota: '4/6', vencimiento: '2026-11-10', importe: 45_000 }],
       }),
     );
-    expect(await screen.findByRole('status')).toHaveTextContent('Se cargaron 1 boleta');
+    expect(await screen.findByRole('status')).toHaveTextContent('Se cargó 1 boleta.');
   });
 
   it('una fila con importe y sin vencimiento no se guarda: dice cuál', async () => {
@@ -123,6 +123,24 @@ describe('Impuestos y servicios (entrega 19)', () => {
     expect(cargarLoteBoletas).toHaveBeenCalledTimes(1);
   });
 
+  // Prueba en producción, 6/10/2026: «La cuota va como 3/6..».
+  it('una cuota mal escrita se avisa con un solo punto', async () => {
+    render(<PlanillaBoletas planilla={planilla} mes="noviembre de 2026" />);
+    fireEvent.change(screen.getByLabelText('Importe de EPE de Mendoza 3340'), {
+      target: { value: '30.000' },
+    });
+    fireEvent.change(screen.getByLabelText('Vencimiento de EPE de Mendoza 3340'), {
+      target: { value: '2026-11-10' },
+    });
+    fireEvent.change(screen.getByLabelText('Cuota de EPE de Mendoza 3340'), {
+      target: { value: 'tres' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent('EPE de Mendoza 3340: La cuota va como 3/6.');
+    expect(alerta.textContent).not.toMatch(/\.\.$/);
+  });
+
   it('la que paga la inmobiliaria se paga; la que paga una parte, se registra su comprobante', () => {
     vista({ boletas: [boleta(), boleta({ nombre: 'EPE', paga: 'inquilino' })] });
     const tabla = within(screen.getByRole('table'));
@@ -131,6 +149,12 @@ describe('Impuestos y servicios (entrega 19)', () => {
       tabla.getByRole('button', { name: 'Registrar el comprobante de EPE' }),
     ).toBeInTheDocument();
     expect(tabla.getByText('Falta comprobante')).toBeInTheDocument();
+  });
+
+  // Prueba en producción, 6/10/2026: «1 boletas».
+  it('una sola boleta cargada se dice en singular', () => {
+    vista({ boletas: [boleta()] });
+    expect(screen.getByText('1 boleta')).toBeInTheDocument();
   });
 
   it('lo ya cobrado o liquidado no ofrece «Anular»', () => {
