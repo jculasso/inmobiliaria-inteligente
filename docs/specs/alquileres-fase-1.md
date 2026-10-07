@@ -457,6 +457,57 @@ Borrar un proveedor (solo se puede si no tiene comprobantes) deja sus
 reclamos «Sin proveedor»; el historial de cada uno conserva la nota con el
 nombre.
 
+### Reclamos: el circuito del arreglo (7/10/2026)
+
+Pedido de Javier sobre la ficha del reclamo: «como está no sirve». Aprobó
+cinco cambios: tres estados, la prioridad con su nombre, el gasto del arreglo
+cargado desde el reclamo y el aviso al proveedor por mail.
+
+67. Un reclamo tiene **tres estados**: Abierto, En curso y Resuelto. «Cerrado»
+    se fue —no se distinguía de Resuelto—: los reclamos cerrados pasan a
+    resueltos y conservan `cerrado_en` (migración
+    `20261022100000_reclamos_circuito`). Pasar a Resuelto anota la fecha;
+    reabrirlo la borra. «Abiertos» —en la lista y en «Reclamos abiertos» del
+    Dashboard— son Abierto y En curso (`ESTADOS_RECLAMO_ABIERTOS`).
+68. Una pantalla vieja que todavía manda «cerrado», o una fila que la
+    migración no alcanzó, **se lee como «resuelto»**: no se rechaza, porque
+    quien lo manda quería lo mismo, y no se repite el cambio si ya estaba
+    resuelto. Un valor que no es un estado se sigue rechazando con 400.
+69. La prioridad suelta dice su nombre: **«Prioridad media»**, no «Media»,
+    arriba de la ficha, en los reclamos del contrato y en el Dashboard
+    (`nombrePrioridad`). Bajo un rótulo «Prioridad» (columna de la lista,
+    campo de la tarjeta) alcanza con «Media».
+70. **«Cargar el gasto del arreglo»**, en la ficha, abre el mismo formulario
+    de comprobante de Gastos › Proveedores, con el proveedor del reclamo y su
+    contrato (fijo). Sin proveedor en el reclamo funciona igual: se elige en
+    el formulario. El comprobante queda **enlazado** al reclamo
+    (`alq_comprobante.reclamo_id`, opcional, con la clave `(tenant_id,
+reclamo_id)` en la base; borrar el reclamo lo deja suelto). La API
+    rechaza un reclamo de otra inmobiliaria («El reclamo no existe.») y un
+    gasto a cargo de una parte que va a otro contrato que el del reclamo.
+71. La ficha muestra **«Gastos del arreglo»**: fecha, proveedor, qué se hizo,
+    a cargo de quién, importe y estado (A pagar, Pagado, Anulado), tarjetas
+    en el celular y tabla en la compu, y el **total sin los anulados**. Cargar
+    un gasto deja su nota en el historial del reclamo («Gasto del arreglo:
+    X, $ Y, a cargo del propietario.»). La ficha hace las mismas consultas
+    con uno o con muchos gastos.
+72. En Gastos › Proveedores, el comprobante que salió de un reclamo dice
+    **«Reclamo N»**, con link a su ficha.
+73. **«Avisar al proveedor»** abre el mail ya redactado y editable: asunto
+    «Reclamo N · {asunto} · {dirección}»; en el cuerpo, la dirección y la
+    unidad, qué pasa (asunto y detalle), la prioridad, el inquilino del
+    contrato y su teléfono —con el tilde «Incluir el teléfono del inquilino»,
+    marcado por defecto— y quién lo sigue en la inmobiliaria con su
+    teléfono y su email para coordinar. Sale con la infraestructura de los
+    recibos: a nombre de la inmobiliaria, desde el dominio de la plataforma,
+    respuestas a quien lo manda, su firma al pie y el mismo tope por hora.
+    Va **solo al email del proveedor del reclamo**: el pedido no trae
+    destinatario. Sin proveedor, o sin email («Cargale un email al
+    proveedor en Gastos › Proveedores», con link), el botón no falla: dice
+    qué falta. Al salir queda en el historial: «Se avisó a {proveedor} por
+    mail ({email}).». Si el mail no sale, no queda anotado. Nada se manda
+    solo.
+
 ## 6. Casos borde
 
 - **La fila vieja**: contratos migrados de Gexion sin algún dato (sin
@@ -544,27 +595,28 @@ Con los datos reales de Vacker migrados al día de corte:
 
 ## 9. Cada regla con su test
 
-| Reglas            | Cómo se protegen                                                                                                                                                                                    |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1, 4              | Unit del validador de contrato: mes sin tramo, tramos superpuestos, porcentajes que no suman 100                                                                                                    |
-| 2, 3              | Unit de generación: contrato `borrador`/`finalizado` no genera; rescisión anula lo impago posterior                                                                                                 |
-| 5, 6, 7           | Unit de indexación con valores del ICL e IPC conocidos; un tramo sin confirmar no cambia de importe; índice no publicado → alerta correcta                                                          |
-| 8                 | Unit del importador de índices con la fuente simulada: no pisa, reintenta, avisa a los 3 días                                                                                                       |
-| 9, 10, 11, 12, 13 | Unit de generación del período: conceptos esperados por contrato; idempotencia; bloqueo por indexación; montos con IVA de la inmobiliaria; prorrateo por cambio de tramo con los importes de Gexion |
-| 37                | Unit de vencimientos: sábado y domingo se corren al lunes, un feriado no                                                                                                                            |
-| 14, 20, 21, 22    | Unit de liquidación: neto con gastos adelantados, con y sin pago garantizado, sin doble liquidación                                                                                                 |
-| 15, 16, 17        | Unit de cobro: imputación por antigüedad, parcial, punitorio propuesto y condonado, saldo a favor                                                                                                   |
-| 18                | Unit de cuenta corriente: saldos separados por moneda                                                                                                                                               |
-| 19                | API: un DELETE no existe; anular revierte y deja rastro                                                                                                                                             |
-| 23, 24            | Unit de los PDFs: totales iguales a la cuenta corriente; leyenda presente                                                                                                                           |
-| 25                | Unit de migración: saldo inicial por moneda igual al importado                                                                                                                                      |
-| 33, 34            | Unit de estados de firma: transiciones válidas, registro de cada cambio, aviso ajeno rechazado                                                                                                      |
-| 35                | Unit con un adaptador de prueba: el módulo funciona entero contra un proveedor simulado                                                                                                             |
-| 36                | Unit del tablero: contrato vigente sin documento firmado aparece en «a completar»                                                                                                                   |
-| 38 – 44           | Unit de `plantilla-word`, `plantilla-modelo` y `plantillas.service` (validación, lista ↔ datos, sin PDF, consultas fijas); web: `plantillas-vista` y `generar-contrato`                             |
-| 26 – 32           | Unit de los cálculos del tablero + test de que cada drill-down suma su tarjeta                                                                                                                      |
-| 45 – 53           | Types y domain: `boletas.test.ts`; API: `impuestos.service.spec.ts` (recupero, adelantado con cobro parcial y anulada, consultas fijas); web: `impuestos.test.tsx`                                  |
-| 60 – 66           | Unit de `reclamos.service` (`regla 6x` en el nombre: vendedor y team leader rechazados, fila vieja que se vuelve a guardar, proveedor ajeno, notas); web: `reclamos.test.tsx`                       |
-| §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                       |
-| Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                         |
-| Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                 |
+| Reglas            | Cómo se protegen                                                                                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1, 4              | Unit del validador de contrato: mes sin tramo, tramos superpuestos, porcentajes que no suman 100                                                                                                                                                              |
+| 2, 3              | Unit de generación: contrato `borrador`/`finalizado` no genera; rescisión anula lo impago posterior                                                                                                                                                           |
+| 5, 6, 7           | Unit de indexación con valores del ICL e IPC conocidos; un tramo sin confirmar no cambia de importe; índice no publicado → alerta correcta                                                                                                                    |
+| 8                 | Unit del importador de índices con la fuente simulada: no pisa, reintenta, avisa a los 3 días                                                                                                                                                                 |
+| 9, 10, 11, 12, 13 | Unit de generación del período: conceptos esperados por contrato; idempotencia; bloqueo por indexación; montos con IVA de la inmobiliaria; prorrateo por cambio de tramo con los importes de Gexion                                                           |
+| 37                | Unit de vencimientos: sábado y domingo se corren al lunes, un feriado no                                                                                                                                                                                      |
+| 14, 20, 21, 22    | Unit de liquidación: neto con gastos adelantados, con y sin pago garantizado, sin doble liquidación                                                                                                                                                           |
+| 15, 16, 17        | Unit de cobro: imputación por antigüedad, parcial, punitorio propuesto y condonado, saldo a favor                                                                                                                                                             |
+| 18                | Unit de cuenta corriente: saldos separados por moneda                                                                                                                                                                                                         |
+| 19                | API: un DELETE no existe; anular revierte y deja rastro                                                                                                                                                                                                       |
+| 23, 24            | Unit de los PDFs: totales iguales a la cuenta corriente; leyenda presente                                                                                                                                                                                     |
+| 25                | Unit de migración: saldo inicial por moneda igual al importado                                                                                                                                                                                                |
+| 33, 34            | Unit de estados de firma: transiciones válidas, registro de cada cambio, aviso ajeno rechazado                                                                                                                                                                |
+| 35                | Unit con un adaptador de prueba: el módulo funciona entero contra un proveedor simulado                                                                                                                                                                       |
+| 36                | Unit del tablero: contrato vigente sin documento firmado aparece en «a completar»                                                                                                                                                                             |
+| 38 – 44           | Unit de `plantilla-word`, `plantilla-modelo` y `plantillas.service` (validación, lista ↔ datos, sin PDF, consultas fijas); web: `plantillas-vista` y `generar-contrato`                                                                                       |
+| 26 – 32           | Unit de los cálculos del tablero + test de que cada drill-down suma su tarjeta                                                                                                                                                                                |
+| 45 – 53           | Types y domain: `boletas.test.ts`; API: `impuestos.service.spec.ts` (recupero, adelantado con cobro parcial y anulada, consultas fijas); web: `impuestos.test.tsx`                                                                                            |
+| 60 – 66           | Unit de `reclamos.service` (`regla 6x` en el nombre: vendedor y team leader rechazados, fila vieja que se vuelve a guardar, proveedor ajeno, notas); web: `reclamos.test.tsx`                                                                                 |
+| 67 – 73           | Types: `reclamos.test.ts`; API: `reclamos.service.spec.ts`, `proveedores.service.spec.ts`, `envios.service.spec.ts`, `tablero-alquileres.service.spec.ts`; base: `aislamiento.e2e-spec.ts` (regla 70); web: `reclamos.test.tsx`, `proveedores-vista.test.tsx` |
+| §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                                                                                 |
+| Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                                                                                   |
+| Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                                                                           |
