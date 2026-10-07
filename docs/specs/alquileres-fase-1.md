@@ -221,8 +221,13 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
     la inmobiliaria.
 22. Sin pago garantizado, un alquiler impago **no entra** en la liquidación:
     queda «en espera», como en Gexion, con sus honorarios. Un pago parcial del
-    inquilino todavía no lo libera. Un cobro cuyo alquiler ya se liquidó al
-    propietario no se anula antes que esa liquidación.
+    inquilino libera **la misma proporción** del alquiler del propietario y de
+    sus honorarios (decidido con Javier el 6/10/2026): si pagó la mitad, se le
+    liquida la mitad y el resto sigue en espera. Al liquidar, la parte cobrada
+    se separa en un concepto propio (enlazado al original por `origenId`);
+    anular la liquidación la devuelve al original, salvo que el resto ya se
+    haya liquidado después. Un cobro cuyo alquiler ya se liquidó al
+    propietario —entero o en parte— no se anula antes que esa liquidación.
 
 ### Documentos
 

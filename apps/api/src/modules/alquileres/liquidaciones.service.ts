@@ -48,6 +48,13 @@ const SUELTOS = [
   'sellado',
 ];
 
+/**
+ * Marca en la clave de la parte que se separa al liquidar un pago parcial:
+ * `<clave del concepto>|liq:<liquidación>`. Conserva el prefijo de la parte del
+ * mes, así el bloqueo de anular un cobro ya liquidado la sigue viendo.
+ */
+const MARCA_PARTE_LIQUIDADA = '|liq:';
+
 /** El detalle que se guarda en la liquidación, tal como se liquidó. */
 const DetalleSchema = z.object({
   aPagar: z.array(LineaLiquidacionSchema),
@@ -158,7 +165,9 @@ export class LiquidacionesService {
         );
       }
       const detalle = lineas(p, pendientes);
-      const ids = [...p.aPagar, ...p.aDescontar].map((c) => c.id);
+      const enJuego = [...p.aPagar, ...p.aDescontar];
+      const ids = enJuego.filter((c) => !c.parcial).map((c) => c.id);
+      const parciales = enJuego.filter((c) => c.parcial);
 
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ctx.tenantId} || ':alq_liquidacion'))`;
       const ultimo = await tx.alqLiquidacion.aggregate({ _max: { numero: true } });
@@ -188,6 +197,7 @@ export class LiquidacionesService {
         throw new ConflictException(
           'Algo de esta liquidación cambió mientras tanto. Recargá la página.',
         );
+      if (parciales.length) await this.separarParciales(tx, ctx, liq.id, parciales);
       const contratos = contratosDe([...detalle.aPagar, ...detalle.aDescontar]);
       await registrarEventos(tx, ctx, [
         {
@@ -261,6 +271,7 @@ export class LiquidacionesService {
           ? new ConflictException('La liquidación ya está anulada.')
           : new NotFoundException('La liquidación no existe.');
       }
+      await this.unirParciales(tx, id);
       await tx.alqConcepto.updateMany({
         where: { liquidacionId: id },
         data: { liquidacionId: null },
@@ -275,6 +286,87 @@ export class LiquidacionesService {
       });
       return l;
     });
+  }
+
+  /**
+   * Regla 22, pago parcial: de cada concepto del que entra solo una parte, esa
+   * parte se separa en un concepto nuevo ya liquidado (enlazado por
+   * `origenId`) y el original queda con el resto, en espera. Dos consultas
+   * para todos, no dos por concepto.
+   */
+  private async separarParciales(
+    tx: Tx,
+    ctx: TenantContext,
+    liquidacionId: string,
+    parciales: ConceptoALiquidar[],
+  ): Promise<void> {
+    const originales = await tx.alqConcepto.findMany({
+      where: { id: { in: parciales.map((c) => c.id) } },
+    });
+    const porId = new Map(originales.map((k) => [k.id, k]));
+    await tx.alqConcepto.createMany({
+      data: parciales.map((c) => {
+        const k = porId.get(c.id)!;
+        return {
+          tenantId: k.tenantId,
+          contratoId: k.contratoId,
+          personaId: k.personaId,
+          tipo: k.tipo,
+          sentido: k.sentido,
+          moneda: k.moneda,
+          periodo: k.periodo,
+          vencimiento: k.vencimiento,
+          importe: c.saldo,
+          liquidacionId,
+          origenId: k.id,
+          descripcion: `${k.descripcion ?? k.tipo} · parte cobrada`,
+          claveGeneracion: `${k.claveGeneracion}${MARCA_PARTE_LIQUIDADA}${liquidacionId}`,
+          creadoPorId: ctx.userId,
+        };
+      }),
+    });
+    const filas = Prisma.join(
+      parciales.map((c) => Prisma.sql`(${c.id}::uuid, ${c.saldo}::numeric)`),
+    );
+    const restados = await tx.$executeRaw`
+      UPDATE alq_concepto k SET importe = k.importe - v.d, updated_at = now()
+        FROM (VALUES ${filas}) AS v(id, d)
+       WHERE k.id = v.id AND k.liquidacion_id IS NULL AND k.anulado_en IS NULL AND k.importe > v.d`;
+    if (restados !== parciales.length)
+      throw new ConflictException(
+        'Algo de esta liquidación cambió mientras tanto. Recargá la página.',
+      );
+  }
+
+  /** Al anular, cada parte separada por un pago parcial vuelve a su concepto original. */
+  private async unirParciales(tx: Tx, liquidacionId: string): Promise<void> {
+    const separadas = await tx.alqConcepto.findMany({
+      where: { liquidacionId, claveGeneracion: { contains: MARCA_PARTE_LIQUIDADA } },
+      select: { id: true, origenId: true, importe: true },
+    });
+    if (separadas.length === 0) return;
+    // Si el resto ya entró en otra liquidación, devolverle esta parte la dejaría
+    // descuadrada: primero se anula esa.
+    const posterior = await tx.alqConcepto.findFirst({
+      where: {
+        id: { in: separadas.map((x) => x.origenId!) },
+        liquidacionId: { not: null },
+        liquidacion: { anuladoEn: null },
+      },
+      select: { liquidacion: { select: { numero: true } } },
+    });
+    if (posterior?.liquidacion)
+      throw new BadRequestException(
+        `El resto de lo que liquidó esta se liquidó después en la liquidación ${String(posterior.liquidacion.numero).padStart(6, '0')}: anulá esa primero.`,
+      );
+    const filas = Prisma.join(
+      separadas.map((x) => Prisma.sql`(${x.origenId}::uuid, ${decToNum(x.importe)}::numeric)`),
+    );
+    await tx.$executeRaw`
+      UPDATE alq_concepto k SET importe = k.importe + v.d, updated_at = now()
+        FROM (VALUES ${filas}) AS v(id, d)
+       WHERE k.id = v.id`;
+    await tx.alqConcepto.deleteMany({ where: { id: { in: separadas.map((x) => x.id) } } });
   }
 
   private async obtenerEn(tx: Tx, id: string): Promise<LiquidacionDto> {
@@ -372,11 +464,21 @@ export class LiquidacionesService {
       },
       orderBy: [{ vencimiento: 'asc' }, { createdAt: 'asc' }],
     });
+    // Lo que ya se le liquidó de cada uno por pagos parciales: las partes
+    // separadas al liquidar (regla 22), enlazadas por `origenId`.
+    const separadas = await tx.alqConcepto.findMany({
+      where: { origenId: { in: ids }, claveGeneracion: { contains: MARCA_PARTE_LIQUIDADA } },
+      select: { origenId: true, importe: true },
+    });
+    const yaLiquidado = new Map<string, number>();
+    for (const x of separadas)
+      yaLiquidado.set(x.origenId!, (yaLiquidado.get(x.origenId!) ?? 0) + decToNum(x.importe));
     return filas
       .filter((k) =>
         k.contrato?.partes.some((p) => p.papel === 'propietario' && p.personaId === k.personaId),
       )
       .map((k) => ({
+        yaLiquidado: redondear2(yaLiquidado.get(k.id) ?? 0),
         id: k.id,
         personaId: k.personaId,
         moneda: k.moneda,
@@ -403,10 +505,11 @@ export class LiquidacionesService {
   }
 
   /**
-   * Las partes del mes que el inquilino ya pagó del todo (`parte#tipo`). Una
-   * consulta para todos los contratos en juego.
+   * Qué fracción de cada parte del mes ya pagó el inquilino (`parte#tipo` → 0
+   * a 1): lo que se le libera al propietario (regla 22). Una consulta para
+   * todos los contratos en juego.
    */
-  private async partesPagadas(tx: Tx, pendientes: Pendiente[]): Promise<Set<string>> {
+  private async partesPagadas(tx: Tx, pendientes: Pendiente[]): Promise<Map<string, number>> {
     const contratos = [
       ...new Set(
         pendientes
@@ -414,7 +517,7 @@ export class LiquidacionesService {
           .map((c) => c.contrato.id),
       ),
     ];
-    if (contratos.length === 0) return new Set();
+    if (contratos.length === 0) return new Map();
     // Solo los meses en juego: antes venían todos los alquileres de la historia de esos contratos.
     const periodos = [
       ...new Set(
@@ -437,14 +540,14 @@ export class LiquidacionesService {
         imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
       },
     });
-    const pagadas = new Set<string>();
+    const cobrado = new Map<string, number>();
     for (const k of delInquilino) {
-      const saldo = redondear2(
-        decToNum(k.importe) - k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0),
-      );
-      if (saldo <= 0) pagadas.add(`${parteDeClave(k.claveGeneracion)}#${k.tipo}`);
+      const importe = decToNum(k.importe);
+      const pagado = k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0);
+      const fraccion = importe <= 0 ? 1 : Math.min(1, Math.max(0, pagado / importe));
+      cobrado.set(`${parteDeClave(k.claveGeneracion)}#${k.tipo}`, fraccion);
     }
-    return pagadas;
+    return cobrado;
   }
 }
 
@@ -459,8 +562,9 @@ function lineas(
       conceptoId: k.id,
       contrato: k.contrato,
       tipo: k.tipo as TipoConcepto,
-      descripcion: k.descripcion,
-      importe: k.saldo,
+      // Un pago parcial del inquilino libera una parte: la línea lo dice.
+      descripcion: c.parcial ? `${k.descripcion} · parte cobrada` : k.descripcion,
+      importe: c.saldo,
     };
   };
   return {

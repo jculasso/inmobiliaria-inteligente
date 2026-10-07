@@ -1011,6 +1011,11 @@ export const CuentaCorrienteDtoSchema = z.object({
     z.object({
       moneda: MonedaAlquilerSchema,
       saldo: z.number(),
+      /**
+       * La parte del saldo que todavía no venció (una cuota del mes que viene).
+       * `.default(0)` por el orden de despliegue: la web sale antes que la API.
+       */
+      aVencer: z.number().default(0),
       movimientos: z.array(
         z.object({
           id: z.string().uuid(),
