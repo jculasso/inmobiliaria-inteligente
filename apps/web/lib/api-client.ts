@@ -137,11 +137,25 @@ function detalleZod(error: { issues: { path: PropertyKey[]; message: string }[] 
   return ` [${campo}: ${issue.message}]`;
 }
 
-/** Variante de `apiFetch` para subir un archivo (`multipart/form-data`) — sin forzar `Content-Type: json`. */
+/**
+ * Variante de `apiFetch` para subir un archivo (`multipart/form-data`) — sin
+ * forzar `Content-Type: json`. `campos` viajan como texto junto al archivo
+ * (el nombre de una plantilla de contrato, por ejemplo).
+ */
 export async function apiFetchForm<T>(
   path: string,
   schema: ZodType<T, ZodTypeDef, unknown>,
-  { accessToken, file }: { accessToken: string; file: File },
+  {
+    accessToken,
+    file,
+    campos,
+    method = 'POST',
+  }: {
+    accessToken: string;
+    file: File;
+    campos?: Record<string, string>;
+    method?: 'POST' | 'PUT';
+  },
 ): Promise<T> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
@@ -149,12 +163,14 @@ export async function apiFetchForm<T>(
   }
 
   const formData = new FormData();
+  // Los campos antes que el archivo: Multer los tiene leídos cuando llega.
+  for (const [k, v] of Object.entries(campos ?? {})) formData.append(k, v);
   formData.append('file', file);
 
   const res = await pedir(
     `${apiUrl}${path}`,
     {
-      method: 'POST',
+      method,
       headers: { Authorization: `Bearer ${accessToken}` },
       body: formData,
       cache: 'no-store',
@@ -164,7 +180,7 @@ export async function apiFetchForm<T>(
 
   if (!res.ok) {
     const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
-    throw new ApiError(mensajeDeError(errorBody, `POST ${path} devolvió ${res.status}`), {
+    throw new ApiError(mensajeDeError(errorBody, `${method} ${path} devolvió ${res.status}`), {
       status: res.status,
       code: errorBody?.error?.code,
     });
@@ -174,7 +190,7 @@ export async function apiFetchForm<T>(
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
     throw new ApiError(
-      `La respuesta de POST ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`,
+      `La respuesta de ${method} ${path} no tiene el formato esperado.${detalleZod(parsed.error)}`,
     );
   }
   return parsed.data;
@@ -296,4 +312,69 @@ export async function apiFetchZip(
     blob: await res.blob(),
     nombre: nombreDeDisposition(res.headers.get('content-disposition')),
   };
+}
+
+/** Un archivo para guardar: los bytes y el nombre completo, con su extensión. */
+export interface ArchivoDescargado {
+  blob: Blob;
+  nombre: string;
+}
+
+/**
+ * Un archivo detrás del token que se baja con su nombre (un Word, por
+ * ejemplo). Como con los PDF, el nombre viaja en `Content-Disposition` y se
+ * rescata acá: una URL `blob:` no lo lleva. A diferencia de `apiFetchPdf`, el
+ * nombre conserva la extensión que mandó la API.
+ */
+export async function apiFetchArchivo(
+  path: string,
+  {
+    accessToken,
+    method = 'GET',
+    body,
+    nombrePorDefecto = 'Archivo',
+  }: {
+    accessToken: string;
+    method?: 'GET' | 'POST';
+    body?: unknown;
+    nombrePorDefecto?: string;
+  },
+): Promise<ArchivoDescargado> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) throw new ApiError('Falta NEXT_PUBLIC_API_URL en el entorno.');
+
+  const res = await pedir(`${apiUrl}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => null)) as ApiErrorBody | null;
+    throw new ApiError(
+      mensajeDeError(errorBody, `No se pudo descargar el archivo (${res.status}).`),
+      { status: res.status, code: errorBody?.error?.code },
+    );
+  }
+  return {
+    blob: await res.blob(),
+    nombre: nombreCompletoDeDisposition(res.headers.get('content-disposition')) ?? nombrePorDefecto,
+  };
+}
+
+/** El nombre de `Content-Disposition`, con su extensión: `filename*` primero, `filename` de respaldo. */
+function nombreCompletoDeDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf8?.[1]) {
+    try {
+      return decodeURIComponent(utf8[1]);
+    } catch {
+      // Header mal formado: se sigue con el respaldo de abajo.
+    }
+  }
+  return /filename="([^"]+)"/i.exec(header)?.[1] ?? null;
 }

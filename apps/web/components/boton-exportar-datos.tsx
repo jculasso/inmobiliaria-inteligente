@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { getAccessToken } from '../lib/supabase/client';
 import { exportarDatos } from '../lib/exportacion-api';
+import { descargarArchivo } from '../lib/descargar-archivo';
 
 /**
  * "Sus datos son suyos."
@@ -25,15 +26,7 @@ export function BotonExportarDatos() {
     setError(null);
     try {
       const { blob, nombre } = await exportarDatos(await getAccessToken());
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${nombre}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      // Se libera después de que el navegador tomó el archivo.
-      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      descargarArchivo(blob, `${nombre}.zip`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron descargar los datos.');
     } finally {
