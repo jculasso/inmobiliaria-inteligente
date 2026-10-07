@@ -49,8 +49,8 @@ export function FirmaContrato({
   contratoId: string;
   documento: DocumentoContratoDto | null;
 }) {
-  // Lo que llega de la página manda cuando cambia: generar el PDF desde la
-  // plantilla (otro panel) refresca la página, y acá tiene que verse.
+  // Lo que llega de la página manda cuando cambia: cuando otro panel guarda
+  // algo y refresca la página, acá tiene que verse.
   const [doc, setDoc] = useEstadoDelServidor(inicial);
   const [cambios, setCambios] = useState<Record<string, EstadoFirmante>>({});
   const [error, setError] = useState<string | null>(null);

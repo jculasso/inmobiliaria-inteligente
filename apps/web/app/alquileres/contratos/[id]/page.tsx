@@ -61,7 +61,7 @@ export default async function ContratoPage({ params }: { params: Promise<{ id: s
         moneda={contrato.moneda}
         sePuedeAgregar={contrato.estado === 'vigente'}
       />
-      <GenerarContrato contrato={contrato} plantillas={plantillas} documento={documento} />
+      <GenerarContrato contrato={contrato} plantillas={plantillas} />
       <FirmaContrato contratoId={id} documento={documento} />
       <ReclamosDelContrato contrato={contrato} reclamos={reclamos} />
       <Historial eventos={historial} />

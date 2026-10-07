@@ -1,42 +1,168 @@
+import type { Prisma } from '@prisma/client';
+import { NOMBRE_TIPO_CONTRATO } from '@vacker/types';
+import { fechaCorta, importeEnLetras } from '@vacker/domain';
+import { decToNum, fromDate } from '../tablero/tablero.util';
+import { mesesDeContrato } from './contrato-completo.service';
+import { plata } from './historial';
+
 /**
- * El modelo con que arranca una inmobiliaria que todavía no cargó su
- * plantilla. Es un punto de partida: se revisa con el abogado de la
- * inmobiliaria antes de usarlo.
+ * Lo que se lee de un contrato para completar su plantilla: una sola consulta,
+ * con las partes, la propiedad y los tramos adentro.
  */
-export const MODELO_BASE = `# CONTRATO DE LOCACIÓN
+export const SELECT_PLANTILLA = {
+  codigo: true,
+  tipo: true,
+  moneda: true,
+  inicio: true,
+  fin: true,
+  fechaFirma: true,
+  ajuste: true,
+  indice: true,
+  periodicidadMeses: true,
+  diaVencimiento: true,
+  punitorioDiarioPct: true,
+  depositoImporte: true,
+  depositoMoneda: true,
+  propiedad: { select: { direccion: true, unidad: true, ciudad: true } },
+  partes: {
+    select: {
+      papel: true,
+      porcentaje: true,
+      persona: {
+        select: { nombre: true, documento: true, cuit: true, domicilio: true, localidad: true },
+      },
+    },
+    orderBy: { persona: { nombre: 'asc' } },
+  },
+  tramos: {
+    select: { numero: true, desde: true, hasta: true, importe: true },
+    orderBy: { numero: 'asc' },
+  },
+} satisfies Prisma.AlqContratoSelect;
 
-Entre {{propietarios}}, en adelante «LA PARTE LOCADORA», y {{inquilinos}}, en adelante «LA PARTE LOCATARIA», convienen en celebrar el presente contrato de locación, que se regirá por las siguientes cláusulas.
+export type ContratoParaPlantilla = Prisma.AlqContratoGetPayload<{
+  select: typeof SELECT_PLANTILLA;
+}>;
 
-## PRIMERA · Objeto
-LA PARTE LOCADORA da en locación a LA PARTE LOCATARIA, y esta acepta, el inmueble ubicado en {{propiedad.direccion}}, {{propiedad.ciudad}}, que LA PARTE LOCATARIA declara conocer y recibir en buen estado de conservación.
+const NOMBRE_INDICE: Record<string, string> = {
+  ICL: 'el Índice para Contratos de Locación (ICL) del BCRA',
+  IPC: 'el Índice de Precios al Consumidor (IPC) del INDEC',
+  CCP: 'el índice Casa Propia',
+};
 
-## SEGUNDA · Plazo
-El plazo de la locación es de {{contrato.meses}} meses, desde el {{contrato.inicio}} hasta el {{contrato.fin}}, fecha en que LA PARTE LOCATARIA deberá restituir el inmueble libre de ocupantes y en el estado en que lo recibió, salvo el desgaste por el uso normal.
+/** «20.123.456» o «20-12345678-6». */
+const documento = (d: string | null) =>
+  !d
+    ? null
+    : d.length === 11
+      ? `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`
+      : d.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-## TERCERA · Precio
-El alquiler mensual inicial es de {{alquiler.inicial}} ({{alquiler.inicial.letras}}), que se paga por mes adelantado del 1 al {{vencimiento.dia}} de cada mes en las oficinas de {{inmobiliaria}} o por transferencia a la cuenta que esta indique.
+/** Lo que va después de cada uno en «Juan, Ana y Pedro». */
+const separador = (i: number, total: number) =>
+  i === total - 1 ? '' : i === total - 2 ? ' y ' : ', ';
 
-## CUARTA · Actualización
-El precio se actualiza según {{ajuste}}, de acuerdo con los siguientes tramos:
-{{tramos}}
+/**
+ * Los datos con que se completa una plantilla de contrato. Las claves son los
+ * nombres de `MARCADORES_PLANTILLA` (`@vacker/types`), y un test comprueba
+ * que estén todos y que no sobre ninguno.
+ *
+ * Lo que el contrato necesita y falta queda a la vista («[sin cargar]»), para
+ * que se note antes de firmar. Lo que es opcional (la fecha de firma, el
+ * depósito) queda vacío.
+ */
+export function datosDePlantilla(
+  c: ContratoParaPlantilla,
+  inmobiliaria: string,
+  hoy: string,
+): Record<string, unknown> {
+  const moneda = c.moneda as 'ARS' | 'USD';
+  const personas = (papel: string) => {
+    const delPapel = c.partes.filter((p) => p.papel === papel);
+    return delPapel.map((p, i) => {
+      const doc = documento(p.persona.documento) ?? documento(p.persona.cuit) ?? '';
+      const domicilio = [p.persona.domicilio, p.persona.localidad].filter(Boolean).join(', ');
+      return {
+        nombre: p.persona.nombre,
+        documento: doc,
+        domicilio,
+        texto: [
+          p.persona.nombre,
+          doc && `DNI/CUIT ${doc}`,
+          domicilio && `con domicilio en ${domicilio}`,
+        ]
+          .filter(Boolean)
+          .join(', '),
+        separador: separador(i, delPapel.length),
+        ...(papel === 'propietario'
+          ? {
+              porcentaje:
+                p.porcentaje != null ? `${decToNum(p.porcentaje).toLocaleString('es-AR')}%` : '',
+            }
+          : {}),
+      };
+    });
+  };
+  const todos = (lista: { texto: string }[]) =>
+    lista.map((p) => p.texto).join('; ') || '[sin cargar]';
 
-## QUINTA · Mora
-La falta de pago en término produce la mora automática, sin necesidad de interpelación, y devenga un interés punitorio del {{punitorio}} diario sobre lo adeudado.
+  const propietarios = personas('propietario');
+  const inquilinos = personas('inquilino');
+  const garantes = personas('garante');
+  const inicio = fromDate(c.inicio)!;
+  const fin = fromDate(c.fin)!;
+  const primero = c.tramos[0]?.importe;
+  const inicial = primero != null ? decToNum(primero) : null;
+  const importeDeposito = c.depositoImporte != null ? decToNum(c.depositoImporte) : 0;
+  const monedaDeposito = (c.depositoMoneda ?? c.moneda) as 'ARS' | 'USD';
+  const deposito = importeDeposito
+    ? {
+        importe: plata(importeDeposito, monedaDeposito),
+        letras: importeEnLetras(importeDeposito, monedaDeposito),
+      }
+    : null;
 
-## SEXTA · Depósito en garantía
-LA PARTE LOCATARIA entrega en este acto {{deposito}} ({{deposito.letras}}) en concepto de depósito en garantía, que se devolverá al finalizar la locación, una vez verificado el estado del inmueble y el pago de todas las obligaciones a su cargo.
-
-## SÉPTIMA · Garantía
-{{garantes}} se constituyen en fiadores solidarios, lisos, llanos y principales pagadores de todas las obligaciones de LA PARTE LOCATARIA, con renuncia a los beneficios de excusión y división.
-
-## OCTAVA · Destino y conservación
-El inmueble se destina exclusivamente a {{contrato.destino}}. LA PARTE LOCATARIA no puede cederlo ni subalquilarlo, y se obliga a conservarlo en buen estado y a permitir su inspección con aviso previo.
-
-## NOVENA · Servicios e impuestos
-Los servicios de luz, gas, agua y las expensas ordinarias están a cargo de LA PARTE LOCATARIA desde la entrega de la posesión; los impuestos que gravan el inmueble y las expensas extraordinarias, a cargo de LA PARTE LOCADORA, salvo pacto en contrario.
-
-## DÉCIMA · Domicilios y jurisdicción
-Las partes constituyen domicilio en los indicados al comienzo, donde serán válidas todas las notificaciones, y se someten a los tribunales ordinarios de {{propiedad.ciudad}}.
-
-En prueba de conformidad se firman tantos ejemplares como partes, de un mismo tenor y a un solo efecto, en {{propiedad.ciudad}}, el {{fecha.hoy}}.
-`;
+  return {
+    inmobiliaria,
+    'contrato.codigo': c.codigo,
+    'contrato.tipo': NOMBRE_TIPO_CONTRATO[c.tipo as 'vivienda' | 'comercial'],
+    'contrato.destino': c.tipo === 'comercial' ? 'uso comercial' : 'vivienda familiar',
+    'contrato.inicio': fechaCorta(inicio),
+    'contrato.fin': fechaCorta(fin),
+    'contrato.meses': String(mesesDeContrato(inicio, fin)),
+    'contrato.firma': c.fechaFirma ? fechaCorta(fromDate(c.fechaFirma)!) : '',
+    'propiedad.direccion': [c.propiedad.direccion, c.propiedad.unidad].filter(Boolean).join(' '),
+    'propiedad.ciudad': c.propiedad.ciudad ?? '[sin cargar]',
+    'propietarios.texto': todos(propietarios),
+    'inquilinos.texto': todos(inquilinos),
+    'garantes.texto': todos(garantes),
+    'alquiler.inicial': inicial != null ? plata(inicial, moneda) : '[sin cargar]',
+    'alquiler.inicial.letras': inicial != null ? importeEnLetras(inicial, moneda) : '[sin cargar]',
+    ajuste:
+      c.ajuste === 'indexado' && c.indice
+        ? `${NOMBRE_INDICE[c.indice] ?? c.indice}, cada ${c.periodicidadMeses} meses`
+        : 'los importes escalonados que se detallan',
+    'vencimiento.dia': String(c.diaVencimiento),
+    punitorio: `${decToNum(c.punitorioDiarioPct).toLocaleString('es-AR')}%`,
+    'deposito.importe': deposito?.importe ?? '',
+    'deposito.letras': deposito?.letras ?? '',
+    'fecha.hoy': fechaCorta(hoy),
+    deposito,
+    indexado: c.ajuste === 'indexado',
+    escalonado: c.ajuste === 'escalonado',
+    comercial: c.tipo === 'comercial',
+    propietarios,
+    inquilinos,
+    garantes,
+    tramos: c.tramos.map((t) => {
+      const importe = t.importe != null ? decToNum(t.importe) : null;
+      return {
+        numero: String(t.numero),
+        desde: fechaCorta(fromDate(t.desde)!),
+        hasta: fechaCorta(fromDate(t.hasta)!),
+        importe: importe != null ? plata(importe, moneda) : 'según el índice',
+        letras: importe != null ? importeEnLetras(importe, moneda) : '',
+      };
+    }),
+  };
+}

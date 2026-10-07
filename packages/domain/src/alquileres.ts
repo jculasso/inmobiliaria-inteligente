@@ -857,7 +857,7 @@ export function estadoDeFirma(actual: EstadoFirma, firmantes: EstadoFirmante[]):
     : actual;
 }
 
-// --- Contrato desde plantilla (entrega 15) ----------------------------------------------
+// --- Importes en letras, para el contrato desde plantilla (entrega 15) -------------------
 
 const UNIDADES = [
   '',
@@ -953,17 +953,6 @@ export function importeEnLetras(n: number, moneda: 'ARS' | 'USD'): string {
   const centavos = Math.round((n - Math.floor(n)) * 100);
   const signo = moneda === 'USD' ? 'dólares estadounidenses' : 'pesos';
   return `${signo} ${enLetras(n)}${centavos ? ` con ${centavos}/100` : ''}`;
-}
-
-/**
- * Reemplaza las variables `{{así}}` de una plantilla. La que no existe queda
- * a la vista entre corchetes, para que se note antes de mandar a firmar.
- */
-export function completarPlantilla(cuerpo: string, valores: Record<string, string>): string {
-  // `Object.hasOwn`: «{{constructor}}» no tiene que imprimir el código de una función.
-  return cuerpo.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, clave: string) =>
-    Object.hasOwn(valores, clave) ? valores[clave]! : `[falta: ${clave}]`,
-  );
 }
 
 /**

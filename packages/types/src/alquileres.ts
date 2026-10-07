@@ -1653,56 +1653,266 @@ export const CompletoContratoDtoSchema = z.object({
 });
 export type CompletoContratoDto = z.infer<typeof CompletoContratoDtoSchema>;
 
-// --- Contrato desde plantilla (entrega 15) ----------------------------------------------
+// --- Contrato desde plantilla de Word (entrega 15, rehecha el 7/10/2026) ----------------
 
 /**
- * Las variables que se pueden usar en una plantilla de contrato, con lo que
- * ponen. Se escriben entre llaves dobles: {{inquilinos}}.
+ * Cómo se usa un marcador en el Word:
+ * - `texto`: se escribe tal cual, `{contrato.codigo}`.
+ * - `condicion`: encierra una parte que aparece solo si se cumple,
+ *   `{#deposito}…{/deposito}`, o solo si NO se cumple, `{^deposito}…{/deposito}`.
+ * - `lista`: repite lo que encierra una vez por elemento,
+ *   `{#tramos}…{/tramos}`, y adentro se usan sus `campos`.
  */
-export const VARIABLES_PLANTILLA: [string, string][] = [
-  ['inmobiliaria', 'Nombre de la inmobiliaria'],
-  ['contrato.codigo', 'Número de contrato (ALT-0001)'],
-  ['contrato.tipo', 'Particular o Comercial'],
-  ['contrato.destino', 'vivienda o uso comercial'],
-  ['contrato.inicio', 'Fecha de inicio'],
-  ['contrato.fin', 'Fecha de fin'],
-  ['contrato.meses', 'Duración en meses'],
-  ['propiedad.direccion', 'Dirección, piso y depto'],
-  ['propiedad.ciudad', 'Ciudad'],
-  ['propietarios', 'Propietarios con documento y domicilio'],
-  ['inquilinos', 'Inquilinos con documento y domicilio'],
-  ['garantes', 'Garantes con documento y domicilio'],
-  ['alquiler.inicial', 'Alquiler del primer tramo ($ 350.000,00)'],
-  ['alquiler.inicial.letras', 'El mismo, en letras'],
-  ['ajuste', 'Cómo se ajusta (ICL cada 4 meses, escalonado)'],
-  ['tramos', 'Lista de tramos con fechas e importes'],
-  ['vencimiento.dia', 'Día del mes en que vence el alquiler'],
-  ['punitorio', 'Punitorio diario (%)'],
-  ['deposito', 'Depósito en garantía'],
-  ['deposito.letras', 'El depósito, en letras'],
-  ['fecha.hoy', 'Fecha de hoy'],
+export type TipoMarcador = 'texto' | 'condicion' | 'lista';
+
+export interface CampoMarcador {
+  nombre: string;
+  descripcion: string;
+  ejemplo: string;
+}
+
+export interface MarcadorPlantilla {
+  nombre: string;
+  tipo: TipoMarcador;
+  descripcion: string;
+  ejemplo: string;
+  /** Lo que se puede escribir adentro de una lista (o de una condición que trae datos). */
+  campos?: CampoMarcador[];
+}
+
+const CAMPOS_PERSONA: CampoMarcador[] = [
+  { nombre: 'nombre', descripcion: 'Nombre y apellido, o razón social', ejemplo: 'Juan Pérez' },
+  { nombre: 'documento', descripcion: 'DNI o CUIT', ejemplo: '20.123.456' },
+  { nombre: 'domicilio', descripcion: 'Domicilio y localidad', ejemplo: 'Córdoba 1452, Rosario' },
+  {
+    nombre: 'texto',
+    descripcion: 'Todo junto: nombre, documento y domicilio',
+    ejemplo: 'Juan Pérez, DNI/CUIT 20.123.456, con domicilio en Córdoba 1452, Rosario',
+  },
+  {
+    nombre: 'separador',
+    descripcion: 'Lo que va después de cada uno: «, », « y » antes del último, nada al final',
+    ejemplo: ' y ',
+  },
 ];
 
-export const PlantillaInputSchema = z.object({
+/**
+ * Los marcadores que se pueden usar en una plantilla de contrato en Word. Es
+ * la ÚNICA lista: con ella se valida el Word al subirlo, se arma el ejemplo
+ * que se descarga y la ayuda de la pantalla. Un test comprueba que cada
+ * nombre lo complete el armado de datos del contrato, y que no complete
+ * ninguno que no esté acá.
+ */
+export const MARCADORES_PLANTILLA: readonly MarcadorPlantilla[] = [
+  {
+    nombre: 'inmobiliaria',
+    tipo: 'texto',
+    descripcion: 'Nombre de la inmobiliaria',
+    ejemplo: 'Alteva Propiedades',
+  },
+  {
+    nombre: 'contrato.codigo',
+    tipo: 'texto',
+    descripcion: 'Número de contrato',
+    ejemplo: 'ALT-0011',
+  },
+  {
+    nombre: 'contrato.tipo',
+    tipo: 'texto',
+    descripcion: 'Particular o Comercial',
+    ejemplo: 'Particular',
+  },
+  {
+    nombre: 'contrato.destino',
+    tipo: 'texto',
+    descripcion: 'Para qué se alquila',
+    ejemplo: 'vivienda familiar',
+  },
+  {
+    nombre: 'contrato.inicio',
+    tipo: 'texto',
+    descripcion: 'Fecha de inicio',
+    ejemplo: '01/03/2026',
+  },
+  { nombre: 'contrato.fin', tipo: 'texto', descripcion: 'Fecha de fin', ejemplo: '28/02/2029' },
+  { nombre: 'contrato.meses', tipo: 'texto', descripcion: 'Duración en meses', ejemplo: '36' },
+  {
+    nombre: 'contrato.firma',
+    tipo: 'texto',
+    descripcion: 'Fecha de firma, si se cargó (si no, queda vacío)',
+    ejemplo: '20/02/2026',
+  },
+  {
+    nombre: 'propiedad.direccion',
+    tipo: 'texto',
+    descripcion: 'Dirección, piso y depto',
+    ejemplo: 'Bv. Oroño 1452 4° B',
+  },
+  { nombre: 'propiedad.ciudad', tipo: 'texto', descripcion: 'Ciudad', ejemplo: 'Rosario' },
+  {
+    nombre: 'propietarios.texto',
+    tipo: 'texto',
+    descripcion: 'Todos los propietarios con documento y domicilio, separados por «;»',
+    ejemplo: 'Juan Pérez, DNI/CUIT 20.123.456, con domicilio en Córdoba 1452, Rosario',
+  },
+  {
+    nombre: 'inquilinos.texto',
+    tipo: 'texto',
+    descripcion: 'Todos los inquilinos, igual que arriba',
+    ejemplo: 'Ana Gómez, DNI/CUIT 27-33344455-9',
+  },
+  {
+    nombre: 'garantes.texto',
+    tipo: 'texto',
+    descripcion: 'Todos los garantes, igual que arriba',
+    ejemplo: 'Carlos Ruiz, DNI/CUIT 22.333.444',
+  },
+  {
+    nombre: 'alquiler.inicial',
+    tipo: 'texto',
+    descripcion: 'Alquiler del primer tramo',
+    ejemplo: '$ 350.000,00',
+  },
+  {
+    nombre: 'alquiler.inicial.letras',
+    tipo: 'texto',
+    descripcion: 'El mismo, en letras',
+    ejemplo: 'pesos trescientos cincuenta mil',
+  },
+  {
+    nombre: 'ajuste',
+    tipo: 'texto',
+    descripcion: 'Cómo se ajusta el alquiler',
+    ejemplo: 'el Índice para Contratos de Locación (ICL) del BCRA, cada 4 meses',
+  },
+  {
+    nombre: 'vencimiento.dia',
+    tipo: 'texto',
+    descripcion: 'Día del mes en que vence el alquiler',
+    ejemplo: '10',
+  },
+  { nombre: 'punitorio', tipo: 'texto', descripcion: 'Punitorio diario', ejemplo: '0,5%' },
+  {
+    nombre: 'deposito.importe',
+    tipo: 'texto',
+    descripcion: 'Depósito en garantía (vacío si no hay)',
+    ejemplo: '$ 350.000,00',
+  },
+  {
+    nombre: 'deposito.letras',
+    tipo: 'texto',
+    descripcion: 'El depósito, en letras',
+    ejemplo: 'pesos trescientos cincuenta mil',
+  },
+  { nombre: 'fecha.hoy', tipo: 'texto', descripcion: 'Fecha del día', ejemplo: '07/10/2026' },
+  {
+    nombre: 'deposito',
+    tipo: 'condicion',
+    descripcion: 'El contrato tiene depósito en garantía',
+    ejemplo: '{#deposito}Se entregan {importe} ({letras}).{/deposito}',
+    campos: [
+      { nombre: 'importe', descripcion: 'El importe', ejemplo: '$ 350.000,00' },
+      { nombre: 'letras', descripcion: 'El importe en letras', ejemplo: 'pesos trescientos mil' },
+    ],
+  },
+  {
+    nombre: 'indexado',
+    tipo: 'condicion',
+    descripcion: 'El alquiler se ajusta por un índice (ICL, IPC, Casa Propia)',
+    ejemplo: '{#indexado}Se actualiza según {ajuste}.{/indexado}',
+  },
+  {
+    nombre: 'escalonado',
+    tipo: 'condicion',
+    descripcion: 'El alquiler tiene importes escalonados fijos',
+    ejemplo: '{#escalonado}Los importes son los de cada tramo.{/escalonado}',
+  },
+  {
+    nombre: 'comercial',
+    tipo: 'condicion',
+    descripcion: 'Es un contrato comercial (con ^ en vez de #, uno particular)',
+    ejemplo: '{#comercial}Destino comercial.{/comercial}',
+  },
+  {
+    nombre: 'propietarios',
+    tipo: 'lista',
+    descripcion: 'Uno por cada propietario',
+    ejemplo: '{#propietarios}{nombre}{separador}{/propietarios}',
+    campos: [
+      ...CAMPOS_PERSONA,
+      { nombre: 'porcentaje', descripcion: 'Su parte de la propiedad', ejemplo: '50%' },
+    ],
+  },
+  {
+    nombre: 'inquilinos',
+    tipo: 'lista',
+    descripcion: 'Uno por cada inquilino',
+    ejemplo: '{#inquilinos}{texto}{separador}{/inquilinos}',
+    campos: CAMPOS_PERSONA,
+  },
+  {
+    nombre: 'garantes',
+    tipo: 'lista',
+    descripcion: 'Uno por cada garante (si no hay, lo que encierra no aparece)',
+    ejemplo: '{#garantes}{nombre}, DNI {documento}{separador}{/garantes}',
+    campos: CAMPOS_PERSONA,
+  },
+  {
+    nombre: 'tramos',
+    tipo: 'lista',
+    descripcion: 'Uno por cada tramo del alquiler',
+    ejemplo: '{#tramos}Del {desde} al {hasta}: {importe}{/tramos}',
+    campos: [
+      { nombre: 'numero', descripcion: 'Número de tramo', ejemplo: '1' },
+      { nombre: 'desde', descripcion: 'Desde', ejemplo: '01/03/2026' },
+      { nombre: 'hasta', descripcion: 'Hasta', ejemplo: '30/06/2026' },
+      {
+        nombre: 'importe',
+        descripcion: 'El importe, o «según el índice» si todavía no se indexó',
+        ejemplo: '$ 350.000,00',
+      },
+      {
+        nombre: 'letras',
+        descripcion: 'El importe en letras (vacío si todavía no se indexó)',
+        ejemplo: 'pesos trescientos cincuenta mil',
+      },
+    ],
+  },
+];
+
+/** Tope de una plantilla en Word: lo mismo que una foto (`UPLOAD_MAX_BYTES` de la API). */
+export const PLANTILLA_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Nombre y para qué contratos sirve. Viaja como campos de un formulario
+ * multipart al subir el Word: un «Para contratos» sin elegir llega como «».
+ */
+export const PlantillaMetadatosSchema = z.object({
   nombre: z.string().trim().min(1, 'Ponele un nombre.').max(80),
-  tipoContrato: TipoContratoSchema.nullish().transform((v) => v ?? null),
-  cuerpo: z.string().trim().min(20, 'La plantilla está vacía.').max(100_000),
+  tipoContrato: z
+    .preprocess((v) => (v === '' ? null : v), TipoContratoSchema.nullish())
+    .transform((v) => v ?? null),
 });
-export type PlantillaInput = z.input<typeof PlantillaInputSchema>;
-export type Plantilla = z.output<typeof PlantillaInputSchema>;
+export type PlantillaMetadatos = z.output<typeof PlantillaMetadatosSchema>;
+
+/**
+ * `word`: se sube un .docx y se descarga completo. `texto`: una plantilla del
+ * editor anterior; ya no genera, queda en la lista para que se la reemplace.
+ */
+export const FormatoPlantillaSchema = z.enum(['word', 'texto']);
+export type FormatoPlantilla = z.infer<typeof FormatoPlantillaSchema>;
+
 export const PlantillaDtoSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string(),
   tipoContrato: TipoContratoSchema.nullable(),
-  cuerpo: z.string(),
+  formato: FormatoPlantillaSchema,
+  nombreArchivo: z.string().nullable(),
+  tamano: z.number().int().nullable(),
   actualizada: z.string(),
 });
 export type PlantillaDto = z.infer<typeof PlantillaDtoSchema>;
 export const GenerarDesdePlantillaSchema = z.object({ plantillaId: z.string().uuid() });
-export const VistaPreviaPlantillaSchema = z.object({
-  cuerpo: z.string().max(100_000),
-  contratoId: z.string().uuid(),
-});
 
 // --- Reclamos (entrega 15) -----------------------------------------------------------------
 

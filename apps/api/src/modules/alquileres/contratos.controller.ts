@@ -10,7 +10,7 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import {
   AnularConMotivoSchema,
   GenerarDesdePlantillaSchema,
@@ -30,12 +30,14 @@ import {
 } from '@vacker/types';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
+import { docxResponse } from '../../common/docx-response';
+import { Costoso } from '../../common/limite-solicitudes';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero/tablero.util';
 import { ContratosService } from './contratos.service';
 import { HistorialService } from './historial';
 import { ContratoCompletoService } from './contrato-completo.service';
-import { PlantillasService } from './plantillas.service';
+import { PlantillasService, TIPO_DOCX } from './plantillas.service';
 import type { z } from 'zod';
 
 /** Contratos de alquiler: alta, edición en borrador, ficha y cambios de estado. */
@@ -211,17 +213,20 @@ export class ContratosController {
 
   @Post(':id/generar-desde-plantilla')
   @HttpCode(200)
+  @Costoso()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiProduces(TIPO_DOCX)
   @ApiOperation({
     summary:
-      'Genera el PDF del contrato desde una plantilla y lo deja como su documento, para firmar',
+      'El contrato en Word, completo desde una plantilla, para descargar (no se guarda como su documento)',
   })
-  generarDesdePlantilla(
+  async generarDesdePlantilla(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(GenerarDesdePlantillaSchema))
     body: z.output<typeof GenerarDesdePlantillaSchema>,
     @CurrentUser() user: AuthPrincipal,
   ) {
-    return this.plantillas.generar(ctxDe(user), id, body.plantillaId);
+    const { buffer, nombre } = await this.plantillas.generar(ctxDe(user), id, body.plantillaId);
+    return docxResponse(buffer, nombre);
   }
 }

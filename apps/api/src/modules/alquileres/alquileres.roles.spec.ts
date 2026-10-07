@@ -12,6 +12,7 @@ import { CobrosController } from './cobros.controller';
 import { LiquidacionesController } from './liquidaciones.controller';
 import { TableroAlquileresController } from './tablero-alquileres.controller';
 import { FirmaController } from './firma/firma.controller';
+import { PlantillasController } from './plantillas.controller';
 
 /**
  * Spec alquileres-fase-1.md §3: el módulo se contrata por inmobiliaria Y pide
@@ -32,6 +33,7 @@ const CONTROLLERS = [
   LiquidacionesController,
   TableroAlquileresController,
   FirmaController,
+  PlantillasController,
 ];
 
 const handlers = CONTROLLERS.flatMap((C) =>

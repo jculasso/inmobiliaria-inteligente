@@ -2,48 +2,54 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { ContratoDto, DocumentoContratoDto, PlantillaDto } from '@vacker/types';
+import type { ContratoDto, PlantillaDto } from '@vacker/types';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { generarDesdePlantilla, vistaPreviaPlantilla } from '../../lib/alquileres-api';
-import { abrirPdfEnPestana } from '../../lib/abrir-pdf';
+import { generarDesdePlantilla } from '../../lib/alquileres-api';
+import { descargarArchivo } from '../../lib/descargar-archivo';
 import { inputClass } from '../form-ui';
 import { useRefrescar } from '../../lib/refrescar';
-import { Panel } from './piezas';
+import { MensajeError, Panel } from './piezas';
 
 /**
- * Generar el contrato desde una plantilla (entrega 15): el PDF queda como el
- * documento del contrato, listo para mandar a firmar. Mientras no se envió,
- * se puede volver a generar.
+ * El contrato desde una plantilla de Word (entrega 15, rehecha el 7/10/2026):
+ * se elige la plantilla y se descarga el Word completo con los datos del
+ * contrato. No hay PDF automático: se revisa en Word, se guarda como PDF y se
+ * sube en «Documento y firma», el panel de abajo.
  */
 export function GenerarContrato({
   contrato,
   plantillas,
-  documento,
 }: {
   contrato: ContratoDto;
   plantillas: PlantillaDto[];
-  documento: DocumentoContratoDto | null;
 }) {
   const { refrescar, refrescando } = useRefrescar();
-  const sirven = plantillas.filter((p) => !p.tipoContrato || p.tipoContrato === contrato.tipo);
+  // Las de texto del editor anterior ya no generan: se reemplazan por un Word.
+  const sirven = plantillas.filter(
+    (p) => p.formato === 'word' && (!p.tipoContrato || p.tipoContrato === contrato.tipo),
+  );
   const [plantillaId, setPlantillaId] = useState(sirven[0]?.id ?? '');
   const [error, setError] = useState<string | null>(null);
-  const [generando, setGenerando] = useState(false);
-  const enviado = documento != null && documento.estadoFirma !== 'sin_enviar';
-  if (enviado || contrato.estado === 'anulado') return null;
+  const [descargando, setDescargando] = useState(false);
+  if (contrato.estado === 'anulado') return null;
 
-  async function generar() {
+  async function descargar() {
     setError(null);
-    setGenerando(true);
+    setDescargando(true);
     try {
-      await generarDesdePlantilla(await getAccessToken(), contrato.id, plantillaId);
-      // Ocupado hasta que el documento nuevo aparece abajo, en la firma.
+      const { blob, nombre } = await generarDesdePlantilla(
+        await getAccessToken(),
+        contrato.id,
+        plantillaId,
+      );
+      descargarArchivo(blob, nombre);
+      // Queda en el historial del contrato, más abajo.
       await refrescar();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo generar.');
+      setError(err instanceof Error ? err.message : 'No se pudo descargar el contrato.');
     } finally {
-      setGenerando(false);
+      setDescargando(false);
     }
   }
 
@@ -51,12 +57,12 @@ export function GenerarContrato({
     <Panel icono="📝" titulo="Contrato desde plantilla">
       {sirven.length === 0 ? (
         <p className="text-sm text-muted">
-          Todavía no hay plantillas para este tipo de contrato.{' '}
+          Todavía no hay plantillas en Word para este tipo de contrato.{' '}
           <Link
             href="/alquileres/plantillas"
             className="font-semibold text-brand-red hover:underline"
           >
-            Crear una
+            Subir una
           </Link>
         </p>
       ) : (
@@ -75,45 +81,19 @@ export function GenerarContrato({
               ))}
             </select>
             <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                abrirPdfEnPestana(
-                  async () =>
-                    vistaPreviaPlantilla(
-                      await getAccessToken(),
-                      contrato.id,
-                      sirven.find((p) => p.id === plantillaId)!.cuerpo,
-                    ),
-                  { titulo: 'Vista previa', onError: setError },
-                )
-              }
-            >
-              👁️ Vista previa
-            </Button>
-            <Button
               variant="primary"
               size="sm"
-              onClick={generar}
-              disabled={generando || !plantillaId}
+              onClick={descargar}
+              disabled={descargando || refrescando || !plantillaId}
             >
-              {refrescando
-                ? 'Actualizando…'
-                : generando
-                  ? 'Generando…'
-                  : documento
-                    ? '📝 Volver a generar el PDF'
-                    : '📝 Generar el PDF del contrato'}
+              {descargando ? 'Preparando…' : '⬇️ Descargar el contrato en Word'}
             </Button>
           </div>
           <p className="text-xs text-muted">
-            Queda como el documento del contrato, abajo, para mandar a firmar.
+            Revisalo en Word, guardalo como PDF y subilo abajo, en «Documento y firma», para
+            mandarlo a firmar.
           </p>
-          {error && (
-            <p role="alert" className="text-sm font-medium text-danger">
-              {error}
-            </p>
-          )}
+          <MensajeError>{error}</MensajeError>
         </div>
       )}
     </Panel>

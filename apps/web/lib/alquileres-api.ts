@@ -44,7 +44,7 @@ import {
   ReclamoResumenDtoSchema,
   UsuarioMiniSchema,
   type CambioReclamo,
-  type PlantillaInput,
+  type PlantillaMetadatos,
   type ReclamoInput,
   CompletoContratoDtoSchema,
   ConfiguracionAlquileresSchema,
@@ -74,7 +74,7 @@ import {
   type PersonaInput,
   type PropiedadAlquilerInput,
 } from '@vacker/types';
-import { apiFetch, apiFetchForm, apiFetchPdf } from './api-client';
+import { apiFetch, apiFetchArchivo, apiFetchForm, apiFetchPdf } from './api-client';
 
 /** Cuánto tiene cargado la inmobiliaria en el módulo (GET /alquileres/resumen). */
 export async function getResumenAlquileres(accessToken: string) {
@@ -563,28 +563,30 @@ export async function listPlantillas(accessToken: string) {
   return apiFetch('/alquileres/plantillas', z.array(PlantillaDtoSchema), { accessToken });
 }
 
-export async function getModeloPlantilla(accessToken: string) {
-  return apiFetch('/alquileres/plantillas/modelo', z.object({ cuerpo: z.string() }), {
+/** Sube una plantilla en Word. Si un marcador está mal, el error los nombra a todos. */
+export async function subirPlantilla(accessToken: string, meta: PlantillaMetadatos, file: File) {
+  return apiFetchForm('/alquileres/plantillas', PlantillaDtoSchema, {
     accessToken,
+    file,
+    campos: { nombre: meta.nombre, tipoContrato: meta.tipoContrato ?? '' },
   });
 }
 
-export async function guardarPlantilla(
-  accessToken: string,
-  id: string | null,
-  dto: PlantillaInput,
-) {
-  return id
-    ? apiFetch(`/alquileres/plantillas/${id}`, PlantillaDtoSchema, {
-        accessToken,
-        method: 'PATCH',
-        body: dto,
-      })
-    : apiFetch('/alquileres/plantillas', PlantillaDtoSchema, {
-        accessToken,
-        method: 'POST',
-        body: dto,
-      });
+export async function reemplazarArchivoPlantilla(accessToken: string, id: string, file: File) {
+  return apiFetchForm(`/alquileres/plantillas/${id}/archivo`, PlantillaDtoSchema, {
+    accessToken,
+    file,
+    method: 'PUT',
+  });
+}
+
+/** Nombre y para qué contratos sirve, sin tocar el Word. */
+export async function editarPlantilla(accessToken: string, id: string, meta: PlantillaMetadatos) {
+  return apiFetch(`/alquileres/plantillas/${id}`, PlantillaDtoSchema, {
+    accessToken,
+    method: 'PATCH',
+    body: meta,
+  });
 }
 
 export async function borrarPlantilla(accessToken: string, id: string) {
@@ -594,28 +596,34 @@ export async function borrarPlantilla(accessToken: string, id: string) {
   });
 }
 
-/** El PDF de un texto con los datos de un contrato, para ver cómo queda. */
-export async function vistaPreviaPlantilla(
-  accessToken: string,
-  contratoId: string,
-  cuerpo: string,
-) {
-  return apiFetchPdf('/alquileres/plantillas/vista-previa', {
+/** El Word de la plantilla, tal como se subió. */
+export async function descargarPlantilla(accessToken: string, id: string) {
+  return apiFetchArchivo(`/alquileres/plantillas/${id}/archivo`, {
     accessToken,
-    body: { contratoId, cuerpo },
+    nombrePorDefecto: 'Plantilla.docx',
   });
 }
 
+/** El Word de ejemplo con todos los marcadores. */
+export async function descargarEjemploPlantilla(accessToken: string) {
+  return apiFetchArchivo('/alquileres/plantillas/ejemplo', {
+    accessToken,
+    nombrePorDefecto: 'Plantilla de contrato - ejemplo.docx',
+  });
+}
+
+/** El contrato en Word, completo con sus datos desde una plantilla. */
 export async function generarDesdePlantilla(
   accessToken: string,
   contratoId: string,
   plantillaId: string,
 ) {
-  return apiFetch(
-    `/alquileres/contratos/${contratoId}/generar-desde-plantilla`,
-    DocumentoContratoDtoSchema,
-    { accessToken, method: 'POST', body: { plantillaId } },
-  );
+  return apiFetchArchivo(`/alquileres/contratos/${contratoId}/generar-desde-plantilla`, {
+    accessToken,
+    method: 'POST',
+    body: { plantillaId },
+    nombrePorDefecto: 'Contrato.docx',
+  });
 }
 
 export async function listReclamos(
