@@ -7,7 +7,7 @@ vi.mock('../../lib/supabase/client', () => ({ getAccessToken: vi.fn() }));
 vi.mock('../../lib/abrir-pdf', () => ({ abrirPdfEnPestana: vi.fn() }));
 vi.mock('../../lib/alquileres-api', () => ({ anularCobro: vi.fn(), generarRecibo: vi.fn() }));
 
-import { CuentaCorriente } from './cuenta-corriente';
+import { CuentaCorriente, detalleMovimiento } from './cuenta-corriente';
 
 const id = () => crypto.randomUUID();
 const cuenta = (saldo: number): CuentaCorrienteDto => ({
@@ -93,7 +93,21 @@ describe('CuentaCorriente', () => {
   // Regla 19: lo anulado se ve, tachado.
   it('un cobro anulado queda tachado en los movimientos', () => {
     render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
-    expect(screen.getByText(/Cobro · recibo 9/).closest('td')).toHaveClass('line-through');
+    expect(screen.getByText(/Cobro · recibo 000009/).closest('td')).toHaveClass('line-through');
+  });
+
+  // Prueba en producción, 6/10/2026: «recibo 27» y «liquidación 19» con el
+  // número pelado, cuando en el resto de la pantalla y en el PDF tiene seis cifras.
+  it('los movimientos de cobros y liquidaciones llevan el número con seis cifras', () => {
+    render(<CuentaCorriente cuenta={cuenta(137_518)} persona={null} cobros={[]} />);
+    expect(screen.getByText(/Cobro · recibo 000010/)).toBeInTheDocument();
+    expect(screen.queryByText(/recibo 10\b/)).not.toBeInTheDocument();
+    expect(
+      detalleMovimiento({ tipo: 'liquidacion', numero: 19, descripcion: 'Liquidación 19' }),
+    ).toBe('Liquidación 000019');
+    expect(
+      detalleMovimiento({ tipo: 'concepto', numero: null, descripcion: 'Alquiler noviembre' }),
+    ).toBe('Alquiler noviembre');
   });
 
   // Auditoría del 6/10/2026: el modal vivía dentro de la solapa «Cuenta» y «Editar datos» no hacía nada en las otras.
