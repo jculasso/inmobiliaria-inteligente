@@ -15,6 +15,7 @@ import { fmtFecha } from '../../lib/format';
 import { useRefrescar } from '../../lib/refrescar';
 import { Campo, inputClass } from '../form-ui';
 import { CLASE_FOCO, Insignia, Panel, type TonoInsignia } from './piezas';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 const ESTADO: Record<EstadoGarantia, { texto: string; tono: TonoInsignia }> = {
   pendiente: { texto: 'Informe pendiente', tono: 'aviso' },
@@ -78,7 +79,7 @@ export function Garantias({
     for (const [i, f] of datos.entries()) {
       const r = GarantiaInputSchema.safeParse(f);
       if (!r.success) {
-        setError(`Garantía ${i + 1}: ${r.error.issues[0]?.message ?? 'revisá los datos.'}`);
+        setError(`Garantía ${i + 1}: ${primerMensaje(r.error, 'revisá los datos.')}`);
         return;
       }
     }

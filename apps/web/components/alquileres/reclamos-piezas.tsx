@@ -16,6 +16,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { crearReclamo, listUsuariosAsignables } from '../../lib/alquileres-api';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { Insignia, type TonoInsignia } from './piezas';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 // «Urgente» va en rojo de urgencia, no en el color de la marca (CONVENCIONES_TECNICAS §13); «En curso» no urge: avisa.
 const TONO_ESTADO: Record<EstadoReclamo, TonoInsignia> = {
@@ -95,7 +96,7 @@ export function NuevoReclamoModal({
     };
     const r = ReclamoInputSchema.safeParse(dto);
     if (!r.success) {
-      setError(r.error.issues[0]?.message ?? 'Revisá los datos.');
+      setError(primerMensaje(r.error, 'Revisá los datos.'));
       return;
     }
     setError(null);

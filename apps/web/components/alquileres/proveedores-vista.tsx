@@ -49,6 +49,7 @@ import {
 } from './piezas';
 import { InputImporte } from '../input-importe';
 import { leerImporte } from '../../lib/importe';
+import { primerMensaje } from '../../lib/mensaje-zod';
 
 const A_CARGO: Record<ACargoDe, string> = {
   propietario: 'Propietario',
@@ -422,7 +423,7 @@ function CargarComprobanteModal({
     };
     const r = ComprobanteInputSchema.safeParse(dto);
     if (!r.success) {
-      setError(r.error.issues[0]?.message ?? 'Revisá los datos.');
+      setError(primerMensaje(r.error, 'Revisá los datos.'));
       return;
     }
     setError(null);
@@ -606,7 +607,7 @@ function ProveedorModal({
     const dto = { nombre, rubro, telefono, email, cuit, alias, cbu, obs: p?.obs ?? null };
     const r = ProveedorInputSchema.safeParse(dto);
     if (!r.success) {
-      setError(r.error.issues[0]?.message ?? 'Revisá los datos.');
+      setError(primerMensaje(r.error, 'Revisá los datos.'));
       return;
     }
     setError(null);
