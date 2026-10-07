@@ -268,4 +268,37 @@ describe('TableroAlquileres', () => {
       within(screen.getByRole('dialog')).getByRole('link', { name: 'Ir a indexar →' }),
     ).toHaveAttribute('href', '/alquileres/indexaciones');
   });
+
+  // Prueba en producción, 6/10/2026: «Total $ 5,00» (la cantidad de filas) y un
+  // contrato en dólares sumado a los pesos.
+  it('propietarios para liquidar: el total suma los importes, pesos y dólares por separado', () => {
+    const liquidaciones = ind([
+      fila(1, 1_000_000),
+      fila(2, 928_307.62),
+      fila(8, 1_409.25, { moneda: 'USD' }),
+    ]);
+    render(
+      <TableroAlquileres
+        tableros={tres(tablero({ tareas: { ...tablero().tareas, liquidaciones } }))}
+      />,
+    );
+    const tarea = screen.getByRole('button', { name: /Propietarios para liquidar/ });
+    expect(tarea).toHaveTextContent('$ 1.928.307,62 · U$S 1.409,25');
+    fireEvent.click(tarea);
+    const dialogo = within(screen.getByRole('dialog'));
+    expect(dialogo.getByText('Total').parentElement).toHaveTextContent(
+      '$ 1.928.307,62 · U$S 1.409,25',
+    );
+  });
+
+  it('inquilinos con deuda: el total es la deuda, no la cantidad de inquilinos', () => {
+    const deudores = ind([fila(3, 250_000)]);
+    render(
+      <TableroAlquileres tableros={tres(tablero({ tareas: { ...tablero().tareas, deudores } }))} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Inquilinos con deuda/ }));
+    const total = within(screen.getByRole('dialog')).getByText('Total').parentElement!;
+    expect(total).toHaveTextContent('$ 250.000,00');
+    expect(total).not.toHaveTextContent('U$S');
+  });
 });
