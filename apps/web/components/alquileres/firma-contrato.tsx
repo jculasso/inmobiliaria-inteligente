@@ -13,6 +13,7 @@ import {
   urlDocumento,
 } from '../../lib/alquileres-api';
 import { fmtFechaHora } from '../../lib/format';
+import { useEstadoDelServidor } from '../../lib/estado-del-servidor';
 import { inputClass } from '../form-ui';
 import { NOMBRE_PAPEL } from './nombres';
 import { CLASE_FOCO, Insignia, Panel, type TonoInsignia } from './piezas';
@@ -48,7 +49,9 @@ export function FirmaContrato({
   contratoId: string;
   documento: DocumentoContratoDto | null;
 }) {
-  const [doc, setDoc] = useState(inicial);
+  // Lo que llega de la página manda cuando cambia: generar el PDF desde la
+  // plantilla (otro panel) refresca la página, y acá tiene que verse.
+  const [doc, setDoc] = useEstadoDelServidor(inicial);
   const [cambios, setCambios] = useState<Record<string, EstadoFirmante>>({});
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -242,16 +245,20 @@ export function FirmaContrato({
                 Guardar las firmas
               </Button>
             )}
+            {/* Con todos en «Firmó» el estado ya es firmado, pero el PDF firmado
+                todavía no está: se tiene que poder subir, y después reemplazar. */}
+            {doc.estadoFirma !== 'sin_enviar' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={ocupado}
+                onClick={() => firmado.current?.click()}
+              >
+                {doc.tieneFirmado ? 'Reemplazar el contrato firmado' : 'Subir el contrato firmado'}
+              </Button>
+            )}
             {doc.estadoFirma !== 'sin_enviar' && doc.estadoFirma !== 'firmado' && (
               <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={ocupado}
-                  onClick={() => firmado.current?.click()}
-                >
-                  Subir el contrato firmado
-                </Button>
                 {doc.estadoFirma !== 'vencido' && (
                   <Button
                     variant="ghost"
