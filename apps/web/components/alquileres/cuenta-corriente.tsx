@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type {
   CobroResumenDto,
   CuentaCorrienteDto,
@@ -38,6 +38,9 @@ import {
   Solapas,
   type Solapa,
 } from './ficha-persona';
+import { InformePropietario } from './informe-propietario';
+import type { PeriodoInforme } from '../../lib/periodo-tablero';
+import { tieneInforme } from '../../lib/solapas-persona';
 
 // Los botones de cada recibo y liquidación, con el mismo aspecto que los de las tarjetas (`AccionFila`).
 const BOTON = `rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface ${CLASE_FOCO}`;
@@ -81,6 +84,8 @@ export function CuentaCorriente({
   liquidaciones = [],
   historial,
   ficha,
+  solapaInicial,
+  informe,
 }: {
   cuenta: CuentaCorrienteDto;
   persona: PersonaDto | null;
@@ -89,9 +94,22 @@ export function CuentaCorriente({
   historial?: EventoDto[];
   /** Con la ficha, la pantalla se arma con las solapas de «Clientes» de Gexion (punto 14). */
   ficha?: PersonaFichaDto;
+  /** La solapa con la que abre: la de la dirección (`?solapa=informe`). */
+  solapaInicial?: Solapa;
+  /** El día de hoy y el período con que abre el informe al propietario (regla 84). */
+  informe?: { hoy: string; inicial: PeriodoInforme };
 }) {
   const router = useRouter();
-  const [solapa, setSolapa] = useState<Solapa>('resumen');
+  const pathname = usePathname();
+  const conInforme = !!ficha && !!informe && tieneInforme(ficha.contratos);
+  const [solapa, setSolapaActual] = useState<Solapa>(
+    solapaInicial === 'informe' && !conInforme ? 'resumen' : (solapaInicial ?? 'resumen'),
+  );
+  const setSolapa = (s: Solapa) => {
+    setSolapaActual(s);
+    // Al salir del informe, la dirección deja de abrirlo (la del informe la escribe él).
+    if (s !== 'informe') window.history.replaceState(null, '', pathname);
+  };
   const [aEnviar, setAEnviar] = useState<{
     titulo: string;
     enviar: (para: string[]) => Promise<unknown>;
@@ -426,7 +444,7 @@ export function CuentaCorriente({
 
       {ficha ? (
         <>
-          <Solapas actual={solapa} onCambiar={setSolapa} />
+          <Solapas actual={solapa} onCambiar={setSolapa} conInforme={conInforme} />
           {solapa === 'resumen' && (
             <ResumenPersona cuenta={cuenta} ficha={ficha} historial={historial ?? []} />
           )}
@@ -443,6 +461,13 @@ export function CuentaCorriente({
             </>
           )}
           {solapa === 'cuenta' && cuentaCorriente}
+          {solapa === 'informe' && conInforme && (
+            <InformePropietario
+              personaId={ficha.persona.id}
+              hoy={informe.hoy}
+              inicial={informe.inicial}
+            />
+          )}
         </>
       ) : (
         <>

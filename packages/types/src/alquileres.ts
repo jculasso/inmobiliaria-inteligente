@@ -1561,6 +1561,23 @@ export type IndicadorDetalleTablero = (typeof INDICADORES_DETALLE_TABLERO)[numbe
 export const PARTES_INGRESOS = ['honorarios', 'gastos', 'punitorios', 'comisiones'] as const;
 export type ParteIngresos = (typeof PARTES_INGRESOS)[number];
 
+const numeroDeMes = (p: string) => Number(p.slice(0, 4)) * 12 + Number(p.slice(5));
+type Rango = { desde: string; hasta: string };
+type ReglaDeRango = [(q: Rango) => boolean, { message: string; path: string[] }];
+/**
+ * Un período de meses `desde`…`hasta`: en orden y de un año como máximo. Lo
+ * piden el detalle del Dashboard (regla 79) y el informe al propietario
+ * (regla 84), con los mismos mensajes.
+ */
+export const RANGO_EN_ORDEN: ReglaDeRango = [
+  (q) => q.desde <= q.hasta,
+  { message: 'El período termina antes de empezar.', path: ['hasta'] },
+];
+export const RANGO_DE_UN_ANIO: ReglaDeRango = [
+  (q) => numeroDeMes(q.hasta) - numeroDeMes(q.desde) < 12,
+  { message: 'El período es de un año como máximo.', path: ['desde'] },
+];
+
 export const DetalleTableroQuerySchema = z
   .object({
     indicador: z.enum(INDICADORES_DETALLE_TABLERO),
@@ -1573,21 +1590,8 @@ export const DetalleTableroQuerySchema = z
     /** Solo para `mora`: un tramo de antigüedad; sin él, toda la deuda. */
     tramo: z.enum(TRAMOS_MORA).optional(),
   })
-  .refine((q) => q.desde <= q.hasta, {
-    message: 'El período termina antes de empezar.',
-    path: ['hasta'],
-  })
-  .refine(
-    (q) =>
-      Number(q.hasta.slice(0, 4)) * 12 +
-        Number(q.hasta.slice(5)) -
-        (Number(q.desde.slice(0, 4)) * 12 + Number(q.desde.slice(5))) <
-      12,
-    {
-      message: 'El período es de un año como máximo.',
-      path: ['desde'],
-    },
-  );
+  .refine(...RANGO_EN_ORDEN)
+  .refine(...RANGO_DE_UN_ANIO);
 export type DetalleTableroQuery = z.infer<typeof DetalleTableroQuerySchema>;
 
 // --- Ficha de la persona (punto 14 de Javier, como «Clientes» de Gexion) ----------
@@ -2465,6 +2469,10 @@ export const CATALOGO_SUGERIDO: { nombre: string; clase: ClaseServicio }[] = [
   { nombre: 'Litoral Gas', clase: 'servicio' },
   { nombre: 'Aguas Santafesinas', clase: 'servicio' },
   { nombre: 'Expensas', clase: 'expensa' },
+  // Javier, 7/10/2026: el informe al propietario detalla las expensas
+  // extraordinarias, que paga el dueño. Sin cambiar el esquema: son un
+  // servicio más, y el informe muestra cada servicio con su nombre (regla 91).
+  { nombre: 'Expensas extraordinarias', clase: 'expensa' },
 ];
 
 export const ServicioInputSchema = z.object({

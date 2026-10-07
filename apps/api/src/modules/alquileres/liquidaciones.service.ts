@@ -20,6 +20,8 @@ import {
   type TipoConcepto,
 } from '@vacker/types';
 import {
+  MARCA_PARTE_LIQUIDADA,
+  TIPOS_QUE_SE_LE_DESCUENTAN,
   parteDeClave,
   proponerLiquidacion,
   redondear2,
@@ -31,29 +33,16 @@ import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
+import { alquileresDelInquilino, fraccionesCobradas } from './cobrado-del-inquilino';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
-/** Lo que un propietario puede deber por fuera de los honorarios: los gastos sueltos (regla 14). */
-const SUELTOS = [
-  'expensa',
-  'impuesto',
-  'servicio',
-  'reparacion',
-  'otro',
-  'comision',
-  'informe',
-  'deposito',
-  'sellado',
-];
-
-/**
- * Marca en la clave de la parte que se separa al liquidar un pago parcial:
- * `<clave del concepto>|liq:<liquidación>`. Conserva el prefijo de la parte del
- * mes, así el bloqueo de anular un cobro ya liquidado la sigue viendo.
- */
-const MARCA_PARTE_LIQUIDADA = '|liq:';
+// Lo que se le descuenta al propietario (`TIPOS_QUE_SE_LE_DESCUENTAN`) y la
+// marca de la parte que se separa al liquidar un pago parcial
+// (`MARCA_PARTE_LIQUIDADA`: conserva el prefijo de la parte del mes, así el
+// bloqueo de anular un cobro ya liquidado la sigue viendo) viven en
+// `@vacker/domain`: el informe al propietario las usa igual (regla 86).
 
 /** El detalle que se guarda en la liquidación, tal como se liquidó. */
 const DetalleSchema = z.object({
@@ -426,7 +415,7 @@ export class LiquidacionesService {
     // contrato y con saldo. Antes se traía todo lo no liquidado —con los
     // gastos de los inquilinos, que nunca se liquidan y se acumulan para
     // siempre— y se filtraba acá (revisión de performance del 6/10/2026).
-    const tipos = ['honorarios', ...SUELTOS];
+    const tipos = [...TIPOS_QUE_SE_LE_DESCUENTAN];
     const ids = (
       await tx.$queryRaw<{ id: string }[]>`
         SELECT k.id FROM alq_concepto k
@@ -525,14 +514,7 @@ export class LiquidacionesService {
       ),
     ];
     const delInquilino = await tx.alqConcepto.findMany({
-      where: {
-        contratoId: { in: contratos },
-        periodo: { in: periodos },
-        sentido: 'a_cobrar',
-        tipo: { in: ['alquiler', 'iva'] },
-        anuladoEn: null,
-        claveGeneracion: { not: null },
-      },
+      where: alquileresDelInquilino(contratos, periodos),
       select: {
         tipo: true,
         importe: true,
@@ -540,14 +522,7 @@ export class LiquidacionesService {
         imputaciones: { where: IMPUTACION_ACTIVA, select: { importe: true } },
       },
     });
-    const cobrado = new Map<string, number>();
-    for (const k of delInquilino) {
-      const importe = decToNum(k.importe);
-      const pagado = k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0);
-      const fraccion = importe <= 0 ? 1 : Math.min(1, Math.max(0, pagado / importe));
-      cobrado.set(`${parteDeClave(k.claveGeneracion)}#${k.tipo}`, fraccion);
-    }
-    return cobrado;
+    return fraccionesCobradas(delInquilino);
   }
 }
 

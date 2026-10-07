@@ -29,8 +29,8 @@ export function leerPeriodo(
   params: { periodo?: string; mes?: string; q?: string },
   hoy: string,
   anio: number,
+  porDefecto: { por: 'mes'; mes: number } = periodoPorDefecto(hoy, anio),
 ): PeriodoTablero {
-  const porDefecto = periodoPorDefecto(hoy, anio);
   if (params.periodo === 'anio') return { por: 'anio' };
   if (params.periodo === 'trimestre') {
     const q = Number(params.q);
@@ -48,6 +48,7 @@ export function parametrosDelPeriodo(
   p: PeriodoTablero,
   hoy: string,
   anio: number,
+  porDefecto: { por: 'mes'; mes: number } = periodoPorDefecto(hoy, anio),
 ): [string, string][] {
   if (p.por === 'anio') return [['periodo', 'anio']];
   if (p.por === 'trimestre')
@@ -55,7 +56,7 @@ export function parametrosDelPeriodo(
       ['periodo', 'trimestre'],
       ['q', String(p.q)],
     ];
-  return p.mes === periodoPorDefecto(hoy, anio).mes
+  return p.mes === porDefecto.mes
     ? []
     : [
         ['periodo', 'mes'],
@@ -83,4 +84,56 @@ export function nombreDelPeriodo(p: PeriodoTablero, anio: number): string {
   if (p.por === 'mes') return `${NOMBRES_MES[p.mes - 1]!.toLowerCase()} ${anio}`;
   if (p.por === 'trimestre') return `Q${p.q} ${anio}`;
   return String(anio);
+}
+
+// --- El informe al propietario (regla 84) ------------------------------------------
+
+/** El período del informe: el año y, dentro de él, el mes, el trimestre o el año entero. */
+export interface PeriodoInforme {
+  anio: number;
+  periodo: PeriodoTablero;
+}
+
+/**
+ * El mes del informe por defecto en un año: el anterior al de hoy, que ya
+ * cerró (regla 84; el Dashboard, en cambio, abre en el mes en curso). En un
+ * año que ya pasó, diciembre; en enero del año en curso, enero mismo.
+ */
+export function mesInformePorDefecto(hoy: string, anio: number): { por: 'mes'; mes: number } {
+  if (anio < Number(hoy.slice(0, 4))) return { por: 'mes', mes: 12 };
+  return { por: 'mes', mes: Math.max(1, Number(hoy.slice(5, 7)) - 1) };
+}
+
+/** Al entrar al informe: el mes anterior; en enero, diciembre del año anterior. */
+export function informePorDefecto(hoy: string): PeriodoInforme {
+  const anio = Number(hoy.slice(0, 4));
+  return hoy.slice(5, 7) === '01'
+    ? { anio: anio - 1, periodo: { por: 'mes', mes: 12 } }
+    : { anio, periodo: mesInformePorDefecto(hoy, anio) };
+}
+
+/**
+ * El período del informe en la dirección: `?anio=2026&periodo=mes&mes=8`, como
+ * el Dashboard. Un año que no está entre los que ofrece el selector —este y
+ * los dos anteriores— o un período que no se entiende vuelven al de por defecto.
+ */
+export function leerPeriodoInforme(
+  params: { anio?: string; periodo?: string; mes?: string; q?: string },
+  hoy: string,
+): PeriodoInforme {
+  const porDefecto = informePorDefecto(hoy);
+  const actual = Number(hoy.slice(0, 4));
+  const pedido = Number(params.anio);
+  const anio = entre(pedido, actual - 2, actual) ? pedido : porDefecto.anio;
+  return { anio, periodo: leerPeriodo(params, hoy, anio, mesInformePorDefecto(hoy, anio)) };
+}
+
+/** Lo que el período del informe escribe en la dirección; el de por defecto, nada. */
+export function parametrosDelInforme(p: PeriodoInforme, hoy: string): [string, string][] {
+  const anio: [string, string][] =
+    p.anio === informePorDefecto(hoy).anio ? [] : [['anio', String(p.anio)]];
+  return [
+    ...anio,
+    ...parametrosDelPeriodo(p.periodo, hoy, p.anio, mesInformePorDefecto(hoy, p.anio)),
+  ];
 }

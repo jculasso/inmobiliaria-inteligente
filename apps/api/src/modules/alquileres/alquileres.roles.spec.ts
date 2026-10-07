@@ -14,6 +14,7 @@ import { LiquidacionesController } from './liquidaciones.controller';
 import { TableroAlquileresController } from './tablero-alquileres.controller';
 import { FirmaController } from './firma/firma.controller';
 import { PlantillasController } from './plantillas.controller';
+import { InformePropietarioController } from './informe-propietario.controller';
 
 /**
  * Spec alquileres-fase-1.md §3: el módulo se contrata por inmobiliaria Y pide
@@ -36,6 +37,8 @@ const CONTROLLERS = [
   TableroAlquileresController,
   FirmaController,
   PlantillasController,
+  // Reglas 83 y 97: el informe al propietario, con los mismos roles y la misma licencia.
+  InformePropietarioController,
 ];
 
 const handlers = CONTROLLERS.flatMap((C) =>
@@ -46,7 +49,7 @@ const handlers = CONTROLLERS.flatMap((C) =>
 
 describe('RBAC del módulo Alquileres', () => {
   it('el test efectivamente encontró los endpoints', () => {
-    expect(handlers.length).toBeGreaterThanOrEqual(39);
+    expect(handlers.length).toBeGreaterThanOrEqual(43);
   });
 
   it.each(CONTROLLERS.map((C) => [C.name, C] as const))(

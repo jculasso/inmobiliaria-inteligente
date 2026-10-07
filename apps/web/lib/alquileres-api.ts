@@ -77,6 +77,9 @@ import {
   ResumenAlquileresSchema,
   type PersonaInput,
   type PropiedadAlquilerInput,
+  InformePropietarioDtoSchema,
+  InformePropietariosDtoSchema,
+  type InformePeriodoQuery,
 } from '@vacker/types';
 import { apiFetch, apiFetchArchivo, apiFetchForm, apiFetchPdf } from './api-client';
 
@@ -913,4 +916,54 @@ export async function anularPoliza(accessToken: string, id: string, motivo: stri
     z.object({ id: z.string(), cuotasAnuladas: z.number() }),
     { accessToken, method: 'POST', body: { motivo } },
   );
+}
+
+// --- Informe al propietario (reglas 83 a 97) -------------------------------------
+
+/** Regla 96: todos los propietarios del período, con lo mismo que el informe de cada uno. */
+export async function getInformePropietarios(accessToken: string, q: InformePeriodoQuery) {
+  const params = new URLSearchParams({ desde: q.desde, hasta: q.hasta });
+  return apiFetch(`/alquileres/informes/propietarios?${params}`, InformePropietariosDtoSchema, {
+    accessToken,
+  });
+}
+
+/** El informe de un propietario en un período. */
+export async function getInformePropietario(
+  accessToken: string,
+  personaId: string,
+  q: InformePeriodoQuery,
+) {
+  const params = new URLSearchParams({ desde: q.desde, hasta: q.hasta });
+  return apiFetch(
+    `/alquileres/informes/propietarios/${personaId}?${params}`,
+    InformePropietarioDtoSchema,
+    { accessToken },
+  );
+}
+
+/** Regla 95: el informe en PDF, el mismo cálculo que la pantalla. */
+export async function generarInformePropietarioPdf(
+  accessToken: string,
+  personaId: string,
+  q: InformePeriodoQuery,
+) {
+  return apiFetchPdf(`/alquileres/informes/propietarios/${personaId}/pdf`, {
+    accessToken,
+    searchParams: { desde: q.desde, hasta: q.hasta },
+  });
+}
+
+/** Regla 95: el informe por mail, a una persona por vez. */
+export async function enviarInformePropietarioPorMail(
+  accessToken: string,
+  personaId: string,
+  q: InformePeriodoQuery,
+  para: string[],
+) {
+  return apiFetch(`/alquileres/informes/propietarios/${personaId}/enviar`, EnvioMailDtoSchema, {
+    accessToken,
+    method: 'POST',
+    body: { para, desde: q.desde, hasta: q.hasta },
+  });
 }

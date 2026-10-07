@@ -176,6 +176,11 @@ jobs:
       - name: Tablero de Alquileres contra la base
         run: pnpm --filter @vacker/api exec vitest run test/tablero-alquileres.e2e-spec.ts
 
+      # El informe al propietario (reglas 86 a 93): sus consultas reales, con
+      # reclamos, notas internas, boletas, comprobantes y cobros anulados.
+      - name: Informe al propietario contra la base
+        run: pnpm --filter @vacker/api exec vitest run test/informe-propietario.e2e-spec.ts
+
       - name: Registro de PgBouncer si algo falla
         if: failure()
         run: cat /tmp/pgb/pgbouncer.log || true

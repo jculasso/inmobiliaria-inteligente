@@ -74,7 +74,7 @@ interface FilaAlquiler {
 }
 
 /** Un concepto con saldo vencido a una fecha de cierre (regla 77). */
-interface FilaMora {
+export interface FilaMora {
   cierre: string;
   id: string;
   moneda: string;
@@ -138,9 +138,10 @@ function sqlAlquileres(desde: string, hasta: string, ademas: string | null = nul
  * descuenta al liquidar, no es mora.
  *
  * Una sola consulta para todas las fechas: el tablero pide los cierres del
- * año y hoy; el detalle, un cierre.
+ * año y hoy; el detalle, un cierre. El informe al propietario la pide a hoy y
+ * solo de sus contratos (regla 89): la misma deuda que el Dashboard.
  */
-function sqlSaldosAlCierre(cierres: string[]) {
+export function sqlSaldosAlCierre(cierres: string[], contratos?: string[]) {
   return Prisma.sql`
     SELECT * FROM (
       SELECT to_char(x.cierre, 'YYYY-MM-DD') AS cierre, k.id, k.moneda, k.vencimiento, k.descripcion, k.tipo,
@@ -156,6 +157,7 @@ function sqlSaldosAlCierre(cierres: string[]) {
         LEFT JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id
        WHERE k.sentido = 'a_cobrar' AND k.anulado_en IS NULL AND k.liquidacion_id IS NULL
          AND k.tipo <> 'honorarios'
+         ${contratos ? Prisma.sql`AND k.contrato_id = ANY(${contratos}::uuid[])` : Prisma.empty}
          AND NOT EXISTS (SELECT 1 FROM alq_contrato_parte pp
                           WHERE pp.contrato_id = k.contrato_id AND pp.persona_id = k.persona_id AND pp.papel = 'propietario')
        GROUP BY x.cierre, k.id, c.id, p.id

@@ -45,6 +45,34 @@ describe('AlquileresNav', () => {
     expect(sub.getByRole('link', { name: 'Configuración' })).not.toHaveAttribute('aria-current');
   });
 
+  // Regla 96: el informe de propietarios es una pantalla de Liquidaciones, no una pestaña más.
+  it('el informe de propietarios marca Liquidaciones y su segunda fila', () => {
+    ruta = '/alquileres/propietarios';
+    render(<AlquileresNav />);
+    const principal = within(screen.getByRole('navigation', { name: 'Alquileres' }));
+    expect(principal.getAllByRole('link')).toHaveLength(11);
+    expect(principal.getByRole('link', { name: 'Liquidaciones' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const sub = within(screen.getByRole('navigation', { name: 'Liquidaciones' }));
+    expect(sub.getByRole('link', { name: 'Informe de propietarios' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(sub.getByRole('link', { name: 'Liquidaciones' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('una liquidación nueva sigue marcando Liquidaciones', () => {
+    ruta = '/alquileres/liquidaciones/nueva';
+    render(<AlquileresNav />);
+    const sub = within(screen.getByRole('navigation', { name: 'Liquidaciones' }));
+    expect(sub.getByRole('link', { name: 'Liquidaciones' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
   it('la ficha de un contrato sigue marcando Contratos, sin segunda fila', () => {
     ruta = '/alquileres/contratos/abc';
     render(<AlquileresNav />);

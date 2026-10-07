@@ -6,9 +6,10 @@ import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { EstadoContratoBadge } from './estado-contrato';
 import { Historial } from './historial';
 import { documentoLegible } from './personas-lista';
+import type { Solapa } from '../../lib/solapas-persona';
 import { Bloque, CLASE_FOCO, Dato, Panel, VacioBloque } from './piezas';
 
-export type Solapa = 'resumen' | 'basica' | 'administrativa' | 'complementarios' | 'cuenta';
+export type { Solapa };
 
 const SOLAPAS: [Solapa, string][] = [
   ['resumen', '📋 Resumen'],
@@ -16,6 +17,8 @@ const SOLAPAS: [Solapa, string][] = [
   ['administrativa', '🏦 Gestión administrativa'],
   ['complementarios', '📇 Datos complementarios'],
   ['cuenta', '📒 Cuenta corriente'],
+  // Regla 83 (Javier, 7/10/2026): solo para quien es propietario.
+  ['informe', '📊 Informe'],
 ];
 
 /**
@@ -25,7 +28,16 @@ const SOLAPAS: [Solapa, string][] = [
  * anunciaba algo que no pasaba. En el teléfono se deslizan de costado, con el
  * mismo degradé a la derecha que la barra del módulo para avisar que hay más.
  */
-export function Solapas({ actual, onCambiar }: { actual: Solapa; onCambiar: (s: Solapa) => void }) {
+export function Solapas({
+  actual,
+  onCambiar,
+  conInforme = false,
+}: {
+  actual: Solapa;
+  onCambiar: (s: Solapa) => void;
+  /** Si es propietario: solo entonces aparece «Informe» (regla 83). */
+  conInforme?: boolean;
+}) {
   return (
     <div className="relative">
       <div
@@ -33,7 +45,7 @@ export function Solapas({ actual, onCambiar }: { actual: Solapa; onCambiar: (s: 
         aria-label="Solapas de la ficha"
         className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {SOLAPAS.map(([s, texto]) => (
+        {SOLAPAS.filter(([s]) => s !== 'informe' || conInforme).map(([s, texto]) => (
           <button
             key={s}
             type="button"
