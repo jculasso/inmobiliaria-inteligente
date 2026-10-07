@@ -16,6 +16,7 @@ const cuenta = (saldo: number): CuentaCorrienteDto => ({
     {
       moneda: 'ARS',
       saldo,
+      aVencer: 0,
       movimientos: [
         {
           id: id(),
@@ -80,6 +81,14 @@ describe('CuentaCorriente', () => {
     expect(screen.getByText('A favor $ 5.000,00')).toBeInTheDocument();
     rerender(<CuentaCorriente cuenta={cuenta(0)} persona={null} cobros={[]} />);
     expect(screen.getByText('Al día')).toBeInTheDocument();
+  });
+
+  // Pasada de pruebas del 6/10/2026: «Debe» por una cuota que vence el mes que viene.
+  it('aclara qué parte del saldo todavía no vence', () => {
+    const c = cuenta(363_000);
+    c.monedas[0]!.aVencer = 363_000;
+    render(<CuentaCorriente cuenta={c} persona={null} cobros={[]} />);
+    expect(screen.getByText('$ 363.000,00 todavía no vence')).toBeInTheDocument();
   });
 
   // Regla 24: el estado de cuenta cierra en el saldo.

@@ -139,6 +139,13 @@ export function CuentaCorriente({
               <p className="mt-1.5 text-2xl font-extrabold tabular-nums">
                 <Saldo saldo={m.saldo} moneda={m.moneda} />
               </p>
+              {/* «Debe $ 363.000» por una cuota de noviembre asustaba: se aclara qué parte no venció. */}
+              {Math.abs(m.aVencer) >= 0.005 && (
+                <p className="mt-1 text-xs text-muted">
+                  {fmtMoneda(Math.abs(m.aVencer), m.moneda)}{' '}
+                  {m.aVencer > 0 ? 'todavía no vence' : 'a su favor, todavía no vence'}
+                </p>
+              )}
             </div>
 
             <Bloque icono="📋" titulo="Pendiente · estado de cuenta">

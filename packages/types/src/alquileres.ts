@@ -439,7 +439,7 @@ export const ContratoInputSchema = z
       .nullish()
       .transform((v) => (v ? v : null)),
     partes: z.array(ParteContratoInputSchema).min(1),
-    tramos: z.array(TramoInputSchema).min(1),
+    tramos: z.array(TramoInputSchema).min(1, 'El contrato no tiene tramos.'),
   })
   .superRefine((c, ctx) => {
     if (c.fin <= c.inicio)
