@@ -9,9 +9,9 @@ import {
 } from '../../../lib/alquileres-api';
 import {
   ImpuestosVista,
-  vistaImpuestos,
   type DatosImpuestos,
 } from '../../../components/alquileres/impuestos-vista';
+import { vistaImpuestos } from '../../../components/alquileres/impuestos-vistas';
 import { hoyIso } from '../../../lib/format';
 
 export const metadata = { title: 'Impuestos y servicios · Alquileres' };

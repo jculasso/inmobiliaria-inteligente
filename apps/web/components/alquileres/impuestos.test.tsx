@@ -31,7 +31,8 @@ vi.mock('../../lib/alquileres-api', () => ({
 }));
 
 import { PlanillaBoletas } from './boletas-planilla';
-import { ImpuestosVista, vistaImpuestos, type DatosImpuestos } from './impuestos-vista';
+import { ImpuestosVista, type DatosImpuestos } from './impuestos-vista';
+import { vistaImpuestos } from './impuestos-vistas';
 import { EstadoPoliza } from './polizas';
 
 // Impuestos y servicios, rediseño del 7/10/2026 (spec alquileres-fase-1.md, reglas 45 a 53).
