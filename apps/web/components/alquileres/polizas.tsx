@@ -6,13 +6,12 @@ import { sumarDiasIso } from '@vacker/domain';
 import {
   DIAS_TABLERO_PROXIMOS,
   NOMBRE_COBERTURA,
-  NOMBRE_QUIEN_PAGA,
   PolizaInputSchema,
+  consecuenciaDeBoleta,
   type CoberturaPoliza,
   type ContratoResumenDto,
   type MonedaAlquiler,
   type PolizaDto,
-  type QuienPaga,
 } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
@@ -24,6 +23,7 @@ import { AccionFila, Bloque, CLASE_FOCO, Insignia, VacioBloque } from './piezas'
 import { InputImporte } from '../input-importe';
 import { leerImporte } from '../../lib/importe';
 import { useRefrescar } from '../../lib/refrescar';
+import { SelectQuienPaga, type QuienPagaValor } from './quien-paga';
 import { primerMensaje } from '../../lib/mensaje-zod';
 
 const num = (v: string) => leerImporte(v) ?? 0;
@@ -102,8 +102,7 @@ export function Polizas({
                   )}
                   {fmtFecha(p.desde)} al {fmtFecha(p.hasta)} · {fmtMoneda(p.premio, p.moneda)} en{' '}
                   {p.cuotas} {p.cuotas === 1 ? 'cuota' : 'cuotas'} (
-                  {cantidad(p.cuotasPagadas, 'paga')}) · la debe el {p.aCargoDe}, paga{' '}
-                  {NOMBRE_QUIEN_PAGA[p.paga].toLowerCase()}
+                  {cantidad(p.cuotasPagadas, 'paga')}) · {consecuenciaDeBoleta(p.aCargoDe, p.paga)}
                 </span>
               </span>
               <span className="flex items-center gap-2">
@@ -175,8 +174,11 @@ export function PolizaModal({
   const [premio, setPremio] = useState('');
   const [cuotas, setCuotas] = useState('1');
   const [primerVencimiento, setPrimer] = useState(hoyIso());
-  const [aCargoDe, setACargoDe] = useState<'inquilino' | 'propietario'>('inquilino');
-  const [paga, setPaga] = useState<QuienPaga>('inmobiliaria');
+  // La póliza la paga la inmobiliaria y se le cobra al inquilino: lo más común.
+  const [quien, setQuien] = useState<QuienPagaValor>({
+    aCargoDe: 'inquilino',
+    paga: 'inmobiliaria',
+  });
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [actualizando, setActualizando] = useState(false);
@@ -193,8 +195,7 @@ export function PolizaModal({
       cuotas: Number(cuotas) || 1,
       primerVencimiento,
       moneda,
-      aCargoDe,
-      paga,
+      ...quien,
     };
     const r = PolizaInputSchema.safeParse(dto);
     if (!r.success) {
@@ -323,31 +324,7 @@ export function PolizaModal({
             />
           </Campo>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Campo label="La debe">
-            <select
-              className={inputClass}
-              value={aCargoDe}
-              onChange={(e) => setACargoDe(e.target.value as 'inquilino' | 'propietario')}
-            >
-              <option value="inquilino">El inquilino</option>
-              <option value="propietario">El propietario</option>
-            </select>
-          </Campo>
-          <Campo label="La paga">
-            <select
-              className={inputClass}
-              value={paga}
-              onChange={(e) => setPaga(e.target.value as QuienPaga)}
-            >
-              {Object.entries(NOMBRE_QUIEN_PAGA).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </Campo>
-        </div>
+        <SelectQuienPaga valor={quien} onChange={setQuien} />
         {error && (
           <p role="alert" className="text-sm font-medium text-danger">
             {error}

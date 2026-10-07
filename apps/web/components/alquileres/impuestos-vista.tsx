@@ -2,12 +2,12 @@
 
 import { useState, type ReactNode } from 'react';
 import { VISTAS_IMPUESTOS } from './impuestos-vistas';
+import { SelectQuienPaga, type QuienPagaValor } from './quien-paga';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { agruparPorUrgencia, mesLargo } from '@vacker/domain';
 import {
   CATALOGO_SUGERIDO,
-  COMBINACIONES_QUIEN_PAGA,
   CuentaServicioInputSchema,
   NOMBRE_CLASE_SERVICIO,
   NOMBRE_QUIEN_PAGA,
@@ -21,10 +21,8 @@ import {
   type CuentaServicioDto,
   type MedioCobro,
   type MonedaAlquiler,
-  type ParteDeudora,
   type PlanillaBoletasDto,
   type PropiedadAlquilerDto,
-  type QuienPaga,
   type ServicioDto,
 } from '@vacker/types';
 import { Button, KpiCard, Modal } from '@vacker/ui';
@@ -761,8 +759,6 @@ function ImpuestosPorPropiedad({
   );
 }
 
-const claveQuienPaga = (aCargoDe: ParteDeudora, paga: QuienPaga) => `${aCargoDe}|${paga}`;
-
 export function CuentaModal({
   cuenta: c,
   propiedadInicial = '',
@@ -782,15 +778,15 @@ export function CuentaModal({
   const [servicioId, setServicioId] = useState(c?.servicio.id ?? servicios[0]?.id ?? '');
   const [numeroCuenta, setNumero] = useState(c?.numeroCuenta ?? '');
   // Un solo campo con la consecuencia (regla 46), en vez de «La debe» y «La paga» por separado.
-  const [quien, setQuien] = useState(
-    claveQuienPaga(c?.aCargoDe ?? 'inquilino', c?.paga ?? 'inquilino'),
-  );
+  const [quien, setQuien] = useState<QuienPagaValor>({
+    aCargoDe: c?.aCargoDe ?? 'inquilino',
+    paga: c?.paga ?? 'inquilino',
+  });
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   async function guardar() {
-    const [aCargoDe, paga] = quien.split('|') as [ParteDeudora, QuienPaga];
-    const dto = { propiedadId, servicioId, numeroCuenta, aCargoDe, paga };
+    const dto = { propiedadId, servicioId, numeroCuenta, ...quien };
     const r = CuentaServicioInputSchema.safeParse(dto);
     if (!r.success) {
       setError(primerMensaje(r.error, 'Revisá los datos.'));
@@ -853,15 +849,7 @@ export function CuentaModal({
             />
           </Campo>
         </div>
-        <Campo label="Quién la paga y a quién se le carga">
-          <select className={inputClass} value={quien} onChange={(e) => setQuien(e.target.value)}>
-            {COMBINACIONES_QUIEN_PAGA.map(({ aCargoDe, paga }) => (
-              <option key={claveQuienPaga(aCargoDe, paga)} value={claveQuienPaga(aCargoDe, paga)}>
-                {consecuenciaDeBoleta(aCargoDe, paga)}
-              </option>
-            ))}
-          </select>
-        </Campo>
+        <SelectQuienPaga valor={quien} onChange={setQuien} />
         {error && (
           <p role="alert" className="text-sm font-medium text-danger">
             {error}
