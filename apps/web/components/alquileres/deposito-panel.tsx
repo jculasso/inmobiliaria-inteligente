@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import type { DepositoDto, EstadoDeposito } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { devolverDeposito, entregarDeposito } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
+import { useRefrescar } from '../../lib/refrescar';
 import { Dato, Insignia, Panel, type TonoInsignia } from './piezas';
 
 const ESTADO: Record<EstadoDeposito, { texto: string; tono: TonoInsignia }> = {
@@ -26,12 +26,18 @@ const ESTADO: Record<EstadoDeposito, { texto: string; tono: TonoInsignia }> = {
 export function DepositoPanel({
   contratoId,
   deposito: d,
+  propietarios = [],
 }: {
   contratoId: string;
   deposito: DepositoDto;
+  /** Los nombres de los propietarios, para decir a quién se le entrega. */
+  propietarios?: string[];
 }) {
-  const router = useRouter();
+  const { refrescar, refrescando } = useRefrescar();
   const [devolviendo, setDevolviendo] = useState(false);
+  // Entregar mueve plata: se confirma con el importe y a quién (prueba en
+  // producción, 6/10/2026: se ejecutaba con el primer toque).
+  const [entregando, setEntregando] = useState(false);
   const [fecha, setFecha] = useState(hoyIso());
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -42,8 +48,10 @@ export function DepositoPanel({
     setOcupado(true);
     try {
       await fn();
+      // El modal se cierra con el estado nuevo ya a la vista.
+      await refrescar();
       setDevolviendo(false);
-      router.refresh();
+      setEntregando(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo.');
     } finally {
@@ -86,9 +94,10 @@ export function DepositoPanel({
                 variant="primary"
                 size="sm"
                 disabled={ocupado}
-                onClick={() =>
-                  hacer(async () => entregarDeposito(await getAccessToken(), contratoId))
-                }
+                onClick={() => {
+                  setError(null);
+                  setEntregando(true);
+                }}
               >
                 🤝 Entregar al propietario
               </Button>
@@ -99,15 +108,56 @@ export function DepositoPanel({
               </Button>
             )}
           </div>
-          {error && !devolviendo && (
+          {error && !devolviendo && !entregando && (
             <p role="alert" className="text-sm font-medium text-danger">
               {error}
             </p>
           )}
         </div>
       )}
+      {entregando && (
+        <Modal
+          title="Entregar el depósito al propietario"
+          onClose={() => setEntregando(false)}
+          cerrable={!ocupado}
+        >
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-ink">
+              Se le entregan{' '}
+              <span className="font-semibold tabular-nums">{fmtMoneda(d.cobrado, moneda)}</span> a{' '}
+              <span className="font-semibold">
+                {propietarios.length ? propietarios.join(', ') : 'el propietario'}
+              </span>
+              : quedan a su favor en la cuenta corriente y se le pagan en su próxima liquidación.
+            </p>
+            {error && (
+              <p role="alert" className="text-sm font-medium text-danger">
+                {error}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setEntregando(false)} disabled={ocupado}>
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                disabled={ocupado}
+                onClick={() =>
+                  hacer(async () => entregarDeposito(await getAccessToken(), contratoId))
+                }
+              >
+                {refrescando ? 'Actualizando…' : ocupado ? 'Entregando…' : '🤝 Entregar'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {devolviendo && (
-        <Modal title="Devolver el depósito" onClose={() => setDevolviendo(false)}>
+        <Modal
+          title="Devolver el depósito"
+          onClose={() => setDevolviendo(false)}
+          cerrable={!ocupado}
+        >
           <div className="flex flex-col gap-3">
             <p className="text-sm text-ink">
               Se le reconoce al inquilino {fmtMoneda(d.cobrado, moneda)} a favor en su cuenta
@@ -131,7 +181,7 @@ export function DepositoPanel({
               </p>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setDevolviendo(false)}>
+              <Button variant="secondary" onClick={() => setDevolviendo(false)} disabled={ocupado}>
                 Cancelar
               </Button>
               <Button
@@ -141,7 +191,7 @@ export function DepositoPanel({
                   hacer(async () => devolverDeposito(await getAccessToken(), contratoId, fecha))
                 }
               >
-                {ocupado ? 'Registrando…' : 'Registrar'}
+                {refrescando ? 'Actualizando…' : ocupado ? 'Registrando…' : 'Registrar'}
               </Button>
             </div>
           </div>
