@@ -296,4 +296,28 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     );
     await siembra.alqPoliza.delete({ where: { id: propia.id } });
   });
+
+  // Regla 70: el gasto del arreglo apunta a su reclamo, y solo a uno de la misma inmobiliaria.
+  it('regla 70: desde el tenant A, un comprobante que apunta a un reclamo del B es rechazado por la base', async () => {
+    const comprobante = (reclamoId: string) => ({
+      tenantId: idsA.tenant,
+      proveedorId: idsA.alqProveedor,
+      reclamoId,
+      fecha: new Date('2026-10-07T00:00:00Z'),
+      descripcion: 'Cambio de flexible',
+      importe: 1,
+    });
+    await expect(
+      tenantPrisma.withTenant(
+        (tx) => tx.alqComprobante.create({ data: comprobante(idsB.alqReclamo) }),
+        ctxA,
+      ),
+    ).rejects.toThrow();
+    // Y el mismo comprobante hacia su propio reclamo entra: el rechazo es por cruzar inmobiliarias.
+    const propio = await tenantPrisma.withTenant(
+      (tx) => tx.alqComprobante.create({ data: comprobante(idsA.alqReclamo) }),
+      ctxA,
+    );
+    await siembra.alqComprobante.delete({ where: { id: propio.id } });
+  });
 });

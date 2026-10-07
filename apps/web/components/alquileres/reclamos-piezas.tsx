@@ -6,10 +6,12 @@ import {
   NOMBRE_PRIORIDAD,
   NOMBRE_TIPO_RECLAMO,
   ReclamoInputSchema,
+  nombrePrioridad,
   type ContratoResumenDto,
   type EstadoReclamo,
   type PrioridadReclamo,
   type ProveedorDelReclamo,
+  type ProveedorDto,
   type TipoReclamo,
 } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
@@ -20,11 +22,11 @@ import { Insignia, type TonoInsignia } from './piezas';
 import { primerMensaje } from '../../lib/mensaje-zod';
 
 // «Urgente» va en rojo de urgencia, no en el color de la marca (CONVENCIONES_TECNICAS §13); «En curso» no urge: avisa.
+// Tres estados (regla 67): «Cerrado» se fue.
 const TONO_ESTADO: Record<EstadoReclamo, TonoInsignia> = {
   abierto: 'aviso',
   en_curso: 'aviso',
   resuelto: 'exito',
-  cerrado: 'neutro',
 };
 const TONO_PRIORIDAD: Record<PrioridadReclamo, TonoInsignia> = {
   urgente: 'peligro',
@@ -36,10 +38,20 @@ const TONO_PRIORIDAD: Record<PrioridadReclamo, TonoInsignia> = {
 export const EstadoReclamoBadge = ({ estado }: { estado: EstadoReclamo }) => (
   <Insignia tono={TONO_ESTADO[estado]}>{NOMBRE_ESTADO_RECLAMO[estado]}</Insignia>
 );
-export const PrioridadBadge = ({ prioridad }: { prioridad: PrioridadReclamo }) => (
+/**
+ * Suelta, la insignia dice «Prioridad media»: «Media» sola no se entiende
+ * (regla 69). `corta` es para cuando ya está bajo el rótulo «Prioridad».
+ */
+export const PrioridadBadge = ({
+  prioridad,
+  corta = false,
+}: {
+  prioridad: PrioridadReclamo;
+  corta?: boolean;
+}) => (
   <Insignia tono={TONO_PRIORIDAD[prioridad]}>
     {prioridad === 'urgente' ? '🔥 ' : ''}
-    {NOMBRE_PRIORIDAD[prioridad]}
+    {corta ? NOMBRE_PRIORIDAD[prioridad] : nombrePrioridad(prioridad)}
   </Insignia>
 );
 
@@ -49,14 +61,14 @@ type Opcion = { id: string; nombre: string };
  * Una lista que se pide al abrir: `null` mientras no llegó (o si falló). Sin
  * la lista el reclamo se abre igual, sin asignar y sin proveedor.
  */
-function useLista(pedir: (token: string) => Promise<Opcion[]>): Opcion[] | null {
-  const [xs, setXs] = useState<Opcion[] | null>(null);
+function useLista<T extends Opcion>(pedir: (token: string) => Promise<T[]>): T[] | null {
+  const [xs, setXs] = useState<T[] | null>(null);
   useEffect(() => {
     let vigente = true;
     (async () => {
       try {
         const lista = await pedir(await getAccessToken());
-        if (vigente) setXs(lista.map(({ id, nombre }) => ({ id, nombre })));
+        if (vigente) setXs(lista);
       } catch {
         /* queda en null: se puede seguir sin elegir */
       }
@@ -71,7 +83,7 @@ function useLista(pedir: (token: string) => Promise<Opcion[]>): Opcion[] | null 
 /** Quiénes pueden seguir un reclamo: los que entran al módulo (la API ya los filtra). */
 export const useUsuarios = () => useLista(listUsuariosAsignables);
 /** Los proveedores del módulo, para elegir quién arregla el reclamo. */
-export const useProveedores = () => useLista(listProveedores);
+export const useProveedores = (): ProveedorDto[] | null => useLista(listProveedores);
 
 /**
  * «Lo sigue». Si el reclamo ya lo tenía alguien que no está en la lista —un

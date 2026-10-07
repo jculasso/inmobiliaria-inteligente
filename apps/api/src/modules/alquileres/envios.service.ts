@@ -95,6 +95,31 @@ export class EnviosService {
     });
   }
 
+  /**
+   * Un mail redactado por el operador —el aviso al proveedor de un reclamo—,
+   * con la misma salida que los recibos: a nombre de la inmobiliaria, desde
+   * el dominio de la plataforma, respuestas al operador, firma al pie y el
+   * mismo tope por hora. El asunto va tal cual: lo escribió el operador.
+   * Quien llama deja el rastro en su historial, después de que salió.
+   */
+  async mandarTexto(
+    ctx: TenantContext,
+    m: { para: string[]; asunto: string; cuerpo: string },
+  ): Promise<void> {
+    await this.despachar(ctx, m.para, ({ tenant, operador }) => {
+      const firma = operador ? `${operador}\n${tenant}` : tenant;
+      const texto = `${m.cuerpo}\n\nSaludos,\n${firma}`;
+      const parrafos = m.cuerpo
+        .split(/\n{2,}/)
+        .map((p) => `<p>${p.split('\n').map(escapar).join('<br>')}</p>`);
+      const html = `<div style="font-family:Montserrat,Arial,sans-serif;font-size:14px;color:#1D1D1F;line-height:1.5">
+${parrafos.join('\n')}
+<p>Saludos,<br>${firma.split('\n').map(escapar).join('<br>')}</p>
+</div>`;
+      return { asunto: m.asunto, html, texto };
+    });
+  }
+
   private async mandar(
     ctx: TenantContext,
     m: {
@@ -111,6 +136,27 @@ export class EnviosService {
       };
     },
   ): Promise<EnvioMailDto> {
+    await this.despachar(ctx, m.para, ({ tenant, operador }) => ({
+      asunto: `${m.asunto} · ${tenant}`,
+      ...cuerpo(m.saludo, m.lineas, tenant, operador),
+      adjuntos: [m.adjunto],
+    }));
+    // Recién después de que Resend lo aceptó: el historial dice lo que pasó.
+    await this.db.withTenant((tx) => registrarEventos(tx, ctx, { ...m.evento, accion: 'envio' }));
+    return { enviado: true, para: m.para };
+  }
+
+  /** Lo común a todo mail del módulo: el tope, el remitente, a quién se responde y Resend. */
+  private async despachar(
+    ctx: TenantContext,
+    para: string[],
+    armar: (firma: { tenant: string; operador: string | null }) => {
+      asunto: string;
+      html: string;
+      texto: string;
+      adjuntos?: { nombre: string; contenido: Buffer }[];
+    },
+  ): Promise<void> {
     limitarEnvios(ctx.tenantId);
     const { tenant, operador } = await this.db.withTenant(async (tx) => {
       const [tenant, operador] = await Promise.all([
@@ -119,30 +165,28 @@ export class EnviosService {
       ]);
       return { tenant, operador };
     });
-    const { html, texto } = cuerpo(m.saludo, m.lineas, tenant.nombre, operador?.nombre ?? null);
+    const mail = armar({ tenant: tenant.nombre, operador: operador?.nombre ?? null });
     try {
       const { id } = await enviarMail(
         {
           // Entre comillas: una coma o unos «<>» en el nombre romperían el remitente.
           de: `"${tenant.nombre.replace(/["\\<>]/g, '')}" <${slugDeTenant(tenant.nombre)}@${DOMINIO_ENVIO}>`,
-          para: m.para,
+          para,
           // Si contestan, la respuesta le llega a quien lo mandó, no al dominio de la plataforma.
           responderA: operador?.email,
-          asunto: `${m.asunto} · ${tenant.nombre}`,
-          html,
-          texto,
-          adjuntos: [m.adjunto],
+          asunto: mail.asunto,
+          html: mail.html,
+          texto: mail.texto,
+          adjuntos: mail.adjuntos,
         },
         this.config.get<string>('RESEND_API_KEY') ?? '',
       );
-      this.logger.log(`${m.asunto} enviado (${id})`);
+      // Sin el asunto: el del aviso lo escribe el operador y lleva la dirección de la propiedad.
+      this.logger.log(`Mail enviado (${id})`);
     } catch (err) {
       if (err instanceof MailError) throw new BadRequestException(err.message);
       throw err;
     }
-    // Recién después de que Resend lo aceptó: el historial dice lo que pasó.
-    await this.db.withTenant((tx) => registrarEventos(tx, ctx, { ...m.evento, accion: 'envio' }));
-    return { enviado: true, para: m.para };
   }
 }
 

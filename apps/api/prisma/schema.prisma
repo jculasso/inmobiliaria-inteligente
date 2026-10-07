@@ -1160,7 +1160,7 @@ model AlqReclamo {
   tipo        String    @default("mantenimiento")
   /// baja | media | alta | urgente
   prioridad   String    @default("media")
-  /// abierto | en_curso | resuelto | cerrado
+  /// abierto | en_curso | resuelto («cerrado» se fue el 7/10/2026: pasó a resuelto)
   estado      String    @default("abierto")
   contratoId  String?   @map("contrato_id") @db.Uuid
   personaId   String?   @map("persona_id") @db.Uuid
@@ -1173,9 +1173,11 @@ model AlqReclamo {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  proveedor AlqProveedor?    @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
-  notas     AlqReclamoNota[]
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proveedor    AlqProveedor?    @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+  notas        AlqReclamoNota[]
+  /// Los gastos del arreglo: comprobantes de proveedor cargados desde el reclamo.
+  comprobantes AlqComprobante[]
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -1251,14 +1253,18 @@ model AlqComprobante {
   anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(6)
   anuladoPorId    String?   @map("anulado_por_id") @db.Uuid
   motivoAnulacion String?   @map("motivo_anulacion")
+  /// El reclamo cuyo arreglo es este gasto. Borrar el reclamo lo deja suelto.
+  reclamoId       String?   @map("reclamo_id") @db.Uuid
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   proveedor AlqProveedor @relation(fields: [proveedorId], references: [id], onDelete: Restrict)
+  reclamo   AlqReclamo?  @relation(fields: [reclamoId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([proveedorId])
   @@index([contratoId])
+  @@index([reclamoId])
   @@index([tenantId, fecha])
   @@map("alq_comprobante")
 }

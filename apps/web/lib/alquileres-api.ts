@@ -44,6 +44,7 @@ import {
   ReclamoDtoSchema,
   ReclamoResumenDtoSchema,
   UsuarioMiniSchema,
+  type AvisoProveedor,
   type CambioReclamo,
   type PlantillaMetadatos,
   type ReclamoInput,
@@ -660,6 +661,15 @@ export async function cambiarReclamo(
     accessToken,
     method: 'PATCH',
     body: cambio,
+  });
+}
+
+/** Le manda al proveedor del reclamo el mail redactado (regla 73): el destinatario lo pone la API. */
+export async function avisarProveedor(accessToken: string, id: string, aviso: AvisoProveedor) {
+  return apiFetch(`/alquileres/reclamos/${id}/avisar-proveedor`, EnvioMailDtoSchema, {
+    accessToken,
+    method: 'POST',
+    body: aviso,
   });
 }
 

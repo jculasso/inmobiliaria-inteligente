@@ -741,6 +741,9 @@ export const TABLAS: TablaBajoPrueba[] = [
       id: i.alqComprobante,
       tenantId: t,
       proveedorId: i.alqProveedor,
+      // El gasto del arreglo apunta a su reclamo: la fila intrusa apunta al
+      // de la víctima, y la clave (tenant_id, reclamo_id) también la frena.
+      reclamoId: i.alqReclamo,
       fecha: HOY,
       descripcion: `Arreglo ${i.n}`,
       importe: 1000,

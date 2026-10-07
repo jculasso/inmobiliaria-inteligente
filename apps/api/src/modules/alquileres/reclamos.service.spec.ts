@@ -1,6 +1,8 @@
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
-import { ROLES_ADMINISTRACION_ALQUILERES } from '@vacker/types';
+import { CambioReclamoSchema, ROLES_ADMINISTRACION_ALQUILERES } from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
+import type { EnviosService } from './envios.service';
 import { mocksDeHistorial } from './historial.testing';
 import { ReclamosService } from './reclamos.service';
 
@@ -43,6 +45,20 @@ const fila = (over: Record<string, unknown> = {}) => ({
   createdAt: new Date('2026-10-06T12:00:00Z'),
   updatedAt: new Date('2026-10-06T12:00:00Z'),
   notas: [],
+  comprobantes: [],
+  ...over,
+});
+/** Un gasto del arreglo, como lo trae el `include` de la ficha. */
+const gasto = (over: Record<string, unknown> = {}) => ({
+  id: '99999999-9999-4999-8999-999999999999',
+  fecha: new Date('2026-10-07T00:00:00Z'),
+  descripcion: 'Cambio de flexible',
+  importe: new Prisma.Decimal(85_000),
+  moneda: 'ARS',
+  aCargoDe: 'propietario',
+  pagadoEl: null,
+  anuladoEn: null,
+  proveedor: { nombre: 'Juan Plomero' },
   ...over,
 });
 
@@ -89,12 +105,22 @@ function armar(r = fila()) {
       count: vi.fn().mockResolvedValue(1),
       findMany: vi.fn().mockResolvedValue([{ id: 'p1', nombre: 'Ana Inquilina' }]),
     },
-    alqContratoParte: { findFirst: vi.fn().mockResolvedValue({ personaId: 'p1' }) },
+    alqContratoParte: {
+      findFirst: vi.fn().mockResolvedValue({
+        personaId: 'p1',
+        persona: { nombre: 'Ana Inquilina', telefono: '341 444-0000' },
+      }),
+    },
   };
   const db = {
     withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
   } as unknown as TenantPrismaService;
-  return { tx, servicio: new ReclamosService(db) };
+  const envios = { mandarTexto: vi.fn().mockResolvedValue(undefined) };
+  return {
+    tx,
+    envios,
+    servicio: new ReclamosService(db, envios as unknown as EnviosService),
+  };
 }
 
 describe('ReclamosService (entrega 15)', () => {
@@ -297,5 +323,160 @@ describe('ReclamosService · quién lo sigue y el proveedor (reglas 60 a 66)', (
       telefono: '341 555-1234',
       email: null,
     });
+  });
+});
+
+// Javier, 7/10/2026: «como está no sirve». Reglas 67 a 73.
+describe('ReclamosService · el circuito del reclamo (reglas 67 a 73)', () => {
+  it('regla 67: un reclamo cerrado (de antes) se lee como resuelto', async () => {
+    const { tx, servicio } = armar(fila({ estado: 'cerrado' }));
+    expect((await servicio.obtener(R)).estado).toBe('resuelto');
+    tx.alqReclamo.findMany.mockResolvedValueOnce([fila({ estado: 'cerrado' })]);
+    expect((await servicio.listar({ estado: 'todos' }))[0]!.estado).toBe('resuelto');
+  });
+
+  it('regla 67: pasarlo a resuelto anota la fecha; reabrirlo la borra', async () => {
+    const { tx, servicio } = armar(fila({ estado: 'en_curso' }));
+    await servicio.cambiar(CTX, R, { estado: 'resuelto', nota: null });
+    expect(tx.alqReclamo.update.mock.calls[0]![0].data.cerradoEn).toBeInstanceOf(Date);
+    expect(tx.alqReclamoNota.create.mock.calls[0]![0].data.texto).toBe(
+      'Estado: En curso → Resuelto.',
+    );
+    const { tx: tx2, servicio: s2 } = armar(fila({ estado: 'resuelto' }));
+    await s2.cambiar(CTX, R, { estado: 'abierto', nota: null });
+    expect(tx2.alqReclamo.update.mock.calls[0]![0].data).toEqual({
+      estado: 'abierto',
+      cerradoEn: null,
+    });
+  });
+
+  it('regla 68: una pantalla vieja que manda «cerrado» lo deja resuelto, sin repetir el cambio', async () => {
+    // Llega por el schema del controller: «cerrado» se lee como «resuelto».
+    const cambio = CambioReclamoSchema.parse({ estado: 'cerrado' });
+    expect(cambio.estado).toBe('resuelto');
+    const { tx, servicio } = armar(fila({ estado: 'en_curso' }));
+    await servicio.cambiar(CTX, R, cambio);
+    expect(tx.alqReclamo.update.mock.calls[0]![0].data.estado).toBe('resuelto');
+    // Sobre un reclamo que la migración no alcanzó, ya está resuelto: no hay nada que anotar.
+    const { tx: tx2, servicio: s2 } = armar(fila({ estado: 'cerrado' }));
+    await s2.cambiar(CTX, R, cambio);
+    expect(tx2.alqReclamo.update).not.toHaveBeenCalled();
+    expect(tx2.alqReclamoNota.create).not.toHaveBeenCalled();
+  });
+
+  it('regla 71: la ficha trae los gastos del arreglo y el total sin los anulados', async () => {
+    const { servicio } = armar(
+      fila({
+        comprobantes: [
+          gasto(),
+          gasto({
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            importe: new Prisma.Decimal(20_000),
+            aCargoDe: 'inquilino',
+            pagadoEl: new Date('2026-10-08T00:00:00Z'),
+          }),
+          gasto({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', anuladoEn: new Date() }),
+        ],
+      }),
+    );
+    const r = await servicio.obtener(R);
+    expect(r.gastos.map((g) => [g.proveedor, g.importe, g.aCargoDe, g.estado])).toEqual([
+      ['Juan Plomero', 85_000, 'propietario', 'pendiente'],
+      ['Juan Plomero', 20_000, 'inquilino', 'pagado'],
+      ['Juan Plomero', 85_000, 'propietario', 'anulado'],
+    ]);
+    expect(r.gastos[0]!.fecha).toBe('2026-10-07');
+    expect(r.totalGastos).toEqual([{ moneda: 'ARS', importe: 105_000 }]);
+  });
+
+  it('regla 71: la ficha hace las mismas consultas con 1 gasto que con 25', async () => {
+    const consultas = async (n: number) => {
+      const { tx, servicio } = armar(
+        fila({
+          asignadoAId: LUCIA,
+          proveedorId: PLOMERO,
+          comprobantes: Array.from({ length: n }, () => gasto()),
+        }),
+      );
+      await servicio.obtener(R);
+      return [
+        tx.alqReclamo.findUnique,
+        tx.alqContrato.findMany,
+        tx.alqPersona.findMany,
+        tx.alqProveedor.findMany,
+        tx.usuario.findMany,
+        tx.alqContratoParte.findFirst,
+      ].map((f) => f.mock.calls.length);
+    };
+    expect(await consultas(25)).toEqual(await consultas(1));
+  });
+
+  it('regla 73: la ficha trae el inquilino con su teléfono y cómo ubicar a quien lo sigue', async () => {
+    const { tx, servicio } = armar(fila({ asignadoAId: LUCIA }));
+    Object.assign(tx.usuario, {
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: LUCIA,
+          nombre: 'Lucía Operadora',
+          telefono: '341 600-0000',
+          email: 'lucia@alteva.com',
+        },
+        { id: 'u1', nombre: 'Javier', telefono: null, email: 'javier@alteva.com' },
+      ]),
+    });
+    const r = await servicio.obtener(R);
+    expect(r.inquilino).toEqual({ nombre: 'Ana Inquilina', telefono: '341 444-0000' });
+    expect(r.contactoLoSigue).toEqual({ telefono: '341 600-0000', email: 'lucia@alteva.com' });
+    expect(r.abiertoPor).toBe('Javier');
+  });
+
+  const AVISO = { asunto: 'Reclamo 7 · Pérdida de agua', cuerpo: 'Hola, Juan: pasá el jueves.' };
+
+  it('regla 73: el aviso sale solo al email del proveedor y queda en el historial', async () => {
+    const { tx, envios, servicio } = armar(
+      fila({ proveedor: { nombre: 'Juan Plomero', email: 'juan@plomeria.com' } }),
+    );
+    expect(await servicio.avisarProveedor(CTX, R, AVISO)).toEqual({
+      enviado: true,
+      para: ['juan@plomeria.com'],
+    });
+    expect(envios.mandarTexto).toHaveBeenCalledWith(CTX, {
+      para: ['juan@plomeria.com'],
+      ...AVISO,
+    });
+    expect(tx.alqReclamoNota.create.mock.calls[0]![0].data.texto).toBe(
+      'Se avisó a Juan Plomero por mail (juan@plomeria.com).',
+    );
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({
+      entidad: 'reclamo',
+      accion: 'envio',
+    });
+  });
+
+  it('regla 73: sin proveedor o sin email no se manda nada, y el error dice qué hacer', async () => {
+    const { tx, envios, servicio } = armar(fila({ proveedor: null }));
+    await expect(servicio.avisarProveedor(CTX, R, AVISO)).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('no tiene proveedor'),
+    });
+    tx.alqReclamo.findUnique.mockResolvedValueOnce(
+      fila({ proveedor: { nombre: 'Juan Plomero', email: null } }),
+    );
+    await expect(servicio.avisarProveedor(CTX, R, AVISO)).rejects.toMatchObject({
+      status: 400,
+      message: 'Juan Plomero no tiene email: cargáselo en Gastos › Proveedores.',
+    });
+    expect(envios.mandarTexto).not.toHaveBeenCalled();
+    expect(tx.alqReclamoNota.create).not.toHaveBeenCalled();
+  });
+
+  it('regla 73: si el mail no sale, no queda anotado que se avisó', async () => {
+    const { tx, envios, servicio } = armar(
+      fila({ proveedor: { nombre: 'Juan Plomero', email: 'juan@plomeria.com' } }),
+    );
+    envios.mandarTexto.mockRejectedValueOnce(new Error('Resend no respondió en 20 segundos.'));
+    await expect(servicio.avisarProveedor(CTX, R, AVISO)).rejects.toThrow('Resend no respondió');
+    expect(tx.alqReclamoNota.create).not.toHaveBeenCalled();
+    expect(tx.alqEvento.createMany).not.toHaveBeenCalled();
   });
 });

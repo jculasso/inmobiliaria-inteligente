@@ -59,6 +59,7 @@ const comp = (over: Partial<ComprobanteDto>): ComprobanteDto => ({
   medio: null,
   registradoPor: 'Operador',
   aplicado: false,
+  reclamo: null,
   ...over,
 });
 const reporte: GastosReporteDto = {
@@ -175,5 +176,25 @@ describe('ProveedoresVista', () => {
         'efectivo',
       ),
     );
+  });
+
+  // Regla 72: el comprobante cargado desde un reclamo dice de cuál, con link a su ficha.
+  it('regla 72: el comprobante muestra «Reclamo N» con link, en la tabla y en la tarjeta', () => {
+    const R = '33333333-3333-4333-8333-333333333333';
+    render(
+      <ProveedoresVista
+        proveedores={proveedores}
+        comprobantes={[comp({ reclamo: { id: R, numero: 7 } }), comp({})]}
+        reporte={reporte}
+        contratos={contratos}
+        estado="pendientes"
+      />,
+    );
+    const links = screen.getAllByRole('link', { name: 'Reclamo 7' });
+    expect(links).toHaveLength(2);
+    for (const l of links) expect(l).toHaveAttribute('href', `/alquileres/reclamos/${R}`);
+    expect(
+      within(screen.getByRole('list', { name: 'Comprobantes' })).getAllByText('Reclamo'),
+    ).toHaveLength(1);
   });
 });

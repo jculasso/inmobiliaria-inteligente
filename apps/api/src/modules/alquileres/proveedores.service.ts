@@ -28,6 +28,7 @@ import { IMPUTACION_ACTIVA } from './imputacion-activa';
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 const INCLUIR = {
   proveedor: { select: { id: true, nombre: true, rubro: true } },
+  reclamo: { select: { id: true, numero: true } },
 } satisfies Prisma.AlqComprobanteInclude;
 type FilaComprobante = Prisma.AlqComprobanteGetPayload<{ include: typeof INCLUIR }>;
 
@@ -161,6 +162,9 @@ export class ProveedoresService {
         select: { nombre: true, rubro: true },
       });
       if (!prov) throw new NotFoundException('El proveedor no existe.');
+      const reclamo = dto.reclamoId
+        ? await reclamoDelGasto(tx, dto.reclamoId, dto.contratoId)
+        : null;
       const id = randomUUID();
       let contratoCodigo: string | null = null;
       const conceptos: Prisma.AlqConceptoCreateManyInput[] = [];
@@ -223,6 +227,7 @@ export class ProveedoresService {
           importe: dto.importe,
           moneda: dto.moneda,
           aCargoDe: dto.aCargoDe,
+          reclamoId: dto.reclamoId,
           creadoPorId: ctx.userId,
           ...(dto.pagado
             ? { pagadoEl: toDate(dto.fecha), medio: dto.medio, pagadoPorId: ctx.userId }
@@ -240,8 +245,28 @@ export class ProveedoresService {
         entidadId: id,
         contratoId: dto.contratoId,
         accion: 'alta',
-        resumen: `${prov.nombre}: ${dto.descripcion}, ${plata(dto.importe, dto.moneda)}, ${quien}${contratoCodigo ? ` (${contratoCodigo})` : ''}${dto.pagado ? ', pagado' : ''}`,
+        resumen: `${prov.nombre}: ${dto.descripcion}, ${plata(dto.importe, dto.moneda)}, ${quien}${contratoCodigo ? ` (${contratoCodigo})` : ''}${reclamo ? `, reclamo ${reclamo.numero}` : ''}${dto.pagado ? ', pagado' : ''}`,
       });
+      if (reclamo) {
+        // El historial del reclamo cuenta lo que costó el arreglo (regla 71).
+        const u = await tx.usuario.findUnique({
+          where: { id: ctx.userId },
+          select: { nombre: true },
+        });
+        await tx.alqReclamoNota.create({
+          data: {
+            tenantId: ctx.tenantId,
+            reclamoId: dto.reclamoId!,
+            usuarioId: ctx.userId,
+            usuarioNombre: u?.nombre ?? null,
+            texto: `Gasto del arreglo: ${prov.nombre}, ${plata(dto.importe, dto.moneda)}, ${quien}.`,
+          },
+        });
+        await tx.alqReclamo.update({
+          where: { id: dto.reclamoId! },
+          data: { updatedAt: new Date() },
+        });
+      }
       return this.obtenerEn(tx, id);
     });
   }
@@ -444,7 +469,30 @@ export class ProveedoresService {
         medio: (f.medio as MedioCobro | null) ?? null,
         registradoPor: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null,
         aplicado: conAplicado.has(f.id),
+        reclamo: f.reclamo,
       };
     });
   }
+}
+
+/**
+ * El reclamo de un gasto del arreglo (regla 70): tiene que ser de esta
+ * inmobiliaria —si no, no existe: RLS, y la clave (tenant_id, reclamo_id) en
+ * la base— y, si el gasto va a un contrato, del mismo contrato.
+ */
+async function reclamoDelGasto(
+  tx: Tx,
+  reclamoId: string,
+  contratoId: string | null,
+): Promise<{ numero: number }> {
+  const r = await tx.alqReclamo.findUnique({
+    where: { id: reclamoId },
+    select: { numero: true, contratoId: true },
+  });
+  if (!r) throw new NotFoundException('El reclamo no existe.');
+  if (contratoId && r.contratoId && contratoId !== r.contratoId)
+    throw new BadRequestException(
+      `El reclamo ${r.numero} es de otro contrato: el gasto del arreglo va a su contrato.`,
+    );
+  return { numero: r.numero };
 }

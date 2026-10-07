@@ -265,6 +265,14 @@ describe('TableroAlquileresService', () => {
     }
   });
 
+  // Reglas 67 y 69: «Reclamos abiertos» son los abiertos y en curso, y cada uno dice «Prioridad alta».
+  it('reglas 67 y 69: los reclamos abiertos, con la prioridad con su nombre', async () => {
+    const t = await servicio().tablero(HOY);
+    expect(t.tareas.reclamos.filas).toEqual([
+      expect.objectContaining({ detalle: 'Pérdida de agua', estado: 'Prioridad alta' }),
+    ]);
+  });
+
   // Regla 27.
   it('cartera: el alquiler de hoy es el del último tramo indexado ya empezado', async () => {
     const t = await servicio().tablero(HOY);
