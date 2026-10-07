@@ -17,7 +17,7 @@ import {
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { anularPoliza, crearPoliza } from '../../lib/alquileres-api';
-import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
+import { cantidad, fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { AnularModal } from './anular-modal';
 import { AccionFila, Bloque, CLASE_FOCO, Insignia, VacioBloque } from './piezas';
@@ -101,8 +101,9 @@ export function Polizas({
                     </>
                   )}
                   {fmtFecha(p.desde)} al {fmtFecha(p.hasta)} · {fmtMoneda(p.premio, p.moneda)} en{' '}
-                  {p.cuotas} {p.cuotas === 1 ? 'cuota' : 'cuotas'} ({p.cuotasPagadas} pagas) · la
-                  debe el {p.aCargoDe}, paga {NOMBRE_QUIEN_PAGA[p.paga].toLowerCase()}
+                  {p.cuotas} {p.cuotas === 1 ? 'cuota' : 'cuotas'} (
+                  {cantidad(p.cuotasPagadas, 'paga')}) · la debe el {p.aCargoDe}, paga{' '}
+                  {NOMBRE_QUIEN_PAGA[p.paga].toLowerCase()}
                 </span>
               </span>
               <span className="flex items-center gap-2">

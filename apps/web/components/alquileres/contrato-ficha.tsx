@@ -174,7 +174,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           <Dato etiqueta="Tipo">{NOMBRE_TIPO_CONTRATO[contrato.tipo]}</Dato>
           <Dato etiqueta="Ajuste">
             {contrato.ajuste === 'indexado' && contrato.indice
-              ? `${NOMBRE_INDICE[contrato.indice]} cada ${contrato.periodicidadMeses} meses`
+              ? `${NOMBRE_INDICE[contrato.indice]} cada ${contrato.periodicidadMeses === 1 ? 'mes' : `${contrato.periodicidadMeses} meses`}`
               : 'Escalonado'}
           </Dato>
           <Dato etiqueta="Vencimientos">

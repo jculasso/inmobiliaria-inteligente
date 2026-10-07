@@ -11,7 +11,7 @@ import {
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cargarCargosIngreso } from '../../lib/alquileres-api';
-import { fmtMoneda, hoyIso } from '../../lib/format';
+import { cantidad, fmtMoneda, hoyIso } from '../../lib/format';
 import { useEstadoDelServidor } from '../../lib/estado-del-servidor';
 import { useRefrescar } from '../../lib/refrescar';
 import { inputClass } from '../form-ui';
@@ -76,7 +76,7 @@ export function CargosIngreso({
 
   const detalle =
     cargos.valorTotal > 0
-      ? `valor total ${fmtMoneda(cargos.valorTotal, moneda)} · ${cargos.meses} meses`
+      ? `valor total ${fmtMoneda(cargos.valorTotal, moneda)} · ${cantidad(cargos.meses, 'mes', 'meses')}`
       : undefined;
   if (cargos.cargados) {
     return (

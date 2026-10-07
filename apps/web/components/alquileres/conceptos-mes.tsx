@@ -486,7 +486,7 @@ export function ConceptosMes({
 
           <TituloSeccion
             icono="🧾"
-            detalle={`${grupos.length} ${grupos.length === 1 ? 'contrato' : 'contratos'} · ${visibles.length} conceptos`}
+            detalle={`${grupos.length} ${grupos.length === 1 ? 'contrato' : 'contratos'} · ${cantidad(visibles.length, 'concepto')}`}
           >
             Conceptos de {mesDe(periodo)}, por contrato
           </TituloSeccion>

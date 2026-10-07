@@ -32,7 +32,7 @@ import {
   guardarServicio,
   pagarBoleta,
 } from '../../lib/alquileres-api';
-import { fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
+import { cantidad, fmtFecha, fmtMoneda, hoyIso } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
@@ -174,7 +174,7 @@ export function ImpuestosVista({
             vivas.reduce((s, b) => s + (b.moneda === 'ARS' ? b.importe : 0), 0),
             'ARS',
           )}
-          sub={`${vivas.length} boletas`}
+          sub={cantidad(vivas.length, 'boleta')}
           icon="🧾"
         />
         <KpiCard
