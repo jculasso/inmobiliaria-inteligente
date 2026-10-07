@@ -30,6 +30,7 @@ const c = (
   inquilinos: [{ id: crypto.randomUUID(), nombre: `Inquilino ${codigo}` }],
   importeVigente,
   proximaIndexacion,
+  proximaIndexacionEspera: false,
 });
 
 describe('ContratosLista', () => {
@@ -47,6 +48,19 @@ describe('ContratosLista', () => {
     const tabla = within(screen.getByRole('table'));
     expect(tabla.getByText(/01\/10\/2026 · vencida/)).toBeInTheDocument();
     expect(tabla.queryByText(/01\/01\/2027 · vencida/)).not.toBeInTheDocument();
+  });
+
+  // Regla 7, visto en Alteva el 7/10/2026: ALT-0005 esperaba el IPC de septiembre y figuraba «vencida».
+  it('si ya empezó pero el índice no salió, dice que espera el índice, no «vencida»', () => {
+    render(
+      <ContratosLista
+        contratos={[{ ...c('45', '2026-10-01'), proximaIndexacionEspera: true }]}
+        hoy="2026-10-07"
+      />,
+    );
+    const tabla = within(screen.getByRole('table'));
+    expect(tabla.getByText(/01\/10\/2026 · espera el índice/)).toBeInTheDocument();
+    expect(tabla.queryByText(/vencida/)).not.toBeInTheDocument();
   });
 
   it('un contrato cuyo tramo de hoy no está indexado dice «A indexar», no $ 0', () => {

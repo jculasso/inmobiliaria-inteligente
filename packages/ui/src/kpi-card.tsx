@@ -58,9 +58,15 @@ export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: 
         <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
       </div>
       {/* Un importe con centavos («$ 2.337.098,05») no se parte en dos líneas: el número se
-          achica con el ancho de la tarjeta, así todas las de una fila quedan del mismo tamaño. */}
+          achica con el ancho de la tarjeta, así todas las de una fila quedan del mismo tamaño.
+          Dos monedas («$ … · U$S …») van una por línea: juntas no entraban y se pisaban con
+          la tarjeta de al lado (Conceptos, 7/10/2026). */}
       <p className="mt-1.5 whitespace-nowrap text-[clamp(1.05rem,8.5cqw,1.5rem)] font-extrabold tabular-nums text-ink">
-        {value}
+        {value.split(' · ').map((parte, i) => (
+          <span key={i} className="block">
+            {parte}
+          </span>
+        ))}
       </p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
     </>

@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
@@ -31,6 +32,7 @@ import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { IndexacionesService } from './indexaciones.service';
 import { dia, nombresDeUsuarios, registrarEventos } from './historial';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
@@ -60,18 +62,38 @@ type FilaContrato = Prisma.AlqContratoGetPayload<{ include: typeof INCLUIR }>;
  */
 @Injectable()
 export class ContratosService {
-  constructor(private readonly db: TenantPrismaService) {}
+  constructor(
+    private readonly db: TenantPrismaService,
+    @Optional() private readonly indexaciones?: IndexacionesService,
+  ) {}
 
   async listar(): Promise<ContratoResumenDto[]> {
-    return this.db.withTenant(async (tx) => {
-      const filas = await tx.alqContrato.findMany({
-        include: INCLUIR,
-        // Por número, como en Gexion: ALT-0002 antes que ALT-0010.
-        orderBy: [{ codigoNum: 'asc' }, { codigo: 'asc' }],
-        take: LIMITE_LISTA_CON_SONDA,
-      });
-      const hoy = hoyArgentina();
-      return filas.map((f) => aResumen(f, hoy));
+    const hoy = hoyArgentina();
+    // Lo que ya empezó y espera un índice no publicado no se marca «vencida»
+    // (regla 7): lo dice la bandeja, que es la que sabe qué índices hay.
+    const [filas, bandeja] = await Promise.all([
+      this.db.withTenant((tx) =>
+        tx.alqContrato.findMany({
+          include: INCLUIR,
+          // Por número, como en Gexion: ALT-0002 antes que ALT-0010.
+          orderBy: [{ codigoNum: 'asc' }, { codigo: 'asc' }],
+          take: LIMITE_LISTA_CON_SONDA,
+        }),
+      ),
+      this.indexaciones?.bandeja(hoy, 0),
+    ]);
+    const esperan = new Set(
+      (bandeja?.tramos ?? [])
+        .filter((t) => t.estado === 'pendiente_indice')
+        .map((t) => `${t.contrato.id}|${t.desde}`),
+    );
+    return filas.map((f) => {
+      const r = aResumen(f, hoy);
+      return {
+        ...r,
+        proximaIndexacionEspera:
+          r.proximaIndexacion != null && esperan.has(`${r.id}|${r.proximaIndexacion}`),
+      };
     });
   }
 
@@ -595,6 +617,7 @@ function aResumen(f: FilaContrato, hoy: string): ContratoResumenDto {
             hoy,
           )
         : null,
+    proximaIndexacionEspera: false,
   };
 }
 

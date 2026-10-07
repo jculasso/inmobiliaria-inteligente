@@ -498,6 +498,11 @@ export const ContratoResumenDtoSchema = z.object({
   importeVigente: z.number().nullable(),
   /** Cuándo empieza el próximo tramo a indexar, si lo hay. */
   proximaIndexacion: FechaIso.nullable(),
+  /**
+   * Ese tramo ya empezó pero su índice todavía no se publicó (regla 7): no está
+   * vencido, espera el índice. `.default(false)` por el orden de despliegue.
+   */
+  proximaIndexacionEspera: z.boolean().default(false),
 });
 export type ContratoResumenDto = z.infer<typeof ContratoResumenDtoSchema>;
 
