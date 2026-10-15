@@ -58,7 +58,8 @@ export class AlquileresController {
   @Get('configuracion')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({
-    summary: 'Configuración del módulo: IVA de honorarios, comisión inicial, sellado y depósito',
+    summary:
+      'Configuración del módulo: IVA de honorarios, comisión inicial, sellado, depósito y días para pagar la diferencia de la liquidación final',
   })
   configuracion(@CurrentUser() user: AuthPrincipal) {
     return this.alquileres.configuracion(ctxDe(user));

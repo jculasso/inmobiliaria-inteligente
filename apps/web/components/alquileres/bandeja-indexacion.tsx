@@ -6,13 +6,14 @@ import { useRouter } from 'next/navigation';
 import {
   DIAS_ANTICIPACION_INDEXACION,
   type BandejaIndexacionDto,
+  type DiferenciasFinalesDto,
   type EstadoIndiceDto,
   type IndexacionDto,
 } from '@vacker/types';
 import { mesLargo } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { confirmarIndexacion } from '../../lib/alquileres-api';
+import { confirmarIndexacion, previsualizarDiferencias } from '../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../lib/format';
 import { EncabezadoPagina, Insignia, TituloSeccion, Vacio } from './piezas';
 import { NOMBRE_INDICE } from './nombres';
@@ -59,12 +60,47 @@ function EstadoIndices({ indices }: { indices: EstadoIndiceDto[] }) {
   );
 }
 
+/** «octubre de 2026», «octubre y noviembre de 2026»… los meses cobrados como parcial. */
+function meses(periodos: string[]): string {
+  const nombres = periodos.map((p) => mesLargo(`${p}-01`));
+  return nombres.length <= 1
+    ? (nombres[0] ?? '')
+    : `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}`;
+}
+
+/**
+ * Regla 137: lo que va a generar la confirmación, en una frase. Negativo
+ * (un importe menor que el anterior, regla 134): al inquilino se le devuelve
+ * y el propietario devuelve.
+ */
+export function textoDiferencias(d: DiferenciasFinalesDto): string {
+  const plata = (n: number) => fmtMoneda(Math.abs(n), d.moneda);
+  const inquilino =
+    d.inquilino >= 0
+      ? `inquilino ${plata(d.inquilino)}`
+      : `inquilino ${plata(d.inquilino)} a su favor`;
+  const propietario =
+    d.propietarios >= 0
+      ? `propietario ${plata(d.propietarios)}`
+      : `propietario devuelve ${plata(d.propietarios)}`;
+  return `Se van a generar las diferencias de ${meses(d.periodos)}: ${inquilino}, ${propietario}. Vencen el ${fmtFecha(d.vencimiento)}.`;
+}
+
 function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: string) => void }) {
   const [importe, setImporte] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  /** La vista previa de la liquidación final, antes de confirmar (regla 137). */
+  const [vista, setVista] = useState<{ manual: number | null; d: DiferenciasFinalesDto } | null>(
+    null,
+  );
   const unidad = `${t.contrato.direccion}${t.contrato.unidad ? ` ${t.contrato.unidad}` : ''}`;
 
+  /**
+   * Primero la vista previa: si el tramo tiene meses cobrados como parcial,
+   * se muestra qué diferencias se van a generar y se confirma en un segundo
+   * paso. Si no tiene, se confirma directo, como siempre.
+   */
   async function confirmar() {
     setError(null);
     const manual = t.estado === 'manual' ? (leerImporte(importe) ?? Number.NaN) : null;
@@ -74,10 +110,37 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
     }
     setEnviando(true);
     try {
-      const r = await confirmarIndexacion(await getAccessToken(), t.tramoId, manual);
-      onConfirmado(
-        `Contrato ${t.contrato.codigo}: el tramo ${r.numero} quedó en ${fmtMoneda(r.importe)}.`,
-      );
+      const token = await getAccessToken();
+      const { diferencias } = await previsualizarDiferencias(token, t.tramoId, manual);
+      if (diferencias && diferencias.conceptos > 0) {
+        setVista({ manual, d: diferencias });
+        setEnviando(false);
+        return;
+      }
+      await confirmarDe(token, manual);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo confirmar.');
+      setEnviando(false);
+    }
+  }
+
+  async function confirmarDe(token: string, manual: number | null) {
+    const r = await confirmarIndexacion(token, t.tramoId, manual);
+    onConfirmado(
+      `Contrato ${t.contrato.codigo}: el tramo ${r.numero} quedó en ${fmtMoneda(r.importe)}.${
+        r.diferencias && r.diferencias.conceptos > 0
+          ? ` Se generó la liquidación final de ${meses(r.diferencias.periodos)}.`
+          : ''
+      }`,
+    );
+  }
+
+  async function confirmarConDiferencias() {
+    if (!vista) return;
+    setError(null);
+    setEnviando(true);
+    try {
+      await confirmarDe(await getAccessToken(), vista.manual);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo confirmar.');
       setEnviando(false);
@@ -124,13 +187,48 @@ function Tramo({ t, onConfirmado }: { t: IndexacionDto; onConfirmado: (mensaje: 
             Casa Propia no tiene fuente automática: el importe se carga a mano.
           </p>
         )}
+        {(t.estado === 'pendiente_indice' || t.estado === 'manual') && (
+          // Regla 130: mientras tanto el mes no queda sin cobrar.
+          <p className="mt-1 text-xs text-muted">
+            Mientras tanto, cada mes se cobra como liquidación parcial con el importe anterior (
+            <span className="whitespace-nowrap tabular-nums">{fmtMoneda(t.importeAnterior)}</span>
+            ); al confirmar se genera la diferencia.
+          </p>
+        )}
+        {vista && (
+          <div className="mt-3 rounded-brand border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-ink">
+            <p>{textoDiferencias(vista.d)}</p>
+            <p className="mt-1 text-xs text-muted">
+              Los meses ya cobrados como liquidación parcial no se tocan: la diferencia va como
+              liquidación final, en el mismo mes.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={confirmarConDiferencias}
+                disabled={enviando}
+              >
+                {enviando ? 'Confirmando…' : 'Confirmar y generar las diferencias'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setVista(null)}
+                disabled={enviando}
+              >
+                Volver
+              </Button>
+            </div>
+          </div>
+        )}
         {error && (
           <p role="alert" className="mt-2 text-sm font-medium text-danger">
             {error}
           </p>
         )}
       </div>
-      {t.estado !== 'pendiente_indice' && (
+      {t.estado !== 'pendiente_indice' && !vista && (
         <div className="flex w-full items-center gap-2 sm:w-auto sm:shrink-0">
           {t.estado === 'manual' && (
             <InputImporte

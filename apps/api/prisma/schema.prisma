@@ -821,6 +821,12 @@ model AlqConcepto {
   claveOrigen               String?   @map("clave_origen")
   /// El cobro que lo creó: los punitorios nacen al cobrar (regla 16).
   cobroId                   String?   @map("cobro_id") @db.Uuid
+  /// Regla 130: `parcial` si se generó con el importe del tramo anterior porque
+  /// el índice no había salido; `final`, la diferencia cuando salió. NULL para
+  /// todo lo demás. Un CHECK en la base exige `tramoNumero` y el contrato.
+  etapa                     String?
+  /// El número del tramo del contrato de la parcial o la final.
+  tramoNumero               Int?      @map("tramo_numero")
   creadoPorId               String?   @map("creado_por_id") @db.Uuid
   anuladoEn                 DateTime? @map("anulado_en") @db.Timestamptz(6)
   anuladoPorId              String?   @map("anulado_por_id") @db.Uuid
@@ -845,6 +851,7 @@ model AlqConcepto {
   @@index([cobroId])
   @@index([liquidacionId])
   @@index([origenId])
+  @@index([contratoId, tramoNumero])
   @@map("alq_concepto")
 }
 

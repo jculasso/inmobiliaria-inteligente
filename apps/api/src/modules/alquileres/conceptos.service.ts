@@ -19,9 +19,11 @@ import {
 import {
   diasDelMes,
   generarPeriodo,
+  generarPeriodoConParciales,
   mesLargo,
   repartir,
   type ContratoParaGenerar,
+  type EtapaLiquidacion,
 } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -29,6 +31,7 @@ import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
 import { feriadosDe } from './feriados';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
+import { esperasDeIndice } from './esperas-indice';
 
 const INCLUIR_CONCEPTO = {
   contrato: {
@@ -68,9 +71,15 @@ export class ConceptosService {
   /**
    * Genera el mes. Las mismas consultas sean cuantos sean los contratos: la
    * configuración de la inmobiliaria, los feriados del mes (regla 100), los
-   * contratos del mes y un único `createMany`. La idempotencia (regla 10) la da la clave única por
-   * inmobiliaria: lo que ya existe se saltea en la base, no en memoria, así que
-   * dos personas generando a la vez tampoco duplican.
+   * contratos del mes, los valores de los índices (solo si algún tramo del mes
+   * está sin importe, regla 130), lo que ya existía y un único `createMany`.
+   * La idempotencia (regla 10) la da la clave única por inmobiliaria: lo que
+   * ya existe se saltea en la base, no en memoria, así que dos personas
+   * generando a la vez tampoco duplican.
+   *
+   * Un tramo que espera su índice se genera como liquidación parcial, con el
+   * importe del tramo anterior (regla 130); al confirmar la indexación, la
+   * final completa la diferencia en el mismo mes (regla 131).
    */
   async generar(ctx: TenantContext, periodo: string): Promise<ResultadoGeneracionDto> {
     const { desde, hasta } = limites(periodo);
@@ -98,11 +107,30 @@ export class ConceptosService {
         },
       });
 
+      const esperas = await esperasDeIndice(tx, contratos, { desde, hasta });
       const conceptos: Prisma.AlqConceptoCreateManyInput[] = [];
       const sinIndexar: ResultadoGeneracionDto['sinIndexar'] = [];
+      const parciales: ResultadoGeneracionDto['parciales'] = [];
       for (const c of contratos) {
-        const r = generarPeriodo(aParaGenerar(c), periodo, iva, feriados);
+        const r = generarPeriodoConParciales(
+          aParaGenerar(c),
+          periodo,
+          iva,
+          esperas.get(c.id) ?? new Map(),
+          feriados,
+        );
         conceptos.push(...aFilas(ctx.tenantId, c.id, r.conceptos));
+        for (const p of r.parciales) {
+          parciales.push({
+            contratoId: c.id,
+            codigo: c.codigo,
+            direccion: c.propiedad.direccion,
+            tramo: p.tramo,
+            desde: p.desde,
+            hasta: p.hasta,
+            espera: p.espera,
+          });
+        }
         for (const p of r.sinIndexar) {
           sinIndexar.push({
             contratoId: c.id,
@@ -152,6 +180,7 @@ export class ConceptosService {
         creados: count,
         existentes: conceptos.length - count,
         sinIndexar,
+        parciales,
       };
     });
   }
@@ -315,7 +344,11 @@ export class ConceptosService {
 export function aFilas(
   tenantId: string,
   contratoId: string,
-  conceptos: ReturnType<typeof generarPeriodo>['conceptos'],
+  // Con la etapa y el tramo si son de una liquidación parcial (regla 130).
+  conceptos: (ReturnType<typeof generarPeriodo>['conceptos'][number] & {
+    etapa?: EtapaLiquidacion | null;
+    tramo?: number | null;
+  })[],
 ): Prisma.AlqConceptoCreateManyInput[] {
   return conceptos.map((x) => ({
     tenantId,
@@ -329,6 +362,8 @@ export function aFilas(
     importe: x.importe,
     descripcion: x.descripcion,
     claveGeneracion: x.clave,
+    etapa: x.etapa ?? null,
+    tramoNumero: x.tramo ?? null,
   }));
 }
 
@@ -437,5 +472,6 @@ function aDto(f: FilaConcepto, nombres: Map<string, string>): ConceptoDto {
           en: f.createdAt.toISOString(),
           por: f.creadoPorId ? (nombres.get(f.creadoPorId) ?? null) : null,
         },
+    etapa: (f.etapa as EtapaLiquidacion | null) ?? null,
   };
 }

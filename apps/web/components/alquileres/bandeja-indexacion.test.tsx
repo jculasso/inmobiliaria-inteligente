@@ -3,15 +3,17 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { BandejaIndexacionDto, IndexacionDto } from '@vacker/types';
 
 const confirmarIndexacion = vi.fn();
+const previsualizarDiferencias = vi.fn().mockResolvedValue({ diferencias: null });
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('../../lib/supabase/client', () => ({
   getAccessToken: vi.fn().mockResolvedValue('token'),
 }));
 vi.mock('../../lib/alquileres-api', () => ({
   confirmarIndexacion: (...a: unknown[]) => confirmarIndexacion(...a),
+  previsualizarDiferencias: (...a: unknown[]) => previsualizarDiferencias(...a),
 }));
 
-import { BandejaIndexacion } from './bandeja-indexacion';
+import { BandejaIndexacion, textoDiferencias } from './bandeja-indexacion';
 
 /* Contrato #5 de Gexion: tramo 4 desde el 15/08/2026, IPC de marzo → julio. */
 const t = (over: Partial<IndexacionDto> = {}): IndexacionDto => ({
@@ -121,5 +123,68 @@ describe('BandejaIndexacion', () => {
     expect(
       screen.getByText(/No hay tramos para indexar en los próximos 30 días/),
     ).toBeInTheDocument();
+  });
+
+  describe('liquidación final (regla 137)', () => {
+    const diferencias = {
+      moneda: 'ARS' as const,
+      periodos: ['2026-10'],
+      inquilino: 57_269.17,
+      propietarios: 50_503.34,
+      vencimiento: '2026-10-20',
+      conceptos: 6,
+    };
+
+    it('regla 137: con meses cobrados como parcial, primero muestra qué diferencias se van a generar', async () => {
+      confirmarIndexacion.mockClear();
+      previsualizarDiferencias.mockResolvedValueOnce({ diferencias });
+      confirmarIndexacion.mockResolvedValueOnce({
+        tramoId: 'x',
+        numero: 4,
+        importe: 1_137_518,
+        diferencias,
+      });
+      const tramo = t();
+      render(<BandejaIndexacion bandeja={bandeja([tramo])} />);
+      fireEvent.click(screen.getByRole('button', { name: /Confirmar \$/ }));
+      expect(
+        await screen.findByText(
+          'Se van a generar las diferencias de octubre de 2026: inquilino $ 57.269,17, propietario $ 50.503,34. Vencen el 20/10/2026.',
+        ),
+      ).toBeInTheDocument();
+      // Todavía no confirmó nada.
+      expect(previsualizarDiferencias).toHaveBeenCalledWith('token', tramo.tramoId, null);
+      expect(confirmarIndexacion).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar y generar las diferencias' }));
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Contrato 5: el tramo 4 quedó en $ 1.137.518,00. Se generó la liquidación final de octubre de 2026.',
+        ),
+      );
+      expect(confirmarIndexacion).toHaveBeenCalledWith('token', tramo.tramoId, null);
+    });
+
+    it('regla 137: «Volver» no confirma', async () => {
+      confirmarIndexacion.mockClear();
+      previsualizarDiferencias.mockResolvedValueOnce({ diferencias });
+      render(<BandejaIndexacion bandeja={bandeja([t()])} />);
+      fireEvent.click(screen.getByRole('button', { name: /Confirmar \$/ }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Volver' }));
+      expect(screen.getByRole('button', { name: /Confirmar \$/ })).toBeInTheDocument();
+      expect(confirmarIndexacion).not.toHaveBeenCalled();
+    });
+
+    it('regla 134: si el definitivo es menor, dice que se le devuelve al inquilino y que el propietario devuelve', () => {
+      expect(
+        textoDiferencias({
+          ...diferencias,
+          periodos: ['2026-09', '2026-10'],
+          inquilino: -5_449.77,
+          propietarios: -4_805.92,
+        }),
+      ).toBe(
+        'Se van a generar las diferencias de septiembre de 2026 y octubre de 2026: inquilino $ 5.449,77 a su favor, propietario devuelve $ 4.805,92. Vencen el 20/10/2026.',
+      );
+    });
   });
 });

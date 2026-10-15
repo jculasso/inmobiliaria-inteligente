@@ -87,6 +87,7 @@ function informe(over: Partial<InformePropietarioDto> = {}): InformePropietarioD
             enEspera: 0,
             cobradoEl: ['2026-09-05'],
             liquidaciones: [liq],
+            nota: null,
           },
         ],
       },
@@ -204,6 +205,31 @@ describe('La solapa Informe del propietario', () => {
     expect(reclamos[0]).toHaveTextContent('$ 50.000,00');
     expect(reclamos[1]).not.toHaveTextContent('$');
     expect(screen.getByText('Liquidación 000012 del 10/09/2026')).toBeInTheDocument();
+  });
+
+  it('regla 140: el mes cobrado como liquidación parcial lo dice, con lo que espera', async () => {
+    const base = informe();
+    const contrato = base.contratos[0]!;
+    getInformePropietario.mockResolvedValue(
+      informe({
+        contratos: [
+          {
+            ...contrato,
+            meses: [
+              {
+                ...contrato.meses[0]!,
+                nota: 'Liquidación parcial (espera el IPC de agosto de 2026)',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    solapa();
+    const meses = within(await screen.findByRole('list', { name: 'Meses de ALT-0001' }));
+    expect(meses.getByRole('listitem')).toHaveTextContent(
+      'Liquidación parcial (espera el IPC de agosto de 2026) · Cobrado $ 1.000.000,00 el 05/09/2026',
+    );
   });
 
   it('regla 88: pesos y dólares, cada uno con su resumen', async () => {

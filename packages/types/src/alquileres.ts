@@ -744,10 +744,53 @@ export const ConfirmarIndexacionSchema = z.object({
 });
 export type ConfirmarIndexacion = z.infer<typeof ConfirmarIndexacionSchema>;
 
+/**
+ * Las diferencias de la liquidación final de un tramo (reglas 131 y 137): en
+ * qué meses, cuánto paga de más el inquilino y cuánto reciben de más los
+ * propietarios, ya descontados sus honorarios. Negativo: se devuelve.
+ */
+export const DiferenciasFinalesDtoSchema = z.object({
+  moneda: MonedaAlquilerSchema,
+  /** Los meses que se generaron como parcial, `AAAA-MM`. */
+  periodos: z.array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)),
+  inquilino: z.number(),
+  propietarios: z.number(),
+  /** Cuándo vence la diferencia (regla 133). */
+  vencimiento: FechaIso,
+  /** Cuántos conceptos se generan (o se generaron). */
+  conceptos: z.number().int().nonnegative(),
+});
+export type DiferenciasFinalesDto = z.infer<typeof DiferenciasFinalesDtoSchema>;
+
+/**
+ * La vista previa de la confirmación (regla 137). `importe` solo para un
+ * índice sin fuente (Casa Propia): con fuente, el importe lo calcula la API.
+ */
+export const PrevisualizarDiferenciasQuerySchema = z.object({
+  importe: z.coerce
+    .number()
+    .positive('El importe tiene que ser mayor que cero.')
+    .optional()
+    .transform((v) => v ?? null),
+});
+export type PrevisualizarDiferenciasQuery = z.infer<typeof PrevisualizarDiferenciasQuerySchema>;
+
+/** La vista previa: `diferencias` en `null` si el tramo no tiene meses cobrados como parcial. */
+export const VistaPreviaDiferenciasDtoSchema = z.object({
+  diferencias: DiferenciasFinalesDtoSchema.nullable(),
+});
+export type VistaPreviaDiferenciasDto = z.infer<typeof VistaPreviaDiferenciasDtoSchema>;
+
 export const IndexacionConfirmadaDtoSchema = z.object({
   tramoId: z.string().uuid(),
   numero: z.number().int(),
   importe: z.number(),
+  /**
+   * Las diferencias que se generaron para los meses cobrados como parcial
+   * (regla 131); `null` si el tramo no tenía ninguno. `.default` por el orden
+   * de despliegue.
+   */
+  diferencias: DiferenciasFinalesDtoSchema.nullable().default(null),
 });
 export type IndexacionConfirmadaDto = z.infer<typeof IndexacionConfirmadaDtoSchema>;
 
@@ -779,6 +822,10 @@ export const TipoConceptoSchema = z.enum([
 export type TipoConcepto = z.infer<typeof TipoConceptoSchema>;
 
 export const SentidoConceptoSchema = z.enum(['a_cobrar', 'a_pagar']);
+
+/** Liquidación parcial (el índice no salió) o final (la diferencia cuando salió), regla 130. */
+export const EtapaLiquidacionSchema = z.enum(['parcial', 'final']);
+export type EtapaLiquidacion = z.infer<typeof EtapaLiquidacionSchema>;
 export type SentidoConcepto = z.infer<typeof SentidoConceptoSchema>;
 
 export const GenerarPeriodoSchema = z.object({ periodo: PeriodoSchema });
@@ -847,6 +894,24 @@ export const ResultadoGeneracionDtoSchema = z.object({
       hasta: FechaIso,
     }),
   ),
+  /**
+   * Partes del mes que se generaron como liquidación parcial porque su tramo
+   * espera el índice (regla 130). `.default` por el orden de despliegue.
+   */
+  parciales: z
+    .array(
+      z.object({
+        contratoId: z.string().uuid(),
+        codigo: z.string(),
+        direccion: z.string(),
+        tramo: z.number().int(),
+        desde: FechaIso,
+        hasta: FechaIso,
+        /** «el IPC de septiembre de 2026». */
+        espera: z.string(),
+      }),
+    )
+    .default([]),
 });
 export type ResultadoGeneracionDto = z.infer<typeof ResultadoGeneracionDtoSchema>;
 
@@ -878,6 +943,11 @@ export const ConceptoDtoSchema = z.object({
     .enum(['pendiente', 'parcial', 'cobrado', 'pagado', 'liquidado', 'anulado'])
     .default('pendiente'),
   registrado: RegistroSchema.nullable().default(null),
+  /**
+   * Regla 130: `parcial` si se cobró con el importe del tramo anterior porque
+   * el índice no había salido; `final`, la diferencia cuando salió.
+   */
+  etapa: EtapaLiquidacionSchema.nullable().default(null),
 });
 export type ConceptoDto = z.infer<typeof ConceptoDtoSchema>;
 export type EstadoConcepto = ConceptoDto['estado'];
@@ -1039,6 +1109,19 @@ export const CobroDtoSchema = z.object({
       importe: z.number(),
       /** Salió del saldo a favor de este cobro anterior, no de la plata de hoy. */
       deSaldoAFavor: z.number().int().nullable(),
+      /**
+       * Regla 138: si es la diferencia de una liquidación final, de qué mes y
+       * qué parcial completa —su importe y los recibos que la pagaron—. `null`
+       * para todo lo demás.
+       */
+      liquidacionFinal: z
+        .object({
+          periodo: z.string(),
+          parcial: z.number(),
+          recibos: z.array(z.number().int()),
+        })
+        .nullable()
+        .default(null),
     }),
   ),
   /** Lo que sobró y queda a favor para el próximo cobro. */
@@ -1493,6 +1576,13 @@ export const TableroAlquileresDtoSchema = z.object({
     polizas: IndicadorSchema.default({ valor: 0, filas: [] }),
     /** Boletas que paga la inmobiliaria, vencidas o que vencen en 7 días (entrega 19). */
     boletas: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /**
+     * Regla 7 y 139: tramos que ya empezaron y esperan un índice que no salió.
+     * No son vencidas ni próximas: van aparte.
+     */
+    indexacionesEsperan: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /** Regla 139: diferencias de liquidaciones finales que el inquilino todavía no pagó. */
+    finalesPendientes: IndicadorSchema.default({ valor: 0, filas: [] }),
   }),
 });
 export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;
@@ -1731,6 +1821,11 @@ export const ConfiguracionAlquileresSchema = z.object({
   contratoPunitorioDiarioPct: z.number().min(0).max(10).default(0),
   contratoDiaVencimiento: z.number().int().min(1).max(28).default(5),
   contratoDiaPagoPropietario: z.number().int().min(1).max(28).default(10),
+  /**
+   * Regla 133: días para pagar la diferencia de la liquidación final, desde
+   * que se confirma la indexación. `.default` por el orden de despliegue.
+   */
+  diasDiferenciaFinal: z.number().int().min(0).max(60).default(5),
 });
 export type ConfiguracionAlquileres = z.infer<typeof ConfiguracionAlquileresSchema>;
 

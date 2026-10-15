@@ -28,6 +28,7 @@ const INICIAL: ConfiguracionAlquileres = {
   contratoPunitorioDiarioPct: 0,
   contratoDiaVencimiento: 5,
   contratoDiaPagoPropietario: 10,
+  diasDiferenciaFinal: 5,
 };
 
 beforeEach(() => guardarConfiguracionAlquileres.mockReset());
@@ -79,5 +80,20 @@ describe('ConfiguracionForm — Entrega A de Vacker (Florencia, 15/10/2026)', ()
       selladoComercialMipymePct: 0.5,
       selladoInquilinoPct: 100,
     });
+  });
+
+  it('regla 133: los días para pagar la diferencia de la liquidación final, de 0 a 60', async () => {
+    guardarConfiguracionAlquileres.mockImplementation(async (_t, c) => c);
+    render(<ConfiguracionForm inicial={INICIAL} />);
+    const dias = screen.getByLabelText(/Días para pagar la diferencia/);
+    expect(dias).toHaveValue('5');
+    await userEvent.clear(dias);
+    await userEvent.type(dias, '10');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(guardarConfiguracionAlquileres.mock.calls[0]![1].diasDiferenciaFinal).toBe(10);
+    await userEvent.clear(dias);
+    await userEvent.type(dias, '90');
+    await userEvent.tab();
+    expect(dias).toHaveValue('60');
   });
 });

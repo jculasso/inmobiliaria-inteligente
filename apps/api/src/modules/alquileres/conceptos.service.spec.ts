@@ -61,10 +61,12 @@ function makeTx(
     concepto?: unknown;
     anulados?: number;
     feriados?: { fecha: Date }[];
+    valores?: unknown[];
   } = {},
 ) {
   return {
     ...mocksDeHistorial(),
+    indiceValor: { findMany: vi.fn().mockResolvedValue(over.valores ?? []) },
     tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: { ivaHonorariosPct: 21 } }) },
     feriado: { findMany: vi.fn().mockResolvedValue(over.feriados ?? []) },
     alqContrato: {
@@ -109,6 +111,7 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
       creados: 4,
       existentes: 0,
       sinIndexar: [],
+      parciales: [],
     });
     expect(datos(tx).map((x) => [x.tipo, x.sentido, x.personaId, x.importe])).toEqual([
       ['alquiler', 'a_cobrar', INQ, 1_137_518],
@@ -216,6 +219,93 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
       expect(consultas).toBe(4);
       expect(datos(tx)).toHaveLength(4 * n);
     }
+  });
+});
+
+describe('ConceptosService.generar: liquidación parcial (regla 130)', () => {
+  // El contrato #5 indexa por IPC: el tramo 5 (desde el 15/12) se calcula con
+  // el IPC de julio (base) y el de noviembre, que en diciembre todavía no salió.
+  const porIpc = (over: Record<string, unknown> = {}) =>
+    contrato({ ajuste: 'indexado', indice: 'IPC', ...over });
+  const IPC_JULIO = { indice: 'IPC', fecha: d('2026-07-01'), valor: 12_076.3937 };
+  const IPC_NOVIEMBRE = { indice: 'IPC', fecha: d('2026-11-01'), valor: 13_000 };
+
+  it('regla 130: si el tramo espera el IPC, la parte del mes se genera con el importe anterior, como parcial', async () => {
+    const tx = makeTx({ contratos: [porIpc()], valores: [IPC_JULIO] });
+    const r = await new ConceptosService(makeDb(tx)).generar(CTX, '2026-12');
+    expect(r.sinIndexar).toEqual([]);
+    expect(r.parciales).toEqual([
+      {
+        contratoId: 'c5',
+        codigo: '5',
+        direccion: 'Calle 1',
+        tramo: 5,
+        desde: '2026-12-15',
+        hasta: '2026-12-31',
+        espera: 'el IPC de noviembre de 2026',
+      },
+    ]);
+    const parciales = datos(tx).filter((x) => x.etapa === 'parcial');
+    expect(parciales.map((x) => [x.tipo, x.sentido, x.importe, x.tramoNumero])).toEqual([
+      ['alquiler', 'a_cobrar', 623_800.19, 5],
+      ['gastos_adm', 'a_cobrar', 15_095.96, 5],
+      ['alquiler', 'a_pagar', 623_800.19, 5],
+      ['honorarios', 'a_cobrar', 60_383.86, 5],
+    ]);
+    expect(parciales[0]!.descripcion).toBe(
+      'Alquiler 15/12 al 31/12/2026 (17/31 días) — liquidación parcial (espera el IPC de noviembre de 2026)',
+    );
+    // La parte del 1 al 14 es del tramo 4, ya indexado: normal, sin etapa.
+    expect(
+      datos(tx)
+        .filter((x) => x.etapa == null)
+        .map((x) => x.importe),
+    ).toEqual([513_717.81, 12_431.98, 513_717.81, 49_727.88]);
+    // Los valores del índice se buscan en una sola consulta.
+    expect(tx.indiceValor.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('regla 130: si el IPC ya salió y falta confirmar, no hay parcial: sigue la regla 11', async () => {
+    const tx = makeTx({ contratos: [porIpc()], valores: [IPC_JULIO, IPC_NOVIEMBRE] });
+    const r = await new ConceptosService(makeDb(tx)).generar(CTX, '2026-12');
+    expect(r.parciales).toEqual([]);
+    expect(r.sinIndexar.map((x) => x.tramo)).toEqual([5]);
+    expect(datos(tx).every((x) => x.etapa == null)).toBe(true);
+  });
+
+  it('regla 130: Casa Propia no tiene fuente: el tramo sin importe espera su valor', async () => {
+    const tx = makeTx({ contratos: [porIpc({ indice: 'CCP' })] });
+    const r = await new ConceptosService(makeDb(tx)).generar(CTX, '2026-12');
+    expect(r.parciales.map((x) => x.espera)).toEqual(['el valor de Casa Propia']);
+    // Sin ICL ni IPC en juego, no se le pregunta nada a la tabla de índices.
+    expect(tx.indiceValor.findMany).not.toHaveBeenCalled();
+  });
+
+  it('regla 130: un mes sin tramos sin importe no consulta los índices', async () => {
+    const tx = makeTx({ contratos: [porIpc()] });
+    await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');
+    expect(tx.indiceValor.findMany).not.toHaveBeenCalled();
+  });
+
+  it('regla 130: las mismas consultas con 5 contratos que esperan el índice y con 25', async () => {
+    const cuantas = async (n: number) => {
+      const tx = makeTx({
+        contratos: Array.from({ length: n }, (_, i) => porIpc({ id: `c${i}`, codigo: String(i) })),
+        valores: [IPC_JULIO],
+      });
+      await new ConceptosService(makeDb(tx)).generar(CTX, '2026-12');
+      expect(datos(tx).filter((x) => x.etapa === 'parcial')).toHaveLength(4 * n);
+      return (
+        tx.tenant.findUniqueOrThrow.mock.calls.length +
+        tx.alqContrato.findMany.mock.calls.length +
+        tx.indiceValor.findMany.mock.calls.length +
+        tx.alqConcepto.findMany.mock.calls.length +
+        tx.alqConcepto.createMany.mock.calls.length +
+        tx.usuario.findUnique.mock.calls.length +
+        tx.alqEvento.createMany.mock.calls.length
+      );
+    };
+    expect(await cuantas(25)).toBe(await cuantas(5));
   });
 });
 

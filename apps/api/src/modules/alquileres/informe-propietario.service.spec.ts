@@ -559,3 +559,67 @@ describe('InformePropietarioService', () => {
     ).toBe(false);
   });
 });
+
+describe('InformePropietarioService · liquidación parcial y final (reglas 136 y 140)', () => {
+  const PARTE = `alq|${C1}|2026-09|2026-09-01`;
+  const FINAL = `${PARTE}~final`;
+  const parcial = (tipo: string, sentido: 'a_cobrar' | 'a_pagar', importe: number) =>
+    concepto(C1, tipo, sentido, importe, {
+      ...liquidado,
+      etapa: 'parcial',
+      descripcion: `${tipo === 'alquiler' ? 'Alquiler' : 'Honorarios'} septiembre 2026 — liquidación parcial (espera el IPC de agosto de 2026)`,
+    });
+  const final = (tipo: string, sentido: 'a_cobrar' | 'a_pagar', importe: number) =>
+    concepto(C1, tipo, sentido, importe, {
+      etapa: 'final',
+      claveGeneracion: `${FINAL}|${tipo}|${sentido}|${DUENA}`,
+      descripcion: `${tipo === 'alquiler' ? 'Alquiler' : 'Honorarios'} septiembre 2026 — liquidación final (diferencia por IPC)`,
+    });
+  const delInquilinoFinal = (pagado: number) => ({
+    ...delInquilino(C1, pagado),
+    importe: dec(80_000),
+    claveGeneracion: `${FINAL}|alquiler|a_cobrar|${INQ}`,
+  });
+
+  it('regla 140: el mes cobrado como parcial lo dice, con lo que espera', async () => {
+    const i = await servicio({
+      contratos: [contrato(C1, 'ALT-0005')],
+      conceptos: [
+        parcial('alquiler', 'a_pagar', 1_000_000),
+        parcial('honorarios', 'a_cobrar', 96_800),
+      ],
+      inquilino: [delInquilino(C1, 1_000_000)],
+      reclamos: [],
+      mora: [],
+    }).s.informe(DUENA, SEPT, HOY);
+    expect(i.contratos[0]!.meses[0]!.nota).toBe(
+      'Liquidación parcial (espera el IPC de agosto de 2026)',
+    );
+  });
+
+  it('regla 136: con la final, el mes suma el definitivo y lo que el inquilino no pagó de la diferencia espera', async () => {
+    const i = await servicio({
+      contratos: [contrato(C1, 'ALT-0005')],
+      conceptos: [
+        parcial('alquiler', 'a_pagar', 1_000_000),
+        parcial('honorarios', 'a_cobrar', 96_800),
+        final('alquiler', 'a_pagar', 80_000),
+        final('honorarios', 'a_cobrar', 7_744),
+      ],
+      // Pagó la parcial entera; la diferencia, nada.
+      inquilino: [delInquilino(C1, 1_000_000), delInquilinoFinal(0)],
+      reclamos: [],
+      mora: [],
+    }).s.informe(DUENA, SEPT, HOY);
+    expect(i.contratos[0]!.meses[0]).toMatchObject({
+      alquiler: 1_080_000,
+      cobrado: 1_000_000,
+      enEspera: 80_000,
+      nota: 'Liquidación parcial y final (diferencia por IPC)',
+    });
+    const [cadena] = i.resumen;
+    // Los honorarios de la final esperan con ella: no se cuentan como descontados.
+    expect(cadena).toMatchObject({ alquiler: 1_080_000, cobrado: 1_000_000, honorarios: 96_800 });
+    expect(cadena!.neto).toBe(cadena!.liquidado + cadena!.pendiente - cadena!.aDescontar);
+  });
+});
