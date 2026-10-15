@@ -440,6 +440,33 @@ export function vencimientoDelMes(
   return diaHabilDesde(fecha, feriados);
 }
 
+/**
+ * Regla 112: los vencimientos de un período nunca son anteriores al día en que
+ * el contrato empieza a generar en ese período —«administrado desde», o el
+ * inicio de un contrato que arranca a mitad de mes—. Un contrato tomado el
+ * 15/10 con vencimiento el 5 no puede nacer vencido el 5/10: el punitorio
+ * correría desde antes de administrarlo (prueba en Alteva, 15/10/2026). En ese
+ * caso vence ese mismo día, corrido al siguiente hábil como cualquier
+ * vencimiento (regla 100). Y al propietario nunca se le paga antes de que
+ * venza el alquiler del inquilino de ese período.
+ *
+ * `arranque` es la fecha en que el contrato empieza a generar; si cae en otro
+ * período, no cambia nada.
+ */
+export function vencimientosDelPeriodo(
+  periodo: string,
+  arranque: string,
+  diaVencimiento: number,
+  diaPagoPropietario: number,
+  feriados: ReadonlySet<string> = new Set(),
+): { inquilino: string; propietario: string } {
+  let inquilino = vencimientoDelMes(periodo, diaVencimiento, feriados);
+  if (arranque.slice(0, 7) === periodo && inquilino < arranque)
+    inquilino = diaHabilDesde(arranque, feriados);
+  const pago = vencimientoDelMes(periodo, diaPagoPropietario, feriados);
+  return { inquilino, propietario: pago < inquilino ? inquilino : pago };
+}
+
 // --- Generación del período (reglas 9 a 13) ---------------------------------------
 
 export type TipoConceptoGenerado = 'alquiler' | 'gastos_adm' | 'honorarios' | 'iva';
@@ -572,8 +599,13 @@ export function generarPeriodo(
     }));
   const partes = partesDelMes(anio, mes, tramos);
 
-  const vencInquilino = vencimientoDelMes(periodo, c.diaVencimiento, feriados);
-  const vencPropietario = vencimientoDelMes(periodo, c.diaPagoPropietario, feriados);
+  const { inquilino: vencInquilino, propietario: vencPropietario } = vencimientosDelPeriodo(
+    periodo,
+    desde ?? c.inicio,
+    c.diaVencimiento,
+    c.diaPagoPropietario,
+    feriados,
+  );
   const mesTexto = `${NOMBRE_MES[mes - 1]} ${anio}`;
   const conceptos: ConceptoGenerado[] = [];
   const sinIndexar: ParteDelMes[] = [];
