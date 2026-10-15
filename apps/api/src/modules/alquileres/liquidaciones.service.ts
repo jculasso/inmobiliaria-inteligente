@@ -418,9 +418,16 @@ export class LiquidacionesService {
     // gastos de los inquilinos, que nunca se liquidan y se acumulan para
     // siempre— y se filtraba acá (revisión de performance del 6/10/2026).
     const tipos = [...TIPOS_QUE_SE_LE_DESCUENTAN];
-    const ids = (
-      await tx.$queryRaw<{ id: string }[]>`
-        SELECT k.id FROM alq_concepto k
+    // En la misma consulta, lo que ya se le liquidó de cada uno por pagos
+    // parciales: las partes separadas al liquidar (regla 22), enlazadas por
+    // `origen_id`. Antes era una consulta más, y en producción cada consulta
+    // son dos viajes a São Paulo (prueba de volumen del 15/10/2026).
+    const pendientes = await tx.$queryRaw<{ id: string; ya_liquidado?: Prisma.Decimal | null }[]>`
+        SELECT k.id,
+               (SELECT SUM(s.importe) FROM alq_concepto s
+                 WHERE s.origen_id = k.id
+                   AND strpos(s.clave_generacion, ${MARCA_PARTE_LIQUIDADA}) > 0) AS ya_liquidado
+          FROM alq_concepto k
          WHERE k.anulado_en IS NULL AND k.liquidacion_id IS NULL
            AND (k.sentido = 'a_pagar' OR (k.sentido = 'a_cobrar' AND k.tipo = ANY(${tipos})))
            ${filtro.personaId ? Prisma.sql`AND k.persona_id = ${filtro.personaId}::uuid` : Prisma.empty}
@@ -439,9 +446,10 @@ export class LiquidacionesService {
                  SELECT SUM(im.importe) FROM alq_imputacion im
                    JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
                    JOIN alq_cobro re ON re.id = im.registrada_en_cobro_id AND re.anulado_en IS NULL
-                  WHERE im.concepto_id = k.id), 0)`
-    ).map((r) => r.id);
+                  WHERE im.concepto_id = k.id), 0)`;
+    const ids = pendientes.map((r) => r.id);
     if (ids.length === 0) return [];
+    const yaLiquidado = new Map(pendientes.map((r) => [r.id, decToNum(r.ya_liquidado)]));
     const filas = await tx.alqConcepto.findMany({
       where: { id: { in: ids } },
       include: {
@@ -463,15 +471,6 @@ export class LiquidacionesService {
       },
       orderBy: [{ vencimiento: 'asc' }, { createdAt: 'asc' }],
     });
-    // Lo que ya se le liquidó de cada uno por pagos parciales: las partes
-    // separadas al liquidar (regla 22), enlazadas por `origenId`.
-    const separadas = await tx.alqConcepto.findMany({
-      where: { origenId: { in: ids }, claveGeneracion: { contains: MARCA_PARTE_LIQUIDADA } },
-      select: { origenId: true, importe: true },
-    });
-    const yaLiquidado = new Map<string, number>();
-    for (const x of separadas)
-      yaLiquidado.set(x.origenId!, (yaLiquidado.get(x.origenId!) ?? 0) + decToNum(x.importe));
     return filas
       .filter(
         (k) =>
