@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { ClsService } from 'nestjs-cls';
+import { medirDb } from '../common/server-timing';
 import { PrismaService } from './prisma.service';
 import { TENANT_CTX_KEY, type TenantContext } from './tenant-context';
 
@@ -30,6 +31,14 @@ export class TenantPrismaService {
       throw new InternalServerErrorException('Falta el contexto de tenant para la consulta.');
     }
 
+    // `medirDb`: el tiempo de base del pedido, para la cabecera Server-Timing.
+    return medirDb(() => this.transaccion(context, fn));
+  }
+
+  private transaccion<T>(
+    context: TenantContext,
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
     return this.prisma.$transaction(
       async (tx) => {
         // Todo el setup va en UN solo SELECT: los dos set_config y la baja de
@@ -40,9 +49,16 @@ export class TenantPrismaService {
         // Render sin región en Sudamérica, cada viaje de red paga latencia
         // entre continentes, y este se pagaba en CADA consulta de negocio.
         // Parametrizado → sin inyección. A partir de acá RLS aplica.
+        //
+        // La zona horaria UTC, en el mismo viaje: el adaptador de node-postgres
+        // (`conexion.ts`) manda las fechas sin zona y lee las de la base como
+        // si fueran UTC. Supabase ya está en UTC; esto lo asegura aunque un día
+        // la base o el rol digan otra cosa, en vez de correr las horas en
+        // silencio. Lo fija `test/conector.e2e-spec.ts`.
         await tx.$executeRawUnsafe(
           `SELECT set_config('app.tenant_id', $1, true),
                   set_config('app.user_id', $2, true),
+                  set_config('TimeZone', 'UTC', true),
                   set_config('role', 'authenticated', true)`,
           context.tenantId,
           context.userId,

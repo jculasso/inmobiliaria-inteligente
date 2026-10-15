@@ -64,7 +64,7 @@ suite('Reservas, seña e inventario contra la base (reglas 153 a 171)', () => {
       ])
     ).map((p) => p.id) as [string, string, string];
 
-    prisma = new PrismaService({ datasourceUrl: URL_POOLER });
+    prisma = new PrismaService({ url: URL_POOLER });
     await prisma.$connect();
     ctx = { tenantId: t, userId: ids.usuario, roles: ['admin_tenant'] };
     const cls = { get: () => ctx } as unknown as ClsService;

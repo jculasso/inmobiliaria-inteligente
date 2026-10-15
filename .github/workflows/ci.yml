@@ -173,6 +173,13 @@ jobs:
       - name: Compilar los paquetes que usa la API
         run: pnpm turbo run build --filter=@vacker/api^...
 
+      # El conector de la API (octubre de 2026): el adaptador de node-postgres
+      # contra el motor de Prisma, por el PgBouncer en modo transaction. Cada
+      # tabla leída igual, las fechas sin correrse un día en tres zonas, los
+      # candados y el FOR UPDATE.
+      - name: El adaptador pg lee y escribe igual que el motor
+        run: pnpm --filter @vacker/api exec vitest run test/conector.e2e-spec.ts
+
       - name: Tablero de Alquileres contra la base
         run: pnpm --filter @vacker/api exec vitest run test/tablero-alquileres.e2e-spec.ts
 

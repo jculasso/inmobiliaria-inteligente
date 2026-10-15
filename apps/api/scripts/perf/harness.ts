@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import type { AddressInfo } from 'node:net';
 import type { INestApplication } from '@nestjs/common';
+import { proxyConLatencia } from './proxy-latencia';
 
 /**
  * El arnés de la prueba de volumen de Alquileres: levanta la API entera
@@ -89,11 +90,27 @@ class StorageEnMemoria {
 
 export async function levantarApi(tokenPorDefecto: () => string): Promise<Api> {
   const url = urlLocal();
+  // `PERF_RTT_MS`: la API habla con la base a través de un proxy que le
+  // agrega esa latencia (150 = Render en Oregon contra Supabase en São Paulo).
+  // `PERF_PGBOUNCER=1` le suma `?pgbouncer=true`, como la URL de producción.
+  const rtt = Number(process.env.PERF_RTT_MS ?? 0);
+  const proxy =
+    rtt > 0
+      ? await proxyConLatencia(
+          0,
+          { host: new URL(url).hostname, port: Number(new URL(url).port || 5432) },
+          rtt,
+        )
+      : null;
+  const apiUrl = new URL(url);
+  if (proxy) apiUrl.port = String((proxy.address() as AddressInfo).port);
+  if (process.env.PERF_PGBOUNCER === '1') apiUrl.searchParams.set('pgbouncer', 'true');
+  const urlApi = apiUrl.toString();
   // Todo lo que la API leería del entorno, explícito: así un `.env` que ande
   // cerca no aporta ni una variable (ConfigModule no pisa lo que ya está).
   Object.assign(process.env, {
     NODE_ENV: 'test',
-    DATABASE_URL: url,
+    DATABASE_URL: urlApi,
     DIRECT_URL: url,
     SUPABASE_URL: 'http://127.0.0.1:9',
     SUPABASE_ANON_KEY: 'prueba',
@@ -132,21 +149,13 @@ export async function levantarApi(tokenPorDefecto: () => string): Promise<Api> {
     .overrideProvider(PrismaService)
     .useFactory({
       factory: () => {
-        // Experimento: `PERF_ADAPTADOR_PG` = ruta a un `@prisma/adapter-pg` de la
-        // misma versión que Prisma. Con el driver de node-postgres cada consulta
-        // va en un solo viaje aun con un pooler en modo transaction.
-        const adaptador = process.env.PERF_ADAPTADOR_PG
-          ? // eslint-disable-next-line @typescript-eslint/no-require-imports
-            new (require(process.env.PERF_ADAPTADOR_PG).PrismaPg)({
-              connectionString: url.replace(/[?&]pgbouncer=true/, ''),
-            })
-          : null;
-        const p = adaptador
-          ? new PrismaService({
-              adapter: adaptador,
-              log: [{ emit: 'event', level: 'query' }],
-            } as never)
-          : new PrismaService({ datasourceUrl: url, log: [{ emit: 'event', level: 'query' }] });
+        // El conector de la API (`src/prisma/conexion.ts`): `PERF_CONECTOR=motor`
+        // mide el motor de Prisma; si no, el adaptador de node-postgres.
+        const p = new PrismaService({
+          url: urlApi,
+          conector: process.env.PERF_CONECTOR === 'motor' ? 'motor' : 'pg',
+          log: [{ emit: 'event', level: 'query' }],
+        });
         (p as unknown as { $on: (e: string, f: (q: { query: string }) => void) => void }).$on(
           'query',
           (q) => {
@@ -234,6 +243,7 @@ export async function levantarApi(tokenPorDefecto: () => string): Promise<Api> {
     subir,
     cerrar: async () => {
       await app.close();
+      proxy?.close();
     },
   };
 }

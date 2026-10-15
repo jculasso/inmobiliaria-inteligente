@@ -273,7 +273,7 @@ suite('Informe al propietario contra la base (reglas 86 a 93)', () => {
     await cobro(951, '2026-09-02', 1_000_000, true);
     await cobro(952, '2026-09-05', 1_000_000);
 
-    prisma = new PrismaService({ datasourceUrl: URL_POOLER });
+    prisma = new PrismaService({ url: URL_POOLER });
     await prisma.$connect();
     const ctx: TenantContext = { tenantId: t, userId: ids.usuario, roles: ['admin_tenant'] };
     const cls = { get: () => ctx } as unknown as ClsService;

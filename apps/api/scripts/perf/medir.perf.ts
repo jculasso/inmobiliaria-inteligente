@@ -15,6 +15,14 @@ import { levantarApi, urlLocal, type Api, type Respuesta } from './harness';
 
 const VUELTAS = Number(process.env.PERF_VUELTAS ?? 20);
 const RTT_MS = 150;
+/**
+ * Con `PERF_RTT_MS` la latencia ya está en la medición (el proxy de
+ * `proxy-latencia.ts`): no se suma otra vez. Sin proxy, la estimación es la
+ * medición local más un viaje por consulta, que se queda corta con el motor de
+ * Prisma y `pgbouncer=true` (ahí cada consulta son dos viajes, más un
+ * `DEALLOCATE ALL` por transacción).
+ */
+const CON_PROXY = Number(process.env.PERF_RTT_MS ?? 0) > 0;
 
 interface Medida {
   nombre: string;
@@ -73,9 +81,16 @@ async function medir(
     consultasMax: Math.max(...qs),
     bytes: ultima.bytes,
     gzip: ultima.gzip,
-    prodEstimada: Math.round(p50 + consultas * RTT_MS),
+    prodEstimada: Math.round(CON_PROXY ? p50 : p50 + consultas * RTT_MS),
     sqlEjemplo: ultima.sql.map((s) => s.replace(/\s+/g, ' ').slice(0, 160)),
   };
+  // `PERF_VOLCAR`: una carpeta donde dejar la última respuesta de cada pedido
+  // (para comparar tamaños y contenidos entre dos versiones).
+  if (process.env.PERF_VOLCAR && ultima.json !== null)
+    writeFileSync(
+      `${process.env.PERF_VOLCAR}/${nombre.replace(/[^a-z0-9]+/gi, '_')}.json`,
+      JSON.stringify(ultima.json),
+    );
   if (ultima.status >= 300)
     console.warn(nombre, ultima.status, JSON.stringify(ultima.json).slice(0, 300));
   console.log(
@@ -149,6 +164,8 @@ it('mide la API de Alquileres con la cartera de Vacker de prueba', async () => {
         api.pedir('POST', ruta, cuerpo);
     const lista: [string, () => Promise<Respuesta>][] = [
       ['GET tablero/completo', g('/alquileres/tablero/completo')],
+      // Lo que pide la web desde la regla 175: cada fila una vez.
+      ['GET tablero/completo?formato=compacto', g('/alquileres/tablero/completo?formato=compacto')],
       ['GET tablero/completo?anio=2025', g('/alquileres/tablero/completo?anio=2025')],
       ['GET tablero (un corte)', g('/alquileres/tablero')],
       [

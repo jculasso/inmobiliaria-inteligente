@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClsModule } from 'nestjs-cls';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { opcionesDeLimite } from './common/limite-solicitudes';
+import { serverTiming } from './common/server-timing';
 import { validateEnv } from './config/env';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -50,4 +51,9 @@ import { AdminModule } from './admin/admin.module';
     AdminModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /** La cabecera `Server-Timing` (total y base) en todas las respuestas: ver common/server-timing.ts. */
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(serverTiming).forRoutes('*');
+  }
+}

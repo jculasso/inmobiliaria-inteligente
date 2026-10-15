@@ -7,6 +7,14 @@ export const envSchema = z.object({
   // el esquema postgresql:// con query params puede variar.
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
+  // Cómo habla la API con Postgres (src/prisma/conexion.ts). Vacío: el
+  // adaptador de node-postgres; «motor», el de Prisma (la vuelta atrás).
+  // Un valor mal escrito frena el arranque en vez de elegir uno en silencio.
+  DATABASE_CONECTOR: z.enum(['pg', 'motor', '']).optional(),
+  // Conexiones del pool del adaptador (vacío: 10).
+  DATABASE_POOL_MAX: z
+    .union([z.literal(''), z.coerce.number().int().positive().max(100)])
+    .optional(),
   // Supabase Auth
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),

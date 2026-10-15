@@ -26,6 +26,14 @@ describe('validateEnv', () => {
     expect(() => validateEnv(incomplete)).toThrow(/Variables de entorno inválidas/);
   });
 
+  it('el conector y el pool: opcionales, y un valor mal escrito frena el arranque', () => {
+    expect(validateEnv({ ...base }).DATABASE_CONECTOR).toBeUndefined();
+    expect(validateEnv({ ...base, DATABASE_CONECTOR: 'motor' }).DATABASE_CONECTOR).toBe('motor');
+    expect(validateEnv({ ...base, DATABASE_POOL_MAX: '8' }).DATABASE_POOL_MAX).toBe(8);
+    expect(() => validateEnv({ ...base, DATABASE_CONECTOR: 'motr' })).toThrow();
+    expect(() => validateEnv({ ...base, DATABASE_POOL_MAX: 'diez' })).toThrow();
+  });
+
   it('falla si SUPABASE_URL no es una URL', () => {
     expect(() => validateEnv({ ...base, SUPABASE_URL: 'no-es-url' })).toThrow();
   });

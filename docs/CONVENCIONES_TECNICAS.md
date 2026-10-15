@@ -701,3 +701,78 @@ en la página vieja. **Al subir de versión Next**, pnpm avisa que el parche ya 
 aplica: si la versión nueva trae React 19.3 o posterior (Next 16 en adelante),
 se borra el parche; si no, se rehace sobre la versión nueva, y el test dice si
 hace falta.
+
+---
+
+## 21. Cómo llega la API a la base, y cómo medirlo en Render
+
+Desde el 15/10/2026 la API habla con Postgres con **`@prisma/adapter-pg`**
+(node-postgres), no con el motor de Prisma. Está todo en
+`apps/api/src/prisma/conexion.ts`.
+
+**Por qué.** Con la `DATABASE_URL` del pooler de Supabase en modo transaction
+(`:6543`, `?pgbouncer=true`), el motor manda `DEALLOCATE ALL` en cada
+transacción y paga **dos** viajes por consulta (preparar y ejecutar). Cada
+viaje entre Render (Oregon) y Supabase (São Paulo) son ~150 ms. El adaptador
+manda cada consulta en un solo viaje, con un statement sin nombre, que el
+pooler en modo transaction acepta. Medido con `apps/api/scripts/perf/` y una
+latencia de 150 ms: el Dashboard de Alquileres pasó de 3,9 s a ~2 s solo con
+esto (los números, en el PR).
+
+**La `DATABASE_URL` no cambia.** `conexion.ts` le saca lo que es solo del
+motor (`pgbouncer`, `sslmode`…) y traduce `connection_limit` y `pool_timeout`.
+El pool es de `DATABASE_POOL_MAX` conexiones (10 por defecto). Las migraciones
+siguen con el CLI de Prisma y `DIRECT_URL`, igual que antes.
+
+**Volver atrás:** `DATABASE_CONECTOR=motor` en Render y reiniciar. No hace
+falta desplegar.
+
+Tres cosas que cambian con el adaptador, y lo que las cubre:
+
+1. **Las fechas viajan sin zona.** El adaptador manda los instantes como texto
+   UTC sin zona y lee los de la base como si fueran UTC. Si la sesión de
+   Postgres estuviera en otra zona, las horas se correrían en silencio. Por
+   eso `withTenant` fija `TimeZone = UTC` en la misma sentencia que el tenant
+   (sin viaje extra). Lo fija `test/conector.e2e-spec.ts`, que además compara
+   tabla por tabla lo que lee el adaptador contra lo que lee el motor, con el
+   proceso en UTC, Buenos Aires y Tokio.
+2. **Algunos tipos de Postgres no se leen en SQL a mano.** `name` (lo que
+   devuelve `current_user`), `interval`, `void`, `"char"`. Si alguna vez hace
+   falta uno, castearlo a `text` en el `SELECT`. Hoy no hay ninguno en `src/`.
+3. **El SSL.** El motor cifraba sin verificar el certificado
+   (`sslmode=prefer`); node-postgres sin configurar no cifra. `conexion.ts`
+   pone `ssl: { rejectUnauthorized: false }` para toda base que no sea local:
+   lo mismo que antes.
+
+### Una sentencia, un viaje
+
+Dentro de una transacción las consultas van de a una por la misma conexión:
+el número de sentencias es el número de viajes. Lecturas independientes que
+se calculan en la base se pueden juntar en una sola con
+`src/prisma/en-un-viaje.ts` (cada parte vuelve como JSON y se rearma con
+`Decimal` y `Date`, igual que de Prisma). Una sentencia, además, ve **una
+sola foto**: con READ COMMITTED, varias sentencias de la misma transacción
+pueden ver cada una lo último confirmado en su momento. Lo usa el Dashboard
+(regla 175).
+
+### `Server-Timing`
+
+Cada respuesta de la API lleva
+
+```
+Server-Timing: db;dur=812.4;desc="base", total;dur=905.1
+```
+
+`total` es desde que llega el pedido hasta que salen las cabeceras; `db`, el
+tiempo con al menos una transacción de `withTenant` abierta (viajes de red
+incluidos; si hay tres a la vez, el lapso, no la suma). Para medir en
+producción sin instrumentar nada:
+
+```bash
+curl -s -o /dev/null -D - -H "authorization: Bearer $TOKEN" \
+  https://inmobiliaria-inteligente.onrender.com/alquileres/tablero/completo | grep -i server-timing
+```
+
+o en el navegador, pestaña Red → el pedido → Timing. Está en
+`src/common/server-timing.ts`; no cubre las consultas fuera de `withTenant`
+(el panel de plataforma, la identidad del guard, que va en caché).
