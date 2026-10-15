@@ -52,9 +52,12 @@ import {
   type ReclamoInput,
   CompletoContratoDtoSchema,
   ConfiguracionAlquileresSchema,
+  CorreccionAplicadaDtoSchema,
+  CorreccionTramoDtoSchema,
   GarantiaDtoSchema,
   type CargoIngreso,
   type ConfiguracionAlquileres,
+  type CorregirImporteTramo,
   type ExtenderContrato,
   type GarantiaInput,
   ContactoDtoSchema,
@@ -578,6 +581,31 @@ export async function extenderContrato(accessToken: string, id: string, dto: Ext
     method: 'POST',
     body: dto,
   });
+}
+
+// --- Corregir el importe de un tramo ya confirmado (reglas 108 a 110) ----------
+
+export async function getCorreccionTramo(accessToken: string, id: string, numero: number) {
+  return apiFetch(
+    `/alquileres/contratos/${id}/tramos/${numero}/correccion`,
+    CorreccionTramoDtoSchema,
+    {
+      accessToken,
+    },
+  );
+}
+
+export async function corregirImporteTramo(
+  accessToken: string,
+  id: string,
+  numero: number,
+  dto: CorregirImporteTramo,
+) {
+  return apiFetch(
+    `/alquileres/contratos/${id}/tramos/${numero}/corregir`,
+    CorreccionAplicadaDtoSchema,
+    { accessToken, method: 'POST', body: dto },
+  );
 }
 
 // --- Entrega 15: plantillas de contrato y reclamos -----------------------------

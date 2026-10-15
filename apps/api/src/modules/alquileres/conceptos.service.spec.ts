@@ -60,11 +60,13 @@ function makeTx(
     existentes?: number;
     concepto?: unknown;
     anulados?: number;
+    feriados?: { fecha: Date }[];
   } = {},
 ) {
   return {
     ...mocksDeHistorial(),
     tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: { ivaHonorariosPct: 21 } }) },
+    feriado: { findMany: vi.fn().mockResolvedValue(over.feriados ?? []) },
     alqContrato: {
       findMany: vi.fn().mockResolvedValue(over.contratos ?? [contrato()]),
       findUnique: vi
@@ -164,8 +166,41 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
     expect(datos(tx).find((x) => x.tipo === 'honorarios')!.importe).toBe(91_001.44);
   });
 
+  it('regla 100: con un feriado cargado, el vencimiento se corre al siguiente día hábil', async () => {
+    // Si el jueves 5/11/2026 fuera feriado, el inquilino paga el viernes 6.
+    const tx = makeTx({ feriados: [{ fecha: d('2026-11-05') }] });
+    await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');
+    const alquiler = datos(tx).find((x) => x.tipo === 'alquiler' && x.sentido === 'a_cobrar')!;
+    expect(alquiler.vencimiento).toEqual(d('2026-11-06'));
+    // Lee los feriados del mes y de los días que le siguen, una sola vez.
+    expect(tx.feriado.findMany).toHaveBeenCalledWith({
+      where: { fecha: { gte: d('2026-11-01'), lte: d('2026-12-15') } },
+      select: { fecha: true },
+    });
+  });
+
+  it('regla 104: un contrato tomado en curso genera desde «administrado desde», prorrateado', async () => {
+    const tx = makeTx({
+      contratos: [
+        contrato({
+          administradoDesde: d('2026-11-10'),
+          tramos: [
+            { numero: 3, desde: d('2026-04-15'), hasta: d('2026-08-14'), importe: null },
+            { numero: 4, desde: d('2026-08-15'), hasta: d('2026-12-14'), importe: dec(1_137_518) },
+          ],
+        }),
+      ],
+    });
+    const r = await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');
+    expect(r.sinIndexar).toEqual([]);
+    const alquiler = datos(tx).find((x) => x.tipo === 'alquiler' && x.sentido === 'a_cobrar')!;
+    // 1.137.518 × 21/30: del 10 al 30 de noviembre.
+    expect(alquiler.importe).toBe(796_262.6);
+    expect(alquiler.claveGeneracion).toBe(`alq|c5|2026-11|2026-11-10|alquiler|a_cobrar|${INQ}`);
+  });
+
   // La trampa de performance: las consultas no crecen con los contratos.
-  it('tres consultas con 5 contratos y con 25', async () => {
+  it('cuatro consultas con 5 contratos y con 25 (los feriados, una sola vez)', async () => {
     for (const n of [5, 25]) {
       const tx = makeTx({
         contratos: Array.from({ length: n }, (_, i) =>
@@ -175,9 +210,10 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
       await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');
       const consultas =
         tx.tenant.findUniqueOrThrow.mock.calls.length +
+        tx.feriado.findMany.mock.calls.length +
         tx.alqContrato.findMany.mock.calls.length +
         tx.alqConcepto.createMany.mock.calls.length;
-      expect(consultas).toBe(3);
+      expect(consultas).toBe(4);
       expect(datos(tx)).toHaveLength(4 * n);
     }
   });

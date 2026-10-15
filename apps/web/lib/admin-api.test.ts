@@ -35,6 +35,11 @@ const TENANT = {
     selladoPct: 0,
     selladoInquilinoPct: 50,
     depositoGestion: 'entrega_propietario',
+    contratoHonorariosPct: 8,
+    contratoGastosAdmPct: 2,
+    contratoPunitorioDiarioPct: 0,
+    contratoDiaVencimiento: 5,
+    contratoDiaPagoPropietario: 10,
   },
   createdAt: '2026-01-01T00:00:00.000Z',
 };

@@ -227,6 +227,64 @@ describe('ContratosService.crear', () => {
   });
 });
 
+describe('ContratosService.crear · tomado en curso y MiPyme (reglas 103, 104 y 106)', () => {
+  // El #25 tomado el 01/09/2026, en su tramo 6: solo se carga el alquiler vigente.
+  const enCurso = () =>
+    contrato({
+      tipo: 'comercial',
+      inquilinoMipyme: true,
+      administradoDesde: '2026-09-01',
+      tramos: generarTramos('2024-11-01', '2026-10-31', 4).map((t) => ({
+        ...t,
+        importe: t.numero === 6 ? 980_000 : null,
+      })),
+    });
+
+  it('guarda «administrado desde» y el certificado MiPyme, y el historial dice que se tomó en curso', async () => {
+    const tx = makeTx();
+    await new ContratosService(makeDb(tx)).crear(CTX, enCurso());
+    expect(tx.alqContrato.create.mock.calls[0]![0].data).toMatchObject({
+      administradoDesde: new Date('2026-09-01T00:00:00.000Z'),
+      inquilinoMipyme: true,
+    });
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0].resumen).toMatch(
+      /tomado en curso, administrado desde el 01\/09\/2026/,
+    );
+  });
+
+  it('un contrato que no está en curso guarda «administrado desde» vacío', async () => {
+    const tx = makeTx();
+    await new ContratosService(makeDb(tx)).crear(CTX, contrato());
+    expect(tx.alqContrato.create.mock.calls[0]![0].data).toMatchObject({
+      administradoDesde: null,
+      inquilinoMipyme: false,
+    });
+  });
+
+  it('regla 106: la próxima indexación es la que sigue al alquiler vigente, no un tramo de antes', async () => {
+    const hoy = new Date();
+    const dia = (n: number) =>
+      new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate() + n));
+    const tx = makeTx({
+      contratos: [
+        fila({
+          estado: 'vigente',
+          administradoDesde: dia(-10),
+          tramos: [
+            { numero: 1, desde: dia(-400), hasta: dia(-201), importe: null },
+            { numero: 2, desde: dia(-200), hasta: dia(-31), importe: null },
+            { numero: 3, desde: dia(-30), hasta: dia(30), importe: 980_000 },
+            { numero: 4, desde: dia(31), hasta: dia(120), importe: null },
+          ],
+        }),
+      ],
+    });
+    const [c] = await new ContratosService(makeDb(tx)).listar();
+    expect(c!.importeVigente).toBe(980_000);
+    expect(c!.proximaIndexacion).toBe(dia(31).toISOString().slice(0, 10));
+  });
+});
+
 describe('ContratosService.actualizar', () => {
   it('un contrato vigente no se edita completo', async () => {
     const tx = makeTx({ existente: fila({ estado: 'vigente' }) });

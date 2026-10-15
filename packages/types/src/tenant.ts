@@ -41,15 +41,97 @@ export const TenantConfigSchema = z.object({
   comisionInicialPct: z.number().min(0).max(20).default(5),
   comisionInicialCuotas: z.number().int().min(1).max(12).default(2),
   comisionInicialConIva: z.boolean().default(true),
-  /** Sellado: alícuota sobre el valor total y qué parte paga el inquilino (el resto, el propietario). 0 = no se calcula. */
-  selladoPct: z.number().min(0).max(5).default(0),
-  selladoInquilinoPct: z.number().min(0).max(100).default(50),
+  /**
+   * Sellado de antes del 15/10/2026: UNA alícuota para todos los contratos.
+   * Ya no se escribe; se lee solo para traducirla a las tres de abajo en una
+   * configuración guardada antes (`selladoDeLaInmobiliaria`, regla 103).
+   */
+  selladoPct: z.number().min(0).max(5).optional(),
+  /**
+   * Sellado por tipo de contrato (regla 103; Florencia, Vacker, 15/10/2026):
+   * particulares exentos; comerciales 1%, o 0,25% si el inquilino tiene
+   * certificado MiPyme; sobre el valor total del contrato. Sin `.default()` a
+   * propósito: un campo ausente quiere decir «nunca se configuró», y en ese
+   * caso manda la alícuota vieja si había una (ver `selladoDeLaInmobiliaria`).
+   */
+  selladoViviendaPct: z.number().min(0).max(5).optional(),
+  selladoComercialPct: z.number().min(0).max(5).optional(),
+  selladoComercialMipymePct: z.number().min(0).max(5).optional(),
+  /** Qué parte del sellado paga el inquilino; el resto, el propietario. Florencia: el 100%. */
+  selladoInquilinoPct: z.number().min(0).max(100).default(100),
+  /**
+   * Lo que se propone al cargar un contrato nuevo (regla 99; Florencia,
+   * Vacker, 15/10/2026: «que cada inmobiliaria tenga sus valores»). Cada
+   * contrato los puede cambiar. Los valores por defecto son los que el
+   * formulario proponía antes, así una inmobiliaria que no configura nada ve
+   * lo mismo que ayer; los de Vacker (punitorio 0,3% diario) se cargan en su
+   * configuración, no acá.
+   */
+  contratoHonorariosPct: z.number().min(0).max(100).default(8),
+  contratoGastosAdmPct: z.number().min(0).max(100).default(2),
+  contratoPunitorioDiarioPct: z.number().min(0).max(10).default(0),
+  contratoDiaVencimiento: z.number().int().min(1).max(28).default(5),
+  contratoDiaPagoPropietario: z.number().int().min(1).max(28).default(10),
   /** El depósito en garantía: Javier, 6/10/2026, «se le entrega al propietario». */
   depositoGestion: z
     .enum(['entrega_propietario', 'retiene_inmobiliaria'])
     .default('entrega_propietario'),
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
+
+/** Las alícuotas de sellado por tipo de contrato, en Alquileres (regla 103). */
+export interface SelladoDeLaInmobiliaria {
+  viviendaPct: number;
+  comercialPct: number;
+  comercialMipymePct: number;
+  inquilinoPct: number;
+}
+
+/** Lo que dice la ley de sellos que relevó Florencia (Vacker), 15/10/2026. */
+export const SELLADO_POR_DEFECTO = {
+  viviendaPct: 0,
+  comercialPct: 1,
+  comercialMipymePct: 0.25,
+  inquilinoPct: 100,
+} as const;
+
+/**
+ * Las alícuotas de sellado de una inmobiliaria (regla 103), traduciendo una
+ * configuración guardada antes del 15/10/2026.
+ *
+ * Antes había UNA alícuota (`selladoPct`) para todo contrato. Si una
+ * inmobiliaria la había puesto en algo mayor que cero, fue una decisión suya:
+ * se conserva para los tres casos, así su propuesta no cambia hasta que entre
+ * a Configuración y la separe. En cero —que era el valor por defecto y quería
+ * decir «no se calcula»— no había decisión que respetar, y rigen las
+ * alícuotas de la regla.
+ */
+export function selladoDeLaInmobiliaria(c: TenantConfig): SelladoDeLaInmobiliaria {
+  const vieja = c.selladoPct != null && c.selladoPct > 0 ? c.selladoPct : null;
+  const nueva =
+    c.selladoViviendaPct != null ||
+    c.selladoComercialPct != null ||
+    c.selladoComercialMipymePct != null;
+  return {
+    viviendaPct: c.selladoViviendaPct ?? vieja ?? SELLADO_POR_DEFECTO.viviendaPct,
+    comercialPct: c.selladoComercialPct ?? vieja ?? SELLADO_POR_DEFECTO.comercialPct,
+    comercialMipymePct:
+      c.selladoComercialMipymePct ?? vieja ?? SELLADO_POR_DEFECTO.comercialMipymePct,
+    // El reparto viejo (50% por defecto) solo decía algo si había sellado: con
+    // la alícuota en cero se guardaba igual, sin que nadie lo eligiera.
+    inquilinoPct: nueva || vieja != null ? c.selladoInquilinoPct : SELLADO_POR_DEFECTO.inquilinoPct,
+  };
+}
+
+/** La alícuota de un contrato: particular, o comercial con o sin certificado MiPyme. */
+export function alicuotaDeSellado(
+  s: Pick<SelladoDeLaInmobiliaria, 'viviendaPct' | 'comercialPct' | 'comercialMipymePct'>,
+  tipo: 'vivienda' | 'comercial',
+  inquilinoMipyme: boolean,
+): number {
+  if (tipo === 'vivienda') return s.viviendaPct;
+  return inquilinoMipyme ? s.comercialMipymePct : s.comercialPct;
+}
 
 /**
  * Lo que se puede ESCRIBIR: los coeficientes son opcionales, porque quien manda

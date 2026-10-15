@@ -125,7 +125,7 @@ export class ContratosService {
         entidadId: fila.id,
         contratoId: fila.id,
         accion: 'alta',
-        resumen: `Alta del contrato ${codigo}, en borrador`,
+        resumen: `Alta del contrato ${codigo}, en borrador${dto.administradoDesde ? `; tomado en curso, administrado desde el ${dia(dto.administradoDesde)}` : ''}`,
       });
       return this.dto(tx, fila);
     });
@@ -548,6 +548,8 @@ function columnas(dto: Contrato) {
     ivaPct: dto.ivaPct,
     punitorioDiarioPct: dto.punitorioDiarioPct,
     pagoGarantizado: dto.pagoGarantizado,
+    inquilinoMipyme: dto.inquilinoMipyme,
+    administradoDesde: toDate(dto.administradoDesde),
     depositoImporte: dto.depositoImporte,
     depositoMoneda: dto.depositoImporte != null ? (dto.depositoMoneda ?? dto.moneda) : null,
     depositoDevolucion: toDate(dto.depositoDevolucion),
@@ -641,6 +643,8 @@ function aDto(f: FilaContrato, nombres: Map<string, string>): ContratoDto {
     ivaPct: decToNum(f.ivaPct),
     punitorioDiarioPct: decToNum(f.punitorioDiarioPct),
     pagoGarantizado: f.pagoGarantizado,
+    inquilinoMipyme: f.inquilinoMipyme,
+    administradoDesde: fromDate(f.administradoDesde),
     depositoImporte: f.depositoImporte == null ? null : decToNum(f.depositoImporte),
     depositoMoneda: f.depositoMoneda as ContratoDto['depositoMoneda'],
     depositoDevolucion: fromDate(f.depositoDevolucion),

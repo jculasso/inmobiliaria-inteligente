@@ -630,6 +630,25 @@ describe('TableroAlquileresService', () => {
       expect(t.nuevos.anterior).toEqual([0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0]);
     });
 
+    // Regla 107: «contratos nuevos» mide la actividad comercial (cuándo se
+    // firmó), no cuándo la inmobiliaria lo empezó a administrar.
+    it('regla 107: un contrato tomado en curso cuenta en el mes de su inicio, no en el que se tomó', async () => {
+      const tomado = contrato({
+        id: 'c8',
+        codigo: '8',
+        inicio: d('2026-03-01'),
+        administradoDesde: d('2026-10-01'),
+        tramos: [
+          { numero: 1, desde: d('2026-03-01'), importe: null },
+          { numero: 2, desde: d('2026-09-01'), importe: dec(900_000) },
+        ],
+      });
+      const t = await servicio({ contratos: [tomado] }).tablero(HOY, 2026);
+      expect(t.nuevos.porMes.map((i) => i.valor)).toEqual([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      // Su alquiler inicial no se cargó (regla 106): no suma importe.
+      expect(t.nuevos.importePorMes[2]).toBe(0);
+    });
+
     it('escalones que empiezan en los próximos 60 días', async () => {
       const escalonado = contrato({
         id: 'c7',

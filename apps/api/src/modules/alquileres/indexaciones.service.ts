@@ -16,6 +16,7 @@ import {
 } from '@vacker/types';
 import {
   alertaIndice,
+  esTramoAnterior,
   fechaDelIndice,
   proponerIndexacion,
   sumarDiasIso,
@@ -87,9 +88,11 @@ export class IndexacionesService {
       });
       // Solo el primer tramo sin importe de cada contrato: el siguiente se
       // encadena sobre este (regla 5) y no se puede calcular antes.
+      // Tampoco los de antes de que se administrara un contrato tomado en
+      // curso (regla 106): son historia, no indexaciones pendientes.
       const pendientes = filas.flatMap((f) => {
         const anterior = f.contrato.tramos.find((t) => t.numero === f.numero - 1);
-        return anterior?.importe != null ? [{ fila: f, anterior }] : [];
+        return anterior?.importe != null && !esAnterior(f) ? [{ fila: f, anterior }] : [];
       });
 
       const valores = await this.cargarValores(
@@ -124,6 +127,10 @@ export class IndexacionesService {
         throw new BadRequestException('El contrato no se ajusta por índice.');
       if (fila.importe != null)
         throw new ConflictException(`El tramo ${fila.numero} ya está indexado.`);
+      if (esAnterior(fila))
+        throw new BadRequestException(
+          `El tramo ${fila.numero} es de antes de que se administrara el contrato: no se indexa.`,
+        );
       const anterior = c.tramos.find((t) => t.numero === fila.numero - 1);
       if (anterior?.importe == null) {
         throw new BadRequestException(
@@ -202,6 +209,18 @@ export class IndexacionesService {
       return { indice, ultimaFecha, alerta: alertaIndice(indice, ultimaFecha, ultimaCarga, hoy) };
     });
   }
+}
+
+/** Regla 106: un tramo sin importe con uno posterior que sí lo tiene es historia. */
+function esAnterior(fila: FilaTramo): boolean {
+  const orden = fila.contrato.tramos.map((t) => ({
+    numero: t.numero,
+    importe: t.importe == null ? null : decToNum(t.importe),
+  }));
+  return esTramoAnterior(
+    orden,
+    orden.findIndex((t) => t.numero === fila.numero),
+  );
 }
 
 function proponer(

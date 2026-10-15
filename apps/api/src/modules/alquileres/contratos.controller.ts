@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -22,7 +23,9 @@ import {
   CambiarEstadoContratoSchema,
   ContratoDatosSchema,
   ContratoInputSchema,
+  CorregirImporteTramoSchema,
   ROLES_ADMINISTRACION_ALQUILERES,
+  type CorregirImporteTramo,
   type AnularConMotivo,
   type CambiarEstadoContrato,
   type Contrato,
@@ -37,6 +40,7 @@ import { ctxDe } from '../tablero/tablero.util';
 import { ContratosService } from './contratos.service';
 import { HistorialService } from './historial';
 import { ContratoCompletoService } from './contrato-completo.service';
+import { CorreccionTramoService } from './correccion-tramo.service';
 import { PlantillasService, TIPO_DOCX } from './plantillas.service';
 import type { z } from 'zod';
 
@@ -51,6 +55,7 @@ export class ContratosController {
     private readonly historial: HistorialService,
     private readonly completo: ContratoCompletoService,
     private readonly plantillas: PlantillasService,
+    private readonly correccion: CorreccionTramoService,
   ) {}
 
   @Get()
@@ -209,6 +214,37 @@ export class ContratosController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.contratos.extender(ctxDe(user), id, dto);
+  }
+
+  // --- Corregir el importe de un tramo ya confirmado (reglas 108 a 110) ------------
+
+  @Get(':id/tramos/:numero/correccion')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({
+    summary:
+      'Cada mes del tramo y cómo está (cobrado, liquidado, generado, sin generar), y desde cuál se propone corregir',
+  })
+  correccionDe(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('numero', ParseIntPipe) numero: number,
+  ) {
+    return this.correccion.preparar(id, numero);
+  }
+
+  @Post(':id/tramos/:numero/corregir')
+  @HttpCode(200)
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({
+    summary:
+      'Corrige el importe de un tramo ya confirmado desde un mes, con motivo: vuelve a generar lo no cobrado ni liquidado',
+  })
+  corregir(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('numero', ParseIntPipe) numero: number,
+    @Body(new ZodValidationPipe(CorregirImporteTramoSchema)) dto: CorregirImporteTramo,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.correccion.corregir(ctxDe(user), id, numero, dto);
   }
 
   @Post(':id/generar-desde-plantilla')

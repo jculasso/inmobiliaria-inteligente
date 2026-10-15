@@ -8,6 +8,7 @@ import {
   NOMBRE_TIPO_CONTRATO,
   type AjusteContrato,
   type ContratoDto,
+  type DefectosDeContrato,
   type IndiceAlquiler,
   type MonedaAlquiler,
   type PapelContrato,
@@ -15,7 +16,7 @@ import {
   type PropiedadAlquilerDto,
   type TipoContrato,
 } from '@vacker/types';
-import { generarTramos, validarPartes, validarTramos } from '@vacker/domain';
+import { fechaCorta, generarTramos, validarPartes, validarTramos } from '@vacker/domain';
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarContrato, crearContrato } from '../../lib/alquileres-api';
@@ -49,6 +50,23 @@ const nuevaClave = () => `p${++secuencia}`;
 const num = leerNumero;
 
 /**
+ * Lo que proponía el formulario antes de que cada inmobiliaria lo configurara
+ * (regla 99). Es también el valor por defecto de su configuración: una
+ * inmobiliaria que no tocó nada ve lo mismo que antes.
+ */
+const DEFECTOS_SIN_CONFIGURAR: DefectosDeContrato = {
+  honorariosPct: 8,
+  gastosAdmPct: 2,
+  punitorioDiarioPct: 0,
+  diaVencimiento: 5,
+  diaPagoPropietario: 10,
+};
+
+/** El tramo que corre en una fecha: en un contrato tomado en curso, el del alquiler vigente (regla 106). */
+const indiceVigente = (tramos: { desde: string; hasta: string }[], fecha: string) =>
+  fecha ? tramos.findIndex((t) => t.desde <= fecha && t.hasta >= fecha) : -1;
+
+/**
  * Alta y edición (en borrador) de un contrato, en tres pasos.
  *
  * Los problemas se muestran mientras se carga, con las MISMAS funciones que
@@ -60,10 +78,13 @@ export function ContratoForm({
   personas,
   propiedades,
   contrato,
+  defectos = DEFECTOS_SIN_CONFIGURAR,
 }: {
   personas: PersonaDto[];
   propiedades: PropiedadAlquilerDto[];
   contrato?: ContratoDto;
+  /** Regla 99: lo que la inmobiliaria configuró para los contratos nuevos. */
+  defectos?: DefectosDeContrato;
 }) {
   const router = useRouter();
   const [paso, setPaso] = useState(0);
@@ -87,20 +108,35 @@ export function ContratoForm({
   const [inicio, setInicio] = useState(contrato?.inicio ?? '');
   const [fin, setFin] = useState(contrato?.fin ?? '');
   const [fechaFirma, setFechaFirma] = useState(contrato?.fechaFirma ?? '');
-  const [diaVencimiento, setDiaVencimiento] = useState(String(contrato?.diaVencimiento ?? 5));
+  const [diaVencimiento, setDiaVencimiento] = useState(
+    String(contrato?.diaVencimiento ?? defectos.diaVencimiento),
+  );
   const [diaPagoPropietario, setDiaPagoPropietario] = useState(
-    String(contrato?.diaPagoPropietario ?? 10),
+    String(contrato?.diaPagoPropietario ?? defectos.diaPagoPropietario),
   );
   const [ajuste, setAjuste] = useState<AjusteContrato>(contrato?.ajuste ?? 'indexado');
   const [indice, setIndice] = useState<IndiceAlquiler | ''>(contrato?.indice ?? 'ICL');
   const [periodicidad, setPeriodicidad] = useState(String(contrato?.periodicidadMeses ?? 4));
-  const [honorariosPct, setHonorariosPct] = useState(String(contrato?.honorariosPct ?? 8));
-  const [gastosAdmPct, setGastosAdmPct] = useState(String(contrato?.gastosAdmPct ?? 2));
+  const [honorariosPct, setHonorariosPct] = useState(
+    String(contrato?.honorariosPct ?? defectos.honorariosPct).replace('.', ','),
+  );
+  const [gastosAdmPct, setGastosAdmPct] = useState(
+    String(contrato?.gastosAdmPct ?? defectos.gastosAdmPct).replace('.', ','),
+  );
   const [ivaPct, setIvaPct] = useState(String(contrato?.ivaPct ?? 0));
   const [punitorioDiarioPct, setPunitorioDiarioPct] = useState(
-    String(contrato?.punitorioDiarioPct ?? 0),
+    String(contrato?.punitorioDiarioPct ?? defectos.punitorioDiarioPct).replace('.', ','),
   );
   const [pagoGarantizado, setPagoGarantizado] = useState(contrato?.pagoGarantizado ?? false);
+  const [inquilinoMipyme, setInquilinoMipyme] = useState(contrato?.inquilinoMipyme ?? false);
+  // Regla 104: un contrato que ya estaba en curso cuando la inmobiliaria lo tomó.
+  const [enCurso, setEnCurso] = useState(contrato?.administradoDesde != null);
+  const [administradoDesde, setAdministradoDesde] = useState(contrato?.administradoDesde ?? '');
+  const [alquilerVigente, setAlquilerVigente] = useState(() => {
+    const t = contrato?.tramos ?? [];
+    const i = indiceVigente(t, contrato?.administradoDesde ?? '');
+    return i >= 0 ? escribirImporte(t[i]!.importe) : '';
+  });
   const [depositoImporte, setDepositoImporte] = useState(
     escribirImporte(contrato?.depositoImporte),
   );
@@ -118,6 +154,9 @@ export function ContratoForm({
 
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+
+  /** El tramo del alquiler vigente, en un contrato tomado en curso; -1 si no corresponde. */
+  const vigente = enCurso ? indiceVigente(tramos, administradoDesde) : -1;
 
   /** Lo que se le manda a la API, armado una sola vez. */
   const dto = useMemo(
@@ -139,6 +178,9 @@ export function ContratoForm({
       ivaPct: num(ivaPct) ?? 0,
       punitorioDiarioPct: num(punitorioDiarioPct) ?? 0,
       pagoGarantizado,
+      // Solo cuenta en un comercial (regla 103): en un particular no se guarda.
+      inquilinoMipyme: tipo === 'comercial' && inquilinoMipyme,
+      administradoDesde: enCurso && administradoDesde ? administradoDesde : null,
       depositoImporte: leerImporte(depositoImporte),
       depositoMoneda: leerImporte(depositoImporte) != null ? moneda : null,
       depositoDevolucion: depositoDevolucion || null,
@@ -150,11 +192,12 @@ export function ContratoForm({
           papel: p.papel,
           porcentaje: p.papel === 'propietario' ? num(p.porcentaje) : null,
         })),
-      tramos: tramos.map((t) => ({
+      tramos: tramos.map((t, i) => ({
         numero: t.numero,
         desde: t.desde,
         hasta: t.hasta,
-        importe: leerImporte(t.importe),
+        // El alquiler vigente se carga en Condiciones y es el importe de su tramo.
+        importe: leerImporte(i === vigente ? alquilerVigente : t.importe),
       })),
     }),
     [
@@ -175,6 +218,11 @@ export function ContratoForm({
       ivaPct,
       punitorioDiarioPct,
       pagoGarantizado,
+      inquilinoMipyme,
+      enCurso,
+      administradoDesde,
+      alquilerVigente,
+      vigente,
       depositoImporte,
       depositoDevolucion,
       obs,
@@ -205,7 +253,12 @@ export function ContratoForm({
       [...(propiedadId ? [] : ['Elegí la propiedad.']), ...validarPartes(dto.partes)],
       sinRepetir([
         ...(inicio && fin ? [] : ['Completá el inicio y el fin.']),
+        ...(enCurso && !administradoDesde ? ['Completá «Administrado desde».'] : []),
+        ...(enCurso && leerImporte(alquilerVigente) == null
+          ? ['Completá el alquiler vigente hoy.']
+          : []),
         ...enPaso([
+          'administradoDesde',
           'fin',
           'indice',
           'periodicidadMeses',
@@ -223,7 +276,7 @@ export function ContratoForm({
         ? sinRepetir([...validarTramos(inicio, fin, dto.tramos), ...enPaso(['tramos'])])
         : ['Completá el inicio y el fin en Condiciones.'],
     ];
-  }, [dto, propiedadId, inicio, fin]);
+  }, [dto, propiedadId, inicio, fin, enCurso, administradoDesde, alquilerVigente]);
 
   const listo = problemas.every((p) => p.length === 0);
 
@@ -260,6 +313,13 @@ export function ContratoForm({
     setPartes((ps) => ps.map((p) => (p.clave === clave ? { ...p, ...cambio } : p)));
   const setTramo = (i: number, cambio: Partial<Tramo>) =>
     setTramos((ts) => ts.map((t, j) => (j === i ? { ...t, ...cambio } : t)));
+  /** El placeholder del importe de cada tramo, según qué se espera de él. */
+  const placeholderDe = (i: number) =>
+    vigente >= 0 && i < vigente
+      ? 'Opcional'
+      : ajuste === 'indexado' && i > (vigente >= 0 ? vigente : 0)
+        ? 'Se indexa'
+        : '';
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
@@ -540,6 +600,60 @@ export function ContratoForm({
               />
               Pago garantizado: al propietario se le paga aunque el inquilino no haya pagado.
             </label>
+            {tipo === 'comercial' && (
+              <label className="flex min-h-11 items-center gap-2 text-sm text-ink sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={inquilinoMipyme}
+                  onChange={(e) => setInquilinoMipyme(e.target.checked)}
+                  className="h-5 w-5"
+                />
+                Inquilino con certificado MiPyme: el sellado se calcula con la alícuota reducida.
+              </label>
+            )}
+            <div className="flex flex-col gap-3 rounded-brand border border-line p-3 sm:col-span-2">
+              <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-ink">
+                <input
+                  type="checkbox"
+                  checked={enCurso}
+                  onChange={(e) => setEnCurso(e.target.checked)}
+                  className="h-5 w-5"
+                />
+                Este contrato ya está en curso
+              </label>
+              {enCurso && (
+                <>
+                  <p className="text-sm text-muted">
+                    Lo empezamos a administrar con el contrato ya andando. Desde «Administrado
+                    desde» se generan los alquileres, sin deuda de antes y sin cargos de ingreso. La
+                    próxima indexación parte del alquiler vigente.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Campo label="Administrado desde" requerido>
+                      <input
+                        type="date"
+                        className={inputClass}
+                        value={administradoDesde}
+                        min={inicio || undefined}
+                        max={fin || undefined}
+                        onChange={(e) => setAdministradoDesde(e.target.value)}
+                      />
+                    </Campo>
+                    <Campo
+                      label="Alquiler vigente hoy"
+                      requerido
+                      hint="El importe mensual del tramo que corre ahora."
+                    >
+                      <InputImporte
+                        moneda={moneda}
+                        value={alquilerVigente}
+                        onChange={setAlquilerVigente}
+                      />
+                    </Campo>
+                  </div>
+                </>
+              )}
+            </div>
             <Campo label="Depósito en garantía">
               <InputImporte moneda={moneda} value={depositoImporte} onChange={setDepositoImporte} />
             </Campo>
@@ -586,9 +700,11 @@ export function ContratoForm({
                 {tramos.length ? 'Volver a generar los tramos' : 'Generar los tramos'}
               </Button>
               <p className="text-xs text-muted">
-                {ajuste === 'indexado'
-                  ? 'Completá el importe del primer tramo: los demás se indexan.'
-                  : 'Completá el importe de cada tramo.'}
+                {enCurso && administradoDesde
+                  ? `El tramo que corre el ${fechaCorta(administradoDesde)} lleva el alquiler vigente; los anteriores no hacen falta.${ajuste === 'indexado' ? ' Los siguientes se indexan desde ese.' : ''}`
+                  : ajuste === 'indexado'
+                    ? 'Completá el importe del primer tramo: los demás se indexan.'
+                    : 'Completá el importe de cada tramo.'}
               </p>
             </div>
             {tramos.length > 0 && (
@@ -647,11 +763,13 @@ export function ContratoForm({
                       </span>
                       <InputImporte
                         className="col-span-2 sm:col-span-1"
-                        aria-label={`Importe, tramo ${t.numero}`}
+                        aria-label={`Importe, tramo ${t.numero}${i === vigente ? ' (alquiler vigente)' : ''}`}
                         moneda={moneda}
-                        placeholder={ajuste === 'indexado' && i > 0 ? 'Se indexa' : ''}
-                        value={t.importe}
-                        onChange={(importe) => setTramo(i, { importe })}
+                        placeholder={placeholderDe(i)}
+                        value={i === vigente ? alquilerVigente : t.importe}
+                        onChange={(importe) =>
+                          i === vigente ? setAlquilerVigente(importe) : setTramo(i, { importe })
+                        }
                       />
                     </li>
                   ))}

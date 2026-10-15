@@ -8,12 +8,15 @@ import {
 import type { Prisma } from '@prisma/client';
 import {
   TenantConfigSchema,
+  alicuotaDeSellado,
+  selladoDeLaInmobiliaria,
   type CargoIngreso,
   type CompletoContratoDto,
   type DepositoDto,
   type Garantia,
   type GarantiaDto,
   type MonedaAlquiler,
+  type TipoContrato,
 } from '@vacker/types';
 import { repartir, sumarMesesIso } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
@@ -37,10 +40,13 @@ const CONTRATO = {
   id: true,
   codigo: true,
   estado: true,
+  tipo: true,
   moneda: true,
   inicio: true,
   fin: true,
   fechaFirma: true,
+  inquilinoMipyme: true,
+  administradoDesde: true,
   depositoImporte: true,
   depositoMoneda: true,
   depositoDevolucion: true,
@@ -95,14 +101,23 @@ export class ContratoCompletoService {
       const meses = mesesDeContrato(fromDate(c.inicio)!, fromDate(c.fin)!);
       const inicial = c.tramos[0]?.importe != null ? decToNum(c.tramos[0].importe) : 0;
       const valorTotal = centavos(inicial * meses);
+      // Regla 105: un contrato tomado en curso ya pagó sus cargos de ingreso
+      // cuando empezó, con otra administración. No se propone nada.
+      const enCurso = c.administradoDesde != null;
       return {
         deposito: estadoDeposito(c, depositos),
         garantias: garantias.map(aGarantia),
         cargos: {
           cargados: cargados > 0,
+          enCurso,
           valorTotal,
           meses,
-          propuesta: cargados > 0 ? [] : propuesta(c, config, valorTotal),
+          selladoPct: alicuotaDeSellado(
+            selladoDeLaInmobiliaria(config),
+            c.tipo as TipoContrato,
+            c.inquilinoMipyme,
+          ),
+          propuesta: cargados > 0 || enCurso ? [] : propuesta(c, config, valorTotal),
         },
       };
     });
@@ -391,13 +406,20 @@ export function propuesta(
       moneda: (c.depositoMoneda as MonedaAlquiler | null) ?? null,
     });
   }
-  if (config.selladoPct > 0 && valorTotal > 0) {
-    const total = centavos(valorTotal * (config.selladoPct / 100));
-    const inquilino = centavos(total * (config.selladoInquilinoPct / 100));
+  // Regla 103: la alícuota sale del tipo de contrato y, en un comercial, de
+  // si el inquilino tiene certificado MiPyme. Un particular exento no lleva
+  // renglón de sellado.
+  const sellado = selladoDeLaInmobiliaria(config);
+  const alicuota = alicuotaDeSellado(sellado, c.tipo as TipoContrato, c.inquilinoMipyme);
+  if (alicuota > 0 && valorTotal > 0) {
+    const total = centavos(valorTotal * (alicuota / 100));
+    const inquilino = centavos(total * (sellado.inquilinoPct / 100));
+    const cual = `${fmtAlicuota(alicuota)}${c.tipo === 'comercial' && c.inquilinoMipyme ? ', MiPyme' : ''}`;
+    const conParte = (pct: number) => (pct === 100 ? `(${cual})` : `(${cual}; ${pct}%)`);
     if (inquilino > 0)
       cargos.push({
         tipo: 'sellado',
-        descripcion: `Sellado del contrato (${config.selladoInquilinoPct}%)`,
+        descripcion: `Sellado del contrato ${conParte(sellado.inquilinoPct)}`,
         aCargoDe: 'inquilino',
         importe: inquilino,
         vencimiento: primera,
@@ -406,7 +428,7 @@ export function propuesta(
     if (total - inquilino > 0)
       cargos.push({
         tipo: 'sellado',
-        descripcion: `Sellado del contrato (${100 - config.selladoInquilinoPct}%)`,
+        descripcion: `Sellado del contrato ${conParte(100 - sellado.inquilinoPct)}`,
         aCargoDe: 'propietario',
         importe: centavos(total - inquilino),
         vencimiento: primera,
@@ -414,6 +436,11 @@ export function propuesta(
       });
   }
   return cargos;
+}
+
+/** «1%», «0,25%»: la alícuota como se escribe en un recibo. */
+function fmtAlicuota(pct: number): string {
+  return `${pct.toLocaleString('es-AR', { maximumFractionDigits: 3 })}%`;
 }
 
 function aGarantia(g: {

@@ -1,6 +1,7 @@
 // Contratos del módulo Alquileres (administración de contratos).
 // Ver docs/specs/alquileres-fase-1.md.
 import { z } from 'zod';
+import { SELLADO_POR_DEFECTO } from './tenant';
 
 /**
  * Cuánto tiene cargado la inmobiliaria en el módulo. Lo usa la página de
@@ -430,6 +431,16 @@ export const ContratoInputSchema = z
     ivaPct: Porcentaje.default(0),
     punitorioDiarioPct: z.number().min(0).max(10).default(0),
     pagoGarantizado: z.boolean().default(false),
+    /**
+     * Regla 103: el inquilino tiene certificado MiPyme. Solo cuenta en un
+     * contrato comercial: baja la alícuota del sellado.
+     */
+    inquilinoMipyme: z.boolean().default(false),
+    /**
+     * Regla 104: un contrato que ya estaba en curso cuando la inmobiliaria lo
+     * tomó se administra desde esta fecha. Vacío: desde el inicio.
+     */
+    administradoDesde: FechaIso.nullish().transform((v) => v ?? null),
     depositoImporte: Monto.nullish().transform((v) => v ?? null),
     depositoMoneda: MonedaAlquilerSchema.nullish().transform((v) => v ?? null),
     depositoDevolucion: FechaIso.nullish().transform((v) => v ?? null),
@@ -458,19 +469,41 @@ export const ContratoInputSchema = z
           message: 'Indicá cada cuántos meses se ajusta.',
         });
     }
-    const primero = [...c.tramos].sort((a, b) => a.numero - b.numero)[0];
-    if (primero && primero.importe == null) {
+    const orden = [...c.tramos].sort((a, b) => a.numero - b.numero);
+    const enCurso = c.administradoDesde;
+    if (enCurso && (enCurso <= c.inicio || enCurso > c.fin)) {
       ctx.addIssue({
         code: 'custom',
-        path: ['tramos'],
-        message: 'El primer tramo necesita su importe.',
+        path: ['administradoDesde'],
+        message: '«Administrado desde» tiene que caer después del inicio y antes del fin.',
       });
     }
-    if (c.ajuste === 'escalonado' && c.tramos.some((t) => t.importe == null)) {
+    // Regla 106: en un contrato tomado en curso, lo que hace falta es el
+    // alquiler de hoy —el del tramo que corre cuando se empieza a
+    // administrar—. Los tramos de antes pueden quedar sin importe.
+    const vigente = enCurso
+      ? orden.find((t) => t.desde <= enCurso && t.hasta >= enCurso)
+      : orden[0];
+    if (vigente && vigente.importe == null) {
       ctx.addIssue({
         code: 'custom',
         path: ['tramos'],
-        message: 'En un contrato escalonado, cada tramo lleva su importe.',
+        message: enCurso
+          ? `Falta el alquiler vigente: el importe del tramo ${vigente.numero}, el que corre el ${enCurso.split('-').reverse().join('/')}.`
+          : 'El primer tramo necesita su importe.',
+      });
+    }
+    const desdeVigente = vigente?.numero ?? 1;
+    if (
+      c.ajuste === 'escalonado' &&
+      orden.some((t) => t.numero >= desdeVigente && t.importe == null)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['tramos'],
+        message: enCurso
+          ? 'En un contrato escalonado, cada tramo desde el vigente lleva su importe.'
+          : 'En un contrato escalonado, cada tramo lleva su importe.',
       });
     }
   });
@@ -525,6 +558,9 @@ export const ContratoDtoSchema = z.object({
   ivaPct: z.number(),
   punitorioDiarioPct: z.number(),
   pagoGarantizado: z.boolean(),
+  /** `.default()` por el orden de despliegue: la web sale antes que la API. */
+  inquilinoMipyme: z.boolean().default(false),
+  administradoDesde: FechaIso.nullable().default(null),
   depositoImporte: z.number().nullable(),
   depositoMoneda: MonedaAlquilerSchema.nullable(),
   depositoDevolucion: FechaIso.nullable(),
@@ -747,6 +783,52 @@ export type SentidoConcepto = z.infer<typeof SentidoConceptoSchema>;
 
 export const GenerarPeriodoSchema = z.object({ periodo: PeriodoSchema });
 export type GenerarPeriodo = z.infer<typeof GenerarPeriodoSchema>;
+
+// --- Corregir el importe de un tramo ya confirmado (reglas 108 a 110) ------------
+// Florencia (Vacker), 15/10/2026: «luego de una indexación de un cuatrimestre
+// las partes negocian por menos … cambiar los importes en forma manual y que
+// luego tome estos importes cambiados como base para indexaciones futuras».
+
+export const EstadoMesCorreccionSchema = z.enum([
+  'cobrado',
+  'liquidado',
+  'generado',
+  'anulado',
+  'sin_generar',
+]);
+export type EstadoMesCorreccionDto = z.infer<typeof EstadoMesCorreccionSchema>;
+
+/** Lo que se muestra antes de corregir: cada mes del tramo y cómo está. */
+export const CorreccionTramoDtoSchema = z.object({
+  numero: z.number().int(),
+  desde: FechaIso,
+  hasta: FechaIso,
+  importe: z.number(),
+  meses: z.array(z.object({ periodo: PeriodoSchema, estado: EstadoMesCorreccionSchema })),
+  /** El primer mes sin nada cobrado ni liquidado; `null` si no queda ninguno. */
+  desdeSugerido: PeriodoSchema.nullable(),
+});
+export type CorreccionTramoDto = z.infer<typeof CorreccionTramoDtoSchema>;
+
+export const CorregirImporteTramoSchema = z.object({
+  importe: z.number().positive('El importe tiene que ser mayor que cero.').max(999_999_999_999.99),
+  /** Desde qué mes rige el importe nuevo: un mes del tramo. */
+  desde: PeriodoSchema,
+  motivo: z.string().trim().min(3, 'Escribí el motivo.').max(300),
+});
+export type CorregirImporteTramo = z.infer<typeof CorregirImporteTramoSchema>;
+
+export const CorreccionAplicadaDtoSchema = z.object({
+  numero: z.number().int(),
+  importeAnterior: z.number(),
+  importe: z.number(),
+  desde: PeriodoSchema,
+  /** Los meses que se volvieron a generar con el importe nuevo. */
+  regenerados: z.array(PeriodoSchema),
+  /** Los que quedaron como estaban, y por qué. */
+  quedan: z.array(z.object({ periodo: PeriodoSchema, estado: EstadoMesCorreccionSchema })),
+});
+export type CorreccionAplicadaDto = z.infer<typeof CorreccionAplicadaDtoSchema>;
 
 /** Lo que hizo «Generar el período». Correrlo dos veces da `creados: 0` la segunda (regla 10). */
 export const ResultadoGeneracionDtoSchema = z.object({
@@ -1620,17 +1702,56 @@ export type PersonaFichaDto = z.infer<typeof PersonaFichaDtoSchema>;
 
 // --- Contrato completo (entrega 14: puntos 7, 11, 12 y 13 de Javier) ------------------
 
-/** La configuración del módulo que edita la inmobiliaria: cargos de ingreso y depósito. */
+/**
+ * La configuración del módulo que edita la inmobiliaria: cargos de ingreso,
+ * depósito y lo que se propone en cada contrato nuevo.
+ *
+ * Los campos del 15/10/2026 llevan `.default()` por el orden de despliegue: la
+ * web sale antes que la API, y unos minutos la API vieja contesta sin ellos.
+ * Los valores son los mismos que el formulario proponía antes.
+ */
 export const ConfiguracionAlquileresSchema = z.object({
   ivaHonorariosPct: z.number().min(0).max(27),
   comisionInicialPct: z.number().min(0).max(20),
   comisionInicialCuotas: z.number().int().min(1).max(12),
   comisionInicialConIva: z.boolean(),
-  selladoPct: z.number().min(0).max(5),
+  /** Regla 103: el sellado por tipo de contrato, sobre el valor total. */
+  selladoViviendaPct: z.number().min(0).max(5).default(SELLADO_POR_DEFECTO.viviendaPct),
+  selladoComercialPct: z.number().min(0).max(5).default(SELLADO_POR_DEFECTO.comercialPct),
+  selladoComercialMipymePct: z
+    .number()
+    .min(0)
+    .max(5)
+    .default(SELLADO_POR_DEFECTO.comercialMipymePct),
   selladoInquilinoPct: z.number().min(0).max(100),
   depositoGestion: z.enum(['entrega_propietario', 'retiene_inmobiliaria']),
+  /** Regla 99: lo que se propone en un contrato nuevo; cada contrato lo puede cambiar. */
+  contratoHonorariosPct: z.number().min(0).max(100).default(8),
+  contratoGastosAdmPct: z.number().min(0).max(100).default(2),
+  contratoPunitorioDiarioPct: z.number().min(0).max(10).default(0),
+  contratoDiaVencimiento: z.number().int().min(1).max(28).default(5),
+  contratoDiaPagoPropietario: z.number().int().min(1).max(28).default(10),
 });
 export type ConfiguracionAlquileres = z.infer<typeof ConfiguracionAlquileresSchema>;
+
+/** Lo que un contrato nuevo trae de la configuración (regla 99). */
+export interface DefectosDeContrato {
+  honorariosPct: number;
+  gastosAdmPct: number;
+  punitorioDiarioPct: number;
+  diaVencimiento: number;
+  diaPagoPropietario: number;
+}
+
+export function defectosDeContrato(c: ConfiguracionAlquileres): DefectosDeContrato {
+  return {
+    honorariosPct: c.contratoHonorariosPct,
+    gastosAdmPct: c.contratoGastosAdmPct,
+    punitorioDiarioPct: c.contratoPunitorioDiarioPct,
+    diaVencimiento: c.contratoDiaVencimiento,
+    diaPagoPropietario: c.contratoDiaPagoPropietario,
+  };
+}
 
 /** Un cargo de ingreso: comisión, informe de garantía, depósito o sellado. */
 export const CargoIngresoSchema = z.object({
@@ -1647,6 +1768,13 @@ export type CargoIngreso = z.infer<typeof CargoIngresoSchema>;
 export const CargosIngresoDtoSchema = z.object({
   /** Ya se cargaron: no se propone de nuevo. */
   cargados: z.boolean(),
+  /**
+   * Regla 105: el contrato se tomó en curso; sus cargos de ingreso se
+   * cobraron cuando empezó, con otra administración. No se propone nada.
+   */
+  enCurso: z.boolean().default(false),
+  /** La alícuota de sellado que se usó (regla 103); `null` si no se calculó. */
+  selladoPct: z.number().nullable().default(null),
   /** El valor total del contrato con que se calcularon: alquiler inicial × meses. */
   valorTotal: z.number(),
   meses: z.number().int(),

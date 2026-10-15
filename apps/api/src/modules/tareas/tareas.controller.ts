@@ -2,7 +2,11 @@ import { timingSafeEqual } from 'node:crypto';
 import { Controller, Headers, Post, UnauthorizedException } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Public } from '../../auth/decorators';
-import { IndicesService, type ResultadoIndice } from '../alquileres/indices.service';
+import {
+  IndicesService,
+  type ResultadoFeriados,
+  type ResultadoIndice,
+} from '../alquileres/indices.service';
 import { TareasService, type ResumenCorrida } from './tareas.service';
 
 /**
@@ -31,16 +35,20 @@ export class TareasController {
   }
 
   /**
-   * Trae los valores nuevos del ICL y del IPC (alquileres, regla 8). Es global:
-   * los índices son los mismos para todas las inmobiliarias. Un error de una
-   * fuente viene en el resultado, no como excepción, para que el workflow lo
-   * muestre y falle sin perder lo que sí se cargó de la otra.
+   * Trae los valores nuevos del ICL y del IPC (alquileres, regla 8) y los
+   * feriados nacionales del año y del siguiente (regla 101). Es global: son
+   * los mismos para todas las inmobiliarias. Un error de una fuente viene en
+   * el resultado, no como excepción, para que el workflow lo muestre y falle
+   * sin perder lo que sí se cargó de las otras.
    */
   @Post('indices')
   @Public()
-  async indicesDiarios(@Headers('x-cron-secret') secreto?: string): Promise<ResultadoIndice[]> {
+  async indicesDiarios(
+    @Headers('x-cron-secret') secreto?: string,
+  ): Promise<(ResultadoIndice | ResultadoFeriados)[]> {
     verificarSecreto(secreto);
-    return this.indices.importar();
+    const indices = await this.indices.importar();
+    return [...indices, await this.indices.importarFeriados()];
   }
 }
 
