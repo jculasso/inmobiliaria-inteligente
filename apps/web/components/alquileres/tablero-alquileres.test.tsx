@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import type {
-  CierreTablero,
-  FilaTablero,
-  Indicador,
-  TableroAlquileresDto,
-  TablerosAlquileresDto,
+import {
+  compactarTableros,
+  type CierreTablero,
+  type FilaTablero,
+  type Indicador,
+  type TableroAlquileresDto,
+  type TablerosAlquileresDto,
 } from '@vacker/types';
 import { TableroAlquileres } from './tablero-alquileres';
 
@@ -294,6 +295,27 @@ describe('TableroAlquileres', () => {
     expect(tarjeta(/^Contratos vigentes: 0/)).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
     expect(replace).toHaveBeenCalledWith(null, '', '/alquileres?tipo=comercial');
+  });
+
+  it('regla 175: en la forma compacta (cada fila una vez) se ve igual, y el filtro sigue sin pedir nada', () => {
+    const vigentes = ind([
+      fila(5, null, { alquiler: 1_137_518, indexa: '2026-12-15', vence: '2027-08-14' }),
+      fila(6, null, { alquiler: 1_500, moneda: 'USD', indexa: '2026-10-01', vence: '2028-01-31' }),
+    ]);
+    const completa = tres(tablero({ cartera: { ...tablero().cartera, vigentes } }));
+    const { unmount } = render(<TableroAlquileres tableros={completa} />);
+    fireEvent.click(tarjeta(/^Contratos vigentes: 2/));
+    const antes = screen.getByRole('dialog').textContent;
+    unmount();
+
+    render(<TableroAlquileres tableros={compactarTableros(completa)} />);
+    fireEvent.click(tarjeta(/^Contratos vigentes: 2/));
+    expect(screen.getByRole('dialog').textContent).toBe(antes);
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Comerciales' }));
+    expect(tarjeta(/^Contratos vigentes: 0/)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+    expect(getDetalle).not.toHaveBeenCalled();
   });
 
   it('con todos, el reparto por tipo: cuántos contratos, cuánto por mes y qué parte; tocarlo filtra', () => {

@@ -38,7 +38,9 @@ import {
   ReclamoResumenDtoSchema,
   ReservaDelContratoDtoSchema,
   ResumenAlquileresSchema,
+  RespuestaTablerosAlquileresSchema,
   TablerosAlquileresDtoSchema,
+  compactarTableros,
 } from '@vacker/types';
 import { IDS, PRINCIPAL } from './datos/comunes';
 import type { Estado } from './estado';
@@ -122,8 +124,12 @@ export const RUTAS: Ruta[] = [
   {
     metodo: 'GET',
     patron: '/alquileres/tablero/completo',
-    schema: TablerosAlquileresDtoSchema,
-    responder: () => tableros(),
+    // Como la API: compacto si se lo pide (regla 175), completo si no.
+    schema: RespuestaTablerosAlquileresSchema,
+    responder: ({ query }) =>
+      query.get('formato') === 'compacto'
+        ? compactarTableros(TablerosAlquileresDtoSchema.parse(tableros()))
+        : tableros(),
   },
   {
     metodo: 'GET',
