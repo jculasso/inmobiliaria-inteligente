@@ -19,3 +19,6 @@ onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
   - prisma
+
+patchedDependencies:
+  next@15.5.20: patches/next@15.5.20.patch

@@ -162,24 +162,32 @@ export async function cerrarModal(dialogo: Locator) {
 }
 
 /**
- * Confirma una acción que guarda (el botón de un modal) y recarga la página
- * para leer lo que quedó guardado. Devuelve el pedido, para mirar qué se mandó.
+ * Confirma una acción que guarda (el botón de un modal) y espera a que el modal
+ * se cierre solo. Devuelve el pedido, para mirar qué se mandó.
  *
- * Por qué recarga en vez de esperar a que el modal se cierre solo: los modales
- * se cierran cuando termina `router.refresh()` (`useRefrescar`), y contra el
- * simulador ese refresh a veces no llega a pintarse —el modal queda en
- * «Guardando…»— en alrededor de una de cada diez corridas (15/10/2026, Next
- * 15.5 + React 19.2; navegar a otra pantalla lo destraba). Quedó anotado como
- * pendiente aparte. Mientras tanto, la prueba comprueba lo que importa —qué se
- * mandó y cómo se ve después— sin depender de esa carrera.
+ * Los modales se cierran recién cuando `router.refresh()` pintó la página nueva
+ * (`useRefrescar`), así que esperar el cierre comprueba también eso: después,
+ * la pantalla ya muestra lo guardado, sin recargar.
+ *
+ * Hasta el 15/10/2026 acá se recargaba la página, porque una de cada diez
+ * veces el refresh no se pintaba nunca y el modal quedaba en «Guardando…». Era
+ * un error de React (un aviso de «ya llegó» que se perdía durante el render) y
+ * no del simulador: lo arregla `patches/next@15.5.20.patch`, y lo cuida
+ * `lib/refrescar.react-de-next.test.ts`. Si el modal vuelve a quedarse
+ * colgado, mirar eso antes de volver a recargar.
  */
-export async function confirmarYRecargar(page: Page, boton: Locator, ruta: string) {
+export async function confirmarYEsperarCierre(
+  page: Page,
+  dialogo: Locator,
+  boton: Locator,
+  ruta: string,
+) {
   const respuesta = page.waitForResponse(
     (r) => r.request().method() !== 'GET' && r.url().includes(ruta),
   );
   await boton.click();
   const r = await respuesta;
   expect(r.ok(), `${ruta} respondió ${r.status()}`).toBe(true);
-  await page.reload();
+  await expect(dialogo, 'el modal se cierra cuando la página nueva ya se pintó').toBeHidden();
   return r.request();
 }

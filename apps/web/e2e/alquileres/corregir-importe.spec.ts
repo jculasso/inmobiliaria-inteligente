@@ -1,6 +1,6 @@
 import { IDS } from '../simulador/datos/comunes';
 import {
-  confirmarYRecargar,
+  confirmarYEsperarCierre,
   esTocable,
   expect,
   revisarEnTelefono,
@@ -60,7 +60,7 @@ test('el diálogo muestra cómo queda cada mes, exige el motivo y manda la corre
 
   await revisarModal(page, dialogo, esTelefono);
   await esTocable(corregir);
-  const pedido = await confirmarYRecargar(page, corregir, '/tramos/2/corregir');
+  const pedido = await confirmarYEsperarCierre(page, dialogo, corregir, '/tramos/2/corregir');
   expect(pedido.postDataJSON()).toEqual({
     importe: 1_050_000,
     desde: '2026-10',
