@@ -1,6 +1,7 @@
 // Contratos del módulo Alquileres (administración de contratos).
 // Ver docs/specs/alquileres-fase-1.md.
 import { z } from 'zod';
+import { FechaIsoSchema } from './fecha-iso';
 import { SELLADO_POR_DEFECTO } from './tenant';
 // Los marcadores del inventario (regla 152) viven con el inventario.
 import { MARCADORES_INVENTARIO } from './inventario';
@@ -18,7 +19,11 @@ export const ResumenAlquileresSchema = z.object({
 });
 export type ResumenAlquileres = z.infer<typeof ResumenAlquileresSchema>;
 
-const FechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida, se espera AAAA-MM-DD.');
+// Una fecha que existe y en rango: «2026-13-01» es un 400, no un 500 de Prisma.
+const FechaIso = FechaIsoSchema;
+
+/** Lo más que entra en una columna `Decimal(14, 2)`: lo que pase de ahí, Prisma lo rechaza con un 500. */
+export const IMPORTE_MAXIMO = 999_999_999_999.99;
 
 // --- Personas -----------------------------------------------------------------
 
@@ -381,7 +386,7 @@ export type IndiceAlquiler = z.infer<typeof IndiceAlquilerSchema>;
 export const PapelContratoSchema = z.enum(['propietario', 'inquilino', 'garante']);
 export type PapelContrato = z.infer<typeof PapelContratoSchema>;
 
-const Monto = z.number().nonnegative().max(999_999_999_999.99);
+const Monto = z.number().nonnegative().max(IMPORTE_MAXIMO);
 const Porcentaje = z.number().min(0).max(100);
 
 export const ParteContratoInputSchema = z.object({
@@ -743,6 +748,7 @@ export const ConfirmarIndexacionSchema = z.object({
   importe: z
     .number()
     .positive('El importe tiene que ser mayor que cero.')
+    .max(IMPORTE_MAXIMO, 'El importe es demasiado grande.')
     .nullish()
     .transform((v) => v ?? null),
 });
@@ -774,6 +780,7 @@ export const PrevisualizarDiferenciasQuerySchema = z.object({
   importe: z.coerce
     .number()
     .positive('El importe tiene que ser mayor que cero.')
+    .max(IMPORTE_MAXIMO, 'El importe es demasiado grande.')
     .optional()
     .transform((v) => v ?? null),
 });
@@ -865,7 +872,7 @@ export const CorreccionTramoDtoSchema = z.object({
 export type CorreccionTramoDto = z.infer<typeof CorreccionTramoDtoSchema>;
 
 export const CorregirImporteTramoSchema = z.object({
-  importe: z.number().positive('El importe tiene que ser mayor que cero.').max(999_999_999_999.99),
+  importe: z.number().positive('El importe tiene que ser mayor que cero.').max(IMPORTE_MAXIMO),
   /** Desde qué mes rige el importe nuevo: un mes del tramo. */
   desde: PeriodoSchema,
   motivo: z.string().trim().min(3, 'Escribí el motivo.').max(300),

@@ -6,6 +6,7 @@ import { cargoConIva, redondear2, repartir } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
+import { tomarCandados } from './candados';
 import { plata, registrarEventos } from './historial';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
@@ -92,7 +93,7 @@ export function senaRetenida(ks: ConceptoDeLaSena[]): number | null {
  * número, vengan de donde vengan.
  */
 async function numeroDeRecibo(tx: Tx, tenantId: string): Promise<number> {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId} || ':alq_cobro'))`;
+  await tomarCandados(tx, tenantId, 'alq_cobro');
   const ultimo = await tx.alqCobro.aggregate({ _max: { numero: true } });
   return (ultimo._max.numero ?? 0) + 1;
 }
@@ -137,7 +138,10 @@ export async function cobrarSena(
       vencimiento: toDate(pago.fecha)!,
       importe: r.importe,
       descripcion: `Seña de la reserva ${r.numero} · ${r.propiedad}`,
-      // Con el recibo en la clave: si se anula, se puede cobrar de nuevo.
+      // Con el recibo en la clave: si se anula, se puede cobrar de nuevo. Por
+      // eso el índice único NO frena dos cobros a la vez de la misma seña: eso
+      // lo hace el candado de fila de la reserva (`bloquearReserva`), que
+      // `ReservasService.cobrarSena` toma antes de mirar si ya se cobró.
       claveGeneracion: `sena|${r.id}|${cobroId}`,
       cobroId,
       creadoPorId: ctx.userId,

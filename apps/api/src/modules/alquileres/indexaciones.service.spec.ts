@@ -131,6 +131,8 @@ function makeTx(
     },
     alqContrato: { findUniqueOrThrow: vi.fn().mockResolvedValue(contratoCompleto()) },
     feriado: { findMany: vi.fn().mockResolvedValue(over.feriados ?? []) },
+    // El candado de la generación, que la confirmación comparte.
+    $executeRaw: vi.fn(async (_s: TemplateStringsArray, ..._v: unknown[]) => 1),
     tenant: {
       findUniqueOrThrow: vi
         .fn()
@@ -270,6 +272,22 @@ describe('IndexacionesService.bandeja (reglas 5 a 7)', () => {
 });
 
 describe('IndexacionesService.confirmar (regla 6)', () => {
+  // Revisión de seguridad del 15/10/2026: el mismo candado que «Generar el
+  // período», antes de leer el tramo; si no, una generación en el medio deja
+  // una parcial que no recibe su final (regla 131).
+  it('toma el candado de la generación antes de leer el tramo', async () => {
+    const tx = makeTx();
+    await new IndexacionesService(makeDb(tx)).confirmar(CTX, 'tramo-4', { importe: null });
+    const [sql, ...valores] = tx.$executeRaw.mock.calls[0]!;
+    expect((sql as TemplateStringsArray).join('?')).toMatch(
+      /pg_advisory_xact_lock\(hashtext\(\?\)\)/,
+    );
+    expect(valores).toEqual(['t1:alq_generacion']);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]!).toBeLessThan(
+      tx.alqTramo.findUnique.mock.invocationCallOrder[0]!,
+    );
+  });
+
   it('guarda el importe que calcula la API, con los índices usados y quién confirmó', async () => {
     const tx = makeTx();
     const r = await new IndexacionesService(makeDb(tx)).confirmar(CTX, 'tramo-4', {

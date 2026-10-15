@@ -25,6 +25,7 @@ import {
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate } from '../tablero/tablero.util';
+import { tomarCandados } from './candados';
 import { aFilas, aParaGenerar } from './conceptos.service';
 import { feriadosDe } from './feriados';
 import { plata, registrarEventos } from './historial';
@@ -92,6 +93,13 @@ export class CorreccionTramoService {
     dto: CorregirImporteTramo,
   ): Promise<CorreccionAplicadaDto> {
     return this.db.withTenant(async (tx) => {
+      // Los tres candados, antes de leer nada: lo que se decide abajo (qué
+      // mes se anula y se vuelve a generar, qué final recibe la diferencia)
+      // depende de que nadie cobre, liquide, genere el mes ni confirme una
+      // indexación mientras tanto. Las condiciones del UPDATE frenaban lo
+      // cobrado o liquidado en el medio, pero no una parcial recién generada.
+      // El orden lo pone `tomarCandados` (ver `candados.ts`).
+      await tomarCandados(tx, ctx.tenantId, 'alq_generacion', 'alq_cobro', 'alq_liquidacion');
       const l = await this.leer(tx, id, numero);
       const importe = Math.round(dto.importe * 100) / 100;
       if (importe === l.importe)

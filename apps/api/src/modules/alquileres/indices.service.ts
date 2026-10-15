@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { sumarDiasIso, type IndiceConFuente } from '@vacker/domain';
+import { esFechaIsoReal } from '@vacker/types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
@@ -34,9 +35,37 @@ const RespuestaDatosGob = z.object({
   data: z.array(z.tuple([Fecha, Positivo])),
 });
 
-const RespuestaFeriados = z.array(
-  z.object({ fecha: Fecha, nombre: z.string().min(1), tipo: z.string().min(1) }),
-);
+/**
+ * Los feriados vienen de una API pública que no controlamos
+ * (argentinadatos.com) y corren los vencimientos de TODOS los contratos de
+ * todas las inmobiliarias. Por eso no se le cree cualquier cosa (revisión de
+ * seguridad del 15/10/2026): la fecha tiene que existir —«2026-02-31» no—, el
+ * nombre es corto, y un año no trae más de `MAX_FERIADOS_POR_ANIO`.
+ */
+const RespuestaFeriados = z
+  .array(
+    z.object({
+      fecha: Fecha.refine(esFechaIsoReal, 'La fuente mandó una fecha que no existe.'),
+      nombre: z.string().trim().min(1).max(200),
+      tipo: z.string().trim().min(1).max(50),
+    }),
+  )
+  .max(200);
+
+/** Un año de Argentina trae unos 20 (2026: 20, con los puentes). Más de esto es un error de la fuente. */
+export const MAX_FERIADOS_POR_ANIO = 30;
+
+/**
+ * Cuántas fechas puede agregar o sacar de un año ya cargado una sola corrida.
+ * Lo normal es uno o dos (un puente decretado, un trasladable que se mueve);
+ * una respuesta rara que vacía medio calendario no se aplica: queda como
+ * aviso para revisarla a mano.
+ */
+export const MAX_CAMBIOS_FERIADOS = 6;
+
+/** Lo más que se lee de una respuesta: el ICL entero desde 2020 anda por 200 KB. */
+const MAX_RESPUESTA_INDICE = 4 * 1024 * 1024;
+const MAX_RESPUESTA_FERIADOS = 256 * 1024;
 
 /** Un feriado nacional, como lo publica la fuente (regla 101). */
 export interface FeriadoFuente {
@@ -90,14 +119,41 @@ export class FuentesIndices {
     const json = await this.pedir(
       `https://api.argentinadatos.com/v1/feriados/${anio}`,
       'argentinadatos.com',
+      MAX_RESPUESTA_FERIADOS,
     );
-    return RespuestaFeriados.parse(json).filter((f) => f.fecha.startsWith(`${anio}-`));
+    const delAnio = RespuestaFeriados.parse(json).filter((f) => f.fecha.startsWith(`${anio}-`));
+    if (delAnio.length > MAX_FERIADOS_POR_ANIO)
+      throw new Error(
+        `argentinadatos.com mandó ${delAnio.length} feriados de ${anio}, y un año no tiene más de ${MAX_FERIADOS_POR_ANIO}: no se aplicó.`,
+      );
+    return delAnio;
   }
 
-  private async pedir(url: string, quien: string): Promise<unknown> {
+  /**
+   * El JSON de la fuente, leyendo como mucho `max` bytes: una respuesta
+   * enorme (por error o a propósito) no llena la memoria de la API. Se corta
+   * mientras llega, no después de recibirla entera.
+   */
+  private async pedir(url: string, quien: string, max = MAX_RESPUESTA_INDICE): Promise<unknown> {
     const res = await this.http(url, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`${quien} respondió ${res.status}.`);
-    return res.json();
+    const demasiado = () => new Error(`${quien} respondió más de ${Math.round(max / 1024)} KB.`);
+    if (Number(res.headers.get('content-length') ?? 0) > max) throw demasiado();
+    if (!res.body) return res.json();
+    const partes: Uint8Array[] = [];
+    let total = 0;
+    const lector = res.body.getReader();
+    for (;;) {
+      const { done, value } = await lector.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > max) {
+        await lector.cancel();
+        throw demasiado();
+      }
+      partes.push(value);
+    }
+    return JSON.parse(Buffer.concat(partes).toString('utf8'));
   }
 }
 
@@ -206,6 +262,25 @@ export class IndicesService {
       try {
         const traidos = await this.fuentes.feriados(a);
         if (traidos.length === 0) throw new Error(`la fuente no trajo ningún feriado de ${a}.`);
+        // Un año ya cargado cambia de a poco. Si la fuente quiere agregar o
+        // sacar muchos de una vez, es más probable que la fuente esté mal que
+        // el calendario: no se aplica y queda el aviso (lo cargado sigue).
+        const guardados = await this.prisma.feriado.findMany({
+          where: { fecha: rango },
+          select: { fecha: true, fuente: true },
+        });
+        if (guardados.length) {
+          const traidas = new Set(traidos.map((f) => f.fecha));
+          const cargadas = new Set(guardados.map((g) => fromDate(g.fecha)));
+          const entran = [...traidas].filter((f) => !cargadas.has(f)).length;
+          const salen = guardados.filter(
+            (g) => g.fuente === FUENTE_FERIADOS && !traidas.has(fromDate(g.fecha)!),
+          ).length;
+          if (entran > MAX_CAMBIOS_FERIADOS || salen > MAX_CAMBIOS_FERIADOS)
+            throw new Error(
+              `la fuente agregaría ${entran} y sacaría ${salen} feriados de ${a}, más de ${MAX_CAMBIOS_FERIADOS} de una vez: no se aplicó, revisalo a mano.`,
+            );
+        }
         const fechas = traidos.map((f) => toDate(f.fecha)!);
         const [, creados] = await this.prisma.$transaction([
           this.prisma.feriado.deleteMany({

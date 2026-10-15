@@ -14,6 +14,9 @@ export * from './rol';
 // Tope de los listados y cómo detectar que quedó algo afuera.
 export * from './limites';
 
+// La fecha AAAA-MM-DD que existe en el calendario (revisión del 15/10/2026).
+export * from './fecha-iso';
+
 // Contratos del módulo Tablero Comercial (Paso 3).
 export * from './tablero';
 
