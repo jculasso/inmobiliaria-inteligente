@@ -2,6 +2,7 @@
 // Javier, 7/10/2026: «cómo está funcionando su propiedad», para el
 // administrador y en un PDF para el propietario.
 import { z } from 'zod';
+import { FechaIsoSchema } from './fecha-iso';
 import {
   EnviarPorMailSchema,
   EstadoContratoSchema,
@@ -13,7 +14,7 @@ import {
   RANGO_EN_ORDEN,
 } from './alquileres';
 
-const FechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida, se espera AAAA-MM-DD.');
+const FechaIso = FechaIsoSchema;
 
 /** El período del informe: meses `AAAA-MM`, en orden y de un año como máximo (regla 84). */
 export const InformePeriodoQuerySchema = z

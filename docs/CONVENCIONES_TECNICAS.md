@@ -630,3 +630,38 @@ mirar cada miembro. Las otras tres formas —const anotada, posición de `return
 forjar el `AuthPrincipal`— sí caían desde el principio. Si no se hubiera probado
 rompiéndolo, la regla habría quedado publicada anunciando que cubre justo el caso
 que no cubría.
+
+---
+
+## 19. Dos pedidos a la vez en Alquileres: candado primero, lectura después
+
+La revisión de seguridad del 15/10/2026 encontró el mismo patrón en cuatro
+lugares: **leer, decidir y escribir, sin nada que impida que otro pedido lea lo
+mismo en el medio.** Dos clics en «Cobrar la seña» daban dos recibos; aprobar y
+rechazar a la vez aplicaban los dos; «Generar el período» y confirmar una
+indexación a la vez dejaban un mes en parcial sin su final.
+
+Un índice único no siempre lo frena: la clave del concepto de la seña lleva el
+recibo (para poder volver a cobrarla si se anula), así que dos recibos distintos
+no chocan. Y una condición en el `UPDATE` sirve de red, pero no evita que el
+segundo decida sobre lo que leyó antes.
+
+**La regla:** el candado va **antes de leer**. Con READ COMMITTED, cada
+sentencia ve lo último confirmado, así que lo que se lee después del candado ya
+incluye lo que dejó el otro pedido.
+
+Todo vive en `apps/api/src/modules/alquileres/candados.ts`:
+
+- `bloquearReserva(tx, id)`: `SELECT … FOR UPDATE` de la fila. Lo toman todos
+  los que cambian una reserva (editar, pasos, cobrar la seña, garantías,
+  convertir).
+- `tomarCandados(tx, tenant, …)`: `pg_advisory_xact_lock` por inmobiliaria.
+  **El orden es siempre el mismo** —`alq_generacion`, `alq_cobro`,
+  `alq_liquidacion`, y antes que todos la fila de la reserva— y la función lo
+  impone sola: quien la llama dice cuáles, no en qué orden. Dos transacciones
+  que toman candados en distinto orden se pueden trabar entre sí, y Postgres
+  mata a una con un deadlock.
+
+Lo fijan los specs de cada servicio (miran que el candado se pida y que sea
+antes de la primera lectura) y `test/reservas.e2e-spec.ts`, que contra la base
+de CI cobra la misma seña tres veces a la vez y espera un solo recibo.

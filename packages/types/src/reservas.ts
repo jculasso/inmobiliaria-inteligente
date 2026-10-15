@@ -4,11 +4,13 @@
 // sigue el contrato. Una vez reservada la propiedad se hace el estudio de
 // garantías y si todo está OK sigue el contrato.»
 import { z } from 'zod';
+import { FechaIsoSchema } from './fecha-iso';
 import {
   AjusteContratoSchema,
   CAMPOS_PERSONA,
   EventoDtoSchema,
   GarantiaDtoSchema,
+  IMPORTE_MAXIMO,
   IndiceAlquilerSchema,
   MedioCobroSchema,
   MonedaAlquilerSchema,
@@ -18,8 +20,8 @@ import {
   type MarcadorPlantilla,
 } from './alquileres';
 
-const FechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida, se espera AAAA-MM-DD.');
-const Monto = z.number().nonnegative().max(999_999_999_999.99);
+const FechaIso = FechaIsoSchema;
+const Monto = z.number().nonnegative().max(IMPORTE_MAXIMO);
 const opcional = <T extends z.ZodTypeAny>(s: T) => s.nullish().transform((v) => v ?? null);
 
 // --- Estados (regla 155) ---------------------------------------------------------

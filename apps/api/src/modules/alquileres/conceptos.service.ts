@@ -28,6 +28,7 @@ import {
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
+import { tomarCandados } from './candados';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
 import { feriadosDe } from './feriados';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
@@ -84,6 +85,11 @@ export class ConceptosService {
   async generar(ctx: TenantContext, periodo: string): Promise<ResultadoGeneracionDto> {
     const { desde, hasta } = limites(periodo);
     return this.db.withTenant(async (tx) => {
+      // Antes de leer los tramos: si una indexación se confirma en el medio,
+      // calcula las finales de las parciales que ya existen y esta generación
+      // guardaría después una parcial con el importe viejo que no recibiría
+      // nunca su final (regla 131). Con el candado, una espera a la otra.
+      await tomarCandados(tx, ctx.tenantId, 'alq_generacion');
       const [tenant, feriados] = await Promise.all([
         tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } }),
         // Regla 100: los vencimientos que caen en feriado se corren.

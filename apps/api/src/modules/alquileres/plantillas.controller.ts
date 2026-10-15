@@ -29,6 +29,7 @@ import {
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { docxResponse } from '../../common/docx-response';
+import { Costoso } from '../../common/limite-solicitudes';
 import { uploadUnArchivo } from '../../common/upload';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ctxDe } from '../tablero/tablero.util';
@@ -127,6 +128,9 @@ export class PlantillasController {
   }
 
   @Post()
+  // Abrir y revisar un Word cuesta CPU y memoria (se descomprime entero): el
+  // mismo límite que los PDFs (revisión de seguridad del 15/10/2026).
+  @Costoso()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiConsumes('multipart/form-data')
   @ApiBody(cuerpoMultipart(true))
@@ -143,6 +147,7 @@ export class PlantillasController {
   }
 
   @Put(':id/archivo')
+  @Costoso()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiConsumes('multipart/form-data')
   @ApiBody(cuerpoMultipart(false))

@@ -23,6 +23,7 @@ import {
   type PropuestaIndexacion,
 } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
+import { tomarCandados } from './candados';
 import { plata, registrarEventos } from './historial';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
@@ -120,6 +121,10 @@ export class IndexacionesService {
     hoy = hoyArgentina(),
   ): Promise<IndexacionConfirmadaDto> {
     return this.db.withTenant(async (tx) => {
+      // El mismo candado que «Generar el período»: las finales se calculan
+      // sobre las parciales que existen, así que una generación del mes no
+      // puede estar guardando otra mientras tanto (regla 131).
+      await tomarCandados(tx, ctx.tenantId, 'alq_generacion');
       const { fila, anterior, propuesta, importe } = await this.aConfirmar(tx, tramoId, dto);
       const c = fila.contrato;
 

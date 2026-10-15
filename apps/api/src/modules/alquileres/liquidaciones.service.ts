@@ -32,6 +32,7 @@ import { z } from 'zod';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
+import { tomarCandados } from './candados';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 import { alquileresDelInquilino, fraccionesCobradas } from './cobrado-del-inquilino';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
@@ -159,7 +160,7 @@ export class LiquidacionesService {
       const ids = enJuego.filter((c) => !c.parcial).map((c) => c.id);
       const parciales = enJuego.filter((c) => c.parcial);
 
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ctx.tenantId} || ':alq_liquidacion'))`;
+      await tomarCandados(tx, ctx.tenantId, 'alq_liquidacion');
       const ultimo = await tx.alqLiquidacion.aggregate({ _max: { numero: true } });
       const numero = (ultimo._max.numero ?? 0) + 1;
       const liq = await tx.alqLiquidacion.create({

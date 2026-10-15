@@ -29,6 +29,7 @@ import {
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
+import { tomarCandados } from './candados';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 import { IMPUTACION_ACTIVA, saldoDeConcepto } from './imputacion-activa';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
@@ -220,7 +221,7 @@ export class CobrosService {
 
       // Un número de recibo por vez en cada inmobiliaria: sin el candado, dos
       // cobros simultáneos sacarían el mismo número.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ctx.tenantId} || ':alq_cobro'))`;
+      await tomarCandados(tx, ctx.tenantId, 'alq_cobro');
       const ultimo = await tx.alqCobro.aggregate({ _max: { numero: true } });
       const numero = (ultimo._max.numero ?? 0) + 1;
       const obs = [dto.obs, ...condonaciones].filter(Boolean).join('\n') || null;

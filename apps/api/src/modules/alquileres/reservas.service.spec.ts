@@ -255,8 +255,8 @@ describe('ReservasService · pasos (reglas 155, 157 y 158)', () => {
   it('regla 155: reservada → en estudio, y el paso queda en la línea de tiempo con quién', async () => {
     const { s, tx } = servicio();
     const dto = await s.cambiarEstado(CTX, 'r1', { estado: 'en_estudio' }, '2026-10-16');
-    expect(tx.alqReserva.update).toHaveBeenCalledWith({
-      where: { id: 'r1' },
+    expect(tx.alqReserva.updateMany).toHaveBeenCalledWith({
+      where: { id: 'r1', estado: 'reservada' },
       data: { estado: 'en_estudio' },
     });
     expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({
@@ -284,7 +284,7 @@ describe('ReservasService · pasos (reglas 155, 157 y 158)', () => {
     await expect(s.cambiarEstado(CTX, 'r1', cambio, '2026-10-30')).rejects.toThrow(
       new BadRequestException(mensaje),
     );
-    expect(tx.alqReserva.update).not.toHaveBeenCalled();
+    expect(tx.alqReserva.updateMany).not.toHaveBeenCalled();
   });
 
   it('regla 155: rechazar guarda el motivo y lo deja en el historial', async () => {
@@ -295,8 +295,8 @@ describe('ReservasService · pasos (reglas 155, 157 y 158)', () => {
       { estado: 'rechazada', motivo: 'El garante no tiene ingresos demostrables' },
       '2026-10-16',
     );
-    expect(tx.alqReserva.update).toHaveBeenCalledWith({
-      where: { id: 'r1' },
+    expect(tx.alqReserva.updateMany).toHaveBeenCalledWith({
+      where: { id: 'r1', estado: 'en_estudio' },
       data: { estado: 'rechazada', motivo: 'El garante no tiene ingresos demostrables' },
     });
     expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({
@@ -313,7 +313,7 @@ describe('ReservasService · pasos (reglas 155, 157 y 158)', () => {
     await expect(s.cambiarEstado(CTX, 'r1', { estado: 'aprobada' }, '2026-10-16')).rejects.toThrow(
       'Para aprobar, cada garantía tiene que tener su informe: falta el de Carlos Garante.',
     );
-    expect(tx.alqReserva.update).not.toHaveBeenCalled();
+    expect(tx.alqReserva.updateMany).not.toHaveBeenCalled();
   });
 
   it('regla 157: aprobar sin ninguna garantía aprobada no se puede', async () => {
@@ -332,8 +332,8 @@ describe('ReservasService · pasos (reglas 155, 157 y 158)', () => {
       garantias: [garantia('rechazada'), garantia('aprobada')],
     });
     await s.cambiarEstado(CTX, 'r1', { estado: 'aprobada' }, '2026-10-16');
-    expect(tx.alqReserva.update).toHaveBeenCalledWith({
-      where: { id: 'r1' },
+    expect(tx.alqReserva.updateMany).toHaveBeenCalledWith({
+      where: { id: 'r1', estado: 'en_estudio' },
       data: { estado: 'aprobada' },
     });
   });
@@ -344,8 +344,8 @@ describe('ReservasService · pasos (reglas 155, 157 y 158)', () => {
       'La reserva vence el 22/10/2026: todavía no venció. Si se cae antes, anulala con el motivo.',
     );
     await s.cambiarEstado(CTX, 'r1', { estado: 'vencida' }, '2026-10-23');
-    expect(tx.alqReserva.update).toHaveBeenCalledWith({
-      where: { id: 'r1' },
+    expect(tx.alqReserva.updateMany).toHaveBeenCalledWith({
+      where: { id: 'r1', estado: 'reservada' },
       data: { estado: 'vencida' },
     });
   });
@@ -619,7 +619,7 @@ describe('La seña: recibo, depósito y retención (reglas 169 a 172)', () => {
     ).rejects.toThrow(
       'La seña tiene el recibo 000123: anulalo primero, en Cobros, y después anulá la reserva.',
     );
-    expect(tx.alqReserva.update).not.toHaveBeenCalled();
+    expect(tx.alqReserva.updateMany).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -693,7 +693,7 @@ describe('La seña: recibo, depósito y retención (reglas 169 a 172)', () => {
     ).rejects.toThrow(
       'Para retener la seña hace falta el propietario: elegí a quién se le entrega.',
     );
-    expect(sinDueno.tx.alqReserva.update).not.toHaveBeenCalled();
+    expect(sinDueno.tx.alqReserva.updateMany).not.toHaveBeenCalled();
     const elegido = servicio({ actual: conSena({ estado: 'aprobada' }) });
     await elegido.s.cambiarEstado(
       CTX,
@@ -719,8 +719,8 @@ describe('La seña: recibo, depósito y retención (reglas 169 a 172)', () => {
     const { s, tx } = servicio({ actual: filaFicha({ estado: 'aprobada' }) });
     await s.cambiarEstado(CTX, 'r1', { estado: 'no_se_presento' }, '2026-10-20');
     expect(tx.alqConcepto.createMany).not.toHaveBeenCalled();
-    expect(tx.alqReserva.update).toHaveBeenCalledWith({
-      where: { id: 'r1' },
+    expect(tx.alqReserva.updateMany).toHaveBeenCalledWith({
+      where: { id: 'r1', estado: 'aprobada' },
       data: { estado: 'no_se_presento' },
     });
   });
@@ -852,5 +852,65 @@ describe('ReservasService · lista y ficha (reglas 164 y 168)', () => {
       return [lista.consultas(), ficha.consultas(), conv.consultas()];
     };
     expect(await cuantas(25)).toEqual(await cuantas(5));
+  });
+});
+
+describe('ReservasService · dos pedidos a la vez (revisión de seguridad, 15/10/2026)', () => {
+  type Tx = ReturnType<typeof servicio>['tx'];
+  /** El SQL de cada `$executeRaw`, con `?` en lugar de los valores. */
+  const sentencias = (tx: Tx) =>
+    tx.$executeRaw.mock.calls.map((c) => (c[0] as TemplateStringsArray).join('?'));
+  /** El candado de la fila se tomó, y antes de la primera lectura de la reserva. */
+  const bloqueaAntesDeLeer = (tx: Tx) => {
+    const i = sentencias(tx).findIndex((q) =>
+      /FROM alq_reserva WHERE id = \?::uuid FOR UPDATE/.test(q),
+    );
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(tx.$executeRaw.mock.invocationCallOrder[i]!).toBeLessThan(
+      tx.alqReserva.findUnique.mock.invocationCallOrder[0]!,
+    );
+  };
+
+  it('cobrar la seña bloquea la reserva antes de mirar si ya se cobró, y después toma el número', async () => {
+    const { s, tx } = servicio();
+    await s.cobrarSena(CTX, 'r1', PAGO);
+    bloqueaAntesDeLeer(tx);
+    // El orden de los candados: la fila de la reserva, después el número del recibo.
+    const sql = sentencias(tx);
+    expect(sql[0]).toMatch(/FOR UPDATE/);
+    expect(sql[1]).toMatch(/pg_advisory_xact_lock/);
+    expect(tx.$executeRaw.mock.calls[1]!.slice(1)).toEqual([`${CTX.tenantId}:alq_cobro`]);
+  });
+
+  it.each([
+    [
+      'cambiar de estado',
+      (s: ReservasService) => s.cambiarEstado(CTX, 'r1', { estado: 'en_estudio' }),
+    ],
+    ['editar', (s: ReservasService) => s.actualizar(CTX, 'r1', entrada())],
+    ['guardar garantías', (s: ReservasService) => s.guardarGarantias(CTX, 'r1', [])],
+  ] as const)('%s también bloquea la reserva antes de leerla', async (_n, hacer) => {
+    const { s, tx } = servicio({ actual: filaFicha({ estado: 'reservada' }) });
+    await hacer(s);
+    bloqueaAntesDeLeer(tx);
+  });
+
+  it('convertir bloquea la reserva antes de leer su seña (regla 170)', async () => {
+    const { s, tx } = servicio({ actual: filaFicha({ estado: 'aprobada' }) });
+    await s.convertir(CTX, 'r1', contrato());
+    bloqueaAntesDeLeer(tx);
+  });
+
+  it('regla 155: si el estado cambió entre la lectura y la escritura, no se aplica: 409', async () => {
+    const { s, tx } = servicio({ actual: filaFicha({ estado: 'en_estudio' }) });
+    tx.alqReserva.updateMany.mockResolvedValueOnce({ count: 0 });
+    await expect(
+      s.cambiarEstado(CTX, 'r1', { estado: 'rechazada', motivo: 'Sin garantías' }, '2026-10-16'),
+    ).rejects.toThrow(new ConflictException('La reserva cambió mientras tanto: recargá.'));
+    // La transición se condiciona al estado que se validó, y no deja historial.
+    expect(tx.alqReserva.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'r1', estado: 'en_estudio' } }),
+    );
+    expect(tx.alqEvento.createMany).not.toHaveBeenCalled();
   });
 });

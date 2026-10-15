@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FuentesIndices, IndicesService, type ValorIndice } from './indices.service';
+import {
+  FUENTE_FERIADOS,
+  FuentesIndices,
+  IndicesService,
+  MAX_CAMBIOS_FERIADOS,
+  MAX_FERIADOS_POR_ANIO,
+  type ValorIndice,
+} from './indices.service';
 
 const fecha = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
@@ -148,6 +155,11 @@ describe('IndicesService.importarFeriados (regla 101)', () => {
         async ({ where }: { where: { fecha: { gte: Date; lte: Date } } }) =>
           [...tabla].filter((f) => enRango(f, where.fecha)).length,
       ),
+      findMany: vi.fn(async ({ where }: { where: { fecha: { gte: Date; lte: Date } } }) =>
+        [...tabla]
+          .filter((f) => enRango(f, where.fecha))
+          .map((f) => ({ fecha: fecha(f), fuente: FUENTE_FERIADOS })),
+      ),
       aggregate: vi.fn(async () => ({
         _max: { fecha: tabla.size ? fecha([...tabla].sort().at(-1)!) : null },
       })),
@@ -243,5 +255,111 @@ describe('IndicesService.importarFeriados (regla 101)', () => {
     fu.http = http as never;
     expect(await fu.feriados(2026)).toEqual([diversidad]);
     expect(String(http.mock.calls[0]![0])).toBe('https://api.argentinadatos.com/v1/feriados/2026');
+  });
+});
+
+describe('Feriados: lo que no se le cree a la fuente (revisión de seguridad, 15/10/2026)', () => {
+  const conFeriados = (cuerpo: string, headers: Record<string, string> = {}) => {
+    const fu = new FuentesIndices();
+    fu.http = vi.fn(async () => new Response(cuerpo, { headers })) as never;
+    return fu;
+  };
+  const uno = (fecha: string, nombre = 'Feriado') => ({ fecha, nombre, tipo: 'inamovible' });
+
+  it('una fecha que no existe en el calendario rechaza la respuesta entera', async () => {
+    const fu = conFeriados(JSON.stringify([uno('2026-10-12'), uno('2026-02-31')]));
+    await expect(fu.feriados(2026)).rejects.toThrow(/fecha que no existe/);
+  });
+
+  it('un nombre de más de 200 caracteres no entra', async () => {
+    const fu = conFeriados(JSON.stringify([uno('2026-10-12', 'x'.repeat(201))]));
+    await expect(fu.feriados(2026)).rejects.toThrow();
+  });
+
+  it(`más de ${MAX_FERIADOS_POR_ANIO} feriados en un año es un error de la fuente`, async () => {
+    const muchos = Array.from({ length: 31 }, (_, i) =>
+      uno(
+        `2026-${String(Math.floor(i / 28) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      ),
+    );
+    await expect(conFeriados(JSON.stringify(muchos)).feriados(2026)).rejects.toThrow(
+      /mandó 31 feriados de 2026.*no se aplicó/,
+    );
+  });
+
+  it('una respuesta de más de 256 KB se corta mientras llega, sin leerla entera', async () => {
+    const enorme = JSON.stringify([uno('2026-10-12', 'x'.repeat(300 * 1024))]);
+    await expect(conFeriados(enorme).feriados(2026)).rejects.toThrow(
+      'argentinadatos.com respondió más de 256 KB.',
+    );
+    // Si la fuente dice de entrada cuánto pesa, ni se empieza a leer.
+    await expect(
+      conFeriados('[]', { 'content-length': String(10 * 1024 * 1024) }).feriados(2026),
+    ).rejects.toThrow('argentinadatos.com respondió más de 256 KB.');
+  });
+});
+
+describe('IndicesService.importarFeriados: cambios de más (revisión de seguridad, 15/10/2026)', () => {
+  function makePrisma(cargados: string[]) {
+    const tabla = new Set(cargados);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const enRango = (f: string, r: { gte: Date; lte: Date }) => f >= iso(r.gte) && f <= iso(r.lte);
+    const feriado = {
+      findMany: vi.fn(async ({ where }: { where: { fecha: { gte: Date; lte: Date } } }) =>
+        [...tabla]
+          .filter((f) => enRango(f, where.fecha))
+          .map((f) => ({ fecha: fecha(f), fuente: FUENTE_FERIADOS })),
+      ),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      createMany: vi.fn(async ({ data }: { data: { fecha: Date }[] }) => {
+        for (const x of data) tabla.add(iso(x.fecha));
+        return { count: data.length };
+      }),
+      count: vi.fn(async () => tabla.size),
+      aggregate: vi.fn(async () => ({ _max: { fecha: null } })),
+    };
+    return {
+      tabla,
+      feriado,
+      prisma: {
+        feriado,
+        $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+      },
+    };
+  }
+  const dias = (anio: number, desde: number, n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      fecha: `${anio}-03-${String(desde + i).padStart(2, '0')}`,
+      nombre: 'Feriado',
+      tipo: 'inamovible',
+    }));
+  const importar = (prisma: unknown, porAnio: Record<number, unknown[]>) =>
+    new IndicesService(
+      prisma as never,
+      {
+        feriados: vi.fn(async (a: number) => porAnio[a] ?? []),
+      } as never,
+    ).importarFeriados('2026-10-15');
+
+  it(`un año ya cargado no cambia más de ${MAX_CAMBIOS_FERIADOS} fechas de una vez: queda el aviso`, async () => {
+    const antes = dias(2027, 1, 10).map((f) => f.fecha);
+    const { prisma, tabla, feriado } = makePrisma(['2026-10-12', ...antes]);
+    // La fuente responde diez feriados de 2027, todos distintos de los cargados.
+    const r = await importar(prisma, { 2026: dias(2026, 1, 1), 2027: dias(2027, 11, 10) });
+    expect(r.error).toBeUndefined();
+    expect(r.aviso).toMatch(
+      /2027: la fuente agregaría 10 y sacaría 10 feriados de 2027.*no se aplicó/,
+    );
+    // Lo de 2027 quedó como estaba; 2026 (un cambio) sí se aplicó.
+    for (const f of antes) expect(tabla.has(f)).toBe(true);
+    expect(tabla.has('2027-03-11')).toBe(false);
+    expect(feriado.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('un año todavía sin cargar entra entero, aunque sean veinte', async () => {
+    const { prisma, tabla } = makePrisma([]);
+    const r = await importar(prisma, { 2026: dias(2026, 1, 20), 2027: dias(2027, 1, 20) });
+    expect(r.aviso).toBeUndefined();
+    expect(tabla.size).toBe(40);
   });
 });

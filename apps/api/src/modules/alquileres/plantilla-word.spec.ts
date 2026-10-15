@@ -1,6 +1,9 @@
 import PizZip from 'pizzip';
 import { describe, expect, it } from 'vitest';
 import {
+  DOCX_MAX_ENTRADA,
+  DOCX_MAX_TOTAL,
+  WORD_DEMASIADO_GRANDE,
   completarPlantillaWord,
   problemasDePlantilla,
   resolver,
@@ -186,5 +189,64 @@ describe('problemasDePlantilla (al subir)', () => {
     expect(
       problemasDePlantilla({ buffer: docx(['x']), originalname: 'a.docx', size: 6 * 1024 * 1024 }),
     ).toEqual(['La plantilla pesa más de 5 MB.']);
+  });
+});
+
+describe('Bomba de descompresión (revisión de seguridad, 15/10/2026)', () => {
+  const MB = 1024 * 1024;
+
+  /** Un Word con el document.xml relleno de espacios: comprimido pesa nada, adentro, `mb`. */
+  function inflado(mb: number): Buffer {
+    const zip = new PizZip(docx(['Contrato {contrato.codigo}']));
+    const xml = zip.file('word/document.xml')!.asText();
+    zip.file('word/document.xml', xml + ' '.repeat(mb * MB));
+    return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+  }
+
+  /**
+   * El mismo zip, pero el archivo `nombre` declara pesar `bytes` descomprimido
+   * (en el directorio central y en su encabezado local): el que arma el zip
+   * escribe lo que quiere ahí.
+   */
+  function mentir(buf: Buffer, nombre: string, bytes: number): Buffer {
+    const out = Buffer.from(buf);
+    for (let p = 0; p + 46 <= out.length; p++) {
+      if (out.readUInt32LE(p) !== 0x02014b50) continue;
+      const largo = out.readUInt16LE(p + 28);
+      if (out.toString('latin1', p + 46, p + 46 + largo) !== nombre) continue;
+      out.writeUInt32LE(bytes, p + 24);
+      out.writeUInt32LE(bytes, out.readUInt32LE(p + 42) + 22);
+      return out;
+    }
+    throw new Error(`No está ${nombre} en el zip.`);
+  }
+
+  it('un Word de pocos KB que se infla a 30 MB se rechaza, con un mensaje claro', () => {
+    const bomba = inflado(30);
+    expect(bomba.length).toBeLessThan(MB);
+    expect(problemasDePlantilla(subir(bomba))).toEqual([WORD_DEMASIADO_GRANDE]);
+    expect(WORD_DEMASIADO_GRANDE).toMatch(/^El Word es demasiado grande o está dañado/);
+    // Y tampoco se completa, aunque hubiera llegado a guardarse.
+    expect(() => completarPlantillaWord(bomba, DATOS)).toThrow(WORD_DEMASIADO_GRANDE);
+  });
+
+  it('un solo archivo de más de 10 MB alcanza para rechazarlo, aunque el total no llegue a 20', () => {
+    expect(DOCX_MAX_ENTRADA).toBe(10 * MB);
+    expect(DOCX_MAX_TOTAL).toBe(20 * MB);
+    expect(problemasDePlantilla(subir(inflado(11)))).toEqual([WORD_DEMASIADO_GRANDE]);
+  });
+
+  it('si el zip miente el tamaño, el inflado corta en lo declarado y se rechaza igual', () => {
+    const mentiroso = mentir(inflado(30), 'word/document.xml', 1_000);
+    expect(problemasDePlantilla(subir(mentiroso))).toEqual([WORD_DEMASIADO_GRANDE]);
+  });
+
+  it('un Word normal, comprimido como lo guarda Word, sigue pasando', () => {
+    const normal = new PizZip(docx(['Contrato {contrato.codigo}'])).generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+    });
+    expect(problemasDePlantilla(subir(normal))).toEqual([]);
+    expect(problemasDePlantilla(subir(inflado(2)))).toEqual([]);
   });
 });

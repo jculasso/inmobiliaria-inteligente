@@ -16,6 +16,7 @@ import { PublicacionController } from '../modules/publicacion/publicacion.contro
 import { TodoController } from '../modules/todo/todo.controller';
 import { CobrosController } from '../modules/alquileres/cobros.controller';
 import { LiquidacionesController } from '../modules/alquileres/liquidaciones.controller';
+import { PlantillasController } from '../modules/alquileres/plantillas.controller';
 
 @Controller('prueba')
 class PruebaController {
@@ -60,6 +61,9 @@ describe('Límite de pedidos · rutas costosas marcadas', () => {
     ['eventos de Google', TodoController.prototype, 'eventos'],
     ['recibo PDF', CobrosController.prototype, 'recibo'],
     ['liquidación PDF', LiquidacionesController.prototype, 'pdf'],
+    // Se descomprime y se revisa el Word entero (revisión del 15/10/2026).
+    ['subir una plantilla Word', PlantillasController.prototype, 'crear'],
+    ['reemplazar el Word de una plantilla', PlantillasController.prototype, 'reemplazarArchivo'],
   ];
 
   it.each(COSTOSAS)('%s lleva @Costoso', (_n, proto, metodo) => {

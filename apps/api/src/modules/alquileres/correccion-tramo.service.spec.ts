@@ -9,6 +9,7 @@ import {
   type ContratoParaGenerar,
 } from '@vacker/domain';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
+import { ORDEN_CANDADOS } from './candados';
 import { CorreccionTramoService, MARCA_CORREGIDO } from './correccion-tramo.service';
 import { IndexacionesService } from './indexaciones.service';
 import { mocksDeHistorial } from './historial.testing';
@@ -130,9 +131,14 @@ type Fila = {
 const creados = (tx: ReturnType<typeof makeTx>) =>
   (tx.alqConcepto.createMany.mock.calls[0]?.[0] as { data: Fila[] } | undefined)?.data ?? [];
 
+/** El SQL de cada `$executeRaw`, con `?` en lugar de los valores. */
+const sql = (c: unknown[]) => (c[0] as TemplateStringsArray).join('?');
+/** Las anulaciones (los `$executeRaw` que no son candados). */
+const anulaciones = (tx: ReturnType<typeof makeTx>) =>
+  tx.$executeRaw.mock.calls.filter((c) => /UPDATE alq_concepto/.test(sql(c)));
 /** Los ids que la anulación recibió, sacados de los valores del SQL. */
 const idsAnulados = (tx: ReturnType<typeof makeTx>) =>
-  JSON.stringify(tx.$executeRaw.mock.calls[0]?.slice(1) ?? []);
+  JSON.stringify(anulaciones(tx)[0]?.slice(1) ?? []);
 
 const DTO = { importe: 1_000_000, desde: '2026-10', motivo: 'Lo negociaron las partes' };
 
@@ -179,6 +185,27 @@ describe('CorreccionTramoService.preparar (regla 108)', () => {
 });
 
 describe('CorreccionTramoService.corregir (reglas 108 a 111)', () => {
+  // Revisión de seguridad del 15/10/2026: corregir decide qué meses anula
+  // según lo cobrado, lo liquidado y lo generado; los tres candados van antes
+  // de leer, y en el orden de `ORDEN_CANDADOS`, el mismo en todo el módulo.
+  it('toma los candados de generación, cobro y liquidación, en ese orden, antes de leer', async () => {
+    const tx = makeTx({ conceptos: generados({ '2026-11': 'generado' }), anulados: 4 });
+    await new CorreccionTramoService(makeDb(tx)).corregir(CTX, 'c5', 4, {
+      ...DTO,
+      desde: '2026-11',
+    });
+    const candados = tx.$executeRaw.mock.calls.filter((c) => /pg_advisory_xact_lock/.test(sql(c)));
+    expect(candados.map((c) => c.slice(1))).toEqual([
+      ['t1:alq_generacion'],
+      ['t1:alq_cobro'],
+      ['t1:alq_liquidacion'],
+    ]);
+    expect(ORDEN_CANDADOS).toEqual(['alq_generacion', 'alq_cobro', 'alq_liquidacion']);
+    expect(tx.$executeRaw.mock.invocationCallOrder[2]!).toBeLessThan(
+      tx.alqContrato.findUnique.mock.invocationCallOrder[0]!,
+    );
+  });
+
   const conceptos = generados({
     '2026-08': 'cobrado',
     '2026-09': 'cobrado',
@@ -199,7 +226,7 @@ describe('CorreccionTramoService.corregir (reglas 108 a 111)', () => {
       quedan: [],
     });
     // Una sola anulación, con los ocho conceptos de octubre y noviembre, la marca y el motivo.
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(anulaciones(tx)).toHaveLength(1);
     const valores = idsAnulados(tx);
     for (const k of aCorregir) expect(valores).toContain(k.id);
     for (const k of conceptos.filter((x) => x.periodo < '2026-10'))
@@ -335,14 +362,15 @@ describe('CorreccionTramoService.corregir (reglas 108 a 111)', () => {
         tx.alqEvento.createMany,
       ].reduce((s, f) => s + f.mock.calls.length, 0);
     };
-    // Diez: la décima busca las parciales del tramo para la regla 135.
-    expect(await contar({ '2026-11': 'generado' }, '2026-11')).toBe(10);
+    // Trece: la décima busca las parciales del tramo para la regla 135, y las
+    // otras tres son los candados (generación, cobro y liquidación).
+    expect(await contar({ '2026-11': 'generado' }, '2026-11')).toBe(13);
     expect(
       await contar(
         { '2026-09': 'generado', '2026-10': 'generado', '2026-11': 'generado' },
         '2026-09',
       ),
-    ).toBe(10);
+    ).toBe(13);
   });
 
   describe('lo que se rechaza', () => {
@@ -442,7 +470,7 @@ describe('CorreccionTramoService.corregir (reglas 108 a 111)', () => {
         desde: '2026-09',
       });
       expect(r.quedan.map((m) => m.periodo)).toEqual(['2026-09']);
-      expect(tx.$executeRaw).not.toHaveBeenCalled();
+      expect(anulaciones(tx)).toHaveLength(0);
       const creadas = tx.alqConcepto.createMany.mock.calls[0]![0].data as {
         claveGeneracion: string;
         tipo: string;

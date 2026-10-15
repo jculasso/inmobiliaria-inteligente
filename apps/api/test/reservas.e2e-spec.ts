@@ -305,6 +305,90 @@ suite('Reservas, seña e inventario contra la base (reglas 153 a 171)', () => {
     ]);
   }, 60_000);
 
+  // --- Dos pedidos a la vez (revisión de seguridad del 15/10/2026) ------------------
+  //
+  // Lo que una base de mentira no puede probar: que el candado de fila de la
+  // reserva hace esperar al segundo pedido y que, al seguir, ve lo que dejó el
+  // primero. Sin el candado, los dos leían «sin cobrar» y salían dos recibos.
+
+  /** Una reserva nueva, con la seña acordada y sin cobrar, de una propiedad propia. */
+  async function reservaNueva(direccion: string) {
+    return reservas.crear(
+      ctx,
+      ReservaInputSchema.parse({
+        ...entrada(),
+        propiedadId: await otraPropiedad(direccion),
+        partes: [{ personaId: interesada, papel: 'inquilino' }],
+      }),
+    );
+  }
+  const PAGO = {
+    fecha: '2026-10-15',
+    medio: 'transferencia' as const,
+    personaId: null,
+    obs: null,
+  };
+  /** Los recibos vigentes de la seña de una reserva. */
+  const recibosDeLaSena = (reservaId: string) =>
+    siembra.alqConcepto.count({
+      where: { reservaId, tipo: 'sena', sentido: 'a_cobrar', anuladoEn: null },
+    });
+
+  it('regla 169: tres cobros de la misma seña a la vez dan un solo recibo', async () => {
+    const r = await reservaNueva('Seña simultánea');
+    const intentos = await Promise.allSettled(
+      Array.from({ length: 3 }, () => reservas.cobrarSena(ctx, r.id, PAGO)),
+    );
+    expect(intentos.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    for (const x of intentos.filter((y) => y.status === 'rejected'))
+      expect(String((x as PromiseRejectedResult).reason)).toMatch(/La seña ya se cobró/);
+    expect(await recibosDeLaSena(r.id)).toBe(1);
+  }, 60_000);
+
+  it('regla 155: aprobar y rechazar a la vez, se aplica uno solo', async () => {
+    const r = await reservaNueva('Aprobar y rechazar');
+    await reservas.cambiarEstado(ctx, r.id, { estado: 'en_estudio' });
+    await reservas.guardarGarantias(ctx, r.id, [
+      {
+        tipo: 'caucion',
+        personaId: null,
+        garante: 'Aseguradora',
+        detalle: null,
+        estado: 'aprobada',
+        aprobadaEl: '2026-10-16',
+        obs: null,
+      },
+    ]);
+    const [aprobar, rechazar] = await Promise.allSettled([
+      reservas.cambiarEstado(ctx, r.id, { estado: 'aprobada' }),
+      reservas.cambiarEstado(ctx, r.id, { estado: 'rechazada', motivo: 'Prueba simultánea' }),
+    ]);
+    expect([aprobar!.status, rechazar!.status].sort()).toEqual(['fulfilled', 'rejected']);
+    const final = await reservas.obtener(r.id);
+    expect(final.estado).toBe(aprobar!.status === 'fulfilled' ? 'aprobada' : 'rechazada');
+    // Un solo paso en la línea de tiempo, el que se aplicó.
+    expect(
+      await siembra.alqEvento.count({
+        where: { entidad: 'reserva', entidadId: r.id, accion: { in: ['estado', 'anulacion'] } },
+      }),
+    ).toBe(2); // en estudio + el que ganó
+  }, 60_000);
+
+  it('regla 172: anular mientras se cobra la seña nunca deja una reserva anulada con recibo', async () => {
+    const r = await reservaNueva('Anular y cobrar');
+    await Promise.allSettled([
+      reservas.cobrarSena(ctx, r.id, PAGO),
+      reservas.cambiarEstado(ctx, r.id, { estado: 'anulada', motivo: 'Prueba simultánea' }),
+    ]);
+    const final = await reservas.obtener(r.id);
+    const recibos = await recibosDeLaSena(r.id);
+    // Uno de los dos, nunca los dos: anulada sin recibo, o abierta con su recibo.
+    expect(
+      (final.estado === 'anulada' && recibos === 0) ||
+        (final.estado === 'reservada' && recibos === 1),
+    ).toBe(true);
+  }, 60_000);
+
   it('regla 153: un contrato viejo tiene el inventario vacío; se guarda y se lee entero', async () => {
     const inventario = new InventarioService(db);
     // El contrato de la siembra está en borrador: vacío, y se puede editar.

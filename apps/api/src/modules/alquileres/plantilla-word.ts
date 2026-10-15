@@ -1,3 +1,4 @@
+import { inflateRawSync } from 'node:zlib';
 import Docxtemplater from 'docxtemplater';
 import InspectModule from 'docxtemplater/js/inspect-module.js';
 import PizZip from 'pizzip';
@@ -73,10 +74,91 @@ const OPCIONES = {
   nullGetter: () => '',
 };
 
+// --- Bomba de descompresión ------------------------------------------------------------
+//
+// Un .docx es un zip, y pizzip descomprime cada archivo de adentro entero, sin
+// tope, cuando docxtemplater lo pide. Un zip de 5 MB bien armado se infla a
+// gigas: con una sola subida se llenaba la memoria de la API —una instancia,
+// todas las inmobiliarias— (revisión de seguridad del 15/10/2026).
+//
+// Por eso, antes de pizzip, se recorre el directorio del zip a mano:
+//
+// 1. Lo que cada archivo DICE que pesa descomprimido: ninguno más de 10 MB y
+//    entre todos no más de 20 MB. Un contrato real de Word, con logo y
+//    firmas escaneadas, anda por 1 MB.
+// 2. Lo que de verdad pesa: cada archivo comprimido se infla con
+//    `maxOutputLength` igual a lo que declaró. El tamaño declarado lo escribe
+//    quien arma el zip, así que no alcanza con creerle: si miente, el inflado
+//    corta en el tope y el archivo se rechaza, en lugar de que lo descubra
+//    pizzip después de inflarlo entero.
+
+/** Lo más que puede pesar descomprimido un archivo de adentro del Word. */
+export const DOCX_MAX_ENTRADA = 10 * 1024 * 1024;
+/** Lo más que puede pesar descomprimido el Word entero. */
+export const DOCX_MAX_TOTAL = 20 * 1024 * 1024;
+/** Cuántos archivos puede tener adentro: un Word normal trae una docena o dos. */
+const DOCX_MAX_ARCHIVOS = 2_000;
+
+export const WORD_DEMASIADO_GRANDE =
+  'El Word es demasiado grande o está dañado: guardalo de nuevo desde Word y volvé a subirlo.';
+
+const FIRMA_FIN_DIRECTORIO = 0x06054b50;
+const FIRMA_DIRECTORIO = 0x02014b50;
+const FIRMA_LOCAL = 0x04034b50;
+
+/** ¿El zip respeta los topes, declarados y reales? `false` ante cualquier cosa rara. */
+function tamaniosRazonables(buf: Buffer): boolean {
+  // El fin del directorio central: 22 bytes, más un comentario de hasta 64 KB.
+  let fin = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 0xffff); i--)
+    if (buf.readUInt32LE(i) === FIRMA_FIN_DIRECTORIO) {
+      fin = i;
+      break;
+    }
+  if (fin < 0) return false;
+  const cantidad = buf.readUInt16LE(fin + 10);
+  let p = buf.readUInt32LE(fin + 16);
+  // ZIP64 (más de 65.535 archivos o 4 GB): ningún Word de verdad lo necesita.
+  if (cantidad === 0xffff || p === 0xffffffff || cantidad > DOCX_MAX_ARCHIVOS) return false;
+  let total = 0;
+  for (let n = 0; n < cantidad; n++) {
+    if (p + 46 > buf.length || buf.readUInt32LE(p) !== FIRMA_DIRECTORIO) return false;
+    const metodo = buf.readUInt16LE(p + 10);
+    const comprimido = buf.readUInt32LE(p + 20);
+    const declarado = buf.readUInt32LE(p + 24);
+    const local = buf.readUInt32LE(p + 42);
+    p += 46 + buf.readUInt16LE(p + 28) + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+    total += declarado;
+    if (declarado > DOCX_MAX_ENTRADA || total > DOCX_MAX_TOTAL) return false;
+    // Los datos están después del encabezado local, que tiene su propio nombre y extra.
+    if (local + 30 > buf.length || buf.readUInt32LE(local) !== FIRMA_LOCAL) return false;
+    const desde = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+    if (desde + comprimido > buf.length) return false;
+    if (metodo === 0) {
+      if (comprimido !== declarado) return false;
+    } else if (metodo === 8) {
+      try {
+        const real = inflateRawSync(buf.subarray(desde, desde + comprimido), {
+          maxOutputLength: Math.max(1, declarado),
+        });
+        if (real.length !== declarado) return false;
+      } catch {
+        // Más grande que lo declarado (corta en el tope) o deflate roto.
+        return false;
+      }
+    } else {
+      // pizzip solo entiende «guardado» y «deflate».
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Abre el .docx, o dice en castellano por qué no es uno. */
 function abrir(buffer: Buffer): { zip: PizZip } | { problema: string } {
   if (buffer.subarray(0, 4).toString('latin1') !== 'PK\x03\x04')
     return { problema: 'El archivo no es un Word (.docx). Abrilo en Word y guardalo como .docx.' };
+  if (!tamaniosRazonables(buffer)) return { problema: WORD_DEMASIADO_GRANDE };
   let zip: PizZip;
   try {
     zip = new PizZip(buffer);

@@ -67,6 +67,8 @@ function makeTx(
   return {
     ...mocksDeHistorial(),
     indiceValor: { findMany: vi.fn().mockResolvedValue(over.valores ?? []) },
+    // El candado de la generación.
+    $executeRaw: vi.fn(async (_s: TemplateStringsArray, ..._v: unknown[]) => 1),
     tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: { ivaHonorariosPct: 21 } }) },
     feriado: { findMany: vi.fn().mockResolvedValue(over.feriados ?? []) },
     alqContrato: {
@@ -102,6 +104,21 @@ function makeDb(tx: unknown): TenantPrismaService {
 const datos = (tx: ReturnType<typeof makeTx>) => tx.alqConcepto.createMany.mock.calls[0]![0].data;
 
 describe('ConceptosService.generar (reglas 9 a 13)', () => {
+  // Revisión de seguridad del 15/10/2026: generar y confirmar una indexación
+  // a la vez dejaba una parcial sin su final (regla 131).
+  it('toma el candado de la generación antes de leer los contratos y sus tramos', async () => {
+    const tx = makeTx();
+    await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');
+    const [sql, ...valores] = tx.$executeRaw.mock.calls[0]!;
+    expect((sql as TemplateStringsArray).join('?')).toMatch(
+      /pg_advisory_xact_lock\(hashtext\(\?\)\)/,
+    );
+    expect(valores).toEqual(['t1:alq_generacion']);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]!).toBeLessThan(
+      tx.alqContrato.findMany.mock.invocationCallOrder[0]!,
+    );
+  });
+
   it('noviembre de 2026 del contrato #5, como en Gexion, con el tenant y la clave', async () => {
     const tx = makeTx();
     const r = await new ConceptosService(makeDb(tx)).generar(CTX, '2026-11');

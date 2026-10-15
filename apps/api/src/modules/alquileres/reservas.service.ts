@@ -34,6 +34,7 @@ import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
+import { bloquearReserva } from './candados';
 import { ContratosService } from './contratos.service';
 import { dia, nombresDeUsuarios, registrarEventos } from './historial';
 import {
@@ -98,6 +99,9 @@ type FilaFicha = Prisma.AlqReservaGetPayload<{ select: typeof FICHA }>;
 
 const unidad = (p: { direccion: string; unidad: string | null }) =>
   [p.direccion, p.unidad].filter(Boolean).join(' ');
+
+/** Regla 155: otro pedido cambió la reserva entre que se leyó y se escribió. */
+export const CAMBIO_EN_EL_MEDIO = 'La reserva cambió mientras tanto: recargá.';
 
 /** Tope de la línea de tiempo de una reserva: sobra. */
 const TOPE_HISTORIAL = 100;
@@ -269,10 +273,15 @@ export class ReservasService {
           { pct: config.honorariosSenaRetenidaPct, ivaPct: config.ivaHonorariosPct },
         );
       }
-      await tx.alqReserva.update({
-        where: { id },
+      // `estado: desde` en el where: con la fila bloqueada nadie la cambia en
+      // el medio, pero si algún día se lee sin el candado, la transición no
+      // se aplica sobre un estado que ya no es el que se validó (aprobada y
+      // rechazada a la vez, o anulada con la seña recién cobrada: regla 172).
+      const { count } = await tx.alqReserva.updateMany({
+        where: { id, estado: desde },
         data: { estado: cambio.estado, ...(motivo ? { motivo } : {}) },
       });
+      if (count === 0) throw new ConflictException(CAMBIO_EN_EL_MEDIO);
       await evento(
         tx,
         ctx,
@@ -370,6 +379,9 @@ export class ReservasService {
    */
   async convertir(ctx: TenantContext, id: string, dto: Contrato): Promise<ContratoDto> {
     return this.contratos.crear(ctx, dto, async (tx, contratoId, codigo) => {
+      // Antes de leer la seña: si se cobra mientras se convierte, el contrato
+      // nacería sin el depósito que la seña tenía que pasar a ser (regla 170).
+      await bloquearReserva(tx, id);
       const r = await tx.alqReserva.findUnique({
         where: { id },
         select: {
@@ -459,7 +471,16 @@ export class ReservasService {
     });
   }
 
+  /**
+   * La reserva para cambiarla: primero se bloquea la fila y después se lee.
+   * Todos los que la usan escriben (editar, cambiar de estado, cobrar la seña,
+   * guardar garantías), y cada uno decide según lo que lee: sin el candado,
+   * dos cobros de la seña a la vez pasaban los dos por «¿ya se cobró?» antes
+   * de que el primero guardara su recibo, y salían dos recibos (la clave del
+   * concepto lleva el recibo, así que el índice único no los frenaba).
+   */
   private async buscar(tx: Tx, id: string) {
+    await bloquearReserva(tx, id);
     const r = await tx.alqReserva.findUnique({
       where: { id },
       // Una consulta con lo que miran todos los pasos: el estado, las partes
