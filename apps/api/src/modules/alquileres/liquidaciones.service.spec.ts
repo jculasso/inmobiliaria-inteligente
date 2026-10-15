@@ -77,7 +77,10 @@ function makeTx(
     },
     // Lo que filtra la base (propietario en su contrato y con saldo): acá, todos;
     // el filtro en memoria que sigue después lo vuelve a comprobar.
-    $queryRaw: vi.fn(async () => (deDueno as { id: string }[]).map((k) => ({ id: k.id }))),
+    // `ya_liquidado`: lo que ya se le liquidó por pagos parciales (regla 22).
+    $queryRaw: vi.fn(async (): Promise<{ id: string; ya_liquidado?: Prisma.Decimal }[]> =>
+      (deDueno as { id: string }[]).map((k) => ({ id: k.id })),
+    ),
     alqConcepto: {
       // La primera consulta trae lo del propietario; la segunda, lo del inquilino de esos contratos.
       findMany: vi.fn(
@@ -382,6 +385,39 @@ describe('LiquidacionesService (reglas 20 a 22)', () => {
       );
     };
     expect(await consultas(5)).toBe(await consultas(25));
+  });
+
+  // Prueba de volumen del 15/10/2026: en producción cada consulta son dos
+  // viajes a São Paulo (~300 ms). Lo ya liquidado de cada concepto (regla 22)
+  // viene en la misma consulta que encuentra lo pendiente.
+  it('preparar hace las mismas tres lecturas de conceptos con 5 conceptos y con 25', async () => {
+    const lecturas = async (k: number) => {
+      const tx = makeTx({ delDueno: Array.from({ length: k }, () => delDueno()) });
+      await new LiquidacionesService(makeDb(tx)).preparar(DUENO, 'ARS', '2026-11-12');
+      // Ninguna lectura aparte de las partes ya separadas.
+      for (const [args] of tx.alqConcepto.findMany.mock.calls)
+        expect((args as { where: object }).where).not.toHaveProperty('origenId');
+      return tx.$queryRaw.mock.calls.length + tx.alqConcepto.findMany.mock.calls.length;
+    };
+    // Lo pendiente (SQL), sus filas y lo que pagó el inquilino de esos meses.
+    expect(await lecturas(5)).toBe(3);
+    expect(await lecturas(25)).toBe(3);
+  });
+
+  it('lo ya liquidado que trae la consulta no se vuelve a liquidar', async () => {
+    // Se le liquidó la mitad cuando el inquilino pagó la mitad; no pagó nada más.
+    const resto = delDueno({ importe: dec(568_759) });
+    const tx = makeTx({
+      delDueno: [resto],
+      delInquilino: [alquilerDelInquilino(568_759)],
+    });
+    tx.$queryRaw.mockResolvedValueOnce([{ id: resto.id, ya_liquidado: dec(568_759) }]);
+    const prep = await new LiquidacionesService(makeDb(tx)).preparar(DUENO, 'ARS', '2026-11-12');
+    expect(prep.aPagar).toEqual([]);
+    expect(prep.enEspera.map((x) => x.importe)).toEqual([568_759]);
+    // La consulta suma las partes separadas de cada concepto por su marca.
+    const sql = (tx.$queryRaw.mock.calls[0] as unknown as [TemplateStringsArray])[0].join('?');
+    expect(sql).toMatch(/s\.origen_id = k\.id/);
   });
 });
 
