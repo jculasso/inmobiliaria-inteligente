@@ -1722,6 +1722,11 @@ export type IndicesDto = z.infer<typeof IndicesDtoSchema>;
 export const TableroAlquileresQuerySchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100).optional(),
   tipo: FiltroTipoContratoSchema.default('todos'),
+  /**
+   * `compacto`: cada fila viaja una vez (`tablero-alquileres-compacto.ts`).
+   * Sin él, la forma de siempre: una web vieja sigue andando con la API nueva.
+   */
+  formato: z.enum(['completo', 'compacto']).default('completo'),
 });
 export type TableroAlquileresQuery = z.infer<typeof TableroAlquileresQuerySchema>;
 

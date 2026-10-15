@@ -6,6 +6,7 @@ import {
   ROLES_ADMINISTRACION_ALQUILERES,
   TRAMOS_MORA,
   TableroAlquileresQuerySchema,
+  compactarTableros,
   type DetalleTableroQuery,
   type TableroAlquileresQuery,
 } from '@vacker/types';
@@ -48,8 +49,18 @@ export class TableroAlquileresController {
     summary: 'Los tres cortes del tablero —todos, particulares y comerciales— de una sola lectura',
   })
   @ApiQuery({ name: 'anio', required: false, example: 2026 })
-  completo(@Query(new ZodValidationPipe(TableroAlquileresQuerySchema)) q: TableroAlquileresQuery) {
-    return this.tablero.tableros(undefined, q.anio);
+  @ApiQuery({
+    name: 'formato',
+    required: false,
+    enum: ['completo', 'compacto'],
+    description:
+      '`compacto`: cada fila viaja una vez, en `filas`, y cada número lleva sus posiciones (TablerosCompactosDto). Por defecto, la forma completa.',
+  })
+  async completo(
+    @Query(new ZodValidationPipe(TableroAlquileresQuerySchema)) q: TableroAlquileresQuery,
+  ) {
+    const tableros = await this.tablero.tableros(undefined, q.anio);
+    return q.formato === 'compacto' ? compactarTableros(tableros) : tableros;
   }
 
   /**

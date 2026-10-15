@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -12,9 +12,10 @@ import {
   type Indicador,
   type IndicadorDetalleTablero,
   type MonedaAlquiler,
+  type RespuestaTablerosAlquileres,
   type TableroAlquileresDto,
-  type TablerosAlquileresDto,
   type TramoMora,
+  tablerosDeRespuesta,
 } from '@vacker/types';
 import { Card, KpiCard, Modal } from '@vacker/ui';
 import { getDetalleTableroAlquileres } from '../../lib/alquileres-api';
@@ -700,7 +701,8 @@ export function TableroAlquileres({
   tipoInicial = 'todos',
   periodoInicial,
 }: {
-  tableros: TablerosAlquileresDto;
+  /** La forma compacta (cada fila una vez) o, de una API anterior, la completa. */
+  tableros: RespuestaTablerosAlquileres;
   tipoInicial?: FiltroTipoContrato;
   periodoInicial?: PeriodoTablero;
 }) {
@@ -711,7 +713,10 @@ export function TableroAlquileres({
   // Los tres cortes ya están acá: cambiar de tipo es instantáneo (Javier,
   // 6/10/2026: «parece que no está funcionando»). Solo el año vuelve a pedir.
   const [tipo, setTipo] = useState<FiltroTipoContrato>(tipoInicial);
-  const t = tableros[tipo];
+  // Se expande acá, en el navegador, y una sola vez: así la forma compacta
+  // viaja también de Vercel al navegador, no solo de la API a Vercel.
+  const cortes = useMemo(() => tablerosDeRespuesta(tableros), [tableros]);
+  const t = cortes[tipo];
   const [anioElegido, setAnioElegido] = useState(t.anio);
   // Regla 74: los doce meses también están acá; cambiar de período tampoco pide nada.
   const [periodo, setPeriodo] = useState<PeriodoTablero>(

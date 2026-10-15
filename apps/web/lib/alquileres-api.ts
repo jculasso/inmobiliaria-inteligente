@@ -6,7 +6,7 @@ import {
   UrlArchivoDtoSchema,
   type CambioFirmaManualInput,
   TableroAlquileresDtoSchema,
-  TablerosAlquileresDtoSchema,
+  RespuestaTablerosAlquileresSchema,
   IndicadorSchema,
   type DetalleTableroQuery,
   LiquidacionDtoSchema,
@@ -336,12 +336,17 @@ export async function generarLiquidacionPdf(accessToken: string, id: string) {
   return apiFetchPdf(`/alquileres/liquidaciones/${id}/pdf`, { accessToken });
 }
 
-/** El tablero del módulo (reglas 26 a 32). */
-/** Los tres cortes del tablero de una vez: el filtro Todos / Particulares / Comerciales no vuelve a pedir nada. */
+/**
+ * Los tres cortes del tablero de una vez: el filtro Todos / Particulares /
+ * Comerciales no vuelve a pedir nada. En la forma compacta —cada fila una
+ * vez—; una API anterior la ignora y contesta la completa, que también sirve.
+ * Se expande en el navegador (`tablerosDeRespuesta`): así tampoco viaja
+ * repetida de Vercel al navegador.
+ */
 export async function getTablerosAlquileres(accessToken: string, anio?: number) {
   return apiFetch(
-    `/alquileres/tablero/completo${anio ? `?anio=${anio}` : ''}`,
-    TablerosAlquileresDtoSchema,
+    `/alquileres/tablero/completo?formato=compacto${anio ? `&anio=${anio}` : ''}`,
+    RespuestaTablerosAlquileresSchema,
     { accessToken },
   );
 }

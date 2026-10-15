@@ -45,6 +45,8 @@ export * from './protocolo';
 export * from './reporte-protocolo';
 export * from './publicacion';
 export * from './alquileres';
+// El Dashboard de Alquileres con cada fila una sola vez (octubre de 2026).
+export * from './tablero-alquileres-compacto';
 // El informe al propietario (reglas 83 a 98 de la spec de alquileres).
 export * from './informe-propietario';
 // El inventario del contrato y la reserva (reglas 150 a 168).
