@@ -655,6 +655,9 @@ Todo vive en `apps/api/src/modules/alquileres/candados.ts`:
 - `bloquearReserva(tx, id)`: `SELECT … FOR UPDATE` de la fila. Lo toman todos
   los que cambian una reserva (editar, pasos, cobrar la seña, garantías,
   convertir).
+- `bloquearReservasDelCobro(tx, cobroId)`: lo mismo desde Cobros, al anular el
+  recibo de una seña. Sin él, anular el recibo y rechazar la reserva a la vez
+  dejaba viva la seña retenida para el propietario.
 - `tomarCandados(tx, tenant, …)`: `pg_advisory_xact_lock` por inmobiliaria.
   **El orden es siempre el mismo** —`alq_generacion`, `alq_cobro`,
   `alq_liquidacion`, y antes que todos la fila de la reserva— y la función lo

@@ -659,4 +659,30 @@ describe('CobrosService.anular · el recibo de la seña (reglas 169 y 171)', () 
     );
     expect(tx.alqCobro.updateMany).not.toHaveBeenCalled();
   });
+
+  // Revisión de seguridad del 15/10/2026: anular el recibo y rechazar la
+  // reserva a la vez dejaba viva la seña retenida para el propietario.
+  it('bloquea la reserva del recibo antes de leerlo, como primer candado', async () => {
+    const tx = makeTx({
+      cobroAAnular: {
+        anuladoEn: null,
+        numero: 123,
+        imputaciones: [],
+        conceptos: [{ imputaciones: [], liquidacion: null }],
+        registradas: [],
+      },
+    });
+    await new CobrosService(makeDb(tx)).anular(CTX, 'c-sena', 'Se cargó a la persona equivocada');
+    const [sql, ...valores] = tx.$executeRaw.mock.calls[0]!;
+    const texto = (sql as TemplateStringsArray).join('?').replace(/\s+/g, ' ');
+    expect(texto).toMatch(
+      /FROM alq_reserva WHERE id IN \(SELECT reserva_id FROM alq_concepto WHERE cobro_id = \?::uuid .*\) ORDER BY id FOR UPDATE/,
+    );
+    expect(valores).toEqual(['c-sena']);
+    // Antes de leer el recibo, y ningún candado de número antes que la fila.
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]!).toBeLessThan(
+      tx.alqCobro.findUnique.mock.invocationCallOrder[0]!,
+    );
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+  });
 });

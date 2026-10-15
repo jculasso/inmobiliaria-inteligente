@@ -5,6 +5,7 @@ import { ContratoInputSchema, InventarioInputSchema, ReservaInputSchema } from '
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import type { TenantContext } from '../src/prisma/tenant-context';
+import { CobrosService } from '../src/modules/alquileres/cobros.service';
 import { ContratoCompletoService } from '../src/modules/alquileres/contrato-completo.service';
 import { ContratosService } from '../src/modules/alquileres/contratos.service';
 import { LiquidacionesService } from '../src/modules/alquileres/liquidaciones.service';
@@ -387,6 +388,29 @@ suite('Reservas, seña e inventario contra la base (reglas 153 a 171)', () => {
       (final.estado === 'anulada' && recibos === 0) ||
         (final.estado === 'reservada' && recibos === 1),
     ).toBe(true);
+  }, 60_000);
+
+  it('regla 171: anular el recibo de la seña mientras se rechaza la reserva no deja viva la retenida', async () => {
+    const r = await reservaNueva('Anular recibo y rechazar');
+    const { sena } = await reservas.cobrarSena(ctx, r.id, PAGO);
+    await reservas.cambiarEstado(ctx, r.id, { estado: 'en_estudio' });
+    const cobros = new CobrosService(db);
+    const [anular, rechazar] = await Promise.allSettled([
+      cobros.anular(ctx, sena!.recibo!.id, 'Prueba simultánea'),
+      reservas.cambiarEstado(ctx, r.id, {
+        estado: 'rechazada',
+        motivo: 'Prueba simultánea',
+        propietarioId: duena,
+      }),
+    ]);
+    // Los dos se aplican, en el orden que sea: no se contradicen.
+    expect([anular!.status, rechazar!.status]).toEqual(['fulfilled', 'fulfilled']);
+    expect((await reservas.obtener(r.id)).estado).toBe('rechazada');
+    // Con el recibo anulado, nada de lo que nació con él puede seguir vivo:
+    // ni la seña ni la retenida para el propietario.
+    expect(
+      await siembra.alqConcepto.count({ where: { cobroId: sena!.recibo!.id, anuladoEn: null } }),
+    ).toBe(0);
   }, 60_000);
 
   it('regla 153: un contrato viejo tiene el inventario vacío; se guarda y se lee entero', async () => {
