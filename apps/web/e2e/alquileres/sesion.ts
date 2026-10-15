@@ -10,6 +10,11 @@ import { cookieDeSesion } from '../simulador/identidad';
  * se escapara hacia un servicio de verdad, la prueba falla en vez de llegar.
  */
 export const test = base.extend<{ esTelefono: boolean }>({
+  // Sin service worker: estas pruebas miran las pantallas, no la PWA (eso lo
+  // cubre `acceso.spec.ts`). En CI, con WebKit, una vez apareció el aviso «Hay
+  // una versión nueva disponible» en una página recién abierta y tapó el botón
+  // «Siguiente →» del alta de contrato (15/10/2026).
+  serviceWorkers: 'block',
   // Playwright exige desestructurar el primer parámetro, aunque no se use nada.
   // eslint-disable-next-line no-empty-pattern
   esTelefono: async ({}, usar, info) => {
