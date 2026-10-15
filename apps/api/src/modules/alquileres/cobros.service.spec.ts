@@ -5,6 +5,8 @@ import { CobroInputSchema, type CobroInput } from '@vacker/types';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { CobrosService } from './cobros.service';
 import { mocksDeHistorial } from './historial.testing';
+import { siguienteNumeroDeRecibo } from './numeracion';
+import { cobrarSena } from './sena';
 
 const CTX = { tenantId: 't1', userId: 'u1', roles: ['administracion' as const] };
 const PERSONA = '11111111-1111-4111-8111-111111111111';
@@ -223,6 +225,92 @@ describe('CobrosService.registrar (reglas 15 a 17)', () => {
       ].reduce((s, f) => s + f.mock.calls.length, 0);
     };
     expect(await cuenta(5)).toBe(await cuenta(25));
+  });
+});
+
+describe('La numeración de recibos: una sola serie para Cobros y la seña', () => {
+  type Tx = ReturnType<typeof makeTx>;
+  const CANDADO = 'SELECT pg_advisory_xact_lock(hashtext(?))';
+  /** Cada `$executeRaw`: el SQL con `?` en lugar de los valores, y los valores. */
+  const sentencias = (tx: Tx) =>
+    tx.$executeRaw.mock.calls.map((c) => [(c[0] as TemplateStringsArray).join('?'), ...c.slice(1)]);
+  const RESERVA = {
+    id: 'r1',
+    numero: 12,
+    importe: 500,
+    moneda: 'USD' as const,
+    propiedad: 'Mitre 1234',
+  };
+  const PAGO = {
+    personaId: PERSONA,
+    fecha: '2026-10-15',
+    medio: 'transferencia',
+    obs: null,
+  } as const;
+  /** El `tx` de Cobros, con lo que además usa la seña y los recibos en memoria. */
+  const txConRecibos = (existentes: number[] = []) => {
+    const recibos = [...existentes];
+    const base = makeTx({ conceptos: [concepto()] });
+    base.alqCobro.aggregate.mockImplementation(async () => ({
+      _max: { numero: recibos.length ? Math.max(...recibos) : null },
+    }));
+    base.alqCobro.create.mockImplementation(async ({ data }: { data: { numero: number } }) => {
+      recibos.push(data.numero);
+      return data;
+    });
+    const tx = {
+      ...base,
+      alqConcepto: { ...base.alqConcepto, create: vi.fn() },
+      alqImputacion: { ...base.alqImputacion, create: vi.fn() },
+    };
+    return { tx, recibos };
+  };
+  const cobrar = (tx: Tx) => new CobrosService(makeDb(tx)).registrar(CTX, input());
+  const cobrarLaSena = (tx: Tx) => cobrarSena(tx as never, CTX, RESERVA, PAGO);
+
+  it('el siguiente número sale después del candado de la inmobiliaria, y arranca en 1', async () => {
+    const { tx } = txConRecibos([3, 7]);
+    expect(await siguienteNumeroDeRecibo(tx as never, 't1')).toBe(8);
+    expect(sentencias(tx)).toEqual([[CANDADO, 't1:alq_cobro']]);
+    expect(tx.alqCobro.aggregate).toHaveBeenCalledWith({ _max: { numero: true } });
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]!).toBeLessThan(
+      tx.alqCobro.aggregate.mock.invocationCallOrder[0]!,
+    );
+    expect(await siguienteNumeroDeRecibo(txConRecibos().tx as never, 't1')).toBe(1);
+  });
+
+  it('Cobros y la seña sacan el número con las mismas sentencias, en el mismo orden', async () => {
+    const deCobros = txConRecibos([7]).tx;
+    const deLaSena = txConRecibos([7]).tx;
+    await cobrar(deCobros);
+    await cobrarLaSena(deLaSena);
+    for (const tx of [deCobros, deLaSena]) {
+      // Un solo candado, el del número; antes del máximo, y el máximo antes del recibo.
+      expect(sentencias(tx)).toEqual([[CANDADO, 't1:alq_cobro']]);
+      expect(tx.alqCobro.aggregate.mock.calls).toEqual([[{ _max: { numero: true } }]]);
+      expect(tx.$executeRaw.mock.invocationCallOrder[0]!).toBeLessThan(
+        tx.alqCobro.aggregate.mock.invocationCallOrder[0]!,
+      );
+      expect(tx.alqCobro.aggregate.mock.invocationCallOrder[0]!).toBeLessThan(
+        tx.alqCobro.create.mock.invocationCallOrder[0]!,
+      );
+      expect(tx.alqCobro.create.mock.calls[0]![0].data.numero).toBe(8);
+    }
+  });
+
+  it('un recibo de seña y uno común comparten la serie: 8, 9, 10', async () => {
+    const { tx, recibos } = txConRecibos([7]);
+    await cobrar(tx);
+    expect(await cobrarLaSena(tx)).toMatchObject({ numero: 9 });
+    await cobrar(tx);
+    expect(recibos).toEqual([7, 8, 9, 10]);
+    // El mismo formato en el historial de los dos.
+    const resumenes = tx.alqEvento.createMany.mock.calls.flatMap((c) =>
+      (c[0] as { data: { resumen: string }[] }).data.map((e) => e.resumen),
+    );
+    expect(resumenes.some((r) => r.startsWith('Recibo 000008 por'))).toBe(true);
+    expect(resumenes.some((r) => r.startsWith('Recibo 000009 por'))).toBe(true);
+    expect(resumenes.some((r) => r.startsWith('Recibo 000010 por'))).toBe(true);
   });
 });
 

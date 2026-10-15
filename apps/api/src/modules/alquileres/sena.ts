@@ -6,8 +6,8 @@ import { cargoConIva, redondear2, repartir } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
-import { tomarCandados } from './candados';
 import { plata, registrarEventos } from './historial';
+import { nroRecibo, siguienteNumeroDeRecibo } from './numeracion';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -61,9 +61,6 @@ type ConceptoDeLaSena = Prisma.AlqConceptoGetPayload<{
 export const senaCobrada = (ks: ConceptoDeLaSena[]) =>
   ks.find((k) => k.sentido === 'a_cobrar' && k.cobro) ?? null;
 
-/** «000123», como en el recibo. */
-export const nroRecibo = (n: number) => String(n).padStart(6, '0');
-
 /** La seña de la reserva: la acordada y, si se cobró, su recibo. */
 export function senaDto(
   r: { senaImporte: Prisma.Decimal | null; senaMoneda: string | null },
@@ -88,17 +85,6 @@ export function senaRetenida(ks: ConceptoDeLaSena[]): number | null {
 }
 
 /**
- * El número del próximo recibo, con el MISMO candado que Cobros
- * (`CobrosService.registrar`): dos cobros a la vez no pueden sacar el mismo
- * número, vengan de donde vengan.
- */
-async function numeroDeRecibo(tx: Tx, tenantId: string): Promise<number> {
-  await tomarCandados(tx, tenantId, 'alq_cobro');
-  const ultimo = await tx.alqCobro.aggregate({ _max: { numero: true } });
-  return (ultimo._max.numero ?? 0) + 1;
-}
-
-/**
  * Regla 169: cobrar la seña. El concepto del interesado, el recibo y la
  * imputación, juntos; y el historial de la reserva y el de la persona.
  */
@@ -110,7 +96,8 @@ export async function cobrarSena(
 ): Promise<{ cobroId: string; numero: number }> {
   const cobroId = randomUUID();
   const conceptoId = randomUUID();
-  const numero = await numeroDeRecibo(tx, ctx.tenantId);
+  // La misma serie que los recibos de Cobros.
+  const numero = await siguienteNumeroDeRecibo(tx, ctx.tenantId);
   await tx.alqCobro.create({
     data: {
       id: cobroId,
