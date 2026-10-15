@@ -205,6 +205,15 @@ const VISTAS = {
     ['estado', 'Estado'],
     ['importe', 'Falta cobrar'],
   ],
+  // Regla 166: la seña va en `importe`, pero no se totaliza (no es plata del mes).
+  reservas: [
+    ['detalle', 'Reserva'],
+    ['propiedad', 'Propiedad'],
+    ['inquilino', 'Interesado'],
+    ['fecha', 'Vence'],
+    ['estado', 'Estado'],
+    ['importe', 'Seña'],
+  ],
 } satisfies Record<string, [Columna, string][]>;
 
 /**
@@ -913,6 +922,21 @@ export function TableroAlquileres({
       columnas: VISTAS.boletas,
       total: 'ARS',
       accion: { href: '/alquileres/impuestos?ver=pagar', texto: 'Ir a «Para pagar»' },
+    },
+    // Regla 166: las reservas, antes de que se pierdan o de que el contrato se demore.
+    {
+      icono: '🔖',
+      titulo: 'Reservas que vencen en 7 días o ya vencidas',
+      ind: t.tareas.reservasPorVencer,
+      columnas: VISTAS.reservas,
+      accion: { href: '/alquileres/reservas', texto: 'Ir a reservas' },
+    },
+    {
+      icono: '🤝',
+      titulo: 'Reservas aprobadas sin contrato',
+      ind: t.tareas.reservasAprobadas,
+      columnas: VISTAS.reservas,
+      accion: { href: '/alquileres/reservas?estado=aprobada', texto: 'Ir a reservas' },
     },
   ];
 

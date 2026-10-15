@@ -54,6 +54,8 @@ export interface IdsDeTenant {
   alqCuentaServicio: string;
   alqPoliza: string;
   alqBoleta: string;
+  alqReserva: string;
+  alqReservaParte: string;
   /**
    * Un segundo usuario y una segunda tasación por inmobiliaria.
    *
@@ -118,6 +120,8 @@ export function nuevosIds(n: number): IdsDeTenant {
     alqCuentaServicio: randomUUID(),
     alqPoliza: randomUUID(),
     alqBoleta: randomUUID(),
+    alqReserva: randomUUID(),
+    alqReservaParte: randomUUID(),
     usuarioSecundario: randomUUID(),
     tasacionSecundaria: randomUUID(),
     contratoSecundario: randomUUID(),
@@ -805,6 +809,50 @@ export const TABLAS: TablaBajoPrueba[] = [
       importe: 1000,
       aCargoDe: 'inquilino',
       paga: 'inquilino',
+    }),
+  },
+  // Entrega C (reglas 154 a 168): la reserva y sus partes.
+  {
+    tabla: 'alq_reserva',
+    modelo: 'alqReserva',
+    claveId: 'alqReserva',
+    campoTenant: 'tenantId',
+    campoEditable: 'obs',
+    // `numero` es único por inmobiliaria: sale de `n`. Y ANULADA a propósito:
+    // una abierta chocaría con el índice único parcial «una reserva abierta
+    // por propiedad» (regla 156) antes de llegar a RLS, y el test daría
+    // verde sin haberlo ejercido.
+    fila: (t, i) => ({
+      id: i.alqReserva,
+      tenantId: t,
+      numero: i.n,
+      propiedadId: i.alqPropiedad,
+      fecha: HOY,
+      vence: HOY,
+      estado: 'anulada',
+    }),
+  },
+  {
+    tabla: 'alq_reserva_parte',
+    modelo: 'alqReservaParte',
+    claveId: 'alqReservaParte',
+    campoTenant: 'tenantId',
+    campoEditable: 'papel',
+    fila: (t, i) => ({
+      id: i.alqReservaParte,
+      tenantId: t,
+      reservaId: i.alqReserva,
+      personaId: i.alqPersona,
+      papel: 'inquilino',
+    }),
+    // (reserva, persona, papel) es único: la intrusa cambia el papel, como en
+    // `alq_contrato_parte`.
+    filaIntrusa: (t, i) => ({
+      id: randomUUID(),
+      tenantId: t,
+      reservaId: i.alqReserva,
+      personaId: i.alqPersona,
+      papel: 'garante',
     }),
   },
 ];

@@ -26,6 +26,7 @@ const plantilla = (over: Partial<PlantillaDto>): PlantillaDto => ({
   id: '11111111-1111-4111-8111-111111111111',
   nombre: 'Locación vivienda',
   tipoContrato: null,
+  documento: 'contrato',
   formato: 'word',
   nombreArchivo: 'Contrato.docx',
   tamano: 1000,

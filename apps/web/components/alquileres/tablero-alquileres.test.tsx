@@ -134,6 +134,8 @@ const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto
     boletas: vacio,
     indexacionesEsperan: vacio,
     finalesPendientes: vacio,
+    reservasPorVencer: vacio,
+    reservasAprobadas: vacio,
   },
   ...over,
 });
@@ -596,5 +598,41 @@ describe('TableroAlquileres', () => {
       fireEvent.click(within(encabezados[2]!).getByRole('button', { name: 'Feb' }));
       expect(screen.getByLabelText('Mes')).toHaveValue('2');
     });
+  });
+});
+
+// Regla 166 (entrega C, 15/10/2026): las reservas en «Lo que hay que hacer».
+describe('TableroAlquileres · las reservas', () => {
+  it('regla 166: las que vencen y las aprobadas sin contrato; cada fila abre la reserva', () => {
+    const reserva = fila(1, 500, {
+      id: 'res1',
+      href: '/alquileres/reservas/res1',
+      contrato: null,
+      detalle: 'Reserva 1',
+      inquilino: 'Ana Interesada',
+      moneda: 'USD',
+      estado: 'Vencida hace 2 días',
+    });
+    const base = tablero();
+    render(
+      <TableroAlquileres
+        tableros={tres({
+          ...base,
+          tareas: { ...base.tareas, reservasPorVencer: ind([reserva]), reservasAprobadas: vacio },
+        })}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Reservas aprobadas sin contrato/ })).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Reservas que vencen en 7 días o ya vencidas/ }),
+    );
+    const dialogo = within(screen.getByRole('dialog'));
+    expect(dialogo.getAllByText('Vencida hace 2 días')[0]).toBeInTheDocument();
+    expect(dialogo.getAllByText('U$S 500,00')[0]).toBeInTheDocument();
+    expect(dialogo.getAllByRole('link')[0]).toHaveAttribute('href', '/alquileres/reservas/res1');
+    expect(dialogo.getByRole('link', { name: 'Ir a reservas →' })).toHaveAttribute(
+      'href',
+      '/alquileres/reservas',
+    );
   });
 });

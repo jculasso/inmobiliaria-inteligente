@@ -632,11 +632,20 @@ export async function listPlantillas(accessToken: string) {
 }
 
 /** Sube una plantilla en Word. Si un marcador está mal, el error los nombra a todos. */
-export async function subirPlantilla(accessToken: string, meta: PlantillaMetadatos, file: File) {
+export async function subirPlantilla(
+  accessToken: string,
+  meta: Omit<PlantillaMetadatos, 'documento'> & { documento?: PlantillaMetadatos['documento'] },
+  file: File,
+) {
   return apiFetchForm('/alquileres/plantillas', PlantillaDtoSchema, {
     accessToken,
     file,
-    campos: { nombre: meta.nombre, tipoContrato: meta.tipoContrato ?? '' },
+    campos: {
+      nombre: meta.nombre,
+      tipoContrato: meta.tipoContrato ?? '',
+      // Regla 162: de contrato o de reserva; se revisa contra los marcadores de ese documento.
+      documento: meta.documento ?? 'contrato',
+    },
   });
 }
 

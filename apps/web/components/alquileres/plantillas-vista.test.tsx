@@ -6,6 +6,10 @@ const subirPlantilla = vi.fn();
 const descargarPlantilla = vi.fn();
 const descargarEjemploPlantilla = vi.fn();
 const descargarArchivo = vi.fn();
+const descargarEjemploReserva = vi.fn();
+vi.mock('../../lib/reservas-api', () => ({
+  descargarEjemploReserva: (...a: unknown[]) => descargarEjemploReserva(...a),
+}));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('../../lib/supabase/client', () => ({
   getAccessToken: vi.fn().mockResolvedValue('token'),
@@ -28,6 +32,7 @@ const WORD: PlantillaDto = {
   id: '11111111-1111-4111-8111-111111111111',
   nombre: 'Locación vivienda',
   tipoContrato: 'vivienda',
+  documento: 'contrato',
   formato: 'word',
   nombreArchivo: 'Contrato Alteva.docx',
   tamano: 20_000,
@@ -79,7 +84,7 @@ describe('PlantillasVista', () => {
     await waitFor(() =>
       expect(subirPlantilla).toHaveBeenCalledWith(
         'token',
-        { nombre: 'Comercial', tipoContrato: 'comercial' },
+        { nombre: 'Comercial', tipoContrato: 'comercial', documento: 'contrato' },
         archivo,
       ),
     );
@@ -131,9 +136,41 @@ describe('PlantillasVista', () => {
     const blob = new Blob(['PK']);
     descargarEjemploPlantilla.mockResolvedValueOnce({ blob, nombre: 'Ejemplo.docx' });
     render(<PlantillasVista plantillas={[]} />);
-    fireEvent.click(
-      screen.getByRole('button', { name: '⬇️ Descargar el ejemplo con todos los marcadores' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: '⬇️ Ejemplo de contrato' }));
     await waitFor(() => expect(descargarArchivo).toHaveBeenCalledWith(blob, 'Ejemplo.docx'));
+  });
+
+  // Regla 162: una plantilla es de contrato o de reserva; se elige al subirla.
+  it('regla 162: sube el formulario de reserva como plantilla de reserva', async () => {
+    subirPlantilla.mockResolvedValueOnce({ ...WORD, documento: 'reserva' });
+    render(<PlantillasVista plantillas={[]} />);
+    abrirSubida();
+    fireEvent.change(screen.getByLabelText(/Es la plantilla de/), {
+      target: { value: 'reserva' },
+    });
+    expect(screen.getByLabelText(/Nombre/)).toHaveValue('Formulario de reserva');
+    const archivo = docx();
+    fireEvent.change(screen.getByLabelText(/Archivo de Word/), { target: { files: [archivo] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Subir' }));
+    await waitFor(() =>
+      expect(subirPlantilla).toHaveBeenCalledWith(
+        'token',
+        { nombre: 'Formulario de reserva', tipoContrato: null, documento: 'reserva' },
+        archivo,
+      ),
+    );
+  });
+
+  it('regla 162: la lista marca las de reserva; regla 163: baja el ejemplo de reserva', async () => {
+    const blob = new Blob(['PK']);
+    descargarEjemploReserva.mockResolvedValueOnce({ blob, nombre: 'Reserva.docx' });
+    render(
+      <PlantillasVista
+        plantillas={[{ ...WORD, nombre: 'Reserva Vacker', documento: 'reserva' }]}
+      />,
+    );
+    expect(screen.getByText('Reserva Vacker').closest('p')).toHaveTextContent('Reserva');
+    fireEvent.click(screen.getByRole('button', { name: '⬇️ Ejemplo de reserva' }));
+    await waitFor(() => expect(descargarArchivo).toHaveBeenCalledWith(blob, 'Reserva.docx'));
   });
 });

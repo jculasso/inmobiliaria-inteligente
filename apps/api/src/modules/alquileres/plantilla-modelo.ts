@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { NOMBRE_TIPO_CONTRATO } from '@vacker/types';
+import { NOMBRE_TIPO_CONTRATO, leerItemsInventario } from '@vacker/types';
 import { fechaCorta, importeEnLetras } from '@vacker/domain';
 import { decToNum, fromDate } from '../tablero/tablero.util';
 import { mesesDeContrato } from './contrato-completo.service';
@@ -23,6 +23,8 @@ export const SELECT_PLANTILLA = {
   punitorioDiarioPct: true,
   depositoImporte: true,
   depositoMoneda: true,
+  inventario: true,
+  inventarioObs: true,
   propiedad: { select: { direccion: true, unidad: true, ciudad: true } },
   partes: {
     select: {
@@ -154,6 +156,14 @@ export function datosDePlantilla(
     propietarios,
     inquilinos,
     garantes,
+    // Regla 152: el inventario. Una fila vieja lo trae vacío (regla 153).
+    'contrato.inventario_observaciones': c.inventarioObs ?? '',
+    inventario: leerItemsInventario(c.inventario).map((item, i) => ({
+      numero: String(i + 1),
+      descripcion: item.descripcion,
+      cantidad: String(item.cantidad),
+      estado: item.estado ?? '',
+    })),
     tramos: c.tramos.map((t) => {
       const importe = t.importe != null ? decToNum(t.importe) : null;
       return {

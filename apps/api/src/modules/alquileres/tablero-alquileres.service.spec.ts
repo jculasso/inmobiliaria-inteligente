@@ -218,6 +218,25 @@ function servicio(over: Fixture = {}) {
         ];
       }),
     },
+    // Regla 166: las reservas abiertas, en una sola consulta.
+    alqReserva: {
+      findMany: vi.fn(async () => {
+        consultas.n++;
+        return [
+          {
+            id: 'res1',
+            numero: 1,
+            estado: 'aprobada',
+            tipo: 'vivienda',
+            vence: d('2026-10-20'),
+            senaImporte: dec(500),
+            senaMoneda: 'USD',
+            propiedad: { direccion: 'Mitre 100', unidad: null },
+            partes: [{ persona: { nombre: 'Ana Interesada' } }],
+          },
+        ];
+      }),
+    },
     $queryRaw: vi.fn(async (q: Prisma.Sql) => {
       consultas.n++;
       valores.push(q.values);
@@ -978,7 +997,8 @@ describe('TableroAlquileresService', () => {
       };
       const cinco = await cuantas(5);
       expect(await cuantas(25)).toEqual(cinco);
-      expect(cinco.delTablero).toBe(8);
+      // Nueve: la última, las reservas abiertas (regla 166).
+      expect(cinco.delTablero).toBe(9);
       expect(Math.max(...cinco.delDetalle)).toBeLessThanOrEqual(2);
     });
   });

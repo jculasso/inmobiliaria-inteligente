@@ -80,13 +80,23 @@ export class PropiedadesAlquilerService {
     return this.db.withTenant(async (tx) => {
       const p = await tx.alqPropiedad.findUnique({
         where: { id },
-        select: { direccion: true, unidad: true, _count: { select: { contratos: true } } },
+        select: {
+          direccion: true,
+          unidad: true,
+          _count: { select: { contratos: true, reservas: true } },
+        },
       });
       if (!p) throw new NotFoundException('Propiedad no encontrada.');
       const n = p._count.contratos;
       if (n)
         throw new ConflictException(
           `${unidad(p)} no se puede borrar: tiene ${n} ${n === 1 ? 'contrato' : 'contratos'}. Lo que tiene historia queda.`,
+        );
+      // Una reserva tampoco se borra (regla 155): la propiedad que la tuvo queda.
+      const r = p._count.reservas;
+      if (r)
+        throw new ConflictException(
+          `${unidad(p)} no se puede borrar: tiene ${r} ${r === 1 ? 'reserva' : 'reservas'}. Lo que tiene historia queda.`,
         );
       await tx.alqPropiedad.delete({ where: { id } });
       await registrarEventos(tx, ctx, {

@@ -320,4 +320,26 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     );
     await siembra.alqComprobante.delete({ where: { id: propio.id } });
   });
+
+  // Regla 154: las partes de una reserva son personas de la misma inmobiliaria.
+  it('regla 154: desde el tenant A, una parte de reserva que apunta a una persona del B es rechazada por la base', async () => {
+    const parte = (personaId: string) => ({
+      tenantId: idsA.tenant,
+      reservaId: idsA.alqReserva,
+      personaId,
+      papel: 'propietario',
+    });
+    await expect(
+      tenantPrisma.withTenant(
+        (tx) => tx.alqReservaParte.create({ data: parte(idsB.alqPersona) }),
+        ctxA,
+      ),
+    ).rejects.toThrow();
+    // Y la misma parte con su propia persona entra: el rechazo es por cruzar inmobiliarias.
+    const propia = await tenantPrisma.withTenant(
+      (tx) => tx.alqReservaParte.create({ data: parte(idsA.alqPersona) }),
+      ctxA,
+    );
+    await siembra.alqReservaParte.delete({ where: { id: propia.id } });
+  });
 });

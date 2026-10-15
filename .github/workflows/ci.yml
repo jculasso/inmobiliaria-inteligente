@@ -181,6 +181,12 @@ jobs:
       - name: Informe al propietario contra la base
         run: pnpm --filter @vacker/api exec vitest run test/informe-propietario.e2e-spec.ts
 
+      # La reserva y el inventario (reglas 153 a 160): el índice único parcial
+      # de «una reserva abierta por propiedad», el CHECK de las garantías y la
+      # conversión en contrato en una sola transacción.
+      - name: Reservas contra la base
+        run: pnpm --filter @vacker/api exec vitest run test/reservas.e2e-spec.ts
+
       - name: Registro de PgBouncer si algo falla
         if: failure()
         run: cat /tmp/pgb/pgbouncer.log || true

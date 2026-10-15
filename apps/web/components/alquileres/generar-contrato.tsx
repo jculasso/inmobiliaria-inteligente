@@ -26,8 +26,12 @@ export function GenerarContrato({
 }) {
   const { refrescar, refrescando } = useRefrescar();
   // Las de texto del editor anterior ya no generan: se reemplazan por un Word.
+  // Las de reserva se usan desde la reserva (regla 162).
   const sirven = plantillas.filter(
-    (p) => p.formato === 'word' && (!p.tipoContrato || p.tipoContrato === contrato.tipo),
+    (p) =>
+      p.formato === 'word' &&
+      p.documento === 'contrato' &&
+      (!p.tipoContrato || p.tipoContrato === contrato.tipo),
   );
   const [plantillaId, setPlantillaId] = useState(sirven[0]?.id ?? '');
   const [error, setError] = useState<string | null>(null);

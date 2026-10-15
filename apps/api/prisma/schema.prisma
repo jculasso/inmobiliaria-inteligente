@@ -71,6 +71,8 @@ model Tenant {
   alqCuentasServicio       AlqCuentaServicio[]
   alqBoletas               AlqBoleta[]
   alqPolizas               AlqPoliza[]
+  alqReservas              AlqReserva[]
+  alqReservaPartes         AlqReservaParte[]
 
   @@map("tenant")
 }
@@ -658,6 +660,7 @@ model AlqPersona {
   cobros        AlqCobro[]
   liquidaciones AlqLiquidacion[]
   firmas        AlqFirmante[]
+  partesReserva AlqReservaParte[]
 
   @@unique([tenantId, documento])
   @@index([tenantId])
@@ -682,6 +685,7 @@ model AlqPropiedad {
   tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contratos AlqContrato[]
   cuentas   AlqCuentaServicio[]
+  reservas  AlqReserva[]
 
   @@index([tenantId])
   @@map("alq_propiedad")
@@ -730,11 +734,17 @@ model AlqContrato {
   anuladoEn          DateTime? @map("anulado_en") @db.Timestamptz(6)
   anuladoPorId       String?   @map("anulado_por_id") @db.Uuid
   motivoAnulacion    String?   @map("motivo_anulacion")
+  /// El inventario (reglas 150 a 153): `[{descripcion, cantidad, estado}]`.
+  /// Se lee con `leerItemsInventario`; una fila vieja tiene `[]`.
+  inventario         Json      @default("[]")
+  inventarioObs      String?   @map("inventario_obs")
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   propiedad  AlqPropiedad       @relation(fields: [propiedadId], references: [id], onDelete: Restrict)
+  /// La reserva de la que salió (regla 159), si salió de una.
+  reserva    AlqReserva?
   partes     AlqContratoParte[]
   tramos     AlqTramo[]
   conceptos  AlqConcepto[]
@@ -1119,11 +1129,15 @@ model AlqContacto {
   @@map("alq_contacto")
 }
 
-/// Una garantía del contrato y su informe (Gexion; punto 11 de Javier).
+/// Una garantía y su informe (Gexion; punto 11 de Javier), de un contrato o
+/// del estudio de una reserva (regla 157): una de las dos, nunca las dos (lo
+/// controla un CHECK de la base). Al convertir la reserva, las aprobadas se
+/// COPIAN al contrato: las de la reserva quedan como registro del estudio.
 model AlqGarantia {
   id         String    @id @default(uuid()) @db.Uuid
   tenantId   String    @map("tenant_id") @db.Uuid
-  contratoId String    @map("contrato_id") @db.Uuid
+  contratoId String?   @map("contrato_id") @db.Uuid
+  reservaId  String?   @map("reserva_id") @db.Uuid
   /// propietaria | laboral | caucion | otra
   tipo       String
   /// El garante si está cargado como persona (sin clave foránea: puede no estarlo).
@@ -1137,11 +1151,13 @@ model AlqGarantia {
   obs        String?
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contrato AlqContrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato AlqContrato? @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  reserva  AlqReserva?  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([contratoId])
+  @@index([reservaId])
   @@map("alq_garantia")
 }
 
@@ -1155,6 +1171,8 @@ model AlqPlantilla {
   nombre          String
   /// vivienda | comercial | null (sirve para los dos)
   tipoContrato    String?   @map("tipo_contrato")
+  /// contrato | reserva (regla 162). Las de antes del 15/10/2026, de contrato.
+  documento       String    @default("contrato")
   /// Solo las plantillas de texto del editor anterior.
   cuerpo          String?
   /// Clave del .docx en el bucket privado `alquileres-contratos`.
@@ -1409,4 +1427,79 @@ model AlqPoliza {
   @@index([contratoId])
   @@index([tenantId, hasta])
   @@map("alq_poliza")
+}
+
+/// La reserva de una propiedad, antes del contrato (reglas 154 a 168).
+/// Florencia (Vacker), 15/10/2026: «queda la reserva registrada en el
+/// sistema, y relacionada con la propiedad y luego sigue el contrato».
+///
+/// No se borra: cambia de estado y cada paso queda en `alq_evento`. Una
+/// propiedad tiene a lo sumo una abierta: lo garantiza un índice único
+/// PARCIAL que Prisma no sabe declarar y vive solo en la migración.
+model AlqReserva {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  numero            Int
+  propiedadId       String    @map("propiedad_id") @db.Uuid
+  fecha             DateTime  @db.Date
+  vence             DateTime  @db.Date
+  /// reservada | en_estudio | aprobada | convertida | rechazada | vencida | anulada
+  estado            String    @default("reservada")
+  /// La seña: se registra y no genera conceptos (regla 161).
+  senaImporte       Decimal?  @map("sena_importe") @db.Decimal(14, 2)
+  senaMoneda        String?   @map("sena_moneda")
+  senaRecibida      Boolean   @default(false) @map("sena_recibida")
+  senaRecibidaEl    DateTime? @map("sena_recibida_el") @db.Date
+  senaMedio         String?   @map("sena_medio")
+  // Las condiciones propuestas: pueden quedar sin cargar.
+  tipo              String    @default("vivienda")
+  moneda            String    @default("ARS")
+  alquilerInicial   Decimal?  @map("alquiler_inicial") @db.Decimal(14, 2)
+  inicio            DateTime? @db.Date
+  duracionMeses     Int?      @map("duracion_meses")
+  ajuste            String    @default("indexado")
+  indice            String?
+  periodicidadMeses Int?      @map("periodicidad_meses")
+  depositoImporte   Decimal?  @map("deposito_importe") @db.Decimal(14, 2)
+  depositoMoneda    String?   @map("deposito_moneda")
+  obs               String?
+  /// El motivo del rechazo o de la anulación.
+  motivo            String?
+  /// El contrato que salió de la reserva (regla 159).
+  contratoId        String?   @unique @map("contrato_id") @db.Uuid
+  creadoPorId       String?   @map("creado_por_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propiedad AlqPropiedad      @relation(fields: [propiedadId], references: [id], onDelete: Restrict)
+  contrato  AlqContrato?      @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  partes    AlqReservaParte[]
+  garantias AlqGarantia[]
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([tenantId, estado])
+  @@index([propiedadId])
+  @@map("alq_reserva")
+}
+
+/// Quién es quién en una reserva: los mismos papeles que en un contrato
+/// (`AlqContratoParte`). El interesado es el futuro inquilino.
+model AlqReservaParte {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  reservaId String @map("reserva_id") @db.Uuid
+  personaId String @map("persona_id") @db.Uuid
+  /// propietario | inquilino | garante
+  papel     String
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reserva AlqReserva @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  persona AlqPersona @relation(fields: [personaId], references: [id], onDelete: Restrict)
+
+  @@unique([reservaId, personaId, papel])
+  @@index([tenantId])
+  @@index([personaId])
+  @@map("alq_reserva_parte")
 }

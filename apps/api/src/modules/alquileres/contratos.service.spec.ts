@@ -108,6 +108,11 @@ function makeTx(
         fila({ estado: args.data.estado ?? 'borrador' }),
       ),
     },
+    // Regla 160: el borrado mira si el contrato salió de una reserva.
+    alqReserva: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      update: vi.fn(),
+    },
     alqPropiedad: {
       findUnique: vi
         .fn()
@@ -532,5 +537,48 @@ describe('ContratosService.extender (punto 13 de Javier)', () => {
         importeBase: null,
       }),
     ).rejects.toThrow(/importe del tramo nuevo/);
+  });
+});
+
+// Entrega C (Florencia, Vacker, 15/10/2026): el contrato que sale de una reserva.
+describe('ContratosService · el contrato que sale de una reserva (reglas 159 y 160)', () => {
+  it('regla 159: lo de la reserva corre en la MISMA transacción, después del alta', async () => {
+    const tx = makeTx();
+    const db = makeDb(tx);
+    const hook = vi.fn(async (t: unknown) => {
+      expect(t).toBe(tx);
+      expect(tx.alqContrato.create).toHaveBeenCalled();
+    });
+    await new ContratosService(db).crear(CTX, contrato(), hook);
+    expect(hook).toHaveBeenCalledOnce();
+    expect(db.withTenant).toHaveBeenCalledOnce();
+  });
+
+  it('regla 159: si lo de la reserva falla, el alta falla con ese error (y la transacción se deshace)', async () => {
+    const tx = makeTx();
+    await expect(
+      new ContratosService(makeDb(tx)).crear(CTX, contrato(), async () => {
+        throw new Error('La reserva 1 ya se convirtió.');
+      }),
+    ).rejects.toThrow('La reserva 1 ya se convirtió.');
+  });
+
+  it('regla 160: borrar un borrador devuelve su reserva antes de borrarlo', async () => {
+    const tx = makeTx({
+      existente: {
+        codigo: 'ALT-0003',
+        estado: 'borrador',
+        _count: { conceptos: 0, documentos: 0 },
+      },
+    });
+    tx.alqReserva.findUnique.mockResolvedValueOnce({ id: 'r1', numero: 2 });
+    await new ContratosService(makeDb(tx)).borrar(CTX, 'c1');
+    expect(tx.alqReserva.update).toHaveBeenCalledWith({
+      where: { id: 'r1' },
+      data: { estado: 'aprobada', contratoId: null },
+    });
+    expect(tx.alqReserva.update.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.alqContrato.delete.mock.invocationCallOrder[0]!,
+    );
   });
 });

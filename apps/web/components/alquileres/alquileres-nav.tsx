@@ -4,7 +4,17 @@ import { NavModulo, type Pestania } from '../nav-modulo';
 
 const TABS: Pestania[] = [
   { href: '/alquileres', label: 'Dashboard' },
-  { href: '/alquileres/contratos', label: 'Contratos' },
+  // La reserva va antes del contrato, y el contrato sale de ella (reglas 159
+  // y 164, Florencia, Vacker, 15/10/2026). En la segunda fila, como el
+  // informe de propietarios: la barra sigue con once pestañas.
+  {
+    href: '/alquileres/contratos',
+    label: 'Contratos',
+    sub: [
+      { href: '/alquileres/contratos', label: 'Contratos' },
+      { href: '/alquileres/reservas', label: 'Reservas' },
+    ],
+  },
   {
     href: '/alquileres/indexaciones',
     label: 'Indexación',
@@ -45,7 +55,8 @@ const TABS: Pestania[] = [
     icono: '⚙️',
     sub: [
       { href: '/alquileres/configuracion', label: 'Configuración' },
-      { href: '/alquileres/plantillas', label: 'Plantillas de contrato' },
+      // De contrato y de reserva (regla 162).
+      { href: '/alquileres/plantillas', label: 'Plantillas' },
     ],
   },
 ];

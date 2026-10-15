@@ -139,7 +139,7 @@ describe('PlantillasService · subir una plantilla', () => {
     const { s, storage, tx } = servicio();
     const dto = await s.crear(
       CTX,
-      { nombre: 'Locación', tipoContrato: 'vivienda' },
+      { nombre: 'Locación', tipoContrato: 'vivienda', documento: 'contrato' },
       archivo(PLANTILLA, 'Contrato PeÃ±a.docx'),
     );
     const [bucket, clave] = storage.uploadPrivado.mock.calls[0]!;
@@ -165,7 +165,7 @@ describe('PlantillasService · subir una plantilla', () => {
     const { s, storage } = servicio();
     const intento = s.crear(
       CTX,
-      { nombre: 'X', tipoContrato: null },
+      { nombre: 'X', tipoContrato: null, documento: 'contrato' },
       archivo(docx(['{inquilinos.texto} {deposto} {#tramos}{nombre}{/tramos}'])),
     );
     await expect(intento).rejects.toBeInstanceOf(BadRequestException);
@@ -183,7 +183,11 @@ describe('PlantillasService · subir una plantilla', () => {
   it('un archivo que no es Word se rechaza aunque se llame .docx', async () => {
     const { s, storage } = servicio();
     await expect(
-      s.crear(CTX, { nombre: 'X', tipoContrato: null }, archivo(Buffer.from('%PDF-1.7'))),
+      s.crear(
+        CTX,
+        { nombre: 'X', tipoContrato: null, documento: 'contrato' },
+        archivo(Buffer.from('%PDF-1.7')),
+      ),
     ).rejects.toThrow('El archivo no es un Word (.docx). Abrilo en Word y guardalo como .docx.');
     expect(storage.uploadPrivado).not.toHaveBeenCalled();
   });
@@ -192,7 +196,7 @@ describe('PlantillasService · subir una plantilla', () => {
     const { s, tx, storage } = servicio();
     tx.alqPlantilla.create.mockRejectedValueOnce(new Error('caída'));
     await expect(
-      s.crear(CTX, { nombre: 'X', tipoContrato: null }, archivo(PLANTILLA)),
+      s.crear(CTX, { nombre: 'X', tipoContrato: null, documento: 'contrato' }, archivo(PLANTILLA)),
     ).rejects.toThrow('caída');
     expect(storage.remove).toHaveBeenCalledWith(
       'alquileres-contratos',

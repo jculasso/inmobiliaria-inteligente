@@ -1120,6 +1120,229 @@ módulo (§3); no cambia quién ve ni quién puede.
    su favor» que el próximo cobro compensa, y a Liliana Sosa se le descuenta
    «a devolver» en la próxima liquidación.
 
+### Inventario del contrato y reserva (entrega C, 15/10/2026)
+
+Pedido de Florencia (Vacker), 15/10/2026: «Me van a mandar un Word con el
+contrato y quieren que en el módulo se carguen por ej.: Propietario,
+Inquilino, Garantes, Inventario, Valor del alquiler, Ajustes, Fechas de
+Vigencia, Depósito en garantía en pesos o en dólares, y que en base a la
+plantilla se genere automáticamente el contrato … lo mismo me van a enviar un
+Word con el formulario de reserva, se cargan los datos y queda la reserva
+registrada en el sistema, y relacionada con la propiedad y luego sigue el
+contrato. Una vez reservada la propiedad se hace el estudio de garantías y si
+todo está OK sigue el contrato.»
+
+Los Word de Vacker **todavía no llegaron**. Lo que se construye es el
+mecanismo general —los datos, los estados y los marcadores—; cuando lleguen,
+solo se ubican los marcadores en sus Word. Lo ven y lo operan los mismos
+roles que el resto del módulo (§3): `ROLES_ADMINISTRACION_ALQUILERES`, con
+`@Modulo('alquileres')`.
+
+**Para quién y para qué.** Para quien administra los alquileres: registrar
+la reserva de una propiedad con su seña, hacer el estudio de garantías ahí
+mismo, y que el contrato salga de la reserva aprobada sin volver a cargar
+nada; y que el inventario de lo que se entrega con la propiedad quede en el
+contrato y en su Word.
+
+**Matriz de roles.** Igual que §3, sin cambios: `administracion`,
+`direccion` y `admin_tenant` ven y hacen todo; `vendedor`, `team_leader` y
+`publicador` reciben 403 en toda la API de reservas e inventario y no ven la
+pestaña; `admin_plataforma` no ve datos. Una inmobiliaria sin el módulo
+recibe 403 aunque el usuario sea `direccion`.
+
+#### Inventario del contrato
+
+150. **Qué es.** El inventario de un contrato es una lista de ítems
+     —descripción (obligatoria, hasta 200 caracteres), cantidad (entera, de
+     1 a 9.999; 1 si no se indica) y estado u observación (opcional, hasta
+     200)— de hasta 200 ítems, más observaciones generales (hasta 4.000
+     caracteres). Se guarda **entero**: la lista que se manda reemplaza a la
+     anterior. Un ítem sin descripción se rechaza con «Cada ítem del
+     inventario lleva su descripción.».
+151. **Cuándo se edita.** En **borrador y en vigente** (no toca plata,
+     como los datos de la regla 33 del 6/10). En finalizado, rescindido o
+     anulado la API responde 400 «El contrato está <estado>: el inventario ya
+     no se edita.», y la ficha lo muestra sin el botón. Cada guardado queda
+     en el historial del contrato: «Inventario: N ítems».
+152. **En la plantilla.** `{#inventario}…{/inventario}` se repite una vez
+     por ítem, con `{numero}`, `{descripcion}`, `{cantidad}` y `{estado}`;
+     `{^inventario}…{/inventario}` aparece solo si no hay ítems;
+     `{contrato.inventario_observaciones}` pone las observaciones (vacío si
+     no hay). Están en `MARCADORES_PLANTILLA` —así que se validan al subir el
+     Word, como los demás (regla 40)— y el Word de ejemplo trae una cláusula
+     de inventario armada con ellos.
+153. **La fila vieja.** Un contrato cargado antes de esta entrega se lee con
+     el inventario vacío y sin observaciones: la migración agrega las
+     columnas con su valor por defecto y no toca ninguna fila.
+
+#### Reserva
+
+154. **Qué tiene.** Una reserva lleva un **número correlativo por
+     inmobiliaria** (Reserva 1, 2…), la **propiedad**, al menos un
+     **interesado** (el futuro inquilino; se lo puede dar de alta en el
+     momento, sin salir del formulario), los **propietarios** si se conocen
+     y los **garantes propuestos** (personas del módulo, con el mismo papel
+     que en un contrato), la **fecha de reserva** y su **vencimiento** (no
+     anterior a la fecha), la **seña** (importe, moneda ARS o USD, si se
+     recibió y, si se recibió, la fecha y el medio: transferencia,
+     efectivo, cheque u otro), las **condiciones propuestas** (particular o
+     comercial, moneda del alquiler, alquiler inicial, inicio, duración en
+     meses, ajuste —índice y cada cuántos meses, o escalonado—, depósito y
+     su moneda) y observaciones. Las condiciones son una propuesta: pueden
+     quedar sin cargar. Una seña recibida sin fecha o sin medio se rechaza
+     con «Indicá cuándo y cómo se recibió la seña.»; un vencimiento anterior
+     a la fecha, con «El vencimiento no puede ser anterior a la fecha de la
+     reserva.»; sin interesado, con «Falta el interesado (el futuro
+     inquilino).».
+155. **Los estados y sus pasos**, y ningún otro:
+     - `reservada` → `en_estudio` (empieza el estudio de garantías),
+       `vencida` o `anulada`;
+     - `en_estudio` → `aprobada`, `rechazada`, `vencida` o `anulada`;
+     - `aprobada` → `convertida` (solo al guardar el contrato, regla 159),
+       `vencida` o `anulada`.
+
+     `convertida`, `rechazada`, `vencida` y `anulada` son finales. Rechazar
+     y anular piden **motivo** (al menos 3 caracteres); un paso que no está
+     en la lista responde 400 «Una reserva <estado> no pasa a <estado>.».
+     Cada paso queda en el historial (`alq_evento`, entidad `reserva`) con
+     quién, cuándo y el motivo, y la ficha de la reserva lo muestra como
+     línea de tiempo. **Nada se borra**: no hay DELETE de reservas.
+
+156. **Una reserva abierta por propiedad.** Mientras una reserva está
+     `reservada`, `en_estudio` o `aprobada`, la propiedad no admite otra: la
+     segunda responde 409 «<propiedad> ya tiene abierta la reserva N.». Lo
+     garantiza un índice único parcial en la base, no solo el código. Una
+     propiedad con un contrato vigente **sí** se puede reservar (para cuando
+     ese contrato termine).
+157. **El estudio de garantías** usa el mismo modelo e informe que las
+     garantías del contrato (tipo, garante —una persona de la reserva o un
+     nombre—, detalle, estado del informe `pendiente`/`aprobada`/`rechazada`,
+     fecha de aprobación y observaciones), y se carga con la reserva
+     `reservada` o `en_estudio`. **Aprobar** exige al menos una garantía
+     aprobada y ninguna pendiente: si no, 400 «Para aprobar, cada garantía
+     tiene que tener su informe: falta el de <garante>.» o «Para aprobar
+     hace falta al menos una garantía aprobada.». Una garantía rechazada no
+     impide aprobar si hay otra aprobada (se reemplazó un garante).
+158. **Los datos** de la reserva se editan mientras está abierta
+     (`reservada`, `en_estudio`, `aprobada`); en un estado final, 400 «La
+     reserva está <estado>: ya no se edita.». Dar por **vencida** solo se
+     puede cuando pasó el vencimiento; antes, 400 «La reserva vence el
+     dd/mm/aaaa: todavía no venció. Si se cae antes, anulala con el
+     motivo.».
+159. **Convertir en contrato.** Solo una reserva `aprobada`. «Convertir en
+     contrato» abre el alta de contrato **precargada** con la propiedad, los
+     propietarios, los interesados como inquilinos, los garantes, el tipo,
+     la moneda, el inicio, el fin (inicio + duración − 1 día), el ajuste con
+     su índice y periodicidad, los tramos con el alquiler inicial en el
+     primero, y el depósito con su moneda. Al guardar, **en una sola
+     transacción**: se crea el contrato en borrador, la reserva pasa a
+     `convertida` vinculada al contrato, y las garantías **aprobadas** se
+     copian al contrato. Las de la reserva quedan como estaban: son el
+     registro del estudio, y editar las del contrato no las toca. Si la
+     reserva ya no está aprobada, o el contrato es de otra propiedad, no se
+     crea nada (409 / 400).
+160. **El contrato que se borra.** Si se borra el contrato en borrador que
+     salió de una reserva, la reserva vuelve a `aprobada`, sin contrato, y
+     queda en su historial; se puede volver a convertir.
+161. **La seña** se registra en la reserva y **no genera** conceptos,
+     cobros, recibos ni liquidaciones (qué se hace con ella es una pregunta
+     abierta para Vacker). La ficha del contrato que salió de una reserva
+     muestra «Seña de la reserva N: $ X», con «recibida el dd/mm/aaaa
+     (medio)» o «sin recibir», y el enlace a la reserva.
+162. **Plantillas de reserva.** Cada plantilla es **de contrato o de
+     reserva**. Las de reserva se validan contra su propia lista,
+     `MARCADORES_RESERVA` (`@vacker/types`), con los mismos mensajes de la
+     regla 40; un marcador de contrato que no existe en la reserva se
+     rechaza. Las plantillas que ya existían son de contrato. Una plantilla
+     de reserva no aparece al descargar un contrato ni una de contrato en la
+     reserva, y pedirlas cruzadas responde 400.
+163. **«Descargar la reserva en Word»** desde una reserva que no esté
+     anulada: `Reserva-<número>.docx`, con las mismas reglas que el
+     contrato (regla 41: lo opcional vacío; una condición propuesta sin
+     cargar dice «[a definir]»). No se guarda; queda en el historial de la
+     reserva. Se descarga un **Word de ejemplo de reserva** con cada
+     marcador explicado y un formulario armado con ellos; subirlo tal cual
+     funciona.
+164. **La lista de reservas** (`/alquileres/reservas`, en la segunda fila de
+     la pestaña Contratos: la barra sigue con once pestañas) abre en las
+     **abiertas** y filtra por cada estado o todas; en la computadora es una
+     tabla y en el teléfono tarjetas. Cada fila dice número, propiedad,
+     interesado, vencimiento —«vencida hace N días» en rojo si pasó y sigue
+     abierta—, seña y estado.
+165. **La propiedad reservada.** La lista de propiedades marca «Reservada»
+     (con el número, y abre la reserva) a las que tienen una reserva
+     abierta.
+166. **Dashboard, «Lo que hay que hacer»**: «Reservas que vencen en 7 días o
+     ya vencidas» (abiertas con vencimiento hasta hoy + 7) y «Reservas
+     aprobadas sin contrato». Siguen al filtro Particulares / Comerciales por
+     el tipo de la reserva, y cada fila abre la reserva.
+167. **Roles y licencia.** Todos los endpoints de reservas y de inventario
+     llevan `@Modulo('alquileres')` y `ROLES_ADMINISTRACION_ALQUILERES`
+     (`alquileres.roles.spec.ts` los recorre a todos).
+168. **Consultas fijas.** Listar reservas, abrir una, convertirla y
+     descargar su Word hacen **las mismas consultas** con 5 que con 25
+     reservas, partes o garantías; el Dashboard suma una sola consulta.
+
+**Casos borde:**
+
+- **La fila vieja**: contratos sin inventario (regla 153); plantillas sin
+  tipo, que son de contrato (regla 162); garantías que siempre fueron de un
+  contrato (la columna nueva `reserva_id` queda vacía).
+- **La lista vacía**: sin reservas, «Todavía no se cargó ninguna reserva.»;
+  sin abiertas, «No hay reservas abiertas.»; una reserva sin garantías no
+  se aprueba (regla 157).
+- **La inmobiliaria sin el módulo**: 403 en todo, como el resto (regla 167).
+- **El interesado que ya es inquilino** de otro contrato: es la misma
+  persona; nada lo impide.
+
+**Fuera de alcance (entrega C):**
+
+- **Qué pasa con la seña**: si se aplica al primer mes o a los gastos de
+  ingreso, si se devuelve al rechazar, si se le pasa al propietario. No se
+  inventa contabilidad: queda registrada y a la vista (regla 161), y las
+  preguntas van a Vacker.
+- Mapear los Word reales de Vacker: llegan después y solo hay que ubicar
+  los marcadores.
+- El vencimiento **automático** de las reservas: se da por vencida a mano y
+  el Dashboard avisa (regla 166).
+- Generar el **PDF** de la reserva o mandarlo por mail: se descarga el Word,
+  como el contrato.
+- Un portal o un link para que el interesado complete sus datos.
+
+**Criterio de aceptación (en Alteva):**
+
+1. Javier entra a Alteva con su usuario de dirección y va a **Contratos ›
+   Reservas**: ve «No hay reservas abiertas» y el botón «Nueva reserva».
+2. Carga una reserva para una propiedad, con un interesado que **da de alta
+   en el momento** («＋ Nueva persona»), un garante, seña de USD 500
+   recibida hoy por transferencia, vencimiento en 5 días, alquiler inicial
+   $ 600.000 por ICL cada 3 meses, 24 meses, depósito USD 600. Queda
+   «Reserva 1 · Reservada». En **Propiedades** esa propiedad dice
+   «Reservada»; intentar una segunda reserva para ella dice que ya tiene la
+   Reserva 1 abierta.
+3. En el Dashboard, «Reservas que vencen en 7 días o ya vencidas» la cuenta.
+4. En la reserva, «Empezar el estudio de garantías»; carga la garantía del
+   garante con el informe pendiente: «Aprobar» dice que falta el informe.
+   La pone aprobada: «Aprobar» la pasa a Aprobada. La línea de tiempo
+   muestra los tres pasos con su usuario; el Dashboard la muestra en
+   «Reservas aprobadas sin contrato».
+5. En **Configuración › Plantillas** descarga el ejemplo de reserva y lo
+   sube como plantilla «de reserva»; en la reserva, «Descargar la reserva
+   en Word» baja `Reserva-1.docx` con la propiedad, el interesado, la seña
+   de U$S 500,00 y las condiciones. La plantilla no aparece en los
+   contratos.
+6. «Convertir en contrato» abre el alta con todo precargado (partes,
+   fechas, ICL cada 3, $ 600.000 en el primer tramo, depósito en dólares);
+   lo guarda: queda el contrato en borrador, su ficha dice «Seña de la
+   reserva 1: U$S 500,00, recibida el …», trae la garantía aprobada, y la
+   reserva queda «Convertida» con el enlace al contrato.
+7. En la ficha del contrato carga el **Inventario** (tres ítems y una
+   observación). Descarga el contrato en Word con el ejemplo de contrato: la
+   cláusula de inventario lista los tres ítems. Lo activa: el inventario se
+   sigue editando. Lo anula en otra prueba: ya no.
+8. En la Inmobiliaria de Demo, sin el módulo, un usuario `direccion` no ve
+   Alquileres y `GET /alquileres/reservas` responde 403.
+
 ## 6. Casos borde
 
 - **La fila vieja**: contratos migrados de Gexion sin algún dato (sin
@@ -1232,6 +1455,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 74 – 82           | Domain: `cierreDelMes`; web: `periodo-tablero.test.ts` (74), `tablero-alquileres.test.tsx` (`regla 7x` en el nombre); API: `tablero-alquileres.service.spec.ts` (75 a 79 y 82: cada flujo de un mes, un trimestre y el año, y cada foto, suman su tarjeta en los tres cortes; consultas con 5 y 25 contratos); base: `tablero-alquileres.e2e-spec.ts` (79, el SQL real, en el job de aislamiento de CI); roles: `alquileres.roles.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 83 – 98           | Domain: `informe-propietario.test.ts` (87, 88, 84, 98: la cadena con cobro parcial, parte ya liquidada, pago garantizado, gastos por caja; el caso de Marcela Ibarra —alquiler liquidado y un arreglo posterior sin liquidar—; el nombre del período); types: `RANGO_*` en `InformePeriodoQuerySchema`; API: `informe-propietario.service.spec.ts` (`regla 8x`/`9x` en el nombre: la cadena al centavo, solo lo suyo, ARS/USD, deuda, mes a mes, nombres y sumas de cada descuento, reclamos sin notas y con importe solo a cargo del propietario, liquidaciones que suman lo liquidado, vacío, 404, la fila igual al informe, consultas con 5 y 25 contratos, regla 98 con el mismo caso), `informe-propietario.template.spec.tsx` (95, 94 y 98: texto del PDF, los renglones y solo Montserrat), `envios.service.spec.ts` (95), `alquileres.roles.spec.ts` (83); base: `informe-propietario.e2e-spec.ts` (85 a 93 y 96, el SQL real, en el job de aislamiento de CI); web: `periodo-tablero.test.ts` (84), `cuenta-corriente.test.tsx` (83), `informe-propietario.test.tsx` (84 a 96 y 98), `alquileres-nav.test.tsx` (83)                                                                                                                                                                                                                                                                      |
 | 99 – 112          | Ver la tabla «Cada regla con su test (99 a 112)» de la Entrega A para Vacker: domain `alquileres.test.ts`; types `alquileres-entrega-a.test.ts`; API `correccion-tramo.service.spec.ts`, `indices.service.spec.ts`, `conceptos.service.spec.ts`, `contrato-completo.service.spec.ts`, `contratos.service.spec.ts`, `indexaciones.service.spec.ts`, `alquileres.service.spec.ts`, `tablero-alquileres.service.spec.ts`, `tareas.controller.spec.ts`; base `rls-habilitada.e2e-spec.ts`; web `contrato-form`, `contrato-ficha`, `contrato-completo` y `configuracion-form` (`.test.tsx`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 150 – 168         | Types: `reservas.test.ts` (154, 155: el schema, los pasos, el motivo, el filtro), `alquileres.test.ts` (162); API: `inventario.service.spec.ts` (150 a 153 y el Word del inventario), `reservas.service.spec.ts` (`regla 15x`/`16x` en el nombre: alta, una abierta por propiedad, pasos válidos e inválidos, aprobar con garantías, vencida, editar cerrada, convertir en la transacción del alta y copiar las aprobadas, seña, reserva devuelta al borrar el contrato, consultas con 5 y 25), `contratos.service.spec.ts` (159 y 160), `reserva-modelo.spec.ts` (162 y 163: `MARCADORES_RESERVA` ↔ datos, validación por documento, el ejemplo, cruces 400, anulada, consultas fijas), `tablero-reservas.spec.ts` y `tablero-alquileres.service.spec.ts` (166 y 168), `propiedades.service.spec.ts`, `alquileres.roles.spec.ts` (167); base: `reservas.e2e-spec.ts` (153, 156 con el índice parcial, 157 con el CHECK, 159 y 160 de punta a punta) y `aislamiento.e2e-spec.ts` (las dos tablas nuevas y la parte que cruza inmobiliarias); web: `reservas.test.tsx` (154, 155, 157, 159, 161, 164, 165, 150 y 151), `tablero-alquileres.test.tsx` (166), `plantillas-vista.test.tsx` (162 y 163), `alquileres-nav.test.tsx` (164)                                                                                                                                                               |
 | §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |

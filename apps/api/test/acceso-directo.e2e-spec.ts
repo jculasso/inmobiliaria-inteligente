@@ -346,9 +346,10 @@ describe('Acceso a Prisma fuera del contexto de tenant (análisis estático)', (
     // más las 12 del módulo Alquileres, su historial (`alq_evento`, 6/10) y
     // las cuentas bancarias y contactos de las personas (entrega 13) y las
     // garantías (entrega 14), las plantillas y los reclamos (entrega 15), y
-    // los proveedores y sus comprobantes (entrega 18).
+    // los proveedores y sus comprobantes (entrega 18), y la reserva con sus
+    // partes (entrega C, 15/10/2026).
     // Si baja, alguien sacó una tabla de `TABLAS` y su acceso dejó de vigilarse.
-    expect(MODELOS_CON_RLS.size).toBe(41);
+    expect(MODELOS_CON_RLS.size).toBe(43);
   });
 
   it('ningún archivo de src/ consulta una tabla con RLS por fuera de withTenant', () => {

@@ -167,6 +167,8 @@ describe('PlantillaMetadatosSchema (viaja en un formulario multipart)', () => {
     expect(PlantillaMetadatosSchema.parse({ nombre: ' Locación ', tipoContrato: '' })).toEqual({
       nombre: 'Locación',
       tipoContrato: null,
+      // Regla 162: sin decir de qué es, es de contrato.
+      documento: 'contrato',
     });
     expect(PlantillaMetadatosSchema.parse({ nombre: 'X' }).tipoContrato).toBeNull();
     expect(

@@ -2,6 +2,8 @@
 // Ver docs/specs/alquileres-fase-1.md.
 import { z } from 'zod';
 import { SELLADO_POR_DEFECTO } from './tenant';
+// Los marcadores del inventario (regla 152) viven con el inventario.
+import { MARCADORES_INVENTARIO } from './inventario';
 
 /**
  * Cuánto tiene cargado la inmobiliaria en el módulo. Lo usa la página de
@@ -650,6 +652,8 @@ export const EntidadEventoSchema = z.enum([
   'servicio',
   'boleta',
   'poliza',
+  // Regla 155: los pasos de una reserva quedan en el mismo historial.
+  'reserva',
 ]);
 export type EntidadEvento = z.infer<typeof EntidadEventoSchema>;
 
@@ -1583,6 +1587,10 @@ export const TableroAlquileresDtoSchema = z.object({
     indexacionesEsperan: IndicadorSchema.default({ valor: 0, filas: [] }),
     /** Regla 139: diferencias de liquidaciones finales que el inquilino todavía no pagó. */
     finalesPendientes: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /** Regla 166: reservas abiertas que vencen en 7 días o ya vencieron. */
+    reservasPorVencer: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /** Regla 166: reservas aprobadas que todavía no tienen contrato. */
+    reservasAprobadas: IndicadorSchema.default({ valor: 0, filas: [] }),
   }),
 });
 export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;
@@ -2004,7 +2012,8 @@ export interface MarcadorPlantilla {
   campos?: CampoMarcador[];
 }
 
-const CAMPOS_PERSONA: CampoMarcador[] = [
+/** Los campos de una persona en una lista: los usan también los marcadores de la reserva. */
+export const CAMPOS_PERSONA: CampoMarcador[] = [
   { nombre: 'nombre', descripcion: 'Nombre y apellido, o razón social', ejemplo: 'Juan Pérez' },
   { nombre: 'documento', descripcion: 'DNI o CUIT', ejemplo: '20.123.456' },
   { nombre: 'domicilio', descripcion: 'Domicilio y localidad', ejemplo: 'Córdoba 1452, Rosario' },
@@ -2202,6 +2211,8 @@ export const MARCADORES_PLANTILLA: readonly MarcadorPlantilla[] = [
       },
     ],
   },
+  // Regla 152: el inventario del contrato.
+  ...MARCADORES_INVENTARIO,
 ];
 
 /** Tope de una plantilla en Word: lo mismo que una foto (`UPLOAD_MAX_BYTES` de la API). */
@@ -2211,8 +2222,19 @@ export const PLANTILLA_MAX_BYTES = 5 * 1024 * 1024;
  * Nombre y para qué contratos sirve. Viaja como campos de un formulario
  * multipart al subir el Word: un «Para contratos» sin elegir llega como «».
  */
+/**
+ * Regla 162: una plantilla es de contrato o de reserva. Las que ya existían
+ * son de contrato (la columna nueva tiene ese valor por defecto).
+ */
+export const DocumentoPlantillaSchema = z.enum(['contrato', 'reserva']);
+export type DocumentoPlantilla = z.infer<typeof DocumentoPlantillaSchema>;
+
 export const PlantillaMetadatosSchema = z.object({
   nombre: z.string().trim().min(1, 'Ponele un nombre.').max(80),
+  /** Solo al subirla: después de creada, una plantilla no cambia de tipo. */
+  documento: z
+    .preprocess((v) => (v === '' ? undefined : v), DocumentoPlantillaSchema.optional())
+    .transform((v) => v ?? 'contrato'),
   tipoContrato: z
     .preprocess((v) => (v === '' ? null : v), TipoContratoSchema.nullish())
     .transform((v) => v ?? null),
@@ -2230,6 +2252,8 @@ export const PlantillaDtoSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string(),
   tipoContrato: TipoContratoSchema.nullable(),
+  /** `.default` por el orden de despliegue: una API vieja no lo manda. */
+  documento: DocumentoPlantillaSchema.default('contrato'),
   formato: FormatoPlantillaSchema,
   nombreArchivo: z.string().nullable(),
   tamano: z.number().int().nullable(),

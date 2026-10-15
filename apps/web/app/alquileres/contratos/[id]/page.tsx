@@ -18,6 +18,9 @@ import { Garantias } from '../../../../components/alquileres/garantias';
 import { GenerarContrato } from '../../../../components/alquileres/generar-contrato';
 import { ReclamosDelContrato } from '../../../../components/alquileres/reclamos-del-contrato';
 import { Polizas } from '../../../../components/alquileres/polizas';
+import { getInventario, getReservaDelContrato } from '../../../../lib/reservas-api';
+import { InventarioContrato } from '../../../../components/alquileres/inventario-contrato';
+import { ReservaDelContrato } from '../../../../components/alquileres/reserva-del-contrato';
 
 export const metadata = { title: 'Contrato · Alquileres' };
 
@@ -26,22 +29,35 @@ export default async function ContratoPage({ params }: { params: Promise<{ id: s
   if (!ctx || !puedeAdministrarAlquileres(ctx.principal.roles)) return null;
   const { id } = await params;
   // Todo junto: ninguna de estas depende de otra (antes iban en dos tandas seguidas).
-  const [contrato, { documento }, historial, completo, plantillas, reclamos, polizas] =
-    await Promise.all([
-      getContrato(ctx.accessToken, id),
-      getDocumentoContrato(ctx.accessToken, id),
-      getHistorialContrato(ctx.accessToken, id),
-      getContratoCompleto(ctx.accessToken, id),
-      listPlantillas(ctx.accessToken),
-      listReclamos(ctx.accessToken, { estado: 'todos', contratoId: id }),
-      listPolizas(ctx.accessToken, id),
-    ]);
+  const [
+    contrato,
+    { documento },
+    historial,
+    completo,
+    plantillas,
+    reclamos,
+    polizas,
+    inventario,
+    { reserva },
+  ] = await Promise.all([
+    getContrato(ctx.accessToken, id),
+    getDocumentoContrato(ctx.accessToken, id),
+    getHistorialContrato(ctx.accessToken, id),
+    getContratoCompleto(ctx.accessToken, id),
+    listPlantillas(ctx.accessToken),
+    listReclamos(ctx.accessToken, { estado: 'todos', contratoId: id }),
+    listPolizas(ctx.accessToken, id),
+    // Entrega C: el inventario (reglas 150 a 153) y la reserva de la que salió (regla 161).
+    getInventario(ctx.accessToken, id),
+    getReservaDelContrato(ctx.accessToken, id),
+  ]);
   const garantes = contrato.partes
     .filter((p) => p.papel === 'garante')
     .map((p) => ({ personaId: p.personaId, nombre: p.nombre }));
   return (
     <div className="flex flex-col gap-4">
       <ContratoFicha contrato={contrato} />
+      <ReservaDelContrato reserva={reserva} />
       <CargosIngreso
         contratoId={id}
         estado={contrato.estado}
@@ -61,6 +77,7 @@ export default async function ContratoPage({ params }: { params: Promise<{ id: s
         moneda={contrato.moneda}
         sePuedeAgregar={contrato.estado === 'vigente'}
       />
+      <InventarioContrato contratoId={id} inventario={inventario} />
       <GenerarContrato contrato={contrato} plantillas={plantillas} />
       <FirmaContrato contratoId={id} documento={documento} />
       <ReclamosDelContrato contrato={contrato} reclamos={reclamos} />
