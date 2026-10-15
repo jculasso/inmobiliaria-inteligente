@@ -29,8 +29,9 @@ import {
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
-import { bloquearReservasDelCobro, tomarCandados } from './candados';
+import { bloquearReservasDelCobro } from './candados';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
+import { nroRecibo, siguienteNumeroDeRecibo } from './numeracion';
 import { IMPUTACION_ACTIVA, saldoDeConcepto } from './imputacion-activa';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
 
@@ -219,11 +220,9 @@ export class CobrosService {
         deudas: filaDeudas,
       });
 
-      // Un número de recibo por vez en cada inmobiliaria: sin el candado, dos
-      // cobros simultáneos sacarían el mismo número.
-      await tomarCandados(tx, ctx.tenantId, 'alq_cobro');
-      const ultimo = await tx.alqCobro.aggregate({ _max: { numero: true } });
-      const numero = (ultimo._max.numero ?? 0) + 1;
+      // Un número de recibo por vez en cada inmobiliaria, con su candado; la
+      // misma serie que la seña de las reservas.
+      const numero = await siguienteNumeroDeRecibo(tx, ctx.tenantId);
       const obs = [dto.obs, ...condonaciones].filter(Boolean).join('\n') || null;
       await tx.alqCobro.create({
         data: {
@@ -261,7 +260,7 @@ export class CobrosService {
         // Un recibo de un solo contrato aparece también en el historial del contrato.
         contratoId: contratos.length === 1 ? contratos[0] : null,
         accion: 'alta',
-        resumen: `Recibo ${String(numero).padStart(6, '0')} por ${plata(dto.importe, dto.moneda)}`,
+        resumen: `Recibo ${nroRecibo(numero)} por ${plata(dto.importe, dto.moneda)}`,
         detalle: { contratos },
       });
       return this.dto(
@@ -456,7 +455,7 @@ export class CobrosService {
         data: {
           anuladoEn: ahora,
           anuladoPorId: ctx.userId,
-          motivoAnulacion: `Anulación del recibo ${String(c.numero).padStart(6, '0')}`,
+          motivoAnulacion: `Anulación del recibo ${nroRecibo(c.numero)}`,
         },
       });
       const fila = await tx.alqCobro.findUniqueOrThrow({ where: { id }, include: INCLUIR_COBRO });
@@ -465,7 +464,7 @@ export class CobrosService {
         entidadId: id,
         personaId: fila.personaId,
         accion: 'anulacion',
-        resumen: `Recibo ${String(c.numero).padStart(6, '0')} anulado: ${motivo}`,
+        resumen: `Recibo ${nroRecibo(c.numero)} anulado: ${motivo}`,
       });
       return this.dto(tx, fila);
     });
@@ -537,7 +536,7 @@ export class CobrosService {
               tipo: 'cobro' as const,
               fecha: c.fecha,
               orden: c.createdAt.getTime(),
-              descripcion: `Cobro · recibo ${String(c.numero).padStart(6, '0')}`,
+              descripcion: `Cobro · recibo ${nroRecibo(c.numero)}`,
               contrato: null,
               debe: 0,
               haber: c.importe,

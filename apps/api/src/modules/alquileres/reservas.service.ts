@@ -37,11 +37,11 @@ import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { bloquearReserva } from './candados';
 import { ContratosService } from './contratos.service';
 import { dia, nombresDeUsuarios, registrarEventos } from './historial';
+import { nroRecibo } from './numeracion';
 import {
   CONCEPTOS_DE_LA_SENA,
   assertSinReciboVigente,
   cobrarSena,
-  nroRecibo,
   retenerSena,
   senaADeposito,
   senaCobrada,

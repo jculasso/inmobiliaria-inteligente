@@ -3,7 +3,8 @@ import { NOMBRE_TIPO_CONTRATO, NOMBRE_TIPO_GARANTIA, type TipoGarantia } from '@
 import { fechaCorta, importeEnLetras, sumarDiasIso, sumarMesesIso } from '@vacker/domain';
 import { decToNum, fromDate } from '../tablero/tablero.util';
 import { plata } from './historial';
-import { CONCEPTOS_DE_LA_SENA, nroRecibo, senaDto } from './sena';
+import { nroRecibo } from './numeracion';
+import { CONCEPTOS_DE_LA_SENA, senaDto } from './sena';
 
 /**
  * Lo que se lee de una reserva para completar su plantilla (reglas 162 y
