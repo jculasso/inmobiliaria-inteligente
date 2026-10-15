@@ -111,6 +111,8 @@ export function datosDePlantilla(
   const propietarios = personas('propietario');
   const inquilinos = personas('inquilino');
   const garantes = personas('garante');
+  // Regla 152: el inventario. Una fila vieja lo trae vacío (regla 153).
+  const inventario = leerItemsInventario(c.inventario);
   const inicio = fromDate(c.inicio)!;
   const fin = fromDate(c.fin)!;
   const primero = c.tramos[0]?.importe;
@@ -156,9 +158,10 @@ export function datosDePlantilla(
     propietarios,
     inquilinos,
     garantes,
-    // Regla 152: el inventario. Una fila vieja lo trae vacío (regla 153).
     'contrato.inventario_observaciones': c.inventarioObs ?? '',
-    inventario: leerItemsInventario(c.inventario).map((item, i) => ({
+    // Una vez, no por ítem: para el texto que presenta la lista.
+    con_inventario: inventario.length > 0,
+    inventario: inventario.map((item, i) => ({
       numero: String(i + 1),
       descripcion: item.descripcion,
       cantidad: String(item.cantidad),

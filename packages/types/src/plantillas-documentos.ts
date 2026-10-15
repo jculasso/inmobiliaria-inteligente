@@ -27,6 +27,7 @@ const NOMBRES_DEL_ANEXO = [
   'inquilinos.texto',
   'fecha.hoy',
   'contrato.inventario_observaciones',
+  'con_inventario',
   'propietarios',
   'inquilinos',
   'inventario',
