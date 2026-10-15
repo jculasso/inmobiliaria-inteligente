@@ -56,9 +56,9 @@ const cuerpoMultipart = (conMetadatos: boolean) => ({
             nombre: { type: 'string', maxLength: 80 },
             documento: {
               type: 'string',
-              enum: ['contrato', 'reserva'],
+              enum: ['contrato', 'reserva', 'inventario'],
               description:
-                'De qué es la plantilla (regla 162). Vacío: de contrato. Se revisa contra los marcadores de ese documento.',
+                'De qué es la plantilla (reglas 162 y 174): contrato, reserva o anexo de inventario. Vacío: de contrato. Se revisa contra los marcadores de ese documento.',
             },
             tipoContrato: {
               type: 'string',
@@ -111,6 +111,18 @@ export class PlantillasController {
   })
   ejemploReserva() {
     const { buffer, nombre } = this.plantillas.ejemploReserva();
+    return docxResponse(buffer, nombre);
+  }
+
+  @Get('ejemplo-inventario')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiProduces(TIPO_DOCX)
+  @ApiOperation({
+    summary:
+      'Un Word de ejemplo del anexo de inventario, con sus marcadores explicados y un anexo armado con ellos (regla 174)',
+  })
+  ejemploInventario() {
+    const { buffer, nombre } = this.plantillas.ejemploAnexo();
     return docxResponse(buffer, nombre);
   }
 

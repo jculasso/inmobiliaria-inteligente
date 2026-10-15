@@ -238,6 +238,18 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
           />
         </Campo>
       </Panel>
+      {/* Regla 171 (Florencia, Vacker, 15/10/2026): la seña retenida se le entrega al propietario. */}
+      <Panel icono="🔖" titulo="Reservas">
+        <Campo
+          label="Honorarios sobre la seña retenida (%)"
+          hint="Si la reserva se cae, la seña se le entrega al propietario en su liquidación; con 0, entera. Se le suma el IVA de la inmobiliaria."
+        >
+          <InputPorcentaje
+            valor={c.honorariosSenaRetenidaPct}
+            onValor={(n) => cambiar({ honorariosSenaRetenidaPct: n })}
+          />
+        </Campo>
+      </Panel>
       <Panel icono="🏢" titulo="IVA de la inmobiliaria">
         <Campo
           label="IVA sobre honorarios, gastos y comisión (%)"

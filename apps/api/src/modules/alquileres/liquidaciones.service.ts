@@ -53,7 +53,8 @@ const DetalleSchema = z.object({
 interface Pendiente extends ConceptoALiquidar {
   personaId: string;
   moneda: string;
-  contrato: ContratoDeLiquidacion;
+  /** `null` en la seña retenida de una reserva, que no tiene contrato (regla 171). */
+  contrato: ContratoDeLiquidacion | null;
   descripcion: string;
 }
 
@@ -419,12 +420,20 @@ export class LiquidacionesService {
     const ids = (
       await tx.$queryRaw<{ id: string }[]>`
         SELECT k.id FROM alq_concepto k
-         WHERE k.anulado_en IS NULL AND k.liquidacion_id IS NULL AND k.contrato_id IS NOT NULL
+         WHERE k.anulado_en IS NULL AND k.liquidacion_id IS NULL
            AND (k.sentido = 'a_pagar' OR (k.sentido = 'a_cobrar' AND k.tipo = ANY(${tipos})))
            ${filtro.personaId ? Prisma.sql`AND k.persona_id = ${filtro.personaId}::uuid` : Prisma.empty}
            ${filtro.moneda ? Prisma.sql`AND k.moneda = ${filtro.moneda}` : Prisma.empty}
-           AND EXISTS (SELECT 1 FROM alq_contrato_parte pp
-                        WHERE pp.contrato_id = k.contrato_id AND pp.persona_id = k.persona_id AND pp.papel = 'propietario')
+           AND (
+             (k.contrato_id IS NOT NULL
+              AND EXISTS (SELECT 1 FROM alq_contrato_parte pp
+                           WHERE pp.contrato_id = k.contrato_id AND pp.persona_id = k.persona_id AND pp.papel = 'propietario'))
+             -- Regla 171: la seña retenida de una reserva que no llegó a contrato,
+             -- para el propietario de esa reserva.
+             OR (k.contrato_id IS NULL AND k.reserva_id IS NOT NULL
+              AND EXISTS (SELECT 1 FROM alq_reserva_parte rp
+                           WHERE rp.reserva_id = k.reserva_id AND rp.persona_id = k.persona_id AND rp.papel = 'propietario'))
+           )
            AND k.importe > COALESCE((
                  SELECT SUM(im.importe) FROM alq_imputacion im
                    JOIN alq_cobro co ON co.id = im.cobro_id AND co.anulado_en IS NULL
@@ -463,8 +472,11 @@ export class LiquidacionesService {
     for (const x of separadas)
       yaLiquidado.set(x.origenId!, (yaLiquidado.get(x.origenId!) ?? 0) + decToNum(x.importe));
     return filas
-      .filter((k) =>
-        k.contrato?.partes.some((p) => p.papel === 'propietario' && p.personaId === k.personaId),
+      .filter(
+        (k) =>
+          // Sin contrato, la SQL ya comprobó que es el propietario de la reserva.
+          (!k.contrato && k.reservaId != null) ||
+          k.contrato?.partes.some((p) => p.papel === 'propietario' && p.personaId === k.personaId),
       )
       .map((k) => ({
         yaLiquidado: redondear2(yaLiquidado.get(k.id) ?? 0),
@@ -477,17 +489,19 @@ export class LiquidacionesService {
           decToNum(k.importe) - k.imputaciones.reduce((s, i) => s + decToNum(i.importe), 0),
         ),
         clave: k.claveGeneracion,
-        pagoGarantizado: k.contrato!.pagoGarantizado,
-        contrato: {
-          id: k.contrato!.id,
-          codigo: k.contrato!.codigo,
-          propiedad: [k.contrato!.propiedad.direccion, k.contrato!.propiedad.unidad]
-            .filter(Boolean)
-            .join(' '),
-          inquilinos: k
-            .contrato!.partes.filter((p) => p.papel === 'inquilino')
-            .map((p) => p.persona.nombre),
-        },
+        pagoGarantizado: k.contrato?.pagoGarantizado ?? false,
+        contrato: k.contrato
+          ? {
+              id: k.contrato.id,
+              codigo: k.contrato.codigo,
+              propiedad: [k.contrato.propiedad.direccion, k.contrato.propiedad.unidad]
+                .filter(Boolean)
+                .join(' '),
+              inquilinos: k.contrato.partes
+                .filter((p) => p.papel === 'inquilino')
+                .map((p) => p.persona.nombre),
+            }
+          : null,
         descripcion: k.descripcion ?? k.tipo,
       }))
       .filter((k) => k.saldo > 0);
@@ -502,8 +516,8 @@ export class LiquidacionesService {
     const contratos = [
       ...new Set(
         pendientes
-          .filter((c) => c.sentido === 'a_pagar' && parteDeClave(c.clave))
-          .map((c) => c.contrato.id),
+          .filter((c) => c.sentido === 'a_pagar' && parteDeClave(c.clave) && c.contrato)
+          .map((c) => c.contrato!.id),
       ),
     ];
     if (contratos.length === 0) return new Map();

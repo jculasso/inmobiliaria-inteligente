@@ -91,5 +91,6 @@ export function deConfig(c: ReturnType<typeof TenantConfigSchema.parse>): Config
     contratoDiaVencimiento: c.contratoDiaVencimiento,
     contratoDiaPagoPropietario: c.contratoDiaPagoPropietario,
     diasDiferenciaFinal: c.diasDiferenciaFinal,
+    honorariosSenaRetenidaPct: c.honorariosSenaRetenidaPct,
   };
 }

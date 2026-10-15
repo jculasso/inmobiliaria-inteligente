@@ -31,9 +31,6 @@ CREATE TABLE "alq_reserva" (
     "estado" TEXT NOT NULL DEFAULT 'reservada',
     "sena_importe" DECIMAL(14,2),
     "sena_moneda" TEXT,
-    "sena_recibida" BOOLEAN NOT NULL DEFAULT false,
-    "sena_recibida_el" DATE,
-    "sena_medio" TEXT,
     "tipo" TEXT NOT NULL DEFAULT 'vivienda',
     "moneda" TEXT NOT NULL DEFAULT 'ARS',
     "alquiler_inicial" DECIMAL(14,2),
@@ -127,7 +124,21 @@ ALTER TABLE "alq_reserva_parte" ADD CONSTRAINT "alq_reserva_parte_persona_id_mis
 ALTER TABLE "alq_garantia" ADD CONSTRAINT "alq_garantia_reserva_id_mismo_tenant_fkey" FOREIGN KEY ("tenant_id", "reserva_id") REFERENCES "alq_reserva" ("tenant_id", "id") NOT VALID;
 ALTER TABLE "alq_garantia" VALIDATE CONSTRAINT "alq_garantia_reserva_id_mismo_tenant_fkey";
 
--- 6. RLS: cada inmobiliaria ve solo lo suyo. Revocar antes de otorgar:
+-- 6. La seña en la cuenta corriente (reglas 169 a 171): el concepto de la
+--    seña, el de la seña retenida que se le entrega al propietario y el
+--    reintegro de lo que sobra al convertir dicen de qué reserva salen. Una
+--    columna nueva, vacía en todas las filas que ya existen; `alq_concepto`
+--    conserva su `tenant_id`, su policy y sus permisos.
+
+ALTER TABLE "alq_concepto" ADD COLUMN "reserva_id" UUID;
+
+CREATE INDEX "alq_concepto_reserva_id_idx" ON "alq_concepto"("reserva_id");
+
+ALTER TABLE "alq_concepto" ADD CONSTRAINT "alq_concepto_reserva_id_fkey" FOREIGN KEY ("reserva_id") REFERENCES "alq_reserva"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "alq_concepto" ADD CONSTRAINT "alq_concepto_reserva_id_mismo_tenant_fkey" FOREIGN KEY ("tenant_id", "reserva_id") REFERENCES "alq_reserva" ("tenant_id", "id") NOT VALID;
+ALTER TABLE "alq_concepto" VALIDATE CONSTRAINT "alq_concepto_reserva_id_mismo_tenant_fkey";
+
+-- 7. RLS: cada inmobiliaria ve solo lo suyo. Revocar antes de otorgar:
 --    Supabase le da TRUNCATE a `anon` y `authenticated` en cada tabla nueva,
 --    y TRUNCATE ignora RLS (CONVENCIONES_TECNICAS.md §1).
 

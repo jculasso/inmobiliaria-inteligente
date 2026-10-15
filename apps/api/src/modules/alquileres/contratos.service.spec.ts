@@ -571,7 +571,12 @@ describe('ContratosService · el contrato que sale de una reserva (reglas 159 y 
         _count: { conceptos: 0, documentos: 0 },
       },
     });
-    tx.alqReserva.findUnique.mockResolvedValueOnce({ id: 'r1', numero: 2 });
+    tx.alqReserva.findUnique.mockResolvedValueOnce({
+      id: 'r1',
+      numero: 2,
+      contrato: { codigo: 'ALT-0003', estado: 'borrador' },
+      conceptos: [],
+    });
     await new ContratosService(makeDb(tx)).borrar(CTX, 'c1');
     expect(tx.alqReserva.update).toHaveBeenCalledWith({
       where: { id: 'r1' },

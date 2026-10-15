@@ -4,6 +4,8 @@ import {
   ESTADOS_RESERVA_ABIERTOS,
   EstadoReservaSchema,
   FiltroReservasSchema,
+  CobrarSenaSchema,
+  ESTADOS_QUE_RETIENEN_LA_SENA,
   PASOS_RESERVA,
   ReservaInputSchema,
   type ReservaInput,
@@ -29,7 +31,6 @@ describe('ReservaInputSchema (regla 154)', () => {
       moneda: 'ARS',
       alquilerInicial: null,
       senaImporte: null,
-      senaRecibida: false,
     });
   });
 
@@ -42,30 +43,25 @@ describe('ReservaInputSchema (regla 154)', () => {
     ]);
   });
 
-  it('una seña recibida pide cuándo y cómo', () => {
-    expect(mensajes({ ...base, senaImporte: 500, senaRecibida: true })).toEqual([
-      'Indicá cuándo y cómo se recibió la seña.',
-    ]);
-    const r = ReservaInputSchema.parse({
-      ...base,
-      senaImporte: 500,
-      senaRecibida: true,
-      senaRecibidaEl: '2026-10-15',
-      senaMedio: 'efectivo',
-    });
-    // Sin moneda, la del alquiler.
-    expect(r).toMatchObject({ senaMoneda: 'ARS', senaRecibida: true, senaMedio: 'efectivo' });
-  });
-
-  it('sin importe de seña no queda nada «recibido»; el depósito sin moneda va en la del alquiler', () => {
+  it('la seña sin moneda va en la del alquiler; el depósito, igual', () => {
     const r = ReservaInputSchema.parse({
       ...base,
       moneda: 'USD',
-      senaRecibida: false,
-      senaMedio: 'cheque',
+      senaImporte: 500,
       depositoImporte: 1000,
     });
-    expect(r).toMatchObject({ senaMoneda: null, senaMedio: null, depositoMoneda: 'USD' });
+    expect(r).toMatchObject({ senaMoneda: 'USD', depositoMoneda: 'USD' });
+    expect(ReservaInputSchema.parse(base).senaMoneda).toBeNull();
+  });
+
+  it('regla 169: cobrar la seña pide la fecha; el medio, si no se dice, es transferencia', () => {
+    expect(CobrarSenaSchema.safeParse({}).success).toBe(false);
+    expect(CobrarSenaSchema.parse({ fecha: '2026-10-15' })).toEqual({
+      fecha: '2026-10-15',
+      medio: 'transferencia',
+      personaId: null,
+      obs: null,
+    });
   });
 
   it('la misma persona dos veces con el mismo papel no entra', () => {
@@ -77,7 +73,7 @@ describe('ReservaInputSchema (regla 154)', () => {
 
 describe('Estados de la reserva (regla 155)', () => {
   it('los finales no tienen pasos; convertida solo llega desde aprobada', () => {
-    for (const e of ['convertida', 'rechazada', 'vencida', 'anulada'] as const)
+    for (const e of ['convertida', 'rechazada', 'vencida', 'no_se_presento', 'anulada'] as const)
       expect(PASOS_RESERVA[e]).toEqual([]);
     const llegan = EstadoReservaSchema.options.filter((e) =>
       PASOS_RESERVA[e].includes('convertida'),
@@ -108,5 +104,24 @@ describe('Estados de la reserva (regla 155)', () => {
     expect(FiltroReservasSchema.parse('cualquiera')).toBe('abiertas');
     expect(FiltroReservasSchema.parse('vencida')).toBe('vencida');
     expect(FiltroReservasSchema.parse('todas')).toBe('todas');
+  });
+});
+
+describe('La seña retenida (regla 171)', () => {
+  it('se retiene al rechazar, al vencer y si no se presentó a firmar; no al anular', () => {
+    expect([...ESTADOS_QUE_RETIENEN_LA_SENA]).toEqual(['rechazada', 'vencida', 'no_se_presento']);
+    // «No se presentó a firmar» es el cierre de una aprobada.
+    expect(PASOS_RESERVA.aprobada).toContain('no_se_presento');
+    expect(PASOS_RESERVA.en_estudio).not.toContain('no_se_presento');
+  });
+
+  it('«no se presentó» no pide motivo; cerrar puede traer el propietario a quien entregar la seña', () => {
+    expect(CambioEstadoReservaSchema.parse({ estado: 'no_se_presento' })).toEqual({
+      estado: 'no_se_presento',
+    });
+    expect(
+      CambioEstadoReservaSchema.safeParse({ estado: 'vencida', propietarioId: 'no-es-un-id' })
+        .success,
+    ).toBe(false);
   });
 });

@@ -40,8 +40,10 @@ export function contratoDesdeReserva(r: ReservaDto): PrecargaContrato {
     ajuste: r.ajuste,
     indice: r.indice ?? undefined,
     periodicidadMeses: r.periodicidadMeses ?? undefined,
-    depositoImporte: r.depositoImporte ?? undefined,
-    depositoMoneda: r.depositoMoneda ?? undefined,
+    // Florencia (Vacker), 15/10/2026: «se pide un mes de seña, que coincide
+    // con el depósito». Sin depósito propuesto, el de la seña cobrada.
+    depositoImporte: r.depositoImporte ?? (r.sena?.recibida ? r.sena.importe : undefined),
+    depositoMoneda: r.depositoMoneda ?? (r.sena?.recibida ? r.sena.moneda : undefined),
     obs: r.obs ?? undefined,
     partes: r.partes.map((p) => ({ ...p, porcentaje: null })),
     tramos: bases.map((t, i) => ({

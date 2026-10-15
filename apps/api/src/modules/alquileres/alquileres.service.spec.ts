@@ -51,6 +51,7 @@ describe('AlquileresService.configuracion (reglas 99 y 103)', () => {
       contratoDiaPagoPropietario: 10,
       // Regla 133: sin cargar, 5 días.
       diasDiferenciaFinal: 5,
+      honorariosSenaRetenidaPct: 0,
     });
     expect(c).not.toHaveProperty('selladoPct');
     expect(t.tenant.update).not.toHaveBeenCalled();
@@ -74,6 +75,7 @@ describe('AlquileresService.configuracion (reglas 99 y 103)', () => {
       contratoDiaVencimiento: 5,
       contratoDiaPagoPropietario: 10,
       diasDiferenciaFinal: 7,
+      honorariosSenaRetenidaPct: 0,
     };
     const c = await new AlquileresService(makeDb(t)).guardarConfiguracion(CTX, dto);
     const guardado = t.tenant.update.mock.calls[0]![0].data.config;

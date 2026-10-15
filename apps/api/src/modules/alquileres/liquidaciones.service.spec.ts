@@ -384,3 +384,57 @@ describe('LiquidacionesService (reglas 20 a 22)', () => {
     expect(await consultas(5)).toBe(await consultas(25));
   });
 });
+
+// Regla 171 (Florencia, Vacker, 15/10/2026): la seña retenida «se le entrega al propietario».
+describe('LiquidacionesService · la seña retenida de una reserva (regla 171)', () => {
+  const senaRetenida = (over: Record<string, unknown> = {}) =>
+    delDueno({
+      tipo: 'sena',
+      sentido: 'a_pagar',
+      importe: dec(500),
+      moneda: 'USD',
+      claveGeneracion: `sena|r1|retenida|${DUENO}`,
+      descripcion: 'Seña retenida de la reserva 3 · Mitre 100',
+      contrato: null,
+      reservaId: 'r1',
+      ...over,
+    });
+
+  it('entra en su próxima liquidación aunque la reserva no tenga contrato', async () => {
+    const tx = makeTx({ delDueno: [senaRetenida()] });
+    const prep = await new LiquidacionesService(makeDb(tx)).preparar(DUENO, 'USD', '2026-10-20');
+    expect(prep.aPagar).toEqual([
+      expect.objectContaining({
+        tipo: 'sena',
+        contrato: null,
+        descripcion: 'Seña retenida de la reserva 3 · Mitre 100',
+        importe: 500,
+      }),
+    ]);
+    expect(prep.neto).toBe(500);
+    // La base busca al propietario en la reserva cuando el concepto no tiene contrato.
+    // Se llama como plantilla etiquetada: el primer argumento son los pedazos del SQL.
+    const sql = (tx.$queryRaw.mock.calls[0] as unknown as [TemplateStringsArray])[0].join('?');
+    expect(sql).toContain('alq_reserva_parte');
+  });
+
+  it('los honorarios sobre la seña retenida se le descuentan', async () => {
+    const tx = makeTx({
+      delDueno: [
+        senaRetenida(),
+        senaRetenida({
+          tipo: 'honorarios',
+          sentido: 'a_cobrar',
+          importe: dec(60.5),
+          claveGeneracion: `sena|r1|honorarios|${DUENO}`,
+          descripcion: 'Honorarios sobre la seña retenida de la reserva 3 (10% + IVA)',
+        }),
+      ],
+    });
+    const prep = await new LiquidacionesService(makeDb(tx)).preparar(DUENO, 'USD', '2026-10-20');
+    expect(prep.aDescontar).toEqual([
+      expect.objectContaining({ tipo: 'honorarios', importe: 60.5 }),
+    ]);
+    expect(prep.neto).toBe(439.5);
+  });
+});

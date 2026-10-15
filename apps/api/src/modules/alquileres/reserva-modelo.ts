@@ -1,8 +1,9 @@
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { NOMBRE_TIPO_CONTRATO, NOMBRE_TIPO_GARANTIA, type TipoGarantia } from '@vacker/types';
 import { fechaCorta, importeEnLetras, sumarDiasIso, sumarMesesIso } from '@vacker/domain';
 import { decToNum, fromDate } from '../tablero/tablero.util';
 import { plata } from './historial';
+import { CONCEPTOS_DE_LA_SENA, nroRecibo, senaDto } from './sena';
 
 /**
  * Lo que se lee de una reserva para completar su plantilla (reglas 162 y
@@ -16,9 +17,8 @@ export const SELECT_RESERVA_PLANTILLA = {
   obs: true,
   senaImporte: true,
   senaMoneda: true,
-  senaRecibida: true,
-  senaRecibidaEl: true,
-  senaMedio: true,
+  // La seña cobrada y su recibo (regla 169).
+  conceptos: CONCEPTOS_DE_LA_SENA,
   tipo: true,
   moneda: true,
   alquilerInicial: true,
@@ -128,7 +128,9 @@ export function datosDeReserva(
     const mon = (m ?? moneda) as 'ARS' | 'USD';
     return { importe: plata(valor, mon), letras: importeEnLetras(valor, mon) };
   };
-  const sena = importe(r.senaImporte, r.senaMoneda);
+  // La seña que se cobró manda sobre la acordada: es la del recibo.
+  const s = senaDto(r, r.conceptos);
+  const sena = s ? importe(new Prisma.Decimal(s.importe), s.moneda) : null;
   const deposito = importe(r.depositoImporte, r.depositoMoneda);
   const alquiler = r.alquilerInicial != null ? decToNum(r.alquilerInicial) : null;
   const inicio = fromDate(r.inicio);
@@ -156,8 +158,9 @@ export function datosDeReserva(
     'garantes.texto': todos(garantes),
     'sena.importe': sena?.importe ?? '',
     'sena.letras': sena?.letras ?? '',
-    'sena.fecha': r.senaRecibida && r.senaRecibidaEl ? fechaCorta(fromDate(r.senaRecibidaEl)!) : '',
-    'sena.medio': r.senaRecibida ? (r.senaMedio ?? '') : '',
+    'sena.fecha': s?.recibidaEl ? fechaCorta(s.recibidaEl) : '',
+    'sena.medio': s?.medio ?? '',
+    'sena.recibo': s?.recibo ? nroRecibo(s.recibo.numero) : '',
     'contrato.tipo': NOMBRE_TIPO_CONTRATO[r.tipo as 'vivienda' | 'comercial'],
     'contrato.destino': r.tipo === 'comercial' ? 'uso comercial' : 'vivienda familiar',
     'contrato.inicio': inicio ? fechaCorta(inicio) : A_DEFINIR,
@@ -175,7 +178,7 @@ export function datosDeReserva(
     'deposito.letras': deposito?.letras ?? '',
     'fecha.hoy': fechaCorta(hoy),
     sena,
-    sena_recibida: !!sena && r.senaRecibida,
+    sena_recibida: !!s?.recibida,
     deposito,
     indexado: r.ajuste === 'indexado',
     escalonado: r.ajuste === 'escalonado',

@@ -4,7 +4,7 @@ import {
   type EstadoReserva,
   type SenaDto,
 } from '@vacker/types';
-import { fmtFecha, fmtMoneda } from '../../lib/format';
+import { fmtFecha, fmtMoneda, nroDocumento } from '../../lib/format';
 import { Insignia, type TonoInsignia } from './piezas';
 import { NOMBRE_MEDIO } from './medios';
 
@@ -22,6 +22,7 @@ const TONO: Record<EstadoReserva, TonoInsignia> = {
   convertida: 'neutro',
   rechazada: 'peligro',
   vencida: 'peligro',
+  no_se_presento: 'peligro',
   anulada: 'neutro',
 };
 
@@ -75,7 +76,7 @@ export function textoSena(sena: SenaDto | null): string {
   if (!sena) return 'Sin seña';
   const importe = fmtMoneda(sena.importe, sena.moneda);
   if (!sena.recibida) return `${importe} · sin recibir`;
-  return `${importe} · recibida${sena.recibidaEl ? ` el ${fmtFecha(sena.recibidaEl)}` : ''}${sena.medio ? ` (${NOMBRE_MEDIO[sena.medio]})` : ''}`;
+  return `${importe} · recibida${sena.recibidaEl ? ` el ${fmtFecha(sena.recibidaEl)}` : ''}${sena.medio ? ` (${NOMBRE_MEDIO[sena.medio]})` : ''}${sena.recibo ? `, recibo ${nroDocumento(sena.recibo.numero)}` : ''}`;
 }
 
 /** La seña en dos renglones, para la tarjeta del teléfono: el importe y si se recibió. */

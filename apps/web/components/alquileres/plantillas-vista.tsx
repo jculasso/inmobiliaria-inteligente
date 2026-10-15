@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import {
   MARCADORES_PLANTILLA,
+  MARCADORES_ANEXO_INVENTARIO,
   MARCADORES_RESERVA,
   PLANTILLA_MAX_BYTES,
   type DocumentoPlantilla,
@@ -12,7 +13,7 @@ import {
 } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
-import { descargarEjemploReserva } from '../../lib/reservas-api';
+import { descargarEjemploAnexo, descargarEjemploReserva } from '../../lib/reservas-api';
 import {
   borrarPlantilla,
   descargarEjemploPlantilla,
@@ -36,10 +37,18 @@ const PARA: Record<TipoContrato | '', string> = {
   comercial: 'Comerciales',
 };
 
-/** Regla 162: de qué documento es cada plantilla. */
+/** Reglas 162 y 174: de qué documento es cada plantilla. */
 const DOCUMENTO: Record<DocumentoPlantilla, string> = {
   contrato: 'Contrato',
   reserva: 'Formulario de reserva',
+  inventario: 'Anexo de inventario',
+};
+
+/** El nombre que se propone al subir, según de qué es la plantilla. */
+const NOMBRE_PROPUESTO: Record<DocumentoPlantilla, string> = {
+  contrato: 'Contrato de locación',
+  reserva: 'Formulario de reserva',
+  inventario: 'Anexo de inventario',
 };
 
 const ACEPTA = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -111,9 +120,11 @@ export function PlantillasVista({ plantillas }: { plantillas: PlantillaDto[] }) 
                   <p className="font-semibold text-ink">
                     {p.nombre}
                     <span className="font-normal text-muted"> · {PARA[p.tipoContrato ?? '']}</span>
-                    {p.documento === 'reserva' && (
+                    {p.documento !== 'contrato' && (
                       <span className="ml-1.5">
-                        <Insignia tono="marca">Reserva</Insignia>
+                        <Insignia tono="marca">
+                          {p.documento === 'reserva' ? 'Reserva' : 'Anexo de inventario'}
+                        </Insignia>
                       </span>
                     )}
                   </p>
@@ -221,12 +232,24 @@ export function PlantillasVista({ plantillas }: { plantillas: PlantillaDto[] }) 
             >
               {bajando === 'ejemplo-reserva' ? 'Descargando…' : '⬇️ Ejemplo de reserva'}
             </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={bajando === 'ejemplo-anexo'}
+              onClick={() => bajar('ejemplo-anexo', descargarEjemploAnexo)}
+            >
+              {bajando === 'ejemplo-anexo' ? 'Descargando…' : '⬇️ Ejemplo de anexo de inventario'}
+            </Button>
           </div>
           <ListaMarcadores
             titulo="Todos los marcadores del contrato"
             lista={MARCADORES_PLANTILLA}
           />
           <ListaMarcadores titulo="Todos los marcadores de la reserva" lista={MARCADORES_RESERVA} />
+          <ListaMarcadores
+            titulo="Todos los marcadores del anexo de inventario"
+            lista={MARCADORES_ANEXO_INVENTARIO}
+          />
         </div>
       </Panel>
 
@@ -360,13 +383,12 @@ function PlantillaModal({
               onChange={(e) => {
                 const d = e.target.value as DocumentoPlantilla;
                 setDocumento(d);
-                if (nombre === 'Contrato de locación' && d === 'reserva')
-                  setNombre('Formulario de reserva');
-                if (nombre === 'Formulario de reserva' && d === 'contrato')
-                  setNombre('Contrato de locación');
+                // El nombre propuesto sigue al tipo, mientras no se haya escrito otro.
+                if (Object.values(NOMBRE_PROPUESTO).includes(nombre))
+                  setNombre(NOMBRE_PROPUESTO[d]);
               }}
             >
-              {(['contrato', 'reserva'] as const).map((v) => (
+              {(['contrato', 'reserva', 'inventario'] as const).map((v) => (
                 <option key={v} value={v}>
                   {DOCUMENTO[v]}
                 </option>

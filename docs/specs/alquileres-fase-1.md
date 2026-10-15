@@ -1132,6 +1132,14 @@ registrada en el sistema, y relacionada con la propiedad y luego sigue el
 contrato. Una vez reservada la propiedad se hace el estudio de garantías y si
 todo está OK sigue el contrato.»
 
+Y sus respuestas sobre la seña y el inventario, el mismo día (finales): «Se
+pide un mes de seña, que coincide con el depósito»; «la seña la guarda la
+inmobiliaria»; «al interesado se le da un recibo por la seña»; «si la reserva
+vence, el inquilino no se presenta a firmar o no logra presentar garantías
+adecuadas, la seña se retiene y se le entrega al propietario»; «la reserva se
+cierra a mano»; y «el inventario: lo mejor es que sea un apéndice del
+contrato».
+
 Los Word de Vacker **todavía no llegaron**. Lo que se construye es el
 mecanismo general —los datos, los estados y los marcadores—; cuando lleguen,
 solo se ubican los marcadores en sus Word. Lo ven y lo operan los mismos
@@ -1139,10 +1147,11 @@ roles que el resto del módulo (§3): `ROLES_ADMINISTRACION_ALQUILERES`, con
 `@Modulo('alquileres')`.
 
 **Para quién y para qué.** Para quien administra los alquileres: registrar
-la reserva de una propiedad con su seña, hacer el estudio de garantías ahí
-mismo, y que el contrato salga de la reserva aprobada sin volver a cargar
-nada; y que el inventario de lo que se entrega con la propiedad quede en el
-contrato y en su Word.
+la reserva de una propiedad y cobrar su seña con recibo, hacer el estudio de
+garantías ahí mismo, y que el contrato salga de la reserva aprobada sin volver
+a cargar nada —con la seña como depósito—; si la reserva se cae, que la seña
+le llegue al propietario en su liquidación; y que el inventario de lo que se
+entrega con la propiedad quede en el contrato y en su anexo.
 
 **Matriz de roles.** Igual que §3, sin cambios: `administracion`,
 `direccion` y `admin_tenant` ven y hacen todo; `vendedor`, `team_leader` y
@@ -1183,15 +1192,13 @@ recibe 403 aunque el usuario sea `direccion`.
      momento, sin salir del formulario), los **propietarios** si se conocen
      y los **garantes propuestos** (personas del módulo, con el mismo papel
      que en un contrato), la **fecha de reserva** y su **vencimiento** (no
-     anterior a la fecha), la **seña** (importe, moneda ARS o USD, si se
-     recibió y, si se recibió, la fecha y el medio: transferencia,
-     efectivo, cheque u otro), las **condiciones propuestas** (particular o
-     comercial, moneda del alquiler, alquiler inicial, inicio, duración en
-     meses, ajuste —índice y cada cuántos meses, o escalonado—, depósito y
-     su moneda) y observaciones. Las condiciones son una propuesta: pueden
-     quedar sin cargar. Una seña recibida sin fecha o sin medio se rechaza
-     con «Indicá cuándo y cómo se recibió la seña.»; un vencimiento anterior
-     a la fecha, con «El vencimiento no puede ser anterior a la fecha de la
+     anterior a la fecha), la **seña acordada** (importe y moneda ARS o USD;
+     cobrarla es otro paso, regla 169), las **condiciones propuestas**
+     (particular o comercial, moneda del alquiler, alquiler inicial, inicio,
+     duración en meses, ajuste —índice y cada cuántos meses, o escalonado—,
+     depósito y su moneda) y observaciones. Las condiciones son una
+     propuesta: pueden quedar sin cargar. Un vencimiento anterior a la fecha
+     se rechaza con «El vencimiento no puede ser anterior a la fecha de la
      reserva.»; sin interesado, con «Falta el interesado (el futuro
      inquilino).».
 155. **Los estados y sus pasos**, y ningún otro:
@@ -1199,10 +1206,11 @@ recibe 403 aunque el usuario sea `direccion`.
        `vencida` o `anulada`;
      - `en_estudio` → `aprobada`, `rechazada`, `vencida` o `anulada`;
      - `aprobada` → `convertida` (solo al guardar el contrato, regla 159),
-       `vencida` o `anulada`.
+       `no_se_presento` («No se presentó a firmar»), `vencida` o `anulada`.
 
-     `convertida`, `rechazada`, `vencida` y `anulada` son finales. Rechazar
-     y anular piden **motivo** (al menos 3 caracteres); un paso que no está
+     `convertida`, `rechazada`, `vencida`, `no_se_presento` y `anulada` son
+     finales. Rechazar y anular piden **motivo** (al menos 3 caracteres);
+     «No se presentó a firmar» admite una observación. Un paso que no está
      en la lista responde 400 «Una reserva <estado> no pasa a <estado>.».
      Cada paso queda en el historial (`alq_evento`, entidad `reserva`) con
      quién, cuándo y el motivo, y la ficha de la reserva lo muestra como
@@ -1213,7 +1221,7 @@ recibe 403 aunque el usuario sea `direccion`.
      segunda responde 409 «<propiedad> ya tiene abierta la reserva N.». Lo
      garantiza un índice único parcial en la base, no solo el código. Una
      propiedad con un contrato vigente **sí** se puede reservar (para cuando
-     ese contrato termine).
+     ese contrato termine). Una propiedad que tuvo reservas no se borra.
 157. **El estudio de garantías** usa el mismo modelo e informe que las
      garantías del contrato (tipo, garante —una persona de la reserva o un
      nombre—, detalle, estado del informe `pendiente`/`aprobada`/`rechazada`,
@@ -1234,35 +1242,40 @@ recibe 403 aunque el usuario sea `direccion`.
      propietarios, los interesados como inquilinos, los garantes, el tipo,
      la moneda, el inicio, el fin (inicio + duración − 1 día), el ajuste con
      su índice y periodicidad, los tramos con el alquiler inicial en el
-     primero, y el depósito con su moneda. Al guardar, **en una sola
-     transacción**: se crea el contrato en borrador, la reserva pasa a
-     `convertida` vinculada al contrato, y las garantías **aprobadas** se
-     copian al contrato. Las de la reserva quedan como estaban: son el
-     registro del estudio, y editar las del contrato no las toca. Si la
-     reserva ya no está aprobada, o el contrato es de otra propiedad, no se
-     crea nada (409 / 400).
+     primero, y el depósito con su moneda (sin depósito propuesto, el de la
+     seña cobrada); lo que la reserva no dice, con los valores de la
+     inmobiliaria (regla 99). Al guardar, **en una sola transacción**: se
+     crea el contrato en borrador, la reserva pasa a `convertida` vinculada
+     al contrato, la seña cobrada pasa a ser el depósito (regla 170) y las
+     garantías **aprobadas** se copian al contrato. Las de la reserva quedan
+     como estaban: son el registro del estudio, y editar las del contrato no
+     las toca. Si la reserva ya no está aprobada, o el contrato es de otra
+     propiedad, no se crea nada (409 / 400).
 160. **El contrato que se borra.** Si se borra el contrato en borrador que
      salió de una reserva, la reserva vuelve a `aprobada`, sin contrato, y
-     queda en su historial; se puede volver a convertir.
-161. **La seña** se registra en la reserva y **no genera** conceptos,
-     cobros, recibos ni liquidaciones (qué se hace con ella es una pregunta
-     abierta para Vacker). La ficha del contrato que salió de una reserva
-     muestra «Seña de la reserva N: $ X», con «recibida el dd/mm/aaaa
-     (medio)» o «sin recibir», y el enlace a la reserva.
-162. **Plantillas de reserva.** Cada plantilla es **de contrato o de
-     reserva**. Las de reserva se validan contra su propia lista,
-     `MARCADORES_RESERVA` (`@vacker/types`), con los mismos mensajes de la
-     regla 40; un marcador de contrato que no existe en la reserva se
-     rechaza. Las plantillas que ya existían son de contrato. Una plantilla
-     de reserva no aparece al descargar un contrato ni una de contrato en la
-     reserva, y pedirlas cruzadas responde 400.
+     queda en su historial; la seña vuelve a ser de la reserva y el
+     reintegro de lo que sobraba (regla 170) se deshace —si ya se usó en un
+     cobro, el borrado se frena—. Se puede volver a convertir.
+161. **La seña en el contrato.** La ficha del contrato que salió de una
+     reserva muestra «Seña de la reserva N: $ X», con «recibida el
+     dd/mm/aaaa (medio), recibo 000123» o «sin recibir», y el enlace a la
+     reserva.
+162. **Plantillas de reserva.** Cada plantilla es **de contrato, de reserva
+     o de anexo de inventario** (regla 174). Las de reserva se validan
+     contra su propia lista, `MARCADORES_RESERVA` (`@vacker/types`), con los
+     mismos mensajes de la regla 40; un marcador de contrato que no existe
+     en la reserva se rechaza. Las plantillas que ya existían son de
+     contrato. Cada plantilla se usa solo para lo suyo: pedirla para otro
+     documento responde 400 «Es una plantilla de <documento>: se usa desde
+     …».
 163. **«Descargar la reserva en Word»** desde una reserva que no esté
      anulada: `Reserva-<número>.docx`, con las mismas reglas que el
      contrato (regla 41: lo opcional vacío; una condición propuesta sin
-     cargar dice «[a definir]»). No se guarda; queda en el historial de la
-     reserva. Se descarga un **Word de ejemplo de reserva** con cada
-     marcador explicado y un formulario armado con ellos; subirlo tal cual
-     funciona.
+     cargar dice «[a definir]»); la seña sale con su recibo
+     (`{sena.recibo}`, `{sena.fecha}`, `{#sena_recibida}`). No se guarda;
+     queda en el historial de la reserva. Se descarga un **Word de ejemplo
+     de reserva** con cada marcador explicado y un formulario armado con
+     ellos; subirlo tal cual funciona.
 164. **La lista de reservas** (`/alquileres/reservas`, en la segunda fila de
      la pestaña Contratos: la barra sigue con once pestañas) abre en las
      **abiertas** y filtra por cada estado o todas; en la computadora es una
@@ -1283,30 +1296,85 @@ recibe 403 aunque el usuario sea `direccion`.
      descargar su Word hacen **las mismas consultas** con 5 que con 25
      reservas, partes o garantías; el Dashboard suma una sola consulta.
 
+#### La seña (respuestas de Florencia, 15/10/2026)
+
+169. **El recibo de la seña.** «Cobrar la seña», en la ficha de una reserva
+     abierta con seña acordada, da un **recibo de verdad** —el de Cobros: el
+     número siguiente, el PDF y «Mandar por mail»— a nombre del interesado
+     (el primero, o el que se elija entre los interesados), con la fecha y
+     el medio. Por dentro, un concepto `sena` a cobrar del interesado, con
+     su reserva, cancelado por ese recibo: está en su cuenta corriente y en
+     su historial. Una vez por recibo vigente («La seña ya se cobró: recibo
+     N.»); con el recibo hecho, el importe y la moneda de la seña ya no se
+     cambian («…para cambiarla, anulá ese recibo en Cobros.»). Anular el
+     recibo anula la seña cobrada y lo que nació con ella (el reintegro y la
+     retención de las reglas 170 y 171), salvo que la retención ya se le
+     haya liquidado al propietario: entonces primero la liquidación.
+170. **La seña pasa a ser el depósito.** Al convertir, el concepto de la
+     seña pasa al contrato y el depósito queda **cobrado en la fecha del
+     recibo**: «Depósito en garantía» (estado, entregar al propietario o
+     retener, devolver) funciona igual que con un depósito cobrado. La seña
+     y el depósito tienen que ser de la misma moneda (si no, 400). Si el
+     depósito es **mayor**, «Cargos de ingreso» propone solo la diferencia,
+     y el depósito queda «a cobrar» hasta que se cobre; si es **menor** (o
+     no hay depósito), lo que sobra se le reintegra al inquilino: un
+     concepto a pagar, a su favor, que el próximo cobro compensa. La
+     pantalla de conversión lo dice antes de guardar.
+171. **La seña retenida va al propietario.** Si la reserva se cierra como
+     `rechazada` (no logró presentar garantías adecuadas), `vencida` o
+     `no_se_presento`, la seña cobrada se retiene: un concepto `sena` a
+     pagar a cada propietario de la reserva, en partes iguales, que entra
+     en su **próxima liquidación** aunque la reserva no tenga contrato. Sin
+     honorarios, salvo que la inmobiliaria configure un porcentaje en
+     **Configuración › Reservas** (con su IVA, regla 12), que se le
+     descuenta. Si la reserva no tiene propietario cargado, cerrar pide
+     elegirlo («Para retener la seña hace falta el propietario: elegí a
+     quién se le entrega.») y se suma a la reserva. La ficha lo dice: «Seña
+     retenida: $ X se le entrega al propietario en su próxima liquidación».
+172. **Anular es deshacer un error.** Anular una reserva no retiene nada; si
+     la seña tiene recibo vigente, primero se anula el recibo, como
+     cualquier otro: «La seña tiene el recibo N: anulalo primero, en Cobros,
+     y después anulá la reserva.».
+173. **La reserva se cierra a mano.** Ninguna reserva cambia de estado sola:
+     ni al vencer ni nunca. El Dashboard avisa (regla 166) y la lista la
+     marca en rojo (regla 164); quien la administra decide.
+174. **El anexo de inventario** («lo mejor es que sea un apéndice del
+     contrato»): una plantilla de Word de **anexo de inventario**, con su
+     lista de marcadores —el código, las fechas y el tipo del contrato, la
+     propiedad, los propietarios y los inquilinos, la fecha del día, la
+     lista `{#inventario}` y sus observaciones; los mismos datos que el
+     contrato—, validada al subirla como las demás y con su **Word de
+     ejemplo**. Desde la ficha del contrato, al lado del contrato en Word,
+     «Descargar el anexo de inventario (Word)»:
+     `Anexo-inventario-<código>.docx`, con la plantilla de anexo de la
+     inmobiliaria o, si no subió ninguna, con el modelo de la plataforma. No
+     se guarda; queda en el historial. Un contrato anulado no tiene anexo.
+
 **Casos borde:**
 
 - **La fila vieja**: contratos sin inventario (regla 153); plantillas sin
   tipo, que son de contrato (regla 162); garantías que siempre fueron de un
-  contrato (la columna nueva `reserva_id` queda vacía).
+  contrato (la columna nueva `reserva_id` queda vacía); conceptos sin
+  reserva (la columna nueva `reserva_id` de `alq_concepto`, vacía).
 - **La lista vacía**: sin reservas, «Todavía no se cargó ninguna reserva.»;
   sin abiertas, «No hay reservas abiertas.»; una reserva sin garantías no
-  se aprueba (regla 157).
+  se aprueba (regla 157); una reserva sin seña cobrada se cierra sin
+  retener nada.
 - **La inmobiliaria sin el módulo**: 403 en todo, como el resto (regla 167).
 - **El interesado que ya es inquilino** de otro contrato: es la misma
   persona; nada lo impide.
+- **Varios propietarios**: la seña retenida se reparte en partes iguales (la
+  reserva no lleva porcentajes; el contrato sí).
 
 **Fuera de alcance (entrega C):**
 
-- **Qué pasa con la seña**: si se aplica al primer mes o a los gastos de
-  ingreso, si se devuelve al rechazar, si se le pasa al propietario. No se
-  inventa contabilidad: queda registrada y a la vista (regla 161), y las
-  preguntas van a Vacker.
 - Mapear los Word reales de Vacker: llegan después y solo hay que ubicar
   los marcadores.
-- El vencimiento **automático** de las reservas: se da por vencida a mano y
-  el Dashboard avisa (regla 166).
-- Generar el **PDF** de la reserva o mandarlo por mail: se descarga el Word,
-  como el contrato.
+- Generar el **PDF** de la reserva o mandarla por mail: se descarga el
+  Word, como el contrato. (El recibo de la seña sí va por mail, regla 169.)
+- Una seña en una moneda y el depósito en otra (regla 170: misma moneda).
+- La seña retenida en el informe al propietario: se liquida y sale en su
+  cuenta corriente y en la liquidación; el informe mira los contratos.
 - Un portal o un link para que el interesado complete sus datos.
 
 **Criterio de aceptación (en Alteva):**
@@ -1314,34 +1382,39 @@ recibe 403 aunque el usuario sea `direccion`.
 1. Javier entra a Alteva con su usuario de dirección y va a **Contratos ›
    Reservas**: ve «No hay reservas abiertas» y el botón «Nueva reserva».
 2. Carga una reserva para una propiedad, con un interesado que **da de alta
-   en el momento** («＋ Nueva persona»), un garante, seña de USD 500
-   recibida hoy por transferencia, vencimiento en 5 días, alquiler inicial
-   $ 600.000 por ICL cada 3 meses, 24 meses, depósito USD 600. Queda
-   «Reserva 1 · Reservada». En **Propiedades** esa propiedad dice
-   «Reservada»; intentar una segunda reserva para ella dice que ya tiene la
-   Reserva 1 abierta.
-3. En el Dashboard, «Reservas que vencen en 7 días o ya vencidas» la cuenta.
-4. En la reserva, «Empezar el estudio de garantías»; carga la garantía del
-   garante con el informe pendiente: «Aprobar» dice que falta el informe.
-   La pone aprobada: «Aprobar» la pasa a Aprobada. La línea de tiempo
-   muestra los tres pasos con su usuario; el Dashboard la muestra en
-   «Reservas aprobadas sin contrato».
-5. En **Configuración › Plantillas** descarga el ejemplo de reserva y lo
-   sube como plantilla «de reserva»; en la reserva, «Descargar la reserva
-   en Word» baja `Reserva-1.docx` con la propiedad, el interesado, la seña
-   de U$S 500,00 y las condiciones. La plantilla no aparece en los
-   contratos.
-6. «Convertir en contrato» abre el alta con todo precargado (partes,
-   fechas, ICL cada 3, $ 600.000 en el primer tramo, depósito en dólares);
-   lo guarda: queda el contrato en borrador, su ficha dice «Seña de la
-   reserva 1: U$S 500,00, recibida el …», trae la garantía aprobada, y la
-   reserva queda «Convertida» con el enlace al contrato.
-7. En la ficha del contrato carga el **Inventario** (tres ítems y una
-   observación). Descarga el contrato en Word con el ejemplo de contrato: la
-   cláusula de inventario lista los tres ítems. Lo activa: el inventario se
-   sigue editando. Lo anula en otra prueba: ya no.
-8. En la Inmobiliaria de Demo, sin el módulo, un usuario `direccion` no ve
-   Alquileres y `GET /alquileres/reservas` responde 403.
+   en el momento** («＋ Dar de alta una persona nueva…»), un garante, seña de
+   USD 500, vencimiento en 5 días, alquiler inicial $ 600.000 por ICL cada 3
+   meses, 24 meses, depósito USD 500. Queda «Reserva 1 · Reservada». En
+   **Propiedades** esa propiedad dice «Reservada»; intentar una segunda
+   reserva para ella dice que ya tiene la Reserva 1 abierta.
+3. En la reserva, «Cobrar la seña» por transferencia: sale el recibo
+   000N, que se abre en PDF y se manda por mail a su propio correo; en la
+   cuenta corriente del interesado está la seña, cancelada por ese recibo.
+4. En el Dashboard, «Reservas que vencen en 7 días o ya vencidas» la cuenta.
+5. «Empezar el estudio de garantías»; carga la garantía con el informe
+   pendiente: «Aprobar» dice que falta el informe. La pone aprobada:
+   «Aprobar» la pasa a Aprobada. La línea de tiempo muestra los pasos con
+   su usuario; el Dashboard la muestra en «Reservas aprobadas sin contrato».
+6. En **Configuración › Plantillas** descarga los ejemplos de reserva y de
+   anexo de inventario y los sube con su tipo; en la reserva, «Descargar la
+   reserva en Word» baja `Reserva-1.docx` con la seña de U$S 500,00 y su
+   recibo. Las plantillas no se mezclan con las de contrato.
+7. «Convertir en contrato» abre el alta precargada; con el depósito en USD
+   400 dice que sobran U$S 100,00 y se le reintegran; lo vuelve a USD 500 y
+   dice que la seña ya cubre el depósito. Lo guarda: el contrato en
+   borrador dice «Seña de la reserva 1: U$S 500,00 · recibida …, recibo
+   000N», el depósito figura cobrado y la reserva queda «Convertida».
+8. En la ficha del contrato carga el **Inventario** (tres ítems y una
+   observación) y baja «el anexo de inventario (Word)» con su plantilla: los
+   tres ítems, las partes y la propiedad. Sin plantilla de anexo, sale con
+   el modelo de la plataforma.
+9. Otra reserva con seña cobrada, sin propietario, aprobada: «No se
+   presentó a firmar» pide el propietario; elegido, la ficha dice «Seña
+   retenida», y en **Liquidaciones** ese propietario tiene U$S 500,00 para
+   liquidar. Anular una reserva con la seña cobrada pide anular primero el
+   recibo.
+10. En la Inmobiliaria de Demo, sin el módulo, un usuario `direccion` no ve
+    Alquileres y `GET /alquileres/reservas` responde 403.
 
 ## 6. Casos borde
 
@@ -1456,6 +1529,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 83 – 98           | Domain: `informe-propietario.test.ts` (87, 88, 84, 98: la cadena con cobro parcial, parte ya liquidada, pago garantizado, gastos por caja; el caso de Marcela Ibarra —alquiler liquidado y un arreglo posterior sin liquidar—; el nombre del período); types: `RANGO_*` en `InformePeriodoQuerySchema`; API: `informe-propietario.service.spec.ts` (`regla 8x`/`9x` en el nombre: la cadena al centavo, solo lo suyo, ARS/USD, deuda, mes a mes, nombres y sumas de cada descuento, reclamos sin notas y con importe solo a cargo del propietario, liquidaciones que suman lo liquidado, vacío, 404, la fila igual al informe, consultas con 5 y 25 contratos, regla 98 con el mismo caso), `informe-propietario.template.spec.tsx` (95, 94 y 98: texto del PDF, los renglones y solo Montserrat), `envios.service.spec.ts` (95), `alquileres.roles.spec.ts` (83); base: `informe-propietario.e2e-spec.ts` (85 a 93 y 96, el SQL real, en el job de aislamiento de CI); web: `periodo-tablero.test.ts` (84), `cuenta-corriente.test.tsx` (83), `informe-propietario.test.tsx` (84 a 96 y 98), `alquileres-nav.test.tsx` (83)                                                                                                                                                                                                                                                                      |
 | 99 – 112          | Ver la tabla «Cada regla con su test (99 a 112)» de la Entrega A para Vacker: domain `alquileres.test.ts`; types `alquileres-entrega-a.test.ts`; API `correccion-tramo.service.spec.ts`, `indices.service.spec.ts`, `conceptos.service.spec.ts`, `contrato-completo.service.spec.ts`, `contratos.service.spec.ts`, `indexaciones.service.spec.ts`, `alquileres.service.spec.ts`, `tablero-alquileres.service.spec.ts`, `tareas.controller.spec.ts`; base `rls-habilitada.e2e-spec.ts`; web `contrato-form`, `contrato-ficha`, `contrato-completo` y `configuracion-form` (`.test.tsx`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | 150 – 168         | Types: `reservas.test.ts` (154, 155: el schema, los pasos, el motivo, el filtro), `alquileres.test.ts` (162); API: `inventario.service.spec.ts` (150 a 153 y el Word del inventario), `reservas.service.spec.ts` (`regla 15x`/`16x` en el nombre: alta, una abierta por propiedad, pasos válidos e inválidos, aprobar con garantías, vencida, editar cerrada, convertir en la transacción del alta y copiar las aprobadas, seña, reserva devuelta al borrar el contrato, consultas con 5 y 25), `contratos.service.spec.ts` (159 y 160), `reserva-modelo.spec.ts` (162 y 163: `MARCADORES_RESERVA` ↔ datos, validación por documento, el ejemplo, cruces 400, anulada, consultas fijas), `tablero-reservas.spec.ts` y `tablero-alquileres.service.spec.ts` (166 y 168), `propiedades.service.spec.ts`, `alquileres.roles.spec.ts` (167); base: `reservas.e2e-spec.ts` (153, 156 con el índice parcial, 157 con el CHECK, 159 y 160 de punta a punta) y `aislamiento.e2e-spec.ts` (las dos tablas nuevas y la parte que cruza inmobiliarias); web: `reservas.test.tsx` (154, 155, 157, 159, 161, 164, 165, 150 y 151), `tablero-alquileres.test.tsx` (166), `plantillas-vista.test.tsx` (162 y 163), `alquileres-nav.test.tsx` (164)                                                                                                                                                               |
+| 169 – 174         | Types: `reservas.test.ts` (169, 171: cobrar la seña, los cierres que retienen, el propietario elegido), `alquileres.test.ts`; API: `reservas.service.spec.ts` (`regla 169`–`172` en el nombre: el recibo, una vez por recibo, la seña con recibo no se cambia, la seña como depósito con diferencia en los dos sentidos y en otra moneda, la retención en partes iguales, con honorarios, sin propietario y sin seña, anular con recibo, el contrato borrado devuelve la seña), `contrato-completo.service.spec.ts` (170: depósito cobrado, mayor, menor, sin depósito y lo que propone «Cargos de ingreso»), `liquidaciones.service.spec.ts` (171: la retenida sin contrato entra en la liquidación, con honorarios), `cobros.service.spec.ts` (169 y 171: anular el recibo de la seña, frenado si la retenida ya se liquidó), `anexo-inventario.spec.ts` (174: marcadores, validación, ejemplo, modelo de la plataforma, plantilla propia, cruces 400, anulado); base: `reservas.e2e-spec.ts` (169 a 171 de punta a punta); web: `reservas.test.tsx` (169 a 171 y 174: cobrar, recibo, cierre que pide propietario, seña como depósito, anexo), `plantillas-vista.test.tsx` (174)                                                                                                                                                                                                               |
 | §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |

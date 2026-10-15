@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
-  MARCADORES_PLANTILLA,
-  MARCADORES_RESERVA,
+  MARCADORES_POR_DOCUMENTO,
   type DocumentoPlantilla,
   type PlantillaDto,
   type PlantillaMetadatos,
@@ -14,7 +13,12 @@ import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { BUCKET_CONTRATOS } from './firma/firma.service';
 import { registrarEventos } from './historial';
 import { datosDePlantilla, SELECT_PLANTILLA } from './plantilla-modelo';
-import { plantillaDeEjemplo, plantillaDeEjemploReserva } from './plantilla-ejemplo';
+import {
+  anexoDeLaPlataforma,
+  plantillaDeEjemplo,
+  plantillaDeEjemploAnexo,
+  plantillaDeEjemploReserva,
+} from './plantilla-ejemplo';
 import { datosDeReserva, SELECT_RESERVA_PLANTILLA } from './reserva-modelo';
 import { completarPlantillaWord, problemasDePlantilla, type ArchivoSubido } from './plantilla-word';
 
@@ -50,7 +54,7 @@ const aDto = (p: {
   id: p.id,
   nombre: p.nombre,
   tipoContrato: p.tipoContrato as PlantillaDto['tipoContrato'],
-  documento: p.documento === 'reserva' ? 'reserva' : 'contrato',
+  documento: documentoDe(p.documento),
   formato: p.archivo ? 'word' : 'texto',
   nombreArchivo: p.nombreArchivo,
   tamano: p.tamano,
@@ -67,16 +71,30 @@ export function nombreDelArchivo(original: string): string {
   return utf8.includes('�') ? original : utf8;
 }
 
+/** Lo que dice la columna, leído sin confiar: lo que no se entiende es de contrato, como antes. */
+const documentoDe = (d: string): DocumentoPlantilla =>
+  d === 'reserva' || d === 'inventario' ? d : 'contrato';
+
+const NOMBRE_DOCUMENTO: Record<DocumentoPlantilla, string> = {
+  contrato: 'de contrato: se usa desde el contrato',
+  reserva: 'de reserva: se usa desde la reserva',
+  inventario: 'de anexo de inventario: se usa desde el inventario del contrato',
+};
+
+/** Reglas 162 y 174: cada plantilla se usa solo para lo que es. */
+function assertDocumento(d: string, esperado: DocumentoPlantilla): void {
+  const es = documentoDe(d);
+  if (es !== esperado) throw new BadRequestException(`Es una plantilla ${NOMBRE_DOCUMENTO[es]}.`);
+}
+
 /**
  * Revisa el Word y, si algo está mal, lo rechaza nombrando cada marcador.
- * Contra los marcadores de SU documento (regla 162): un Word de reserva con
- * `{contrato.codigo}` no pasa, porque una reserva no tiene código de contrato.
+ * Contra los marcadores de SU documento (reglas 162 y 174): un Word de
+ * reserva con `{contrato.codigo}` no pasa, porque una reserva no tiene
+ * código de contrato.
  */
 function validar(archivo: ArchivoSubido, documento: DocumentoPlantilla): void {
-  const problemas = problemasDePlantilla(
-    archivo,
-    documento === 'reserva' ? MARCADORES_RESERVA : MARCADORES_PLANTILLA,
-  );
+  const problemas = problemasDePlantilla(archivo, MARCADORES_POR_DOCUMENTO[documento]);
   if (problemas.length === 0) return;
   throw new BadRequestException({
     message:
@@ -116,6 +134,63 @@ export class PlantillasService {
   /** El Word de ejemplo, con todos los marcadores y un contrato armado con ellos. */
   ejemplo(): Docx {
     return { buffer: plantillaDeEjemplo(), nombre: 'Plantilla de contrato - ejemplo.docx' };
+  }
+
+  /** Regla 174: el Word de ejemplo del anexo de inventario. */
+  ejemploAnexo(): Docx {
+    return {
+      buffer: plantillaDeEjemploAnexo(),
+      nombre: 'Plantilla de anexo de inventario - ejemplo.docx',
+    };
+  }
+
+  /**
+   * Regla 174: el anexo de inventario del contrato, con la plantilla de anexo
+   * de la inmobiliaria o, si no subió ninguna (`plantillaId` null), con el
+   * modelo de la plataforma. Como el contrato: no se guarda, y queda en el
+   * historial.
+   */
+  async generarAnexo(
+    ctx: TenantContext,
+    contratoId: string,
+    plantillaId: string | null,
+  ): Promise<Docx> {
+    const { plantilla, contrato, inmobiliaria } = await this.db.withTenant(async (tx) => {
+      const [plantilla, contrato, tenant] = await Promise.all([
+        plantillaId
+          ? tx.alqPlantilla.findUnique({
+              where: { id: plantillaId },
+              select: { nombre: true, archivo: true, documento: true },
+            })
+          : Promise.resolve(null),
+        tx.alqContrato.findUnique({
+          where: { id: contratoId },
+          select: { ...SELECT_PLANTILLA, estado: true },
+        }),
+        tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { nombre: true } }),
+      ]);
+      if (plantillaId && !plantilla) throw new NotFoundException('La plantilla no existe.');
+      if (!contrato) throw new NotFoundException('El contrato no existe.');
+      return { plantilla, contrato, inmobiliaria: tenant.nombre };
+    });
+    if (contrato.estado === 'anulado')
+      throw new BadRequestException('El contrato está anulado: no se genera su anexo.');
+    if (plantilla) assertDocumento(plantilla.documento, 'inventario');
+    if (plantilla && !plantilla.archivo) throw new BadRequestException(PLANTILLA_DE_TEXTO);
+    const datos = datosDePlantilla(contrato, inmobiliaria, hoyArgentina());
+    let buffer: Buffer;
+    if (plantilla?.archivo) buffer = await this.completar(plantillaId!, plantilla.archivo, datos);
+    else buffer = completarPlantillaWord(anexoDeLaPlataforma(), datos);
+    await this.db.withTenant((tx) =>
+      registrarEventos(tx, ctx, {
+        entidad: 'contrato',
+        entidadId: contratoId,
+        contratoId,
+        accion: 'documento',
+        resumen: `Anexo de inventario en Word generado ${plantilla ? `desde la plantilla «${plantilla.nombre}»` : 'con el modelo de la plataforma'}`,
+      }),
+    );
+    return { buffer, nombre: `Anexo-inventario-${contrato.codigo}.docx` };
   }
 
   /** Regla 163: el Word de ejemplo de una reserva, con sus marcadores y un formulario. */
@@ -163,7 +238,7 @@ export class PlantillasService {
     );
     if (!anterior) throw new NotFoundException('La plantilla no existe.');
     // El Word nuevo se revisa contra los marcadores del documento que ya es.
-    validar(archivo, anterior.documento === 'reserva' ? 'reserva' : 'contrato');
+    validar(archivo, documentoDe(anterior.documento));
     const clave = await this.subir(ctx, id, archivo);
     const dto = await this.db.withTenant(async (tx) =>
       aDto(
@@ -243,7 +318,7 @@ export class PlantillasService {
       if (!contrato) throw new NotFoundException('El contrato no existe.');
       return { plantilla, contrato, inmobiliaria: tenant.nombre };
     });
-    if (plantilla.documento === 'reserva') throw new BadRequestException(ES_DE_RESERVA);
+    assertDocumento(plantilla.documento, 'contrato');
     if (!plantilla.archivo) throw new BadRequestException(PLANTILLA_DE_TEXTO);
 
     const buffer = await this.completar(
@@ -291,10 +366,7 @@ export class PlantillasService {
       if (!reserva) throw new NotFoundException('La reserva no existe.');
       return { plantilla, reserva, inmobiliaria: tenant.nombre };
     });
-    if (plantilla.documento !== 'reserva')
-      throw new BadRequestException(
-        'Es una plantilla de contrato: se usa desde el contrato. Subí el formulario de reserva como plantilla de reserva.',
-      );
+    assertDocumento(plantilla.documento, 'reserva');
     if (reserva.estado === 'anulada')
       throw new BadRequestException('La reserva está anulada: no se genera su Word.');
     if (!plantilla.archivo) throw new BadRequestException(PLANTILLA_DE_TEXTO);
@@ -360,9 +432,6 @@ export class PlantillasService {
     }
   }
 }
-
-const ES_DE_RESERVA =
-  'Es una plantilla de reserva: se usa desde la reserva. Para el contrato, elegí una plantilla de contrato.';
 
 const PLANTILLA_DE_TEXTO =
   'Es una plantilla de texto del sistema anterior: subí la versión en Word para usarla.';

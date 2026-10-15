@@ -1,10 +1,15 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Put } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import {
+  GenerarAnexoSchema,
   InventarioInputSchema,
   ROLES_ADMINISTRACION_ALQUILERES,
+  type GenerarAnexo,
   type Inventario,
 } from '@vacker/types';
+import { docxResponse } from '../../common/docx-response';
+import { Costoso } from '../../common/limite-solicitudes';
+import { PlantillasService, TIPO_DOCX } from './plantillas.service';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -17,7 +22,10 @@ import { InventarioService } from './inventario.service';
 @Controller('alquileres/contratos')
 @Modulo('alquileres')
 export class InventarioController {
-  constructor(private readonly inventario: InventarioService) {}
+  constructor(
+    private readonly inventario: InventarioService,
+    private readonly plantillas: PlantillasService,
+  ) {}
 
   @Get(':id/inventario')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
@@ -38,5 +46,27 @@ export class InventarioController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.inventario.guardar(ctxDe(user), id, body);
+  }
+
+  @Post(':id/anexo-inventario')
+  @HttpCode(200)
+  @Costoso()
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiProduces(TIPO_DOCX)
+  @ApiOperation({
+    summary:
+      'El anexo de inventario en Word (regla 174): con una plantilla de anexo, o sin `plantillaId`, con el modelo de la plataforma',
+  })
+  async anexo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(GenerarAnexoSchema)) body: GenerarAnexo,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    const { buffer, nombre } = await this.plantillas.generarAnexo(
+      ctxDe(user),
+      id,
+      body.plantillaId,
+    );
+    return docxResponse(buffer, nombre);
   }
 }

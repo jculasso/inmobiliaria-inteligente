@@ -117,7 +117,10 @@ export class ContratoCompletoService {
             c.tipo as TipoContrato,
             c.inquilinoMipyme,
           ),
-          propuesta: cargados > 0 || enCurso ? [] : propuesta(c, config, valorTotal),
+          propuesta:
+            cargados > 0 || enCurso
+              ? []
+              : propuesta(c, config, valorTotal, senaComoDeposito(depositos)),
         },
       };
     });
@@ -317,8 +320,10 @@ export class ContratoCompletoService {
 
   private conceptosDeposito(tx: Tx, contratoId: string) {
     return tx.alqConcepto.findMany({
-      where: { contratoId, tipo: 'deposito', anuladoEn: null },
+      // La seña de la reserva también: al convertir, pasa a ser el depósito (regla 170).
+      where: { contratoId, tipo: { in: ['deposito', 'sena'] }, anuladoEn: null },
       select: {
+        tipo: true,
         sentido: true,
         importe: true,
         moneda: true,
@@ -331,6 +336,17 @@ export class ContratoCompletoService {
 
 type ConceptoDeposito = Awaited<ReturnType<ContratoCompletoService['conceptosDeposito']>>[number];
 
+/** Regla 170: cuánto del depósito ya puso la seña (lo que pasó a ser depósito, neto de reintegro). */
+export function senaComoDeposito(ks: ConceptoDeposito[]): number {
+  const sena = ks
+    .filter((k) => k.tipo === 'sena' && k.sentido === 'a_cobrar')
+    .reduce((s, k) => s + decToNum(k.importe), 0);
+  const reintegro = ks
+    .filter((k) => k.sentido === 'a_pagar' && k.claveGeneracion?.includes('|excedente|'))
+    .reduce((s, k) => s + decToNum(k.importe), 0);
+  return centavos(sena - reintegro);
+}
+
 /** Dónde está el depósito, a partir de sus conceptos. */
 export function estadoDeposito(
   c: Pick<
@@ -339,16 +355,23 @@ export function estadoDeposito(
   >,
   ks: ConceptoDeposito[],
 ): DepositoDto {
+  // Lo que pagó el inquilino de depósito: el cargo de ingreso y, si el
+  // contrato salió de una reserva, su seña (regla 170), cobrada en la fecha
+  // de su recibo. Si la seña superaba el depósito, lo que se le reintegra no
+  // es depósito.
   const delInquilino = ks.filter(
-    (k) => k.sentido === 'a_cobrar' && k.claveGeneracion?.startsWith('ing|'),
+    (k) => k.sentido === 'a_cobrar' && (k.tipo === 'sena' || k.claveGeneracion?.startsWith('ing|')),
   );
+  const reintegro = ks
+    .filter((k) => k.sentido === 'a_pagar' && k.claveGeneracion?.includes('|excedente|'))
+    .reduce((s, k) => s + decToNum(k.importe), 0);
   const cobrado = centavos(
     delInquilino.reduce(
       (s, k) => s + k.imputaciones.reduce((t, i) => t + decToNum(i.importe), 0),
       0,
-    ),
+    ) - reintegro,
   );
-  const debe = centavos(delInquilino.reduce((s, k) => s + decToNum(k.importe), 0));
+  const debe = centavos(delInquilino.reduce((s, k) => s + decToNum(k.importe), 0) - reintegro);
   const entregado = ks.some((k) => k.claveGeneracion?.includes('|entrega|'));
   const base = {
     importe: c.depositoImporte == null ? null : decToNum(c.depositoImporte),
@@ -359,9 +382,13 @@ export function estadoDeposito(
   };
   if (c.depositoDevolucion) return { ...base, estado: 'devuelto' };
   if (entregado) return { ...base, estado: 'entregado' };
-  if (delInquilino.length === 0)
+  if (delInquilino.length === 0 || !base.importe)
     return { ...base, estado: base.importe ? 'a_cobrar' : 'sin_deposito' };
-  return { ...base, estado: cobrado >= debe && debe > 0 ? 'cobrado' : 'a_cobrar' };
+  // Con la seña de la reserva, falta lo que no cubrió hasta que se cargue y
+  // se cobre la diferencia: lo que se debe es, como mínimo, el depósito.
+  const conSena = delInquilino.some((k) => k.tipo === 'sena');
+  const total = conSena ? Math.max(debe, base.importe) : debe;
+  return { ...base, estado: cobrado >= total && total > 0 ? 'cobrado' : 'a_cobrar' };
 }
 
 /**
@@ -373,6 +400,8 @@ export function propuesta(
   c: FilaContrato,
   config: ReturnType<typeof TenantConfigSchema.parse>,
   valorTotal: number,
+  /** Regla 170: la seña de la reserva que ya pasó a ser el depósito. */
+  sena = 0,
 ): CargoIngreso[] {
   const primera = fromDate(c.fechaFirma) ?? fromDate(c.inicio)!;
   const cargos: CargoIngreso[] = [];
@@ -396,12 +425,17 @@ export function propuesta(
       }),
     );
   }
-  if (c.depositoImporte != null && decToNum(c.depositoImporte) > 0) {
+  // Regla 170: con la seña ya puesta como depósito, se propone solo lo que falta.
+  const deposito = c.depositoImporte != null ? centavos(decToNum(c.depositoImporte) - sena) : 0;
+  if (deposito > 0) {
     cargos.push({
       tipo: 'deposito',
-      descripcion: 'Depósito en garantía',
+      descripcion:
+        sena > 0
+          ? 'Depósito en garantía (lo que falta después de la seña)'
+          : 'Depósito en garantía',
       aCargoDe: 'inquilino',
-      importe: decToNum(c.depositoImporte),
+      importe: deposito,
       vencimiento: primera,
       moneda: (c.depositoMoneda as MonedaAlquiler | null) ?? null,
     });
