@@ -29,7 +29,7 @@ import {
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
-import { tomarCandados } from './candados';
+import { bloquearReservasDelCobro, tomarCandados } from './candados';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 import { IMPUTACION_ACTIVA, saldoDeConcepto } from './imputacion-activa';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
@@ -359,6 +359,10 @@ export class CobrosService {
    */
   async anular(ctx: TenantContext, id: string, motivo: string): Promise<CobroDto> {
     return this.db.withTenant(async (tx) => {
+      // Si es el recibo de una seña, la reserva primero y después la lectura:
+      // un rechazo de la reserva en el medio dejaría viva la seña retenida
+      // (regla 171). Ver `bloquearReservasDelCobro`.
+      await bloquearReservasDelCobro(tx, id);
       const c = await tx.alqCobro.findUnique({
         where: { id },
         select: {

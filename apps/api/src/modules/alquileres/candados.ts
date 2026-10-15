@@ -64,3 +64,27 @@ export async function tomarCandados(
 export async function bloquearReserva(tx: Tx, id: string): Promise<void> {
   await tx.$executeRaw`SELECT 1 FROM alq_reserva WHERE id = ${id}::uuid FOR UPDATE`;
 }
+
+/**
+ * La fila de la reserva de un recibo de seña, bloqueada antes de anularlo.
+ * Un recibo común no tiene conceptos con reserva: no bloquea nada.
+ *
+ * Sin esto, rechazar la reserva y anular el recibo a la vez dejaba viva la
+ * seña retenida: el rechazo leía la seña vigente, la anulación anulaba los
+ * conceptos del recibo que existían en ese momento, y el rechazo guardaba
+ * después los de la retenida —con el `cobroId` del recibo ya anulado— para
+ * que el propietario cobrara una seña que se había devuelto.
+ *
+ * Una sola sentencia: el `reserva_id` de los conceptos de un recibo no cambia
+ * nunca (nacen con él), así que no hace falta leerlo antes. `ORDER BY id`: si
+ * algún día un recibo tocara dos reservas, se bloquean siempre en el mismo
+ * orden. Va primero, como todo candado de fila (ver `ORDEN_CANDADOS`).
+ */
+export async function bloquearReservasDelCobro(tx: Tx, cobroId: string): Promise<void> {
+  await tx.$executeRaw`
+    SELECT 1 FROM alq_reserva
+     WHERE id IN (SELECT reserva_id FROM alq_concepto
+                   WHERE cobro_id = ${cobroId}::uuid AND reserva_id IS NOT NULL)
+     ORDER BY id
+       FOR UPDATE`;
+}
