@@ -27,6 +27,7 @@ import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { feriadosDe } from './feriados';
 import { nombresDeUsuarios, plata, registrarEventos } from './historial';
 
 const INCLUIR_CONCEPTO = {
@@ -65,19 +66,20 @@ export class ConceptosService {
   constructor(private readonly db: TenantPrismaService) {}
 
   /**
-   * Genera el mes. Tres consultas, sean cuantos sean los contratos: la
-   * configuración de la inmobiliaria, los contratos del mes y un único
-   * `createMany`. La idempotencia (regla 10) la da la clave única por
+   * Genera el mes. Las mismas consultas sean cuantos sean los contratos: la
+   * configuración de la inmobiliaria, los feriados del mes (regla 100), los
+   * contratos del mes y un único `createMany`. La idempotencia (regla 10) la da la clave única por
    * inmobiliaria: lo que ya existe se saltea en la base, no en memoria, así que
    * dos personas generando a la vez tampoco duplican.
    */
   async generar(ctx: TenantContext, periodo: string): Promise<ResultadoGeneracionDto> {
     const { desde, hasta } = limites(periodo);
     return this.db.withTenant(async (tx) => {
-      const tenant = await tx.tenant.findUniqueOrThrow({
-        where: { id: ctx.tenantId },
-        select: { config: true },
-      });
+      const [tenant, feriados] = await Promise.all([
+        tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { config: true } }),
+        // Regla 100: los vencimientos que caen en feriado se corren.
+        feriadosDe(tx, [periodo]),
+      ]);
       const iva = TenantConfigSchema.parse(tenant.config ?? {}).ivaHonorariosPct;
 
       const contratos = await tx.alqContrato.findMany({
@@ -99,22 +101,8 @@ export class ConceptosService {
       const conceptos: Prisma.AlqConceptoCreateManyInput[] = [];
       const sinIndexar: ResultadoGeneracionDto['sinIndexar'] = [];
       for (const c of contratos) {
-        const r = generarPeriodo(aParaGenerar(c), periodo, iva);
-        for (const x of r.conceptos) {
-          conceptos.push({
-            tenantId: ctx.tenantId,
-            contratoId: c.id,
-            personaId: x.personaId,
-            tipo: x.tipo,
-            sentido: x.sentido,
-            moneda: x.moneda,
-            periodo: x.periodo,
-            vencimiento: toDate(x.vencimiento)!,
-            importe: x.importe,
-            descripcion: x.descripcion,
-            claveGeneracion: x.clave,
-          });
-        }
+        const r = generarPeriodo(aParaGenerar(c), periodo, iva, feriados);
+        conceptos.push(...aFilas(ctx.tenantId, c.id, r.conceptos));
         for (const p of r.sinIndexar) {
           sinIndexar.push({
             contratoId: c.id,
@@ -323,6 +311,27 @@ export class ConceptosService {
   }
 }
 
+/** Lo que `generarPeriodo` devuelve, listo para el `createMany`. */
+export function aFilas(
+  tenantId: string,
+  contratoId: string,
+  conceptos: ReturnType<typeof generarPeriodo>['conceptos'],
+): Prisma.AlqConceptoCreateManyInput[] {
+  return conceptos.map((x) => ({
+    tenantId,
+    contratoId,
+    personaId: x.personaId,
+    tipo: x.tipo,
+    sentido: x.sentido,
+    moneda: x.moneda,
+    periodo: x.periodo,
+    vencimiento: toDate(x.vencimiento)!,
+    importe: x.importe,
+    descripcion: x.descripcion,
+    claveGeneracion: x.clave,
+  }));
+}
+
 type FilaContrato = Prisma.AlqContratoGetPayload<{
   include: {
     partes: { select: { personaId: true; papel: true; porcentaje: true } };
@@ -335,7 +344,7 @@ type FilaContrato = Prisma.AlqContratoGetPayload<{
  * menor id. Tiene que ser estable porque la clave de generación lleva la
  * persona; si cambiara entre corridas, el mismo mes se generaría dos veces.
  */
-function aParaGenerar(c: FilaContrato): ContratoParaGenerar {
+export function aParaGenerar(c: FilaContrato): ContratoParaGenerar {
   const de = (papel: string) =>
     c.partes.filter((p) => p.papel === papel).sort((a, b) => (a.personaId < b.personaId ? -1 : 1));
   return {
@@ -343,6 +352,7 @@ function aParaGenerar(c: FilaContrato): ContratoParaGenerar {
     moneda: c.moneda,
     inicio: fromDate(c.inicio)!,
     fin: fromDate(c.fin)!,
+    administradoDesde: fromDate(c.administradoDesde),
     rescindidoEl: c.estado === 'rescindido' ? fromDate(c.rescindidoEl) : null,
     diaVencimiento: c.diaVencimiento,
     diaPagoPropietario: c.diaPagoPropietario,

@@ -16,7 +16,35 @@ import { CLASE_FOCO, EncabezadoPagina, Panel } from './piezas';
  * La configuración del módulo (Javier, 6/10/2026: «la comisión la podemos
  * dejar parametrizable», y el sellado). Es la propuesta que se ve al cargar
  * los cargos de ingreso de cada contrato; ahí todavía se puede ajustar.
+ *
+ * Desde el 15/10/2026 también lo que se propone en cada contrato nuevo
+ * (regla 99) y el sellado por tipo de contrato (regla 103), pedidos por
+ * Florencia (Vacker).
  */
+/** Un día de vencimiento: de 1 a 28, para que exista en todos los meses. */
+const diaDelMes = (texto: string) => Math.min(28, Math.max(1, Math.round(Number(texto)) || 1));
+
+/**
+ * El día se acomoda entre 1 y 28 al salir del campo, no en cada tecla: si no,
+ * borrar el 5 para escribir 10 dejaba un 1 y terminaba en 28.
+ */
+function InputDia({ valor, onValor }: { valor: number; onValor: (n: number) => void }) {
+  const [texto, setTexto] = useState(String(valor));
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      className={inputClass}
+      value={texto}
+      onChange={(e) => {
+        setTexto(e.target.value);
+        if (e.target.value.trim()) onValor(diaDelMes(e.target.value));
+      }}
+      onBlur={() => setTexto(String(diaDelMes(texto)))}
+    />
+  );
+}
+
 export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquileres }) {
   const [c, setC] = useState(inicial);
   const [guardando, setGuardando] = useState(false);
@@ -32,7 +60,7 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
     setGuardando(true);
     try {
       setC(await guardarConfiguracionAlquileres(await getAccessToken(), c));
-      setAviso('Guardado. Se aplica a los cargos que se propongan desde ahora.');
+      setAviso('Guardado. Se aplica a los contratos y cargos que se carguen desde ahora.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar.');
     } finally {
@@ -94,10 +122,66 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
           del inquilino.
         </p>
       </Panel>
+      <Panel icono="📝" titulo="Contratos nuevos">
+        <p className="mb-3 text-sm text-muted">
+          Lo que se propone al cargar un contrato. Cada contrato lo puede cambiar; los ya cargados
+          no cambian.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Campo label="Honorarios (%)" hint="Al propietario, más IVA.">
+            <InputPorcentaje
+              valor={c.contratoHonorariosPct}
+              onValor={(n) => cambiar({ contratoHonorariosPct: n })}
+            />
+          </Campo>
+          <Campo label="Gastos adm. (%)" hint="Al inquilino, más IVA.">
+            <InputPorcentaje
+              valor={c.contratoGastosAdmPct}
+              onValor={(n) => cambiar({ contratoGastosAdmPct: n })}
+            />
+          </Campo>
+          <Campo label="Punitorio diario (%)" hint="Desde el día siguiente al vencimiento.">
+            <InputPorcentaje
+              valor={c.contratoPunitorioDiarioPct}
+              onValor={(n) => cambiar({ contratoPunitorioDiarioPct: n })}
+            />
+          </Campo>
+          <Campo label="Vence el día" hint="Inquilino. Del 1 al 28.">
+            <InputDia
+              valor={c.contratoDiaVencimiento}
+              onValor={(n) => cambiar({ contratoDiaVencimiento: n })}
+            />
+          </Campo>
+          <Campo label="Se paga el día" hint="Propietario. Del 1 al 28.">
+            <InputDia
+              valor={c.contratoDiaPagoPropietario}
+              onValor={(n) => cambiar({ contratoDiaPagoPropietario: n })}
+            />
+          </Campo>
+        </div>
+        <p className="mt-2 text-xs text-muted">
+          Si el vencimiento cae sábado, domingo o feriado nacional, se corre al siguiente día hábil.
+        </p>
+      </Panel>
       <Panel icono="🧾" titulo="Sellado">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Campo label="Alícuota sobre el valor total (%)" hint="0 = no se propone sellado.">
-            <InputPorcentaje valor={c.selladoPct} onValor={(n) => cambiar({ selladoPct: n })} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Campo label="Particular (%)" hint="0 = exento.">
+            <InputPorcentaje
+              valor={c.selladoViviendaPct}
+              onValor={(n) => cambiar({ selladoViviendaPct: n })}
+            />
+          </Campo>
+          <Campo label="Comercial (%)" hint="Inquilino sin certificado MiPyme.">
+            <InputPorcentaje
+              valor={c.selladoComercialPct}
+              onValor={(n) => cambiar({ selladoComercialPct: n })}
+            />
+          </Campo>
+          <Campo label="Comercial MiPyme (%)" hint="Inquilino con certificado MiPyme.">
+            <InputPorcentaje
+              valor={c.selladoComercialMipymePct}
+              onValor={(n) => cambiar({ selladoComercialMipymePct: n })}
+            />
           </Campo>
           <Campo label="Lo paga el inquilino (%)" hint="El resto, el propietario.">
             {/* Como los otros porcentajes de la pantalla; sigue siendo de 0 a 100. */}
@@ -107,6 +191,10 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
             />
           </Campo>
         </div>
+        <p className="mt-2 text-xs text-muted">
+          Sobre el valor total del contrato. Se propone al cargar los cargos de ingreso, y ahí se
+          puede ajustar.
+        </p>
       </Panel>
       <Panel icono="🔐" titulo="Depósito en garantía">
         <Campo label="En los contratos nuevos">

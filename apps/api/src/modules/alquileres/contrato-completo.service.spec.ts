@@ -20,7 +20,10 @@ const contrato = (over: Record<string, unknown> = {}) => ({
   id: 'c1',
   codigo: 'ALT-0090',
   estado: 'vigente',
+  tipo: 'vivienda',
   moneda: 'ARS',
+  inquilinoMipyme: false,
+  administradoDesde: null,
   inicio: d('2026-03-01'),
   fin: d('2028-02-29'),
   fechaFirma: d('2026-02-20'),
@@ -42,7 +45,7 @@ describe('Cargos de ingreso (punto 7 de Javier, con los números de Gexion)', ()
     expect(mesesDeContrato('2026-03-15', '2027-03-14')).toBe(12);
   });
 
-  it('comisión: 5% del valor total + IVA, en dos cuotas; el depósito y nada de sellado si la alícuota es 0', () => {
+  it('comisión: 5% del valor total + IVA, en dos cuotas; el depósito y nada de sellado en un particular (regla 103: exento)', () => {
     const p = propuesta(contrato() as never, TenantConfigSchema.parse({}), 350_000 * 24);
     expect(p.map((x) => [x.tipo, x.descripcion, x.aCargoDe, x.importe, x.vencimiento])).toEqual([
       ['comision', 'Comisión inicial 1 de 2', 'inquilino', 254_100, '2026-02-20'],
@@ -51,7 +54,7 @@ describe('Cargos de ingreso (punto 7 de Javier, con los números de Gexion)', ()
     ]);
   });
 
-  it('el sellado se reparte entre inquilino y propietario según la configuración', () => {
+  it('regla 103: una alícuota única guardada antes del 15/10/2026 se conserva, y su reparto también', () => {
     const p = propuesta(
       contrato({ depositoImporte: null }) as never,
       TenantConfigSchema.parse({ comisionInicialPct: 0, selladoPct: 1.2, selladoInquilinoPct: 50 }),
@@ -60,6 +63,62 @@ describe('Cargos de ingreso (punto 7 de Javier, con los números de Gexion)', ()
     expect(p.map((x) => [x.aCargoDe, x.importe])).toEqual([
       ['inquilino', 50_400],
       ['propietario', 50_400],
+    ]);
+  });
+
+  describe('regla 103: el sellado según el tipo de contrato (Florencia, Vacker, 15/10/2026)', () => {
+    const sinComision = TenantConfigSchema.parse({ comisionInicialPct: 0 });
+    const sellado = (over: Record<string, unknown>) =>
+      propuesta(contrato({ depositoImporte: null, ...over }) as never, sinComision, 8_400_000)
+        .filter((x) => x.tipo === 'sellado')
+        .map((x) => [x.descripcion, x.aCargoDe, x.importe]);
+
+    it('un particular está exento: no lleva sellado', () => {
+      expect(sellado({ tipo: 'vivienda' })).toEqual([]);
+    });
+
+    it('un comercial paga el 1% del valor total, todo a cargo del inquilino', () => {
+      expect(sellado({ tipo: 'comercial' })).toEqual([
+        ['Sellado del contrato (1%)', 'inquilino', 84_000],
+      ]);
+    });
+
+    it('un comercial con inquilino MiPyme, el 0,25%', () => {
+      expect(sellado({ tipo: 'comercial', inquilinoMipyme: true })).toEqual([
+        ['Sellado del contrato (0,25%, MiPyme)', 'inquilino', 21_000],
+      ]);
+    });
+
+    it('el certificado MiPyme no cambia nada en un particular', () => {
+      expect(sellado({ tipo: 'vivienda', inquilinoMipyme: true })).toEqual([]);
+    });
+  });
+
+  it('regla 105: un contrato tomado en curso no propone cargos de ingreso', async () => {
+    const tx = {
+      tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: {} }) },
+      alqContrato: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue(contrato({ tipo: 'comercial', administradoDesde: d('2026-10-01') })),
+      },
+      alqConcepto: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
+      alqGarantia: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const db = {
+      withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+    } as unknown as TenantPrismaService;
+    const r = await new ContratoCompletoService(db).obtener(CTX, 'c1');
+    expect(r.cargos).toMatchObject({ cargados: false, enCurso: true, propuesta: [] });
+    // El mismo contrato sin «administrado desde» sí los propone.
+    tx.alqContrato.findUnique.mockResolvedValue(contrato({ tipo: 'comercial' }));
+    const nuevo = await new ContratoCompletoService(db).obtener(CTX, 'c1');
+    expect(nuevo.cargos.enCurso).toBe(false);
+    expect(nuevo.cargos.propuesta.map((x) => x.tipo)).toEqual([
+      'comision',
+      'comision',
+      'deposito',
+      'sellado',
     ]);
   });
 

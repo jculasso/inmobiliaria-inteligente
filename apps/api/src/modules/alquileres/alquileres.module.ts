@@ -22,6 +22,7 @@ import { IndicesController } from './indices.controller';
 import { CandidatosService } from './candidatos.service';
 import { HistorialService } from './historial';
 import { ContratosService } from './contratos.service';
+import { CorreccionTramoService } from './correccion-tramo.service';
 import { IndexacionesController } from './indexaciones.controller';
 import { LiquidacionesController } from './liquidaciones.controller';
 import { LiquidacionesService } from './liquidaciones.service';
@@ -72,6 +73,7 @@ import { InformePropietarioService } from './informe-propietario.service';
     IndicesConsultaService,
     EnviosService,
     ContratoCompletoService,
+    CorreccionTramoService,
     PlantillasService,
     ProveedoresService,
     ImpuestosService,

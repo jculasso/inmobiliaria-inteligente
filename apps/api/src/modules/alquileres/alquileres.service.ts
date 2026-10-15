@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   TenantConfigSchema,
+  selladoDeLaInmobiliaria,
   type ConfiguracionAlquileres,
   type ResumenAlquileres,
 } from '@vacker/types';
@@ -33,7 +34,7 @@ export class AlquileresService {
     });
   }
 
-  /** La configuración del módulo: IVA de honorarios, cargos de ingreso y depósito (entrega 14). */
+  /** La configuración del módulo: IVA de honorarios, cargos de ingreso, depósito y lo que se propone en cada contrato nuevo (regla 99). */
   async configuracion(ctx: TenantContext): Promise<ConfiguracionAlquileres> {
     return this.db.withTenant(async (tx) => {
       const t = await tx.tenant.findUniqueOrThrow({
@@ -54,7 +55,10 @@ export class AlquileresService {
         where: { id: ctx.tenantId },
         select: { config: true },
       });
-      const config = { ...((t.config ?? {}) as object), ...dto };
+      // La alícuota única de antes (`selladoPct`) se va al guardar: desde acá
+      // mandan las tres por tipo de contrato, que viajan siempre en `dto`.
+      const { selladoPct: _vieja, ...anterior } = (t.config ?? {}) as Record<string, unknown>;
+      const config = { ...anterior, ...dto };
       await tx.tenant.update({
         where: { id: ctx.tenantId },
         data: { config: config as Prisma.InputJsonValue },
@@ -64,14 +68,23 @@ export class AlquileresService {
   }
 }
 
-function deConfig(c: ReturnType<typeof TenantConfigSchema.parse>): ConfiguracionAlquileres {
+/** Lo del módulo, con el sellado viejo ya traducido a las alícuotas por tipo (regla 103). */
+export function deConfig(c: ReturnType<typeof TenantConfigSchema.parse>): ConfiguracionAlquileres {
+  const sellado = selladoDeLaInmobiliaria(c);
   return {
     ivaHonorariosPct: c.ivaHonorariosPct,
     comisionInicialPct: c.comisionInicialPct,
     comisionInicialCuotas: c.comisionInicialCuotas,
     comisionInicialConIva: c.comisionInicialConIva,
-    selladoPct: c.selladoPct,
-    selladoInquilinoPct: c.selladoInquilinoPct,
+    selladoViviendaPct: sellado.viviendaPct,
+    selladoComercialPct: sellado.comercialPct,
+    selladoComercialMipymePct: sellado.comercialMipymePct,
+    selladoInquilinoPct: sellado.inquilinoPct,
     depositoGestion: c.depositoGestion,
+    contratoHonorariosPct: c.contratoHonorariosPct,
+    contratoGastosAdmPct: c.contratoGastosAdmPct,
+    contratoPunitorioDiarioPct: c.contratoPunitorioDiarioPct,
+    contratoDiaVencimiento: c.contratoDiaVencimiento,
+    contratoDiaPagoPropietario: c.contratoDiaPagoPropietario,
   };
 }

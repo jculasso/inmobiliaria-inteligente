@@ -34,6 +34,20 @@ const RespuestaDatosGob = z.object({
   data: z.array(z.tuple([Fecha, Positivo])),
 });
 
+const RespuestaFeriados = z.array(
+  z.object({ fecha: Fecha, nombre: z.string().min(1), tipo: z.string().min(1) }),
+);
+
+/** Un feriado nacional, como lo publica la fuente (regla 101). */
+export interface FeriadoFuente {
+  fecha: string;
+  nombre: string;
+  tipo: string;
+}
+
+/** De dónde salen los feriados: una API pública que replica los decretos nacionales. */
+export const FUENTE_FERIADOS = 'argentinadatos.com';
+
 /**
  * Las dos fuentes oficiales. Aparte del servicio para poder simularlas en los
  * tests: lo que se prueba es qué se hace con lo que responden.
@@ -67,6 +81,19 @@ export class FuentesIndices {
     return RespuestaDatosGob.parse(json).data.map(([fecha, valor]) => ({ fecha, valor }));
   }
 
+  /**
+   * Los feriados nacionales de un año (regla 101), con los puentes
+   * turísticos: ese día los bancos no abren. Verificado el 15/10/2026: 2026
+   * trae 20 y 2027, 16 (sus trasladables todavía sin fecha definitiva).
+   */
+  async feriados(anio: number): Promise<FeriadoFuente[]> {
+    const json = await this.pedir(
+      `https://api.argentinadatos.com/v1/feriados/${anio}`,
+      'argentinadatos.com',
+    );
+    return RespuestaFeriados.parse(json).filter((f) => f.fecha.startsWith(`${anio}-`));
+  }
+
   private async pedir(url: string, quien: string): Promise<unknown> {
     const res = await this.http(url, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`${quien} respondió ${res.status}.`);
@@ -79,6 +106,20 @@ export interface ResultadoIndice {
   nuevos: number;
   ultimaFecha: string | null;
   error?: string;
+}
+
+/**
+ * Lo que dejó la importación de feriados, con la misma forma que la de un
+ * índice: el workflow de GitHub recorre la lista y muestra cada renglón.
+ * `aviso` no hace fallar la corrida (la fuente no respondió, pero los dos años
+ * ya estaban cargados); `error`, sí.
+ */
+export interface ResultadoFeriados {
+  indice: 'Feriados';
+  nuevos: number;
+  ultimaFecha: string | null;
+  error?: string;
+  aviso?: string;
 }
 
 /**
@@ -140,5 +181,65 @@ export class IndicesService {
       }
     }
     return resultados;
+  }
+
+  /**
+   * Regla 101: los feriados nacionales del año en curso y del siguiente, una
+   * vez por día, en la misma tarea que los índices.
+   *
+   * Cada año se sincroniza entero cuando la fuente responde: entra lo nuevo
+   * (un feriado puente decretado a mitad de año) y sale lo que la fuente ya no
+   * trae (un trasladable que se movió). Una respuesta vacía no borra nada: un
+   * año sin feriados es un error de la fuente, no un año sin feriados.
+   *
+   * Si la fuente no responde, nunca se frena la generación del mes: se usa lo
+   * que ya está cargado. Es un error —falla el workflow y llega el mail— solo
+   * si algún año quedó sin un solo feriado; si no, un aviso.
+   */
+  async importarFeriados(hoy = hoyArgentina()): Promise<ResultadoFeriados> {
+    const anio = Number(hoy.slice(0, 4));
+    let nuevos = 0;
+    const problemas: string[] = [];
+    const vacios: number[] = [];
+    for (const a of [anio, anio + 1]) {
+      const rango = { gte: toDate(`${a}-01-01`)!, lte: toDate(`${a}-12-31`)! };
+      try {
+        const traidos = await this.fuentes.feriados(a);
+        if (traidos.length === 0) throw new Error(`la fuente no trajo ningún feriado de ${a}.`);
+        const fechas = traidos.map((f) => toDate(f.fecha)!);
+        const [, creados] = await this.prisma.$transaction([
+          this.prisma.feriado.deleteMany({
+            where: { fecha: { ...rango, notIn: fechas }, fuente: FUENTE_FERIADOS },
+          }),
+          this.prisma.feriado.createMany({
+            data: traidos.map((f) => ({
+              fecha: toDate(f.fecha)!,
+              nombre: f.nombre,
+              tipo: f.tipo,
+              fuente: FUENTE_FERIADOS,
+            })),
+            skipDuplicates: true,
+          }),
+        ]);
+        nuevos += creados.count;
+      } catch (e) {
+        const error = e instanceof Error ? e.message : String(e);
+        this.log.warn(`No se pudieron traer los feriados de ${a}: ${error}`);
+        problemas.push(`${a}: ${error}`);
+        if ((await this.prisma.feriado.count({ where: { fecha: rango } })) === 0) vacios.push(a);
+      }
+    }
+    const ultima = await this.prisma.feriado.aggregate({ _max: { fecha: true } });
+    const ultimaFecha = fromDate(ultima._max.fecha);
+    if (vacios.length)
+      return {
+        indice: 'Feriados',
+        nuevos,
+        ultimaFecha,
+        error: `Sin feriados cargados de ${vacios.join(' y ')}: los vencimientos solo se corren por fin de semana. ${problemas.join(' · ')}`,
+      };
+    return problemas.length
+      ? { indice: 'Feriados', nuevos, ultimaFecha, aviso: problemas.join(' · ') }
+      : { indice: 'Feriados', nuevos, ultimaFecha };
   }
 }

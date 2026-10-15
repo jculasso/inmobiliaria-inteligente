@@ -104,6 +104,36 @@ describe('IndexacionesService.bandeja (reglas 5 a 7)', () => {
     expect(r.tramos.map((t) => t.numero)).toEqual([4]);
   });
 
+  // Regla 106: un contrato tomado en curso con el tramo 2 cargado de memoria y
+  // el 3 sin importe, pero el 4 (el vigente) sí: el 3 es historia.
+  describe('regla 106: los tramos de antes de administrar un contrato en curso', () => {
+    const tramos = [
+      { numero: 1, desde: d('2025-04-15'), importe: null },
+      { numero: 2, desde: d('2025-08-15'), importe: 900_000 },
+      { numero: 3, desde: d('2025-12-15'), importe: null },
+      { numero: 4, desde: d('2026-04-15'), importe: 1_043_387 },
+      { numero: 5, desde: d('2026-08-15'), importe: null },
+    ];
+    const t3 = tramo({ numero: 3, desde: '2025-12-15', tramos });
+    const t5 = tramo({ numero: 5, desde: '2026-08-15', tramos });
+
+    it('no van a la bandeja «a indexar»: va el siguiente al vigente', async () => {
+      const r = await new IndexacionesService(makeDb(makeTx({ tramos: [t3, t5] }))).bandeja(
+        '2026-08-10',
+      );
+      expect(r.tramos.map((t) => t.numero)).toEqual([5]);
+      expect(r.tramos[0]!.importeAnterior).toBe(1_043_387);
+    });
+
+    it('confirmarlos se rechaza', async () => {
+      const tx = makeTx({ tramo: t3 });
+      await expect(
+        new IndexacionesService(makeDb(tx)).confirmar(CTX, 'tramo-3', { importe: null }),
+      ).rejects.toThrow(/antes de que se administrara/);
+      expect(tx.alqTramo.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
   // Regla 7.
   it('sin el IPC del mes: pendiente de índice, y nombra el que falta', async () => {
     const r = await new IndexacionesService(makeDb(makeTx({ valores: [IPC[0]] }))).bandeja(

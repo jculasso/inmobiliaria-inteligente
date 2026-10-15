@@ -6,6 +6,7 @@ import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { ContratosController } from './contratos.controller';
 import type { ContratosService } from './contratos.service';
 import type { ContratoCompletoService } from './contrato-completo.service';
+import type { CorreccionTramoService } from './correccion-tramo.service';
 import type { HistorialService } from './historial';
 import { mocksDeHistorial } from './historial.testing';
 import { textoDeDocx } from './plantilla-word';
@@ -244,6 +245,7 @@ describe('POST /alquileres/contratos/:id/generar-desde-plantilla', () => {
       {} as HistorialService,
       {} as ContratoCompletoService,
       plantillas as unknown as PlantillasService,
+      {} as CorreccionTramoService,
     );
     const res = await controller.generarDesdePlantilla('c1', { plantillaId: 'p1' }, {
       userId: CTX.userId,

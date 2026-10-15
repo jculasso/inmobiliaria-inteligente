@@ -397,22 +397,47 @@ export function cargoConIva(alquiler: number, porcentaje: number, ivaPct: number
   return redondear2(neto * (1 + ivaPct / 100));
 }
 
-// --- Vencimientos (regla 37) --------------------------------------------------------
+// --- Vencimientos (regla 100, que reemplaza a la 37) ----------------------------------
+
+/** Sábado o domingo. */
+export function esFinDeSemana(iso: string): boolean {
+  const diaSemana = new Date(aUtc(iso)).getUTCDay(); // 0 domingo, 6 sábado
+  return diaSemana === 0 || diaSemana === 6;
+}
 
 /**
- * El vencimiento de un mes: el día pedido (o el último del mes, si es más
- * corto) y, si cae sábado o domingo, el lunes siguiente. Los feriados NO se
- * corren, igual que en Gexion: el 12/10/2026 queda el 12.
+ * El primer día hábil desde `iso` inclusive: ni sábado, ni domingo, ni un
+ * feriado nacional de `feriados`. Dos feriados seguidos de un fin de semana
+ * (el puente del 7 y el 8 de diciembre de 2026) se saltean juntos.
  */
-export function vencimientoDelMes(periodo: string, dia: number): string {
+export function diaHabilDesde(iso: string, feriados: ReadonlySet<string> = new Set()): string {
+  let fecha = iso;
+  // Un tope por las dudas: ningún tramo de días no hábiles llega a 15.
+  for (let i = 0; i < 15 && (esFinDeSemana(fecha) || feriados.has(fecha)); i++)
+    fecha = sumarDiasIso(fecha, 1);
+  return fecha;
+}
+
+/**
+ * Regla 100: el vencimiento de un mes es el día pedido (o el último del mes,
+ * si es más corto) y, si cae sábado, domingo o feriado nacional, el siguiente
+ * día hábil. Vale para el vencimiento del inquilino y para el pago al
+ * propietario.
+ *
+ * Hasta el 15/10/2026 los feriados no se corrían, como en Gexion (regla 37).
+ * Lo cambió Florencia (Vacker), 15/10/2026: un vencimiento en un día que el
+ * banco no abre le hacía cobrar un día de punitorio al que pagaba el hábil
+ * siguiente. `feriados` llega de afuera —la tabla `feriado`, que llena la
+ * tarea diaria— para que la función siga siendo pura.
+ */
+export function vencimientoDelMes(
+  periodo: string,
+  dia: number,
+  feriados: ReadonlySet<string> = new Set(),
+): string {
   const [anio, mes] = periodo.split('-').map(Number) as [number, number];
   const fecha = `${periodo}-${String(Math.min(dia, diasDelMes(anio, mes))).padStart(2, '0')}`;
-  const diaSemana = new Date(aUtc(fecha)).getUTCDay(); // 0 domingo, 6 sábado
-  return diaSemana === 6
-    ? sumarDiasIso(fecha, 2)
-    : diaSemana === 0
-      ? sumarDiasIso(fecha, 1)
-      : fecha;
+  return diaHabilDesde(fecha, feriados);
 }
 
 // --- Generación del período (reglas 9 a 13) ---------------------------------------
@@ -425,6 +450,12 @@ export interface ContratoParaGenerar {
   moneda: string;
   inicio: string;
   fin: string;
+  /**
+   * Regla 104: un contrato tomado en curso se administra desde esta fecha.
+   * Antes no se genera nada —ni alquiler ni deuda—. `null` (o ausente): desde
+   * el inicio, como todos los contratos anteriores al 15/10/2026.
+   */
+  administradoDesde?: string | null;
   /** Si está rescindido: desde el mes siguiente a esta fecha no se genera nada (regla 3). */
   rescindidoEl: string | null;
   diaVencimiento: number;
@@ -514,6 +545,8 @@ export function generarPeriodo(
   c: ContratoParaGenerar,
   periodo: string,
   ivaInmobiliariaPct: number,
+  /** Los feriados nacionales del mes y de los días siguientes (regla 100). */
+  feriados: ReadonlySet<string> = new Set(),
 ): ResultadoPeriodo {
   const [anio, mes] = periodo.split('-').map(Number) as [number, number];
   const ultimoDelMes = `${periodo}-${String(diasDelMes(anio, mes)).padStart(2, '0')}`;
@@ -524,13 +557,23 @@ export function generarPeriodo(
   if (!inquilino || c.propietarios.length === 0) return { conceptos: [], sinIndexar: [] };
 
   const fin = c.fin < ultimoDelMes ? c.fin : ultimoDelMes;
+  // Regla 104: un contrato tomado en curso empieza a contar desde que se
+  // administra. Lo de antes no se genera —ni el alquiler ni la parte de un
+  // tramo sin importe—: no hay deuda anterior (Florencia, Vacker, 15/10/2026:
+  // «lo ideal es que arranque sin deuda»). Si arranca a mitad de mes, esa
+  // parte se prorratea como el primer mes de cualquier contrato (regla 13).
+  const desde = c.administradoDesde && c.administradoDesde > c.inicio ? c.administradoDesde : null;
   const tramos = c.tramos
-    .filter((t) => t.desde <= fin)
-    .map((t) => ({ ...t, hasta: t.hasta < fin ? t.hasta : fin }));
+    .filter((t) => t.desde <= fin && (!desde || t.hasta >= desde))
+    .map((t) => ({
+      ...t,
+      desde: desde && t.desde < desde ? desde : t.desde,
+      hasta: t.hasta < fin ? t.hasta : fin,
+    }));
   const partes = partesDelMes(anio, mes, tramos);
 
-  const vencInquilino = vencimientoDelMes(periodo, c.diaVencimiento);
-  const vencPropietario = vencimientoDelMes(periodo, c.diaPagoPropietario);
+  const vencInquilino = vencimientoDelMes(periodo, c.diaVencimiento, feriados);
+  const vencPropietario = vencimientoDelMes(periodo, c.diaPagoPropietario, feriados);
   const mesTexto = `${NOMBRE_MES[mes - 1]} ${anio}`;
   const conceptos: ConceptoGenerado[] = [];
   const sinIndexar: ParteDelMes[] = [];
@@ -994,8 +1037,130 @@ export function proximoCambio(
   tramos: { numero: number; desde: string; importe: number | null }[],
   hoy: string,
 ): string | null {
-  const t = [...tramos]
-    .sort((a, b) => a.numero - b.numero)
-    .find((x) => x.numero > 1 && (x.importe == null || x.desde > hoy));
+  const orden = [...tramos].sort((a, b) => a.numero - b.numero);
+  const t = orden.find(
+    (x, i) => x.numero > 1 && (x.importe == null ? !esTramoAnterior(orden, i) : x.desde > hoy),
+  );
   return t?.desde ?? null;
+}
+
+/**
+ * Regla 106: un tramo sin importe seguido de uno que sí lo tiene es historia
+ * de un contrato tomado en curso —los tramos de antes de que la inmobiliaria
+ * lo administrara, que no hace falta cargar—, no una indexación pendiente. No
+ * va a la bandeja «a indexar» ni es la «próxima indexación».
+ *
+ * `tramos` tiene que venir ordenado por número.
+ */
+export function esTramoAnterior(
+  tramos: readonly { importe: number | null }[],
+  indice: number,
+): boolean {
+  return tramos[indice]?.importe == null && tramos.slice(indice + 1).some((t) => t.importe != null);
+}
+
+// --- Corregir el importe de un tramo ya confirmado (reglas 108 a 110) -----------------
+
+/**
+ * Cómo está un mes de un tramo cuando se corrige su importe:
+ * - `cobrado`: el inquilino pagó algo de esa parte (alquiler, gastos, IVA);
+ * - `liquidado`: algo de esa parte ya se le liquidó al propietario;
+ * - `generado`: está generado y nadie lo tocó: se vuelve a generar;
+ * - `anulado`: lo generado se anuló a mano; la anulación es una decisión y se respeta;
+ * - `sin_generar`: todavía no se generó; cuando se genere, ya sale con el importe nuevo.
+ */
+export type EstadoMesCorreccion = 'cobrado' | 'liquidado' | 'generado' | 'anulado' | 'sin_generar';
+
+export interface MesDeCorreccion {
+  periodo: string;
+  estado: EstadoMesCorreccion;
+}
+
+/** Los meses calendario (`AAAA-MM`) que toca un tramo, desde que se administra (regla 104). */
+export function mesesDelTramo(
+  tramo: { desde: string; hasta: string },
+  administradoDesde?: string | null,
+): string[] {
+  const desde =
+    administradoDesde && administradoDesde > tramo.desde ? administradoDesde : tramo.desde;
+  const meses: string[] = [];
+  for (
+    let m = `${desde.slice(0, 7)}-01`;
+    m.slice(0, 7) <= tramo.hasta.slice(0, 7);
+    m = sumarMesesIso(m, 1)
+  )
+    meses.push(m.slice(0, 7));
+  return meses;
+}
+
+/**
+ * Si un concepto generado es de la parte de un tramo: la cuarta pieza de su
+ * clave (`alq|contrato|periodo|desde|…`) es el día en que empieza la parte, y
+ * cae dentro del tramo. En un mes con cambio de tramo hay dos partes y cada
+ * una es de su tramo.
+ */
+export function esDelTramo(clave: string | null, tramo: { desde: string; hasta: string }): boolean {
+  if (!clave?.startsWith('alq|')) return false;
+  const desde = clave.split('|')[3] ?? '';
+  return desde >= tramo.desde && desde <= tramo.hasta;
+}
+
+/**
+ * El estado de cada mes del tramo, a partir de sus conceptos generados (de
+ * cualquier tipo: alquiler, gastos, honorarios, IVA). Lo cobrado y lo
+ * liquidado pesan más que lo generado: con un solo concepto tocado, el mes
+ * entero queda como está (regla 109).
+ */
+export function estadoDeLosMeses(
+  meses: string[],
+  conceptos: {
+    periodo: string | null;
+    anulado: boolean;
+    cobrado: boolean;
+    liquidado: boolean;
+  }[],
+): MesDeCorreccion[] {
+  return meses.map((periodo) => {
+    const del = conceptos.filter((k) => k.periodo === periodo);
+    const activos = del.filter((k) => !k.anulado);
+    const estado: EstadoMesCorreccion = activos.some((k) => k.liquidado)
+      ? 'liquidado'
+      : activos.some((k) => k.cobrado)
+        ? 'cobrado'
+        : activos.length > 0
+          ? 'generado'
+          : del.length > 0
+            ? 'anulado'
+            : 'sin_generar';
+    return { periodo, estado };
+  });
+}
+
+/**
+ * Regla 108: desde qué mes se propone corregir. El primero del tramo que no
+ * tiene nada cobrado ni liquidado (ni anulado a mano): lo anterior ya se
+ * cobró con el importe viejo y así queda. `null` si no queda ninguno.
+ */
+export function desdeSugerido(meses: MesDeCorreccion[]): string | null {
+  return meses.find((m) => m.estado === 'generado' || m.estado === 'sin_generar')?.periodo ?? null;
+}
+
+/**
+ * Regla 109: qué pasa con cada mes a partir de `desde`. Se vuelve a generar
+ * lo generado que nadie tocó; lo cobrado, lo liquidado y lo anulado quedan
+ * como están, y la pantalla lo dice; lo que todavía no se generó sale con el
+ * importe nuevo cuando se genere.
+ */
+export function planDeCorreccion(
+  meses: MesDeCorreccion[],
+  desde: string,
+): { regenerar: string[]; quedan: MesDeCorreccion[]; sinGenerar: string[] } {
+  const afectados = meses.filter((m) => m.periodo >= desde);
+  return {
+    regenerar: afectados.filter((m) => m.estado === 'generado').map((m) => m.periodo),
+    quedan: afectados.filter(
+      (m) => m.estado === 'cobrado' || m.estado === 'liquidado' || m.estado === 'anulado',
+    ),
+    sinGenerar: afectados.filter((m) => m.estado === 'sin_generar').map((m) => m.periodo),
+  };
 }

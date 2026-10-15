@@ -176,9 +176,11 @@ diferencia del Tablero (`scope.util.ts`), y eso está decidido, no olvidado.
 
 37. El alquiler del inquilino vence el **día de vencimiento** del contrato
     (5 en Vacker) y al propietario se le paga el **día de pago** (10 en
-    Vacker). Si cae sábado o domingo, se corre al lunes. Los feriados **no**
-    se corren, igual que en Gexion (el 12/10/2026, feriado, queda igual).
-    Decidido por Javier el 5/10/2026: se mantiene el criterio de Gexion.
+    Vacker). Si cae sábado o domingo, se corre al lunes. ~~Los feriados
+    **no** se corren, igual que en Gexion (el 12/10/2026, feriado, queda
+    igual). Decidido por Javier el 5/10/2026: se mantiene el criterio de
+    Gexion.~~ **Reemplazada por la regla 100** (Florencia, Vacker,
+    15/10/2026): un feriado también se corre al siguiente día hábil.
 
 ### Cobros, punitorios y cuenta corriente
 
@@ -743,6 +745,211 @@ el resto del módulo (§3); el propietario no entra: recibe el PDF.
 7. En la Inmobiliaria de Demo, sin el módulo, un usuario `direccion` no ve
    Alquileres y la API de informes responde 403.
 
+### Entrega A para Vacker: arrancar con contratos reales (15/10/2026)
+
+> Decidido por Florencia (Vacker) el 15/10/2026, antes de que ella y Martín
+> carguen tres contratos reales —probablemente ya en curso— y simulen el mes
+> entero. Las cinco decisiones son finales.
+
+**Para quién y para qué.** Para quien administra los alquileres de una
+inmobiliaria que empieza a usar el módulo con contratos que ya existen: que
+cada contrato nuevo arranque con los valores de la casa, que los vencimientos
+respeten los feriados, que el sellado salga según el tipo de contrato, poder
+tomar un contrato a mitad de camino sin inventar deuda, y corregir un importe
+que las partes renegociaron.
+
+**Roles.** Los de §3, sin cambios: todo lo de esta sección es de
+`ROLES_ADMINISTRACION_ALQUILERES` (`administracion`, `direccion`,
+`admin_tenant`); `vendedor`, `team_leader` y `publicador` reciben 403, y
+`admin_plataforma` no ve datos. La configuración la edita cualquiera de esos
+tres roles, como hasta hoy.
+
+#### Lo que se propone en cada contrato nuevo
+
+99. Cada inmobiliaria configura en **Alquileres › Configuración › Contratos
+    nuevos** el **punitorio diario**, los **honorarios**, los **gastos
+    administrativos** y los días de **vencimiento del inquilino** y de **pago
+    al propietario**. El alta de un contrato los trae precargados y cada
+    contrato los puede cambiar; los contratos ya cargados no cambian. Una
+    inmobiliaria que no los configuró ve lo mismo que antes del 15/10/2026
+    (honorarios 8%, gastos 2%, sin punitorio, días 5 y 10): no se cargan los
+    valores de Vacker como valores de todos. Los de Vacker —punitorio 0,3%
+    diario, honorarios 8% + IVA, gastos 2% + IVA, días 5 y 10— se cargan en su
+    configuración. Una configuración guardada antes, sin estos campos, se
+    sigue leyendo.
+
+#### Vencimientos y feriados
+
+100. **Reemplaza a la regla 37.** El vencimiento del inquilino y el pago al
+     propietario que caen **sábado, domingo o feriado nacional** se corren al
+     **siguiente día hábil**; varios días no hábiles seguidos se saltean
+     juntos (el lunes 7 y el martes 8/12/2026 llevan un vencimiento del 5 al
+     miércoles 9). El 12/10/2026 pasa al 13. Cuentan como feriados los que
+     publica la fuente, puentes turísticos incluidos: ese día los bancos no
+     abren. La función sigue siendo pura (`vencimientoDelMes` recibe los
+     feriados); los conceptos ya generados no cambian.
+101. Los feriados viven en una tabla **global** (`feriado`, como
+     `indice_valor`: sin `tenant_id`, solo lectura para la API). Los escribe
+     la misma **tarea diaria** que trae el ICL y el IPC (`/tareas/indices`):
+     el año en curso y el siguiente, desde
+     `api.argentinadatos.com/v1/feriados/{año}`. Cada año se sincroniza
+     entero cuando la fuente responde (entra un puente nuevo, sale un
+     trasladable que se movió); una respuesta vacía no borra nada. Si la
+     fuente no responde, **nunca se frena la generación**: se usa lo que ya
+     está cargado y queda en el log. Es un **error** del workflow —falla y
+     llega el mail— solo si un año quedó sin un solo feriado; si los dos ya
+     estaban, es un **aviso**. La migración siembra 2026 y 2027.
+102. El punitorio corre **desde el día siguiente al vencimiento** (Florencia):
+     pagar el día del vencimiento son 0 días; el día siguiente, 1. Con un
+     vencimiento corrido por feriado, se cuenta desde el día hábil. Es lo que
+     ya hacía `proponerPunitorio` (regla 16); la regla queda escrita y con su
+     test.
+
+#### Sellado
+
+103. El sellado de los cargos de ingreso sale del **tipo de contrato**: un
+     particular está **exento** (0%); un comercial paga **1%**, o **0,25%** si
+     el inquilino tiene **certificado MiPyme**, sobre el valor total del
+     contrato. Por defecto lo paga **el inquilino entero** (100%). Las tres
+     alícuotas y la parte del inquilino se configuran por inmobiliaria. El
+     contrato tiene la marca «Inquilino con certificado MiPyme», que solo
+     cuenta en un comercial. Una configuración guardada antes, con la
+     alícuota única de entonces (`selladoPct`): si era mayor que cero, fue una
+     decisión de esa inmobiliaria y se conserva para los tres casos, con su
+     reparto; si era cero —el valor por defecto, «no se calcula»—, rigen las
+     alícuotas de esta regla y el inquilino paga el 100%. Al guardar la
+     configuración, la alícuota vieja se borra.
+
+#### Un contrato tomado en curso
+
+104. Un contrato puede empezar a administrarse **después de su inicio**:
+     «Este contrato ya está en curso», con **Administrado desde** (después del
+     inicio, no después del fin). La generación del mes crea conceptos **solo
+     desde esa fecha**; si cae a mitad de mes, ese mes se prorratea desde ese
+     día, como el primer mes de cualquier contrato (regla 13). Vacío:
+     administrado desde el inicio, como todos los contratos anteriores.
+105. **Sin deuda de antes** (Florencia: «lo ideal es que arranque sin
+     deuda»): no se genera nada anterior a «administrado desde» y no hay
+     saldo inicial. Sus **cargos de ingreso no se proponen**: se pagaron cuando
+     empezó, con otra administración. Si hace falta cobrar algo, es un gasto
+     suelto (regla 14).
+106. Del contrato en curso se carga el **alquiler vigente hoy**: el importe del
+     tramo que corre en «administrado desde». Los tramos anteriores pueden
+     quedar sin importe y son **historia**: no van a la bandeja «a indexar»,
+     no se pueden confirmar y no son la «próxima indexación», que es el
+     primer tramo sin importe **después** del vigente. La indexación
+     siguiente parte del alquiler vigente (regla 5). Un tramo sin importe
+     seguido de uno con importe es siempre historia (`esTramoAnterior`).
+107. El Dashboard sigue contando los **contratos nuevos por su inicio**, no
+     por «administrado desde»: mide cuándo se firmó, no cuándo lo tomó la
+     inmobiliaria. Si el primer tramo no tiene importe, no suma importe.
+
+#### Corregir el importe de un tramo ya confirmado
+
+108. En la ficha del contrato **vigente**, cada tramo con importe tiene
+     **«Corregir importe»** (Florencia: «luego de una indexación de un
+     cuatrimestre las partes negocian por menos»). Pide el **importe nuevo**,
+     **desde qué mes** rige —un mes del tramo; se propone el primero sin nada
+     cobrado ni liquidado— y un **motivo** obligatorio. Un tramo todavía sin
+     importe no se corrige: se confirma desde «A indexar».
+109. Los meses del tramo desde el elegido cuyo alquiler, gastos,
+     honorarios e IVA **no tienen nada cobrado ni liquidado** se **anulan con
+     el motivo** (regla 19, nunca se borran) y **se vuelven a generar** con el
+     importe nuevo, con la misma generación de siempre y la misma clave. Los
+     meses con algo **cobrado o liquidado** —basta un concepto— y los
+     **anulados a mano** quedan como están, y la pantalla lo dice antes de
+     confirmar. Los meses todavía **sin generar** no se crean: salen con el
+     importe nuevo cuando se generen. En un mes con cambio de tramo se toca
+     solo la parte del tramo corregido.
+110. El **tramo guarda el importe nuevo** y el historial del contrato
+     registra el importe anterior y el nuevo, desde qué mes, el motivo, quién
+     y qué meses se regeneraron o quedaron. Las **indexaciones siguientes**
+     parten del importe corregido (regla 5).
+111. Corregir hace **las mismas consultas** sea un mes o doce, y genera el
+     mes con las mismas consultas sean 5 o 25 contratos (ahora también los
+     feriados, una sola vez).
+
+**Casos borde.**
+
+- **La fila vieja**: los contratos anteriores tienen «administrado desde»
+  vacío y «MiPyme» en no: siguen generando igual. Una configuración sin los
+  campos nuevos se lee con los valores de antes (reglas 99 y 103).
+- **La tabla de feriados vacía** (la migración no se aplicó todavía, o la
+  fuente falló dos años seguidos): los vencimientos se corren solo por fin de
+  semana, como antes, y el workflow avisa.
+- **Un mes anterior a «desde» que todavía no se generó**, en una corrección:
+  se genera con el importe nuevo, porque el tramo guarda uno solo. Al
+  corregir desde el primer mes sin cobrar —lo que se propone— no pasa.
+- **Todos los meses del tramo cobrados**: corregir no regenera nada; solo
+  cambia la base de las indexaciones siguientes, y la pantalla lo avisa.
+- **Dos personas a la vez**: si alguien cobra un mes o cambia el tramo
+  mientras se corrige, no se anula ni se guarda nada (409).
+- **La inmobiliaria sin el módulo**: 403, como el resto (§3).
+
+**Fuera de alcance de esta entrega:**
+
+- **Saldo inicial** de un contrato tomado en curso, y la **migración desde
+  Gexion**: «administrado desde» es su base, pero importar contratos y
+  saldos es otra entrega.
+- **Feriados provinciales o municipales**: solo los nacionales.
+- **Mover vencimientos ya generados** cuando se carga un feriado nuevo.
+- Corregir un importe **por un solo mes** sin cambiar el tramo, y corregir
+  meses ya cobrados (se anulan antes los cobros).
+- Editar la marca MiPyme de un contrato ya vigente.
+- No hay tablas nuevas por inmobiliaria: `feriado` es global; el resto son
+  dos columnas de `alq_contrato` y campos de la configuración.
+
+**Criterio de aceptación (en Alteva):**
+
+1. Javier entra a Alteva con su usuario de dirección, va a **Configuración**,
+   pone en «Contratos nuevos» punitorio 0,3, honorarios 8, gastos 2, días 5
+   y 10, y guarda. En **Contratos › Nuevo**, Condiciones ya trae esos valores.
+2. En «Sellado» ve particular 0, comercial 1 y comercial MiPyme 0,25, con el
+   inquilino al 100%. Carga un contrato **comercial** nuevo con «Inquilino con
+   certificado MiPyme», lo activa: los cargos de ingreso proponen el sellado
+   al 0,25% del valor total, a cargo del inquilino, y la cabecera dice
+   «sellado 0,25%». Uno particular no propone sellado.
+3. Carga un contrato con **«Este contrato ya está en curso»**: inicio
+   01/03/2025, ICL cada 4 meses, administrado desde el 10/10/2026, alquiler
+   vigente $ 900.000. En Tramos solo pide el importe del tramo que corre el
+   10/10/2026; los anteriores dicen «Opcional». Lo activa: la ficha dice
+   «Administrado desde 10/10/2026 (tomado en curso)», los tramos de antes
+   dicen «Antes de administrarlo», no aparecen en «A indexar» y no se
+   proponen cargos de ingreso.
+4. Genera **octubre de 2026** en Conceptos: ese contrato trae el alquiler del
+   10 al 31 (22/31 días) y nada de los meses anteriores; el inquilino no debe
+   nada de antes en su cuenta corriente.
+5. Genera **diciembre de 2026**: el alquiler que vence el día 5 (sábado)
+   vence el **miércoles 9**, porque el lunes 7 y el martes 8 son feriados; el
+   pago al propietario del día 10 (jueves) queda el 10. Lo ya generado de
+   octubre no cambia.
+6. En un contrato con el tramo vigente confirmado, **«Corregir importe»**:
+   el diálogo propone el primer mes sin cobrar, lista los meses cobrados
+   como «queda como está» y pide el motivo. Corrige a un importe menor: en
+   Conceptos, los meses sin cobrar de ese tramo aparecen anulados con el
+   motivo y generados de nuevo con el importe nuevo (gastos y honorarios
+   recalculados); el historial del contrato dice el importe anterior, el
+   nuevo, quién y por qué. La próxima indexación de la bandeja parte del
+   importe corregido.
+7. En la Inmobiliaria de Demo, sin el módulo, un usuario `direccion` no ve
+   Alquileres y la API de corrección responde 403.
+
+**Cada regla con su test (99 a 111):**
+
+| Regla     | Test                                                                                                                                                                                                                                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 99        | Types: `alquileres-entrega-a.test.ts` (sin configurar = lo de antes; la respuesta vieja se lee); API: `alquileres.service.spec.ts` (se lee y se guarda); web: `contrato-form.test.tsx` y `configuracion-form.test.tsx` (`regla 99` en el nombre)                                                                                                             |
+| 100       | Domain: `alquileres.test.ts` (`regla 100`: el 12/10/2026 pasa al 13, feriados seguidos, la generación corre inquilino y propietario; reemplaza a «un feriado no se corre»); API: `conceptos.service.spec.ts`                                                                                                                                                 |
+| 101       | API: `indices.service.spec.ts` (`importarFeriados`: carga, trasladable movido, respuesta vacía, aviso y error), `tareas.controller.spec.ts`; base: `rls-habilitada.e2e-spec.ts` (`feriado` global y de solo lectura)                                                                                                                                         |
+| 102       | Domain: `alquileres.test.ts` (`regla 102`: 0 días el día del vencimiento, 1 el siguiente, y con feriado)                                                                                                                                                                                                                                                     |
+| 103       | Types: `alquileres-entrega-a.test.ts` (alícuotas, traducción de `selladoPct`); API: `contrato-completo.service.spec.ts`; web: `configuracion-form.test.tsx`, `contrato-completo.test.tsx`, `contrato-form.test.tsx`                                                                                                                                          |
+| 104       | Domain: `alquileres.test.ts` (`regla 104`); API: `conceptos.service.spec.ts`, `contratos.service.spec.ts`; types y web: `contrato-form.test.tsx`                                                                                                                                                                                                             |
+| 105       | API: `contrato-completo.service.spec.ts`; web: `contrato-completo.test.tsx`                                                                                                                                                                                                                                                                                  |
+| 106       | Domain: `alquileres.test.ts`; types: `alquileres-entrega-a.test.ts`; API: `indexaciones.service.spec.ts`, `contratos.service.spec.ts`; web: `contrato-ficha.test.tsx`, `contrato-form.test.tsx`                                                                                                                                                              |
+| 107       | API: `tablero-alquileres.service.spec.ts` (`regla 107`)                                                                                                                                                                                                                                                                                                      |
+| 108 – 110 | Domain: `alquileres.test.ts` (estados, mes propuesto, plan); API: `correccion-tramo.service.spec.ts` (`regla 10x` en el nombre: anula y regenera, lo cobrado queda, sin generar no se crea, mes con cambio de tramo, el tramo y el historial, la indexación siguiente, lo que se rechaza); roles: `alquileres.roles.spec.ts`; web: `contrato-ficha.test.tsx` |
+| 111       | API: `correccion-tramo.service.spec.ts` (1 mes y 3 meses), `conceptos.service.spec.ts` (5 y 25 contratos)                                                                                                                                                                                                                                                    |
+
 ## 6. Casos borde
 
 - **La fila vieja**: contratos migrados de Gexion sin algún dato (sin
@@ -837,7 +1044,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 5, 6, 7           | Unit de indexación con valores del ICL e IPC conocidos; un tramo sin confirmar no cambia de importe; índice no publicado → alerta correcta                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 8                 | Unit del importador de índices con la fuente simulada: no pisa, reintenta, avisa a los 3 días                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 9, 10, 11, 12, 13 | Unit de generación del período: conceptos esperados por contrato; idempotencia; bloqueo por indexación; montos con IVA de la inmobiliaria; prorrateo por cambio de tramo con los importes de Gexion                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| 37                | Unit de vencimientos: sábado y domingo se corren al lunes, un feriado no                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 37 → 100          | Unit de vencimientos: sábado, domingo y feriado se corren al siguiente día hábil (regla 100)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 14, 20, 21, 22    | Unit de liquidación: neto con gastos adelantados, con y sin pago garantizado, sin doble liquidación                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 15, 16, 17        | Unit de cobro: imputación por antigüedad, parcial, punitorio propuesto y condonado, saldo a favor                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | 18                | Unit de cuenta corriente: saldos separados por moneda                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -854,6 +1061,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 67 – 73           | Types: `reclamos.test.ts`; API: `reclamos.service.spec.ts`, `proveedores.service.spec.ts`, `envios.service.spec.ts`, `tablero-alquileres.service.spec.ts`; base: `aislamiento.e2e-spec.ts` (regla 70); web: `reclamos.test.tsx`, `proveedores-vista.test.tsx`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 74 – 82           | Domain: `cierreDelMes`; web: `periodo-tablero.test.ts` (74), `tablero-alquileres.test.tsx` (`regla 7x` en el nombre); API: `tablero-alquileres.service.spec.ts` (75 a 79 y 82: cada flujo de un mes, un trimestre y el año, y cada foto, suman su tarjeta en los tres cortes; consultas con 5 y 25 contratos); base: `tablero-alquileres.e2e-spec.ts` (79, el SQL real, en el job de aislamiento de CI); roles: `alquileres.roles.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 83 – 98           | Domain: `informe-propietario.test.ts` (87, 88, 84, 98: la cadena con cobro parcial, parte ya liquidada, pago garantizado, gastos por caja; el caso de Marcela Ibarra —alquiler liquidado y un arreglo posterior sin liquidar—; el nombre del período); types: `RANGO_*` en `InformePeriodoQuerySchema`; API: `informe-propietario.service.spec.ts` (`regla 8x`/`9x` en el nombre: la cadena al centavo, solo lo suyo, ARS/USD, deuda, mes a mes, nombres y sumas de cada descuento, reclamos sin notas y con importe solo a cargo del propietario, liquidaciones que suman lo liquidado, vacío, 404, la fila igual al informe, consultas con 5 y 25 contratos, regla 98 con el mismo caso), `informe-propietario.template.spec.tsx` (95, 94 y 98: texto del PDF, los renglones y solo Montserrat), `envios.service.spec.ts` (95), `alquileres.roles.spec.ts` (83); base: `informe-propietario.e2e-spec.ts` (85 a 93 y 96, el SQL real, en el job de aislamiento de CI); web: `periodo-tablero.test.ts` (84), `cuenta-corriente.test.tsx` (83), `informe-propietario.test.tsx` (84 a 96 y 98), `alquileres-nav.test.tsx` (83) |
+| 99 – 111          | Ver la tabla «Cada regla con su test (99 a 111)» de la Entrega A para Vacker: domain `alquileres.test.ts`; types `alquileres-entrega-a.test.ts`; API `correccion-tramo.service.spec.ts`, `indices.service.spec.ts`, `conceptos.service.spec.ts`, `contrato-completo.service.spec.ts`, `contratos.service.spec.ts`, `indexaciones.service.spec.ts`, `alquileres.service.spec.ts`, `tablero-alquileres.service.spec.ts`, `tareas.controller.spec.ts`; base `rls-habilitada.e2e-spec.ts`; web `contrato-form`, `contrato-ficha`, `contrato-completo` y `configuracion-form` (`.test.tsx`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |

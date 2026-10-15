@@ -45,6 +45,8 @@ const SIN_RLS_PERMITIDO: Record<string, string> = {
 const GLOBALES_SOLO_LECTURA: Record<string, string> = {
   indice_valor:
     'Valores del ICL y del IPC: datos públicos del BCRA y del INDEC (alquileres, regla 8).',
+  feriado:
+    'Feriados nacionales: datos públicos, iguales para todas las inmobiliarias (alquileres, reglas 100 y 101).',
 };
 
 suite('Guardia de RLS', () => {

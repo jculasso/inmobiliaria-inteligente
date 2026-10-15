@@ -152,3 +152,98 @@ describe('ContratoForm — alta en tres pasos', () => {
     expect(falta).not.toHaveTextContent(/must|Expected|Required|Invalid/);
   });
 });
+
+describe('ContratoForm — Entrega A de Vacker (Florencia, 15/10/2026)', () => {
+  async function aCondiciones() {
+    await completarPaso1();
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente →' }));
+  }
+
+  it('regla 99: un contrato nuevo arranca con lo que configuró la inmobiliaria', async () => {
+    render(
+      <ContratoForm
+        personas={[DUENO, INQ]}
+        propiedades={[PROP]}
+        defectos={{
+          honorariosPct: 7,
+          gastosAdmPct: 1.5,
+          punitorioDiarioPct: 0.3,
+          diaVencimiento: 6,
+          diaPagoPropietario: 12,
+        }}
+      />,
+    );
+    await aCondiciones();
+    expect(screen.getByLabelText(/Vence el día/)).toHaveValue('6');
+    expect(screen.getByLabelText(/Se paga el día/)).toHaveValue('12');
+    expect(screen.getByLabelText(/Honorarios/)).toHaveValue('7');
+    expect(screen.getByLabelText(/Gastos adm/)).toHaveValue('1,5');
+    expect(screen.getByLabelText(/Punitorio diario/)).toHaveValue('0,3');
+  });
+
+  it('regla 99: sin configuración, lo mismo que proponía antes', async () => {
+    render(<ContratoForm personas={[DUENO, INQ]} propiedades={[PROP]} />);
+    await aCondiciones();
+    expect(screen.getByLabelText(/Honorarios/)).toHaveValue('8');
+    expect(screen.getByLabelText(/Gastos adm/)).toHaveValue('2');
+    expect(screen.getByLabelText(/Punitorio diario/)).toHaveValue('0');
+  });
+
+  it('regla 103: el certificado MiPyme se ofrece solo en un comercial', async () => {
+    render(<ContratoForm personas={[DUENO, INQ]} propiedades={[PROP]} />);
+    await aCondiciones();
+    expect(screen.queryByLabelText(/certificado MiPyme/)).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'comercial');
+    await userEvent.click(screen.getByLabelText(/certificado MiPyme/));
+    expect(screen.getByLabelText(/certificado MiPyme/)).toBeChecked();
+  });
+
+  it('reglas 104 y 106: un contrato en curso pide «administrado desde» y el alquiler vigente, y nada de antes', async () => {
+    crearContrato.mockResolvedValue({ id: 'en-curso' });
+    render(<ContratoForm personas={[DUENO, INQ]} propiedades={[PROP]} />);
+    await aCondiciones();
+    await userEvent.type(screen.getByLabelText(/Inicio/), '2024-11-01');
+    await userEvent.type(screen.getByLabelText(/^Fin/), '2026-10-31');
+    await userEvent.click(screen.getByLabelText('Este contrato ya está en curso'));
+    const falta = within(screen.getByLabelText('Lo que falta'));
+    expect(falta.getByText(/Completá «Administrado desde»/)).toBeInTheDocument();
+    expect(falta.getByText(/Completá el alquiler vigente hoy/)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/Administrado desde/), '2026-09-01');
+    await userEvent.type(screen.getByLabelText(/Alquiler vigente hoy/), '980000');
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente →' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Generar los tramos' }));
+
+    // El tramo 6 (del 01/07/2026) es el que corre el 01/09/2026: lleva el vigente.
+    expect(screen.getByLabelText('Importe, tramo 6 (alquiler vigente)')).toHaveValue('980.000,00');
+    expect(screen.getByLabelText('Importe, tramo 1')).toHaveAttribute('placeholder', 'Opcional');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar en borrador' }));
+
+    const dto = crearContrato.mock.calls[0]![1];
+    expect(dto.administradoDesde).toBe('2026-09-01');
+    expect(dto.tramos.map((t: { importe: number | null }) => t.importe)).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+      980_000,
+    ]);
+  });
+
+  it('regla 104: si se destilda «en curso», no viaja «administrado desde»', async () => {
+    crearContrato.mockResolvedValue({ id: 'x' });
+    render(<ContratoForm personas={[DUENO, INQ]} propiedades={[PROP]} />);
+    await aCondiciones();
+    await userEvent.type(screen.getByLabelText(/Inicio/), '2026-01-01');
+    await userEvent.type(screen.getByLabelText(/^Fin/), '2026-12-31');
+    await userEvent.click(screen.getByLabelText('Este contrato ya está en curso'));
+    await userEvent.type(screen.getByLabelText(/Administrado desde/), '2026-06-01');
+    await userEvent.click(screen.getByLabelText('Este contrato ya está en curso'));
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente →' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Generar los tramos' }));
+    await userEvent.type(screen.getByLabelText('Importe, tramo 1'), '500000');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar en borrador' }));
+    expect(crearContrato.mock.calls[0]![1].administradoDesde).toBeNull();
+  });
+});

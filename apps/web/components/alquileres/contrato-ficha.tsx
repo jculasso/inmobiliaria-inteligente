@@ -11,11 +11,13 @@ import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { AnularModal } from './anular-modal';
 import { DatosContratoModal } from './datos-contrato-modal';
 import { ExtenderModal } from './extender-modal';
+import { CorregirImporteModal } from './corregir-importe-modal';
+import { esTramoAnterior } from '@vacker/domain';
 import { fmtFecha, fmtFechaDe, fmtMoneda } from '../../lib/format';
 import { Campo, inputClass } from '../form-ui';
 import { EstadoContratoBadge } from './estado-contrato';
 import { NOMBRE_INDICE, NOMBRE_PAPEL } from './nombres';
-import { Dato, EncabezadoPagina, Panel, Registrado } from './piezas';
+import { CLASE_FOCO, Dato, EncabezadoPagina, Panel, Registrado } from './piezas';
 import { fmtPct, variacionEntre } from '../../lib/importe';
 import { useRefrescar } from '../../lib/refrescar';
 
@@ -29,6 +31,8 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
   const [fecha, setFecha] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [accion, setAccion] = useState<null | 'datos' | 'anular' | 'borrar' | 'extender'>(null);
+  /** El tramo cuyo importe se está corrigiendo (reglas 108 a 110). */
+  const [corrigiendo, setCorrigiendo] = useState<number | null>(null);
   // Punto 3 de Javier: con qué valores del índice se calculó cada tramo.
   const conIndice =
     contrato.ajuste === 'indexado' && contrato.tramos.some((t) => t.indiceBase != null);
@@ -171,7 +175,15 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           <Dato etiqueta="Vigencia">
             {fmtFecha(contrato.inicio)} al {fmtFecha(contrato.fin)}
           </Dato>
-          <Dato etiqueta="Tipo">{NOMBRE_TIPO_CONTRATO[contrato.tipo]}</Dato>
+          {contrato.administradoDesde && (
+            <Dato etiqueta="Administrado desde">
+              {fmtFecha(contrato.administradoDesde)} (tomado en curso)
+            </Dato>
+          )}
+          <Dato etiqueta="Tipo">
+            {NOMBRE_TIPO_CONTRATO[contrato.tipo]}
+            {contrato.tipo === 'comercial' && contrato.inquilinoMipyme ? ' · inquilino MiPyme' : ''}
+          </Dato>
           <Dato etiqueta="Ajuste">
             {contrato.ajuste === 'indexado' && contrato.indice
               ? `${NOMBRE_INDICE[contrato.indice]} cada ${contrato.periodicidadMeses === 1 ? 'mes' : `${contrato.periodicidadMeses} meses`}`
@@ -216,7 +228,7 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
           <span className="text-right">Importe mensual</span>
         </div>
         <ol className="text-sm">
-          {contrato.tramos.map((t) => (
+          {contrato.tramos.map((t, i) => (
             <li
               key={t.numero}
               className={`grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-t border-line py-2 sm:items-baseline ${columnas}`}
@@ -255,9 +267,24 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
               )}
               <span className="col-start-2 row-start-1 text-right font-semibold tabular-nums text-ink sm:col-start-auto sm:row-start-auto">
                 {t.importe == null ? (
-                  <span className="text-xs font-bold text-warning">A indexar</span>
+                  // Regla 106: en un contrato tomado en curso, los tramos de
+                  // antes no hace falta cargarlos ni indexarlos.
+                  esTramoAnterior(contrato.tramos, i) ? (
+                    <span className="text-xs font-normal text-muted">Antes de administrarlo</span>
+                  ) : (
+                    <span className="text-xs font-bold text-warning">A indexar</span>
+                  )
                 ) : (
                   m(t.importe)
+                )}
+                {t.importe != null && contrato.estado === 'vigente' && (
+                  <button
+                    type="button"
+                    onClick={() => setCorrigiendo(t.numero)}
+                    className={`ml-auto block min-h-11 text-right text-xs font-semibold text-brand-red hover:underline sm:min-h-0 ${CLASE_FOCO}`}
+                  >
+                    Corregir importe
+                  </button>
                 )}
               </span>
             </li>
@@ -265,6 +292,17 @@ export function ContratoFicha({ contrato }: { contrato: ContratoDto }) {
         </ol>
       </Panel>
 
+      {corrigiendo != null && (
+        <CorregirImporteModal
+          contrato={contrato}
+          numero={corrigiendo}
+          onClose={() => setCorrigiendo(null)}
+          onDone={async () => {
+            await refrescar();
+            setCorrigiendo(null);
+          }}
+        />
+      )}
       {accion === 'extender' && (
         <ExtenderModal
           contrato={contrato}

@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   alertaIndice,
   alquilerDeHoy,
+  desdeSugerido,
+  esDelTramo,
+  esTramoAnterior,
+  estadoDeLosMeses,
+  mesesDelTramo,
+  planDeCorreccion,
   proximoCambio,
   enLetras,
   importeEnLetras,
@@ -337,14 +343,29 @@ describe('cargoConIva (regla 12)', () => {
   });
 });
 
-describe('vencimientoDelMes (regla 37)', () => {
+describe('vencimientoDelMes (regla 100, que reemplaza a la 37)', () => {
   // Fechas de Gexion, contrato #5.
   it('fin de semana se corre al lunes', () => {
     expect(vencimientoDelMes('2026-12', 5)).toBe('2026-12-07'); // sábado 5
     expect(vencimientoDelMes('2026-10', 10)).toBe('2026-10-12'); // sábado 10
   });
 
-  it('un feriado no se corre: el 12/10/2026 queda el 12', () => {
+  // Hasta el 15/10/2026 decía «un feriado no se corre: el 12/10/2026 queda el
+  // 12» (regla 37, como Gexion). Lo cambió Florencia (Vacker): regla 100.
+  it('regla 100: un feriado se corre al siguiente día hábil: el 12/10/2026 pasa al 13', () => {
+    expect(vencimientoDelMes('2026-10', 12, new Set(['2026-10-12']))).toBe('2026-10-13');
+  });
+
+  it('regla 100: feriados seguidos y el fin de semana se saltean juntos', () => {
+    // Lunes 7 (puente) y martes 8 de diciembre de 2026: el 5 cae sábado.
+    const feriados = new Set(['2026-12-07', '2026-12-08']);
+    expect(vencimientoDelMes('2026-12', 5, feriados)).toBe('2026-12-09');
+    expect(vencimientoDelMes('2026-12', 7, feriados)).toBe('2026-12-09');
+    // Viernes 20/11/2026 feriado: pasa por el sábado y el domingo hasta el lunes.
+    expect(vencimientoDelMes('2026-11', 20, new Set(['2026-11-20']))).toBe('2026-11-23');
+  });
+
+  it('regla 100: sin feriados cargados, solo se corre el fin de semana', () => {
     expect(vencimientoDelMes('2026-10', 12)).toBe('2026-10-12');
   });
 
@@ -486,6 +507,51 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
     ]);
   });
 
+  it('regla 100: el vencimiento del inquilino y el pago al propietario se corren por feriado', () => {
+    // Lunes 7 (puente) y martes 8 de diciembre de 2026.
+    const r = generarPeriodo(
+      c5({ diaVencimiento: 7, diaPagoPropietario: 8 }),
+      '2026-12',
+      21,
+      new Set(['2026-12-07', '2026-12-08']),
+    );
+    expect(new Set(r.conceptos.map((x) => x.vencimiento))).toEqual(new Set(['2026-12-09']));
+  });
+
+  describe('regla 104: un contrato tomado en curso', () => {
+    // Tomado el 10/10/2026, a mitad del tramo 4; los tramos 1 a 3 sin importe:
+    // no hace falta cargar la historia (regla 106).
+    const enCurso = c5({
+      administradoDesde: '2026-10-10',
+      tramos: c5().tramos.map((t) => (t.numero < 4 ? { ...t, importe: null } : t)),
+    });
+
+    it('no genera nada antes de «administrado desde»: ni alquiler ni deuda', () => {
+      expect(generarPeriodo(enCurso, '2026-09', 21)).toEqual({ conceptos: [], sinIndexar: [] });
+      expect(generarPeriodo(enCurso, '2025-09', 21)).toEqual({ conceptos: [], sinIndexar: [] });
+    });
+
+    it('el primer mes se prorratea desde ese día, como el primer mes de cualquier contrato', () => {
+      const r = generarPeriodo(enCurso, '2026-10', 21);
+      const alquiler = r.conceptos.find((x) => x.tipo === 'alquiler' && x.sentido === 'a_cobrar')!;
+      // 1.137.518 × 22/31 (del 10 al 31 de octubre).
+      expect(alquiler.importe).toBe(redondear2((1_137_518 * 22) / 31));
+      expect(alquiler.descripcion).toBe('Alquiler 10/10 al 31/10/2026 (22/31 días)');
+      expect(alquiler.clave).toBe(`alq|c5|2026-10|2026-10-10|alquiler|a_cobrar|${INQ}`);
+      expect(r.sinIndexar).toEqual([]);
+    });
+
+    it('desde el mes siguiente, el mes entero', () => {
+      expect(generarPeriodo(enCurso, '2026-11', 21)).toEqual(generarPeriodo(c5(), '2026-11', 21));
+    });
+
+    it('«administrado desde» igual al inicio es un contrato como cualquiera', () => {
+      expect(generarPeriodo(c5({ administradoDesde: '2025-08-15' }), '2025-08', 21)).toEqual(
+        generarPeriodo(c5(), '2025-08', 21),
+      );
+    });
+  });
+
   it('un contrato en dólares genera en dólares (regla 18)', () => {
     expect(
       generarPeriodo(c5({ moneda: 'USD' }), '2026-11', 21).conceptos.every(
@@ -601,6 +667,26 @@ describe('proponerPunitorio (regla 16)', () => {
 
   it('sin tasa en el contrato, nada', () => {
     expect(proponerPunitorio(1_137_518, '2026-11-05', '2026-11-15', 0).importe).toBe(0);
+  });
+
+  // Florencia (Vacker), 15/10/2026: el punitorio corre desde el día siguiente
+  // al vencimiento. Pagar el mismo día no cuesta nada; el día después, uno.
+  it('regla 102: pagar el día del vencimiento son 0 días; el día siguiente, 1', () => {
+    expect(proponerPunitorio(1_000_000, '2026-11-05', '2026-11-05', 0.3)).toEqual({
+      dias: 0,
+      importe: 0,
+    });
+    expect(proponerPunitorio(1_000_000, '2026-11-05', '2026-11-06', 0.3)).toEqual({
+      dias: 1,
+      importe: 3_000,
+    });
+  });
+
+  it('regla 102: con el vencimiento corrido por un feriado, se cuenta desde el día hábil', () => {
+    // El 12/10/2026 es feriado: el vencimiento pasa al 13 y pagar el 13 no tiene punitorio.
+    const vence = vencimientoDelMes('2026-10', 12, new Set(['2026-10-12']));
+    expect(proponerPunitorio(1_000_000, vence, '2026-10-13', 0.3).dias).toBe(0);
+    expect(proponerPunitorio(1_000_000, vence, '2026-10-14', 0.3).dias).toBe(1);
   });
 });
 
@@ -796,6 +882,90 @@ describe('alquilerDeHoy y proximoCambio (una sola definición)', () => {
     expect(
       proximoCambio([{ numero: 1, desde: '2026-01-01', importe: 1 }], '2026-06-15'),
     ).toBeNull();
+  });
+});
+
+describe('regla 106: los tramos de antes de administrar un contrato tomado en curso', () => {
+  const tramos = [
+    { numero: 1, desde: '2025-01-01', importe: null },
+    { numero: 2, desde: '2025-05-01', importe: null },
+    { numero: 3, desde: '2025-09-01', importe: 600_000 },
+    { numero: 4, desde: '2026-01-01', importe: null },
+  ];
+
+  it('no son la próxima indexación: lo es el primero después del vigente', () => {
+    expect(proximoCambio(tramos, '2025-10-15')).toBe('2026-01-01');
+  });
+
+  it('son historia: un tramo sin importe seguido de uno con importe', () => {
+    expect(tramos.map((_, i) => esTramoAnterior(tramos, i))).toEqual([true, true, false, false]);
+  });
+
+  it('el alquiler de hoy es el vigente que se cargó', () => {
+    expect(alquilerDeHoy(tramos, '2025-10-15')).toBe(600_000);
+  });
+});
+
+describe('corregir el importe de un tramo (reglas 108 y 109)', () => {
+  const tramo = { desde: '2026-08-15', hasta: '2026-12-14' };
+
+  it('los meses del tramo, desde que se administra', () => {
+    expect(mesesDelTramo(tramo)).toEqual(['2026-08', '2026-09', '2026-10', '2026-11', '2026-12']);
+    expect(mesesDelTramo(tramo, '2026-10-10')).toEqual(['2026-10', '2026-11', '2026-12']);
+  });
+
+  it('un concepto es del tramo si su parte empieza dentro: en un mes con cambio de tramo, cada parte del suyo', () => {
+    expect(esDelTramo('alq|c|2026-08|2026-08-15|alquiler|a_cobrar|p', tramo)).toBe(true);
+    expect(esDelTramo('alq|c|2026-08|2026-08-01|alquiler|a_cobrar|p', tramo)).toBe(false);
+    expect(esDelTramo('alq|c|2026-12|2026-12-01|alquiler|a_cobrar|p|corr:x', tramo)).toBe(true);
+    expect(esDelTramo('bol|b|c|p', tramo)).toBe(false);
+  });
+
+  const k = (
+    periodo: string,
+    o: Partial<{ anulado: boolean; cobrado: boolean; liquidado: boolean }> = {},
+  ) => ({
+    periodo,
+    anulado: false,
+    cobrado: false,
+    liquidado: false,
+    ...o,
+  });
+  const meses = estadoDeLosMeses(
+    ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12'],
+    [
+      k('2026-08', { cobrado: true }),
+      k('2026-08'),
+      k('2026-09', { liquidado: true }),
+      k('2026-10'),
+      k('2026-11', { anulado: true }),
+    ],
+  );
+
+  it('regla 109: un solo concepto cobrado o liquidado deja el mes entero como está', () => {
+    expect(meses).toEqual([
+      { periodo: '2026-08', estado: 'cobrado' },
+      { periodo: '2026-09', estado: 'liquidado' },
+      { periodo: '2026-10', estado: 'generado' },
+      { periodo: '2026-11', estado: 'anulado' },
+      { periodo: '2026-12', estado: 'sin_generar' },
+    ]);
+  });
+
+  it('regla 108: se propone desde el primer mes sin nada cobrado ni liquidado', () => {
+    expect(desdeSugerido(meses)).toBe('2026-10');
+    expect(desdeSugerido(meses.slice(0, 2))).toBeNull();
+  });
+
+  it('regla 109: se vuelve a generar solo lo generado; lo cobrado, lo liquidado y lo anulado quedan', () => {
+    expect(planDeCorreccion(meses, '2026-09')).toEqual({
+      regenerar: ['2026-10'],
+      quedan: [
+        { periodo: '2026-09', estado: 'liquidado' },
+        { periodo: '2026-11', estado: 'anulado' },
+      ],
+      sinGenerar: ['2026-12'],
+    });
   });
 });
 

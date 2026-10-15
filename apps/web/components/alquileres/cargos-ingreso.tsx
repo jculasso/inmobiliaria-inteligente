@@ -12,6 +12,7 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { cargarCargosIngreso } from '../../lib/alquileres-api';
 import { cantidad, fmtMoneda, hoyIso } from '../../lib/format';
+import { fmtPct } from '../../lib/importe';
 import { useEstadoDelServidor } from '../../lib/estado-del-servidor';
 import { useRefrescar } from '../../lib/refrescar';
 import { inputClass } from '../form-ui';
@@ -74,15 +75,34 @@ export function CargosIngreso({
     setCargando(false);
   }
 
+  // Regla 103: con qué alícuota se calculó el sellado, que depende del tipo de
+  // contrato y de si el inquilino es MiPyme.
+  const sellado =
+    cargos.selladoPct == null
+      ? ''
+      : cargos.selladoPct === 0
+        ? ' · sellado exento'
+        : ` · sellado ${fmtPct(cargos.selladoPct)}`;
   const detalle =
     cargos.valorTotal > 0
-      ? `valor total ${fmtMoneda(cargos.valorTotal, moneda)} · ${cantidad(cargos.meses, 'mes', 'meses')}`
+      ? `valor total ${fmtMoneda(cargos.valorTotal, moneda)} · ${cantidad(cargos.meses, 'mes', 'meses')}${sellado}`
       : undefined;
   if (cargos.cargados) {
     return (
       <Panel icono="💼" titulo="Cargos de ingreso">
         <p className="text-sm text-ink">
           ✅ Cargados. Se cobran desde Cobros y aparecen en la cuenta de cada uno y en Conceptos.
+        </p>
+      </Panel>
+    );
+  }
+  if (cargos.enCurso) {
+    // Regla 105: los cargos de ingreso se pagaron cuando empezó el contrato.
+    return (
+      <Panel icono="💼" titulo="Cargos de ingreso">
+        <p className="text-sm text-muted">
+          El contrato se tomó en curso: sus cargos de ingreso se pagaron cuando empezó, así que no
+          se propone ninguno. Si hace falta cobrar algo, cargalo como gasto suelto en Conceptos.
         </p>
       </Panel>
     );

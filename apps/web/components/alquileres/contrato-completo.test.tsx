@@ -28,6 +28,8 @@ describe('Contrato completo (entrega 14)', () => {
         moneda="ARS"
         cargos={{
           cargados: false,
+          enCurso: false,
+          selladoPct: 0,
           valorTotal: 8_400_000,
           meses: 24,
           propuesta: [
@@ -76,11 +78,55 @@ describe('Contrato completo (entrega 14)', () => {
         contratoId={C}
         estado="vigente"
         moneda="ARS"
-        cargos={{ cargados: true, valorTotal: 0, meses: 24, propuesta: [] }}
+        cargos={{
+          cargados: true,
+          enCurso: false,
+          selladoPct: 0,
+          valorTotal: 0,
+          meses: 24,
+          propuesta: [],
+        }}
       />,
     );
     expect(screen.getByText(/Cargados/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cargar los cargos' })).not.toBeInTheDocument();
+  });
+
+  it('regla 105: un contrato tomado en curso no ofrece cargos de ingreso y dice por qué', () => {
+    render(
+      <CargosIngreso
+        contratoId={C}
+        estado="vigente"
+        moneda="ARS"
+        cargos={{
+          cargados: false,
+          enCurso: true,
+          selladoPct: 1,
+          valorTotal: 0,
+          meses: 24,
+          propuesta: [],
+        }}
+      />,
+    );
+    expect(screen.getByText(/se tomó en curso/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cargar los cargos' })).not.toBeInTheDocument();
+  });
+
+  it('regla 103: la cabecera dice con qué alícuota se calculó el sellado', () => {
+    const cargos = (selladoPct: number) => ({
+      cargados: false,
+      enCurso: false,
+      selladoPct,
+      valorTotal: 8_400_000,
+      meses: 24,
+      propuesta: [],
+    });
+    const { rerender } = render(
+      <CargosIngreso contratoId={C} estado="vigente" moneda="ARS" cargos={cargos(0.25)} />,
+    );
+    expect(screen.getByText(/sellado 0,25%/)).toBeInTheDocument();
+    rerender(<CargosIngreso contratoId={C} estado="vigente" moneda="ARS" cargos={cargos(0)} />);
+    expect(screen.getByText(/sellado exento/)).toBeInTheDocument();
   });
 
   it('extender: empieza al día siguiente del fin y por defecto suma 12 meses', async () => {
@@ -140,6 +186,8 @@ describe('Contrato completo (entrega 14)', () => {
   it('cargos: cuando la página trae otra propuesta, se ve sin recargar', () => {
     const cargos = (importe: number) => ({
       cargados: false,
+      enCurso: false,
+      selladoPct: 1,
       valorTotal: 0,
       meses: 24,
       propuesta: [

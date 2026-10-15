@@ -36,6 +36,11 @@ const PRINCIPAL = {
       selladoPct: 0,
       selladoInquilinoPct: 50,
       depositoGestion: 'entrega_propietario',
+      contratoHonorariosPct: 8,
+      contratoGastosAdmPct: 2,
+      contratoPunitorioDiarioPct: 0,
+      contratoDiaVencimiento: 5,
+      contratoDiaPagoPropietario: 10,
     },
   },
 };

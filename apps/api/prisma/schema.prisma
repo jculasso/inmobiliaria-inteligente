@@ -698,8 +698,8 @@ model AlqContrato {
   fin                DateTime  @db.Date
   fechaFirma         DateTime? @map("fecha_firma") @db.Date
   /// Día del mes en que vence el alquiler del inquilino (5 en Vacker) y día en
-  /// que se le paga al propietario (10). En fin de semana se corren al lunes;
-  /// los feriados no (regla 37, como Gexion).
+  /// que se le paga al propietario (10). En fin de semana o feriado se corren
+  /// al siguiente día hábil (regla 100, desde el 15/10/2026).
   diaVencimiento     Int       @default(5) @map("dia_vencimiento")
   diaPagoPropietario Int       @default(10) @map("dia_pago_propietario")
   ajuste             String    @default("indexado") // indexado | escalonado
@@ -710,6 +710,11 @@ model AlqContrato {
   ivaPct             Decimal   @default(0) @map("iva_pct") @db.Decimal(5, 2)
   punitorioDiarioPct Decimal   @default(0) @map("punitorio_diario_pct") @db.Decimal(6, 3)
   pagoGarantizado    Boolean   @default(false) @map("pago_garantizado")
+  /// El inquilino tiene certificado MiPyme: baja el sellado de un comercial (regla 103).
+  inquilinoMipyme    Boolean   @default(false) @map("inquilino_mipyme")
+  /// Un contrato tomado en curso se administra desde esta fecha; antes no se
+  /// genera nada (regla 104). NULL: desde el inicio.
+  administradoDesde  DateTime? @map("administrado_desde") @db.Date
   depositoImporte    Decimal?  @map("deposito_importe") @db.Decimal(14, 2)
   depositoMoneda     String?   @map("deposito_moneda")
   depositoDevolucion DateTime? @map("deposito_devolucion") @db.Date
@@ -1010,6 +1015,20 @@ model IndiceValor {
 
   @@id([indice, fecha])
   @@map("indice_valor")
+}
+
+/// Feriados nacionales (regla 100): un vencimiento que cae en uno se corre al
+/// siguiente día hábil. Global como `indice_valor`: sin tenant_id, RLS de
+/// solo lectura; la escribe la tarea diaria (`/tareas/indices`).
+model Feriado {
+  fecha     DateTime @id @db.Date
+  nombre    String
+  /// inamovible | trasladable | puente, como lo publica la fuente.
+  tipo      String
+  fuente    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("feriado")
 }
 
 /// El historial del módulo: quién hizo qué y cuándo (pedido de Javier del
