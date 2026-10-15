@@ -31,6 +31,7 @@ import {
   validarPartes,
   validarTramos,
   vencimientoDelMes,
+  vencimientosDelPeriodo,
   type ContratoParaGenerar,
 } from './alquileres';
 
@@ -461,6 +462,59 @@ describe('generarPeriodo (reglas 9 a 13)', () => {
     expect(r.conceptos[0]).toMatchObject({
       importe: 466_129.03,
       descripcion: 'Alquiler 15/08 al 31/08/2025 (17/31 días)',
+    });
+  });
+
+  describe('regla 112: el primer mes no nace vencido', () => {
+    const venc = (r: ReturnType<typeof generarPeriodo>, sentido: 'a_cobrar' | 'a_pagar') =>
+      new Set(r.conceptos.filter((x) => x.sentido === sentido).map((x) => x.vencimiento));
+    // Feriado del lunes 12/10/2026: el pago del 10 (sábado) iba al 13.
+    const feriados = new Set(['2026-10-12']);
+
+    it('tomado en curso el 15/10 con vencimiento el 5: vence el 15, y al propietario no se le paga antes', () => {
+      // El caso de Alteva: salía inquilino 05/10 y propietario 13/10, antes de administrarlo.
+      const r = generarPeriodo(c5({ administradoDesde: '2026-10-15' }), '2026-10', 21, feriados);
+      expect(venc(r, 'a_cobrar')).toEqual(new Set(['2026-10-15']));
+      expect(venc(r, 'a_pagar')).toEqual(new Set(['2026-10-15']));
+    });
+
+    it('un contrato que empieza el 20 tampoco vence el 5 de su primer mes', () => {
+      const r = generarPeriodo(
+        c5({
+          inicio: '2026-03-20',
+          tramos: [{ numero: 1, desde: '2026-03-20', hasta: '2027-03-19', importe: 500_000 }],
+        }),
+        '2026-03',
+        21,
+      );
+      expect(venc(r, 'a_cobrar')).toEqual(new Set(['2026-03-20']));
+      expect(venc(r, 'a_pagar')).toEqual(new Set(['2026-03-20']));
+    });
+
+    it('si el arranque cae en fin de semana o feriado, se corre al siguiente hábil', () => {
+      // Sábado 10/10/2026; el lunes 12 es feriado: vence el martes 13.
+      const r = generarPeriodo(c5({ administradoDesde: '2026-10-10' }), '2026-10', 21, feriados);
+      expect(venc(r, 'a_cobrar')).toEqual(new Set(['2026-10-13']));
+      expect(venc(r, 'a_pagar')).toEqual(new Set(['2026-10-13']));
+    });
+
+    it('un arranque antes del vencimiento no cambia nada, y los meses siguientes tampoco', () => {
+      expect(vencimientosDelPeriodo('2026-10', '2026-10-02', 5, 10, feriados)).toEqual({
+        inquilino: '2026-10-05',
+        propietario: '2026-10-13',
+      });
+      expect(vencimientosDelPeriodo('2026-11', '2026-10-15', 5, 10)).toEqual({
+        inquilino: '2026-11-05',
+        propietario: '2026-11-10',
+      });
+    });
+
+    it('al propietario nunca se le paga antes de que venza el alquiler del inquilino', () => {
+      // Día de pago 3 y vencimiento 5: el pago pasa al 5.
+      expect(vencimientosDelPeriodo('2026-11', '2026-01-01', 5, 3)).toEqual({
+        inquilino: '2026-11-05',
+        propietario: '2026-11-05',
+      });
     });
   });
 

@@ -196,6 +196,8 @@ describe('ConceptosService.generar (reglas 9 a 13)', () => {
     const alquiler = datos(tx).find((x) => x.tipo === 'alquiler' && x.sentido === 'a_cobrar')!;
     // 1.137.518 × 21/30: del 10 al 30 de noviembre.
     expect(alquiler.importe).toBe(796_262.6);
+    // Regla 112: no vence el 5, antes de administrarlo, sino el día en que arranca.
+    expect(alquiler.vencimiento).toEqual(d('2026-11-10'));
     expect(alquiler.claveGeneracion).toBe(`alq|c5|2026-11|2026-11-10|alquiler|a_cobrar|${INQ}`);
   });
 
