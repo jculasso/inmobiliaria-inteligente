@@ -1,7 +1,7 @@
 import { IDS } from '../simulador/datos/comunes';
 import { ID_RESERVA_NUEVA } from '../simulador/datos/reservas';
 import {
-  confirmarYRecargar,
+  confirmarYEsperarCierre,
   esTocable,
   expect,
   revisarEnTelefono,
@@ -94,7 +94,7 @@ test('cobrar la seña hace el recibo, y el recibo se abre', async ({ page, esTel
 
   const confirmar = dialogo.getByRole('button', { name: 'Cobrar y hacer el recibo' });
   await esTocable(confirmar);
-  const pedido = await confirmarYRecargar(page, confirmar, '/sena');
+  const pedido = await confirmarYEsperarCierre(page, dialogo, confirmar, '/sena');
   expect(pedido.postDataJSON()).toMatchObject({
     medio: 'transferencia',
     personaId: IDS.inquilino,
@@ -124,8 +124,9 @@ test('el estudio de garantías y la aprobación cambian el estado y habilitan co
   await page.getByRole('button', { name: '🔎 Empezar el estudio de garantías' }).click();
   let dialogo = page.getByRole('dialog', { name: 'Empezar el estudio de garantías' });
   await revisarModal(page, dialogo, esTelefono);
-  await confirmarYRecargar(
+  await confirmarYEsperarCierre(
     page,
+    dialogo,
     dialogo.getByRole('button', { name: 'Empezar', exact: true }),
     '/estado',
   );
@@ -133,8 +134,9 @@ test('el estudio de garantías y la aprobación cambian el estado y habilitan co
 
   await page.getByRole('button', { name: '✅ Aprobar' }).click();
   dialogo = page.getByRole('dialog', { name: 'Aprobar la reserva' });
-  await confirmarYRecargar(
+  await confirmarYEsperarCierre(
     page,
+    dialogo,
     dialogo.getByRole('button', { name: 'Aprobar', exact: true }),
     '/estado',
   );
@@ -195,8 +197,9 @@ test('cerrar «No se presentó a firmar» retiene la seña para el propietario',
     'La seña de $ 900.000,00 se retiene y se le entrega a Carlos Gómez en su próxima liquidación.',
   );
   await revisarModal(page, dialogo, esTelefono);
-  const pedido = await confirmarYRecargar(
+  const pedido = await confirmarYEsperarCierre(
     page,
+    dialogo,
     dialogo.getByRole('button', { name: 'Cerrar la reserva' }),
     '/estado',
   );

@@ -668,3 +668,36 @@ Todo vive en `apps/api/src/modules/alquileres/candados.ts`:
 Lo fijan los specs de cada servicio (miran que el candado se pida y que sea
 antes de la primera lectura) y `test/reservas.e2e-spec.ts`, que contra la base
 de CI cobra la misma seña tres veces a la vez y espera un solo recibo.
+
+---
+
+## 20. El React que trae Next está parchado: un guardado que no se pinta nunca
+
+**El síntoma:** se guarda en un modal, la API responde bien, el refresh trae la
+página nueva completa… y el modal queda en «Guardando…» para siempre, con la
+pantalla vieja debajo. Navegar a otra pantalla lo destraba. Contra el simulador
+de las pruebas de navegador pasaba en ~1 de cada 10 guardados, en Chromium y en
+WebKit; más raro, también un `router.push()` o un `<Link>` que no terminaba.
+
+**La causa** no estaba en `useRefrescar` ni en el simulador, sino en React
+(19.2, el que Next 15.5 trae adentro en `next/dist/compiled/react-dom`). La
+página nueva llega del servidor en pedazos (Flight). Si React lee un pedazo que
+todavía no llegó, suspende y suelta el hilo; si el pedazo llega justo en ese
+hueco, al retomar React engancha el aviso de «ya llegó» y el pedazo lo llama en
+el acto, **dentro del render**. En ese caso `pingSuspendedRoot` no hacía nada
+(había un `TODO`): el aviso se perdía, nadie más avisaba, y la transición
+quedaba pendiente para siempre —con ella, el `isPending` que espera el modal.
+Puede pasar en producción igual que en las pruebas: depende de cuándo llegan
+los paquetes de la respuesta, no del entorno.
+
+**El arreglo** es `patches/next@15.5.20.patch` (`patchedDependencies` en
+`pnpm-workspace.yaml`): una línea en las 8 copias de `react-dom` que trae Next,
+la misma que trae React 19.3 y el React de Next 16 —anota el aviso en vez de
+tirarlo—.
+
+Lo fija **`apps/web/lib/refrescar.react-de-next.test.ts`**, que corre
+`useRefrescar` sobre el React de Next y reproduce el hueco: sin el parche queda
+en la página vieja. **Al subir de versión Next**, pnpm avisa que el parche ya no
+aplica: si la versión nueva trae React 19.3 o posterior (Next 16 en adelante),
+se borra el parche; si no, se rehace sobre la versión nueva, y el test dice si
+hace falta.

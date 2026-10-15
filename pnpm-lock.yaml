@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  next@15.5.20: cddada5c65f7b0fdaae074066bae03de8cde0140424ef6e192db1dad0a8d641c
+
 importers:
 
   .:
@@ -155,7 +158,7 @@ importers:
         version: link:../../packages/ui
       next:
         specifier: ^15.1.4
-        version: 15.5.20(@babel/core@7.29.7)(@playwright/test@1.62.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 15.5.20(patch_hash=cddada5c65f7b0fdaae074066bae03de8cde0140424ef6e192db1dad0a8d641c)(@babel/core@7.29.7)(@playwright/test@1.62.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.0.0
         version: 19.2.7
@@ -219,7 +222,7 @@ importers:
         version: link:../../packages/ui
       next:
         specifier: ^15.1.4
-        version: 15.5.20(@babel/core@7.29.7)(@playwright/test@1.62.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 15.5.20(patch_hash=cddada5c65f7b0fdaae074066bae03de8cde0140424ef6e192db1dad0a8d641c)(@babel/core@7.29.7)(@playwright/test@1.62.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.0.0
         version: 19.2.7
@@ -7482,7 +7485,7 @@ snapshots:
       reflect-metadata: 0.2.2
       rxjs: 7.8.2
 
-  next@15.5.20(@babel/core@7.29.7)(@playwright/test@1.62.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  next@15.5.20(patch_hash=cddada5c65f7b0fdaae074066bae03de8cde0140424ef6e192db1dad0a8d641c)(@babel/core@7.29.7)(@playwright/test@1.62.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       '@next/env': 15.5.20
       '@swc/helpers': 0.5.15
