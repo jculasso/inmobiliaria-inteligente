@@ -1,12 +1,20 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { MARCADORES_ANEXO_INVENTARIO, MARCADORES_POR_DOCUMENTO } from '@vacker/types';
+import {
+  MARCADORES_ANEXO_INVENTARIO,
+  MARCADORES_PLANTILLA,
+  MARCADORES_POR_DOCUMENTO,
+} from '@vacker/types';
 import type { SupabaseStorageService } from '../../common/supabase-storage.service';
 import type { TenantContext } from '../../prisma/tenant-context';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { mocksDeHistorial } from './historial.testing';
 import { datosDePlantilla } from './plantilla-modelo';
-import { anexoDeLaPlataforma, plantillaDeEjemploAnexo } from './plantilla-ejemplo';
+import {
+  anexoDeLaPlataforma,
+  plantillaDeEjemplo,
+  plantillaDeEjemploAnexo,
+} from './plantilla-ejemplo';
 import { completarPlantillaWord, problemasDePlantilla, textoDeDocx } from './plantilla-word';
 import { contratoDePrueba, docx } from './plantilla-word.testing';
 import { PlantillasService } from './plantillas.service';
@@ -62,6 +70,44 @@ describe('El anexo de inventario (regla 174)', () => {
     expect(texto).toContain('1. 1 × Cocina de 4 hornallas. Funcionando');
     expect(texto).toContain('Firma de LA PARTE LOCATARIA: Ana Inquilina');
     expect(texto).not.toContain('undefined');
+  });
+
+  describe('el texto que presenta la lista va una sola vez, no una por ítem', () => {
+    const PRESENTACION =
+      'LA PARTE LOCATARIA recibe, junto con el inmueble, los siguientes elementos';
+    const SIN_INVENTARIO = 'El inmueble se entrega sin muebles ni elementos inventariados.';
+    const veces = (texto: string, frase: string) => texto.split(frase).length - 1;
+    const conItems = (
+      inventario: { descripcion: string; cantidad: number; estado: string | null }[],
+    ) => datosDePlantilla({ ...contratoDePrueba(), inventario }, 'Alteva', '2026-10-15');
+    const TRES = [
+      { descripcion: 'Cocina de 4 hornallas', cantidad: 1, estado: 'Funcionando' },
+      { descripcion: 'Sillas de madera', cantidad: 4, estado: null },
+      { descripcion: 'Heladera con freezer', cantidad: 1, estado: 'Sin el estante de abajo' },
+    ];
+
+    it.each([
+      ['el anexo de la plataforma', anexoDeLaPlataforma, MARCADORES_ANEXO_INVENTARIO],
+      ['el ejemplo del anexo', plantillaDeEjemploAnexo, MARCADORES_ANEXO_INVENTARIO],
+      ['la DÉCIMA del contrato de ejemplo', plantillaDeEjemplo, MARCADORES_PLANTILLA],
+    ])('%s: con 3 ítems, la frase una vez y los 3 renglones', (_, plantilla, marcadores) => {
+      expect(problemasDePlantilla(archivo(plantilla()), marcadores)).toEqual([]);
+      const texto = textoDeDocx(completarPlantillaWord(plantilla(), conItems(TRES)));
+      expect(veces(texto, PRESENTACION)).toBe(1);
+      expect(texto).toContain('1. 1 × Cocina de 4 hornallas. Funcionando');
+      expect(texto).toContain('2. 4 × Sillas de madera.');
+      expect(texto).toContain('3. 1 × Heladera con freezer. Sin el estante de abajo');
+      expect(veces(texto, SIN_INVENTARIO)).toBe(0);
+    });
+
+    it.each([
+      ['el anexo de la plataforma', anexoDeLaPlataforma],
+      ['la DÉCIMA del contrato de ejemplo', plantillaDeEjemplo],
+    ])('%s: sin ítems, sin la frase y con el texto de «sin inventario»', (_, plantilla) => {
+      const texto = textoDeDocx(completarPlantillaWord(plantilla(), conItems([])));
+      expect(veces(texto, PRESENTACION)).toBe(0);
+      expect(veces(texto, SIN_INVENTARIO)).toBe(1);
+    });
   });
 
   function servicio(over: { plantilla?: object | null; estado?: string } = {}) {

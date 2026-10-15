@@ -101,6 +101,13 @@ export const MARCADORES_INVENTARIO: readonly MarcadorPlantilla[] = [
     ejemplo: 'Las paredes se entregan recién pintadas.',
   },
   {
+    nombre: 'con_inventario',
+    tipo: 'condicion',
+    descripcion:
+      'El contrato tiene inventario: lo que encierra aparece una sola vez, no una por ítem como en la lista (con ^ en vez de #, no tiene)',
+    ejemplo: '{#con_inventario}Se entregan los siguientes elementos:{/con_inventario}',
+  },
+  {
     nombre: 'inventario',
     tipo: 'lista',
     descripcion:

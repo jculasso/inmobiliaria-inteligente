@@ -164,7 +164,7 @@ const ANEXO: Documento = {
   intro:
     'Este archivo es una guía y un punto de partida. Copiá los marcadores que necesites a tu propio anexo de inventario en Word, o editá este mismo, y subilo en Configuración → Plantillas, como anexo de inventario. Desde cada contrato se descarga el anexo con su inventario.',
   dato: 'contrato.codigo',
-  condicion: 'inventario',
+  condicion: 'con_inventario',
   lista: { nombre: 'inventario', ejemplo: '{numero}. {cantidad} × {descripcion}; ' },
   datosTitulo: 'Datos del contrato',
 };
@@ -201,7 +201,6 @@ function guia(doc: Documento): Bloque[] {
       encabezado: ['Marcador', 'Qué pone', 'Ejemplo'],
       filas: textos.map((m) => [`{${m.nombre}}`, m.descripcion, m.ejemplo]),
     },
-    // El anexo de inventario no tiene condiciones propias: su lista hace de condición.
     ...(condiciones.length
       ? ([
           { t: 'subtitulo', texto: 'Condiciones' },
@@ -319,7 +318,7 @@ function contratoModelo(): Bloque[] {
     {
       t: 'parrafo',
       texto:
-        '{#inventario}LA PARTE LOCATARIA recibe, junto con el inmueble, los siguientes elementos, en el estado que se indica:{/inventario}{^inventario}El inmueble se entrega sin muebles ni elementos inventariados.{/inventario}',
+        '{#con_inventario}LA PARTE LOCATARIA recibe, junto con el inmueble, los siguientes elementos, en el estado que se indica:{/con_inventario}{^inventario}El inmueble se entrega sin muebles ni elementos inventariados.{/inventario}',
     },
     { t: 'parrafo', texto: '{#inventario}' },
     { t: 'parrafo', texto: '{numero}. {cantidad} × {descripcion}. {estado}' },
@@ -417,7 +416,7 @@ function anexoModelo(): Bloque[] {
     {
       t: 'parrafo',
       texto:
-        '{#inventario}LA PARTE LOCATARIA recibe, junto con el inmueble, los siguientes elementos, en el estado que se indica:{/inventario}{^inventario}El inmueble se entrega sin muebles ni elementos inventariados.{/inventario}',
+        '{#con_inventario}LA PARTE LOCATARIA recibe, junto con el inmueble, los siguientes elementos, en el estado que se indica:{/con_inventario}{^inventario}El inmueble se entrega sin muebles ni elementos inventariados.{/inventario}',
     },
     { t: 'parrafo', texto: '{#inventario}' },
     { t: 'parrafo', texto: '{numero}. {cantidad} × {descripcion}. {estado}' },

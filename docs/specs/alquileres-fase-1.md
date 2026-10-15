@@ -1176,6 +1176,9 @@ recibe 403 aunque el usuario sea `direccion`.
 152. **En la plantilla.** `{#inventario}…{/inventario}` se repite una vez
      por ítem, con `{numero}`, `{descripcion}`, `{cantidad}` y `{estado}`;
      `{^inventario}…{/inventario}` aparece solo si no hay ítems;
+     `{#con_inventario}…{/con_inventario}` aparece una sola vez si hay
+     ítems (para la frase que presenta la lista: adentro de
+     `{#inventario}` se repetiría por ítem);
      `{contrato.inventario_observaciones}` pone las observaciones (vacío si
      no hay). Están en `MARCADORES_PLANTILLA` —así que se validan al subir el
      Word, como los demás (regla 40)— y el Word de ejemplo trae una cláusula
