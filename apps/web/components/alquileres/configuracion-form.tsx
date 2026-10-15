@@ -93,7 +93,7 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
           href="/alquileres/plantillas"
           className={`rounded text-sm font-semibold text-brand-red hover:underline ${CLASE_FOCO}`}
         >
-          📝 Plantillas de contrato →
+          📝 Plantillas de contrato y de reserva →
         </Link>
       </EncabezadoPagina>
       <Panel icono="💼" titulo="Comisión inicial">

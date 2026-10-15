@@ -61,6 +61,11 @@ export function contratoDePrueba(): ContratoParaPlantilla {
     punitorioDiarioPct: new Prisma.Decimal(0.5),
     depositoImporte: new Prisma.Decimal(350_000),
     depositoMoneda: 'ARS',
+    inventario: [
+      { descripcion: 'Cocina de 4 hornallas', cantidad: 1, estado: 'Funcionando' },
+      { descripcion: 'Sillas de madera', cantidad: 4, estado: null },
+    ],
+    inventarioObs: 'Las paredes se entregan recién pintadas.',
     propiedad: { direccion: 'Bv. Oroño 1452', unidad: '4° B', ciudad: 'Rosario' },
     partes: [
       {

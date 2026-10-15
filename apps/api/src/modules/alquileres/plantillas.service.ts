@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { PlantillaDto, PlantillaMetadatos } from '@vacker/types';
+import {
+  MARCADORES_PLANTILLA,
+  MARCADORES_RESERVA,
+  type DocumentoPlantilla,
+  type PlantillaDto,
+  type PlantillaMetadatos,
+} from '@vacker/types';
 import { SupabaseStorageService } from '../../common/supabase-storage.service';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -8,7 +14,8 @@ import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { BUCKET_CONTRATOS } from './firma/firma.service';
 import { registrarEventos } from './historial';
 import { datosDePlantilla, SELECT_PLANTILLA } from './plantilla-modelo';
-import { plantillaDeEjemplo } from './plantilla-ejemplo';
+import { plantillaDeEjemplo, plantillaDeEjemploReserva } from './plantilla-ejemplo';
+import { datosDeReserva, SELECT_RESERVA_PLANTILLA } from './reserva-modelo';
 import { completarPlantillaWord, problemasDePlantilla, type ArchivoSubido } from './plantilla-word';
 
 export const TIPO_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -23,6 +30,7 @@ const SELECT_DTO = {
   id: true,
   nombre: true,
   tipoContrato: true,
+  documento: true,
   archivo: true,
   nombreArchivo: true,
   tamano: true,
@@ -33,6 +41,7 @@ const aDto = (p: {
   id: string;
   nombre: string;
   tipoContrato: string | null;
+  documento: string;
   archivo: string | null;
   nombreArchivo: string | null;
   tamano: number | null;
@@ -41,6 +50,7 @@ const aDto = (p: {
   id: p.id,
   nombre: p.nombre,
   tipoContrato: p.tipoContrato as PlantillaDto['tipoContrato'],
+  documento: p.documento === 'reserva' ? 'reserva' : 'contrato',
   formato: p.archivo ? 'word' : 'texto',
   nombreArchivo: p.nombreArchivo,
   tamano: p.tamano,
@@ -57,9 +67,16 @@ export function nombreDelArchivo(original: string): string {
   return utf8.includes('�') ? original : utf8;
 }
 
-/** Revisa el Word y, si algo está mal, lo rechaza nombrando cada marcador. */
-function validar(archivo: ArchivoSubido): void {
-  const problemas = problemasDePlantilla(archivo);
+/**
+ * Revisa el Word y, si algo está mal, lo rechaza nombrando cada marcador.
+ * Contra los marcadores de SU documento (regla 162): un Word de reserva con
+ * `{contrato.codigo}` no pasa, porque una reserva no tiene código de contrato.
+ */
+function validar(archivo: ArchivoSubido, documento: DocumentoPlantilla): void {
+  const problemas = problemasDePlantilla(
+    archivo,
+    documento === 'reserva' ? MARCADORES_RESERVA : MARCADORES_PLANTILLA,
+  );
   if (problemas.length === 0) return;
   throw new BadRequestException({
     message:
@@ -101,12 +118,17 @@ export class PlantillasService {
     return { buffer: plantillaDeEjemplo(), nombre: 'Plantilla de contrato - ejemplo.docx' };
   }
 
+  /** Regla 163: el Word de ejemplo de una reserva, con sus marcadores y un formulario. */
+  ejemploReserva(): Docx {
+    return { buffer: plantillaDeEjemploReserva(), nombre: 'Plantilla de reserva - ejemplo.docx' };
+  }
+
   async crear(
     ctx: TenantContext,
     meta: PlantillaMetadatos,
     archivo: ArchivoSubido,
   ): Promise<PlantillaDto> {
-    validar(archivo);
+    validar(archivo, meta.documento);
     const id = randomUUID();
     const clave = await this.subir(ctx, id, archivo);
     try {
@@ -136,11 +158,12 @@ export class PlantillasService {
     id: string,
     archivo: ArchivoSubido,
   ): Promise<PlantillaDto> {
-    validar(archivo);
     const anterior = await this.db.withTenant((tx) =>
-      tx.alqPlantilla.findUnique({ where: { id }, select: { archivo: true } }),
+      tx.alqPlantilla.findUnique({ where: { id }, select: { archivo: true, documento: true } }),
     );
     if (!anterior) throw new NotFoundException('La plantilla no existe.');
+    // El Word nuevo se revisa contra los marcadores del documento que ya es.
+    validar(archivo, anterior.documento === 'reserva' ? 'reserva' : 'contrato');
     const clave = await this.subir(ctx, id, archivo);
     const dto = await this.db.withTenant(async (tx) =>
       aDto(
@@ -157,8 +180,14 @@ export class PlantillasService {
   }
 
   async actualizar(id: string, meta: PlantillaMetadatos): Promise<PlantillaDto> {
+    // Una plantilla no cambia de documento: su Word se revisó contra los
+    // marcadores del que es (regla 162).
+    const { nombre, tipoContrato } = meta;
     return this.db.withTenant(async (tx) => {
-      const { count } = await tx.alqPlantilla.updateMany({ where: { id }, data: meta });
+      const { count } = await tx.alqPlantilla.updateMany({
+        where: { id },
+        data: { nombre, tipoContrato },
+      });
       if (!count) throw new NotFoundException('La plantilla no existe.');
       return aDto(await tx.alqPlantilla.findUniqueOrThrow({ where: { id }, select: SELECT_DTO }));
     });
@@ -205,7 +234,7 @@ export class PlantillasService {
       const [plantilla, contrato, tenant] = await Promise.all([
         tx.alqPlantilla.findUnique({
           where: { id: plantillaId },
-          select: { nombre: true, archivo: true },
+          select: { nombre: true, archivo: true, documento: true },
         }),
         tx.alqContrato.findUnique({ where: { id: contratoId }, select: SELECT_PLANTILLA }),
         tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { nombre: true } }),
@@ -214,21 +243,14 @@ export class PlantillasService {
       if (!contrato) throw new NotFoundException('El contrato no existe.');
       return { plantilla, contrato, inmobiliaria: tenant.nombre };
     });
+    if (plantilla.documento === 'reserva') throw new BadRequestException(ES_DE_RESERVA);
     if (!plantilla.archivo) throw new BadRequestException(PLANTILLA_DE_TEXTO);
 
-    const original = await this.storage.descargarPrivado(BUCKET_CONTRATOS, plantilla.archivo);
-    let buffer: Buffer;
-    try {
-      buffer = completarPlantillaWord(
-        original,
-        datosDePlantilla(contrato, inmobiliaria, hoyArgentina()),
-      );
-    } catch (e) {
-      this.logger.error(`Plantilla ${plantillaId}: ${e instanceof Error ? e.message : String(e)}`);
-      throw new BadRequestException(
-        'No se pudo completar la plantilla. Volvé a subir el Word desde Plantillas de contrato.',
-      );
-    }
+    const buffer = await this.completar(
+      plantillaId,
+      plantilla.archivo,
+      datosDePlantilla(contrato, inmobiliaria, hoyArgentina()),
+    );
 
     await this.db.withTenant((tx) =>
       registrarEventos(tx, ctx, {
@@ -240,6 +262,74 @@ export class PlantillasService {
       }),
     );
     return { buffer, nombre: `Contrato-${contrato.codigo}.docx` };
+  }
+
+  /**
+   * La reserva en Word (regla 163), con una plantilla de reserva. Como el
+   * contrato: no se guarda, y queda en el historial de la reserva. Tres
+   * consultas en paralelo y las dos del historial, con 1 garante o con 25.
+   */
+  async generarReserva(
+    ctx: TenantContext,
+    reservaId: string,
+    plantillaId: string,
+    hoy = hoyArgentina(),
+  ): Promise<Docx> {
+    const { plantilla, reserva, inmobiliaria } = await this.db.withTenant(async (tx) => {
+      const [plantilla, reserva, tenant] = await Promise.all([
+        tx.alqPlantilla.findUnique({
+          where: { id: plantillaId },
+          select: { nombre: true, archivo: true, documento: true },
+        }),
+        tx.alqReserva.findUnique({
+          where: { id: reservaId },
+          select: { ...SELECT_RESERVA_PLANTILLA, estado: true },
+        }),
+        tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { nombre: true } }),
+      ]);
+      if (!plantilla) throw new NotFoundException('La plantilla no existe.');
+      if (!reserva) throw new NotFoundException('La reserva no existe.');
+      return { plantilla, reserva, inmobiliaria: tenant.nombre };
+    });
+    if (plantilla.documento !== 'reserva')
+      throw new BadRequestException(
+        'Es una plantilla de contrato: se usa desde el contrato. Subí el formulario de reserva como plantilla de reserva.',
+      );
+    if (reserva.estado === 'anulada')
+      throw new BadRequestException('La reserva está anulada: no se genera su Word.');
+    if (!plantilla.archivo) throw new BadRequestException(PLANTILLA_DE_TEXTO);
+
+    const buffer = await this.completar(
+      plantillaId,
+      plantilla.archivo,
+      datosDeReserva(reserva, inmobiliaria, hoy),
+    );
+    await this.db.withTenant((tx) =>
+      registrarEventos(tx, ctx, {
+        entidad: 'reserva',
+        entidadId: reservaId,
+        accion: 'documento',
+        resumen: `Reserva ${reserva.numero} en Word generada desde la plantilla «${plantilla.nombre}»`,
+      }),
+    );
+    return { buffer, nombre: `Reserva-${reserva.numero}.docx` };
+  }
+
+  /** Baja el Word de la plantilla y lo completa; si no se puede, lo dice en castellano. */
+  private async completar(
+    plantillaId: string,
+    archivo: string,
+    datos: Record<string, unknown>,
+  ): Promise<Buffer> {
+    const original = await this.storage.descargarPrivado(BUCKET_CONTRATOS, archivo);
+    try {
+      return completarPlantillaWord(original, datos);
+    } catch (e) {
+      this.logger.error(`Plantilla ${plantillaId}: ${e instanceof Error ? e.message : String(e)}`);
+      throw new BadRequestException(
+        'No se pudo completar la plantilla. Volvé a subir el Word desde Plantillas.',
+      );
+    }
   }
 
   /** Cada versión es un objeto nuevo: reemplazar no pisa el anterior hasta que la base cambió. */
@@ -270,6 +360,9 @@ export class PlantillasService {
     }
   }
 }
+
+const ES_DE_RESERVA =
+  'Es una plantilla de reserva: se usa desde la reserva. Para el contrato, elegí una plantilla de contrato.';
 
 const PLANTILLA_DE_TEXTO =
   'Es una plantilla de texto del sistema anterior: subí la versión en Word para usarla.';

@@ -49,11 +49,17 @@ const cuerpoMultipart = (conMetadatos: boolean) => ({
       file: {
         type: 'string',
         format: 'binary',
-        description: 'El contrato en Word (.docx), hasta 5 MB',
+        description: 'El contrato o el formulario de reserva en Word (.docx), hasta 5 MB',
       },
       ...(conMetadatos
         ? {
             nombre: { type: 'string', maxLength: 80 },
+            documento: {
+              type: 'string',
+              enum: ['contrato', 'reserva'],
+              description:
+                'De qué es la plantilla (regla 162). Vacío: de contrato. Se revisa contra los marcadores de ese documento.',
+            },
             tipoContrato: {
               type: 'string',
               enum: ['vivienda', 'comercial', ''],
@@ -79,7 +85,7 @@ export class PlantillasController {
 
   @Get()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Plantillas de contrato de la inmobiliaria' })
+  @ApiOperation({ summary: 'Plantillas de contrato y de reserva de la inmobiliaria' })
   listar() {
     return this.plantillas.listar();
   }
@@ -93,6 +99,18 @@ export class PlantillasController {
   })
   ejemplo() {
     const { buffer, nombre } = this.plantillas.ejemplo();
+    return docxResponse(buffer, nombre);
+  }
+
+  @Get('ejemplo-reserva')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiProduces(TIPO_DOCX)
+  @ApiOperation({
+    summary:
+      'Un Word de ejemplo de reserva, con todos sus marcadores explicados y un formulario armado con ellos (regla 163)',
+  })
+  ejemploReserva() {
+    const { buffer, nombre } = this.plantillas.ejemploReserva();
     return docxResponse(buffer, nombre);
   }
 

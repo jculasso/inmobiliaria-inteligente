@@ -6,6 +6,7 @@ import {
   NOMBRE_TIPO_GARANTIA,
   type EstadoGarantia,
   type GarantiaDto,
+  type GarantiaInput,
   type TipoGarantia,
 } from '@vacker/types';
 import { Button } from '@vacker/ui';
@@ -50,15 +51,26 @@ const deDto = (g: GarantiaDto): Fila => ({
 /**
  * Las garantías del contrato y su informe (punto 11 de Javier, como Gexion):
  * tipo, garante, lo que garantiza, y el estado de la verificación.
+ *
+ * La reserva usa la misma pieza para su estudio de garantías (regla 157):
+ * pasa `guardar` (a dónde van) y `editable` (antes de aprobarla).
  */
 export function Garantias({
   contratoId,
   garantias,
   garantes,
+  guardar: guardarEn,
+  editable = true,
+  titulo = 'Garantías',
+  vacio = 'Sin garantías cargadas.',
 }: {
-  contratoId: string;
+  contratoId?: string;
   garantias: GarantiaDto[];
   garantes: { personaId: string; nombre: string }[];
+  guardar?: (accessToken: string, garantias: GarantiaInput[]) => Promise<unknown>;
+  editable?: boolean;
+  titulo?: string;
+  vacio?: string;
 }) {
   const { refrescar, refrescando } = useRefrescar();
   const [editando, setEditando] = useState(false);
@@ -85,7 +97,9 @@ export function Garantias({
     }
     setGuardando(true);
     try {
-      await guardarGarantias(await getAccessToken(), contratoId, datos);
+      const token = await getAccessToken();
+      if (guardarEn) await guardarEn(token, datos);
+      else await guardarGarantias(token, contratoId!, datos);
       // Se sale de la edición con la lista nueva ya a la vista: antes, unos
       // segundos se veía la vieja, sin la garantía recién cargada.
       await refrescar();
@@ -100,9 +114,10 @@ export function Garantias({
   return (
     <Panel
       icono="🤝"
-      titulo="Garantías"
+      titulo={titulo}
       derecha={
-        !editando && (
+        !editando &&
+        editable && (
           <Button
             variant="secondary"
             size="sm"
@@ -119,7 +134,7 @@ export function Garantias({
     >
       {!editando ? (
         garantias.length === 0 ? (
-          <p className="text-sm text-muted">Sin garantías cargadas.</p>
+          <p className="text-sm text-muted">{vacio}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {garantias.map((g) => (

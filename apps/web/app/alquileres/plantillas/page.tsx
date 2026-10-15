@@ -3,7 +3,7 @@ import { requireServerPrincipal } from '../../../lib/server-principal';
 import { listPlantillas } from '../../../lib/alquileres-api';
 import { PlantillasVista } from '../../../components/alquileres/plantillas-vista';
 
-export const metadata = { title: 'Plantillas de contrato · Alquileres' };
+export const metadata = { title: 'Plantillas · Alquileres' };
 
 export default async function PlantillasPage() {
   const ctx = await requireServerPrincipal();

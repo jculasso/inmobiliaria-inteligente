@@ -64,3 +64,24 @@ describe('PropiedadesAlquilerService', () => {
     expect(tx.alqEvento.createMany).toHaveBeenCalledTimes(1);
   });
 });
+
+// Regla 155: una reserva no se borra, así que la propiedad que la tuvo tampoco.
+describe('PropiedadesAlquilerService · una propiedad con reservas', () => {
+  it('no se borra, y lo dice', async () => {
+    const tx = {
+      ...mocksDeHistorial(),
+      alqPropiedad: {
+        findUnique: vi.fn().mockResolvedValue({
+          direccion: 'Maipú 1234',
+          unidad: null,
+          _count: { contratos: 0, reservas: 2 },
+        }),
+        delete: vi.fn(),
+      },
+    };
+    await expect(new PropiedadesAlquilerService(makeDb(tx)).borrar(CTX, 'x')).rejects.toThrow(
+      'Maipú 1234 no se puede borrar: tiene 2 reservas.',
+    );
+    expect(tx.alqPropiedad.delete).not.toHaveBeenCalled();
+  });
+});

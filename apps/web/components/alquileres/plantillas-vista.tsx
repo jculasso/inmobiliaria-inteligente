@@ -3,12 +3,16 @@
 import { useState } from 'react';
 import {
   MARCADORES_PLANTILLA,
+  MARCADORES_RESERVA,
   PLANTILLA_MAX_BYTES,
+  type DocumentoPlantilla,
+  type MarcadorPlantilla,
   type PlantillaDto,
   type TipoContrato,
 } from '@vacker/types';
 import { Button, Modal } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
+import { descargarEjemploReserva } from '../../lib/reservas-api';
 import {
   borrarPlantilla,
   descargarEjemploPlantilla,
@@ -32,6 +36,12 @@ const PARA: Record<TipoContrato | '', string> = {
   comercial: 'Comerciales',
 };
 
+/** Regla 162: de qué documento es cada plantilla. */
+const DOCUMENTO: Record<DocumentoPlantilla, string> = {
+  contrato: 'Contrato',
+  reserva: 'Formulario de reserva',
+};
+
 const ACEPTA = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 const CLASE_ACCION = `rounded px-2 py-1 text-xs font-semibold text-ink hover:bg-surface disabled:opacity-60 ${CLASE_FOCO}`;
@@ -48,10 +58,11 @@ function problemaDelArchivo(f: File | null): string | null {
 }
 
 /**
- * Las plantillas de contrato de la inmobiliaria (entrega 15, rehecha el
- * 7/10/2026): cada una es un Word con marcadores `{así}` que se completan con
- * los datos del contrato. Se suben, se reemplazan y se descargan; el Word
- * completo de un contrato se baja desde su ficha.
+ * Las plantillas de la inmobiliaria (entrega 15, rehecha el 7/10/2026): cada
+ * una es un Word con marcadores `{así}` que se completan con los datos del
+ * contrato —o de la reserva, desde el 15/10/2026 (regla 162)—. Se suben, se
+ * reemplazan y se descargan; el Word completo se baja desde la ficha del
+ * contrato o de la reserva.
  */
 export function PlantillasVista({ plantillas }: { plantillas: PlantillaDto[] }) {
   const [modal, setModal] = useState<
@@ -78,7 +89,7 @@ export function PlantillasVista({ plantillas }: { plantillas: PlantillaDto[] }) 
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoPagina
-        titulo="Plantillas de contrato"
+        titulo="Plantillas de contrato y de reserva"
         volver={{ href: '/alquileres/configuracion', texto: 'Configuración' }}
       >
         <Button variant="primary" size="sm" onClick={() => setModal({ modo: 'subir' })}>
@@ -100,6 +111,11 @@ export function PlantillasVista({ plantillas }: { plantillas: PlantillaDto[] }) 
                   <p className="font-semibold text-ink">
                     {p.nombre}
                     <span className="font-normal text-muted"> · {PARA[p.tipoContrato ?? '']}</span>
+                    {p.documento === 'reserva' && (
+                      <span className="ml-1.5">
+                        <Insignia tono="marca">Reserva</Insignia>
+                      </span>
+                    )}
                   </p>
                   {p.formato === 'word' ? (
                     <p className="truncate text-xs text-muted">
@@ -181,36 +197,36 @@ export function PlantillasVista({ plantillas }: { plantillas: PlantillaDto[] }) 
             Al subir la plantilla se revisan todos los marcadores: si alguno está mal escrito, te
             decimos cuál.
           </p>
-          <div>
+          <p className="text-muted">
+            El formulario de reserva se arma igual, con sus propios marcadores (
+            <code className="rounded bg-surface px-1.5 py-0.5">{'{reserva.numero}'}</code>,{' '}
+            <code className="rounded bg-surface px-1.5 py-0.5">{'{interesado.nombre}'}</code>,{' '}
+            <code className="rounded bg-surface px-1.5 py-0.5">{'{#sena}…{/sena}'}</code>…) y se
+            sube como plantilla de reserva.
+          </p>
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               size="sm"
               disabled={bajando === 'ejemplo'}
               onClick={() => bajar('ejemplo', descargarEjemploPlantilla)}
             >
-              {bajando === 'ejemplo'
-                ? 'Descargando…'
-                : '⬇️ Descargar el ejemplo con todos los marcadores'}
+              {bajando === 'ejemplo' ? 'Descargando…' : '⬇️ Ejemplo de contrato'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={bajando === 'ejemplo-reserva'}
+              onClick={() => bajar('ejemplo-reserva', descargarEjemploReserva)}
+            >
+              {bajando === 'ejemplo-reserva' ? 'Descargando…' : '⬇️ Ejemplo de reserva'}
             </Button>
           </div>
-          <details className="rounded-brand border border-line">
-            <summary className={`cursor-pointer px-3 py-2 font-semibold ${CLASE_FOCO}`}>
-              Todos los marcadores
-            </summary>
-            <ul className="divide-y divide-line border-t border-line">
-              {MARCADORES_PLANTILLA.map((m) => (
-                <li key={m.nombre} className="flex flex-col gap-0.5 px-3 py-2">
-                  <code className="text-xs font-semibold text-ink">
-                    {m.tipo === 'texto' ? `{${m.nombre}}` : `{#${m.nombre}}…{/${m.nombre}}`}
-                  </code>
-                  <span className="text-xs text-muted">
-                    {m.descripcion}
-                    {m.campos && ` · adentro: ${m.campos.map((c) => `{${c.nombre}}`).join(', ')}`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </details>
+          <ListaMarcadores
+            titulo="Todos los marcadores del contrato"
+            lista={MARCADORES_PLANTILLA}
+          />
+          <ListaMarcadores titulo="Todos los marcadores de la reserva" lista={MARCADORES_RESERVA} />
         </div>
       </Panel>
 
@@ -245,6 +261,34 @@ export function PlantillasVista({ plantillas }: { plantillas: PlantillaDto[] }) 
   );
 }
 
+/** La ayuda: cada marcador de una lista, plegada. */
+function ListaMarcadores({
+  titulo,
+  lista,
+}: {
+  titulo: string;
+  lista: readonly MarcadorPlantilla[];
+}) {
+  return (
+    <details className="rounded-brand border border-line">
+      <summary className={`cursor-pointer px-3 py-2 font-semibold ${CLASE_FOCO}`}>{titulo}</summary>
+      <ul className="divide-y divide-line border-t border-line">
+        {lista.map((m) => (
+          <li key={m.nombre} className="flex flex-col gap-0.5 px-3 py-2">
+            <code className="text-xs font-semibold text-ink">
+              {m.tipo === 'texto' ? `{${m.nombre}}` : `{#${m.nombre}}…{/${m.nombre}}`}
+            </code>
+            <span className="text-xs text-muted">
+              {m.descripcion}
+              {m.campos && ` · adentro: ${m.campos.map((c) => `{${c.nombre}}`).join(', ')}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 /** Subir una plantilla, reemplazar su Word, o cambiarle el nombre y para qué contratos sirve. */
 function PlantillaModal({
   modo,
@@ -258,6 +302,8 @@ function PlantillaModal({
   const { refrescar, refrescando } = useRefrescar();
   const [nombre, setNombre] = useState(p?.nombre ?? 'Contrato de locación');
   const [tipo, setTipo] = useState<TipoContrato | ''>(p?.tipoContrato ?? '');
+  // Regla 162: se elige al subirla; después no cambia (su Word se revisó contra esos marcadores).
+  const [documento, setDocumento] = useState<DocumentoPlantilla>(p?.documento ?? 'contrato');
   const [archivo, setArchivo] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -272,7 +318,7 @@ function PlantillaModal({
     setGuardando(true);
     try {
       const token = await getAccessToken();
-      const meta = { nombre, tipoContrato: tipo || null };
+      const meta = { nombre, tipoContrato: tipo || null, documento };
       if (modo === 'subir') await subirPlantilla(token, meta, archivo!);
       else if (modo === 'reemplazar') await reemplazarArchivoPlantilla(token, p!.id, archivo!);
       else await editarPlantilla(token, p!.id, meta);
@@ -306,6 +352,28 @@ function PlantillaModal({
       conCambios={archivo != null}
     >
       <div className="flex flex-col gap-3">
+        {modo === 'subir' && (
+          <Campo label="Es la plantilla de">
+            <select
+              className={inputClass}
+              value={documento}
+              onChange={(e) => {
+                const d = e.target.value as DocumentoPlantilla;
+                setDocumento(d);
+                if (nombre === 'Contrato de locación' && d === 'reserva')
+                  setNombre('Formulario de reserva');
+                if (nombre === 'Formulario de reserva' && d === 'contrato')
+                  setNombre('Contrato de locación');
+              }}
+            >
+              {(['contrato', 'reserva'] as const).map((v) => (
+                <option key={v} value={v}>
+                  {DOCUMENTO[v]}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        )}
         {conDatos && (
           <div className="grid gap-3 sm:grid-cols-[1fr_14rem]">
             <Campo label="Nombre" requerido>

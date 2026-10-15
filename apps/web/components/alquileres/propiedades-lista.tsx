@@ -1,8 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LIMITE_LISTA, recortarAlLimite, type PropiedadAlquilerDto } from '@vacker/types';
+import {
+  LIMITE_LISTA,
+  NOMBRE_ESTADO_RESERVA,
+  recortarAlLimite,
+  type PropiedadAlquilerDto,
+  type ReservaResumenDto,
+} from '@vacker/types';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { paraBuscar } from './buscador';
 import {
@@ -26,8 +33,31 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { borrarPropiedadAlquiler } from '../../lib/alquileres-api';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 
-export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquilerDto[] }) {
+export function PropiedadesLista({
+  propiedades,
+  reservas = [],
+}: {
+  propiedades: PropiedadAlquilerDto[];
+  /** Las reservas abiertas: la propiedad que tiene una se marca «Reservada» (regla 165). */
+  reservas?: ReservaResumenDto[];
+}) {
   const router = useRouter();
+  const reservaDe = useMemo(() => new Map(reservas.map((r) => [r.propiedad.id, r])), [reservas]);
+  /** «Reservada · Reserva 3», que abre la reserva; nada si no tiene una abierta. */
+  const reservada = (p: PropiedadAlquilerDto) => {
+    const r = reservaDe.get(p.id);
+    if (!r) return null;
+    return (
+      <Link
+        href={`/alquileres/reservas/${r.id}`}
+        onClick={(e) => e.stopPropagation()}
+        title={NOMBRE_ESTADO_RESERVA[r.estado]}
+        className={`inline-flex items-center gap-1 rounded-full bg-brand-red/10 px-2 py-0.5 text-xs font-bold text-brand-red hover:underline ${CLASE_FOCO}`}
+      >
+        🔖 Reservada · Reserva {r.numero}
+      </Link>
+    );
+  };
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState<'nueva' | PropiedadAlquilerDto | null>(null);
   const [aBorrar, setABorrar] = useState<PropiedadAlquilerDto | null>(null);
@@ -93,6 +123,7 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
                       </CampoTarjeta>
                     </CamposTarjeta>
                   </button>
+                  {reservaDe.has(p.id) && <div className="mt-2">{reservada(p)}</div>}
                   <AccionesFila
                     tarjeta
                     nombre={p.direccion}
@@ -111,6 +142,7 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
                   <th className={CLASE_TH}>Piso / depto</th>
                   <th className={CLASE_TH}>Ciudad</th>
                   <th className={CLASE_TH}>Tipo</th>
+                  <th className={CLASE_TH}>Reserva</th>
                   <th className={CLASE_TH_ACCIONES} />
                 </tr>
               </thead>
@@ -122,6 +154,9 @@ export function PropiedadesLista({ propiedades }: { propiedades: PropiedadAlquil
                     <td className={`${CLASE_TD} text-muted`}>{p.ciudad ?? '—'}</td>
                     <td className={`${CLASE_TD} text-muted`}>
                       {p.tipo ? NOMBRE_TIPO_PROPIEDAD[p.tipo] : '—'}
+                    </td>
+                    <td className={CLASE_TD}>
+                      {reservada(p) ?? <span className="text-muted">—</span>}
                     </td>
                     <td className={CLASE_TD_ACCIONES}>
                       <AccionesFila

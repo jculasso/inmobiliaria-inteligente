@@ -34,6 +34,7 @@ import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
 import { IndexacionesService } from './indexaciones.service';
 import { dia, nombresDeUsuarios, registrarEventos } from './historial';
+import { devolverReservaDelContrato } from './reserva-del-contrato';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -101,7 +102,16 @@ export class ContratosService {
     return this.db.withTenant(async (tx) => this.dto(tx, await this.buscar(tx, id)));
   }
 
-  async crear(ctx: TenantContext, dto: Contrato): Promise<ContratoDto> {
+  /**
+   * `enLaMismaTransaccion`: lo que tiene que pasar junto con el alta o no
+   * pasar —convertir la reserva de la que sale (regla 159)—. Corre después
+   * de crear el contrato; si falla, el contrato tampoco queda.
+   */
+  async crear(
+    ctx: TenantContext,
+    dto: Contrato,
+    enLaMismaTransaccion?: (tx: Tx, contratoId: string, codigo: string) => Promise<void>,
+  ): Promise<ContratoDto> {
     return this.db.withTenant(async (tx) => {
       await this.validar(tx, dto);
       const codigo = dto.codigo
@@ -127,6 +137,7 @@ export class ContratosService {
         accion: 'alta',
         resumen: `Alta del contrato ${codigo}, en borrador${dto.administradoDesde ? `; tomado en curso, administrado desde el ${dia(dto.administradoDesde)}` : ''}`,
       });
+      if (enLaMismaTransaccion) await enLaMismaTransaccion(tx, fila.id, codigo);
       return this.dto(tx, fila);
     });
   }
@@ -306,6 +317,8 @@ export class ContratosService {
         throw new ConflictException(
           `El contrato ${c.codigo} tiene el PDF cargado: no se borra, se anula con un motivo.`,
         );
+      // Regla 160: si salió de una reserva, la reserva vuelve a aprobada.
+      await devolverReservaDelContrato(tx, ctx, id, c.codigo);
       await tx.alqContrato.delete({ where: { id } });
       await registrarEventos(tx, ctx, {
         entidad: 'contrato',

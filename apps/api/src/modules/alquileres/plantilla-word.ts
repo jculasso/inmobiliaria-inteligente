@@ -152,7 +152,26 @@ interface Parte {
   subparsed?: Parte[];
 }
 
-const POR_NOMBRE = new Map(MARCADORES_PLANTILLA.map((m) => [m.nombre, m]));
+/**
+ * Los marcadores contra los que se revisa un Word: los del contrato
+ * (`MARCADORES_PLANTILLA`) o los de la reserva (`MARCADORES_RESERVA`, regla
+ * 162). Cada tipo de plantilla tiene su lista y un Word se revisa contra la
+ * suya: `{reserva.numero}` no existe en un contrato.
+ */
+interface Catalogo {
+  lista: readonly MarcadorPlantilla[];
+  porNombre: Map<string, MarcadorPlantilla>;
+  /** Los nombres de texto, que se pueden usar desde cualquier lugar. */
+  textos: Set<string>;
+}
+
+function catalogo(lista: readonly MarcadorPlantilla[]): Catalogo {
+  return {
+    lista,
+    porNombre: new Map(lista.map((m) => [m.nombre, m])),
+    textos: new Set(lista.filter((m) => m.tipo === 'texto').map((m) => m.nombre)),
+  };
+}
 
 /** Lo que se puede nombrar en un nivel: los campos de la lista o la condición que lo abrió. */
 type Nivel = { campos: Set<string>; abierto?: true };
@@ -188,18 +207,15 @@ function sugerencia(nombre: string, candidatos: Iterable<string>): string {
     : '';
 }
 
-/** Los nombres de texto que se pueden usar desde cualquier lugar. */
-const TEXTOS = new Set(MARCADORES_PLANTILLA.filter((m) => m.tipo === 'texto').map((m) => m.nombre));
-
-function conocidoEn(nombre: string, niveles: Nivel[]): boolean {
-  return TEXTOS.has(nombre) || niveles.some((n) => n.abierto || n.campos.has(nombre));
+function conocidoEn(nombre: string, niveles: Nivel[], cat: Catalogo): boolean {
+  return cat.textos.has(nombre) || niveles.some((n) => n.abierto || n.campos.has(nombre));
 }
 
 /** Por qué un marcador que existe no se puede usar como dato suelto. */
-function malUsado(m: MarcadorPlantilla): string {
-  const textos = MARCADORES_PLANTILLA.filter(
-    (t) => t.tipo === 'texto' && t.nombre.startsWith(`${m.nombre}.`),
-  ).map((t) => `{${t.nombre}}`);
+function malUsado(m: MarcadorPlantilla, cat: Catalogo): string {
+  const textos = cat.lista
+    .filter((t) => t.tipo === 'texto' && t.nombre.startsWith(`${m.nombre}.`))
+    .map((t) => `{${t.nombre}}`);
   const como = `{#${m.nombre}}…{/${m.nombre}}`;
   return m.tipo === 'lista'
     ? `«{${m.nombre}}» es una lista: se usa como ${como}${textos.length ? `, o ${textos.join(' / ')} para todos juntos` : ''}.`
@@ -207,7 +223,7 @@ function malUsado(m: MarcadorPlantilla): string {
 }
 
 /** Recorre los marcadores con el alcance de cada uno: adentro de una lista valen sus campos. */
-function revisar(partes: Parte[], niveles: Nivel[], problemas: Set<string>): void {
+function revisar(partes: Parte[], niveles: Nivel[], problemas: Set<string>, cat: Catalogo): void {
   for (const parte of partes) {
     if (parte.type !== 'placeholder') continue;
     const nombre = parte.value.trim();
@@ -219,39 +235,36 @@ function revisar(partes: Parte[], niveles: Nivel[], problemas: Set<string>): voi
       problemas.add('Hay unas llaves vacías «{}»: adentro va el nombre de un dato.');
       continue;
     }
-    const marcador = POR_NOMBRE.get(nombre);
+    const marcador = cat.porNombre.get(nombre);
     if (parte.module === 'loop') {
       let nivel: Nivel;
       if (marcador && marcador.tipo !== 'texto') {
         nivel = { campos: new Set((marcador.campos ?? []).map((c) => c.nombre)) };
-      } else if (conocidoEn(nombre, niveles)) {
+      } else if (conocidoEn(nombre, niveles, cat)) {
         // Una condición sobre un dato de texto: aparece si el dato no está vacío.
         nivel = { campos: new Set() };
       } else {
-        problemas.add(desconocido(nombre, niveles));
+        problemas.add(desconocido(nombre, niveles, cat));
         // Lo de adentro no se revisa contra una sección que no existe: sería
         // repetir el mismo error por cada campo.
         nivel = { campos: new Set(), abierto: true };
       }
-      revisar(parte.subparsed ?? [], [...niveles, nivel], problemas);
+      revisar(parte.subparsed ?? [], [...niveles, nivel], problemas, cat);
       continue;
     }
-    if (conocidoEn(nombre, niveles)) continue;
-    if (marcador) problemas.add(malUsado(marcador));
-    else problemas.add(desconocido(nombre, niveles));
+    if (conocidoEn(nombre, niveles, cat)) continue;
+    if (marcador) problemas.add(malUsado(marcador, cat));
+    else problemas.add(desconocido(nombre, niveles, cat));
   }
 }
 
-function desconocido(nombre: string, niveles: Nivel[]): string {
-  const listas = MARCADORES_PLANTILLA.filter((m) => m.campos?.some((c) => c.nombre === nombre));
+function desconocido(nombre: string, niveles: Nivel[], cat: Catalogo): string {
+  const listas = cat.lista.filter((m) => m.campos?.some((c) => c.nombre === nombre));
   if (listas.length)
     return `«{${nombre}}» solo se puede usar adentro de ${listas
       .map((m) => `{#${m.nombre}}…{/${m.nombre}}`)
       .join(', ')}.`;
-  const candidatos = [
-    ...MARCADORES_PLANTILLA.map((m) => m.nombre),
-    ...niveles.flatMap((n) => [...n.campos]),
-  ];
+  const candidatos = [...cat.lista.map((m) => m.nombre), ...niveles.flatMap((n) => [...n.campos])];
   return `«{${nombre}}» no es un marcador conocido.${sugerencia(nombre, candidatos)}`;
 }
 
@@ -260,13 +273,18 @@ const MAX_PROBLEMAS = 20;
 
 /**
  * Lo que está mal en un Word que se quiere subir como plantilla, en
- * castellano. Vacío si se puede usar.
+ * castellano. Vacío si se puede usar. Se revisa contra los marcadores del
+ * contrato, o contra los de la reserva si es una plantilla de reserva.
  */
-export function problemasDePlantilla(archivo: {
-  buffer: Buffer;
-  originalname: string;
-  size: number;
-}): string[] {
+export function problemasDePlantilla(
+  archivo: {
+    buffer: Buffer;
+    originalname: string;
+    size: number;
+  },
+  marcadores: readonly MarcadorPlantilla[] = MARCADORES_PLANTILLA,
+): string[] {
+  const cat = catalogo(marcadores);
   if (!/\.docx$/i.test(archivo.originalname))
     return [
       /\.doc$/i.test(archivo.originalname)
@@ -297,7 +315,7 @@ export function problemasDePlantilla(archivo: {
     return [...new Set([...dobles, ...resto.map(traducir)])].slice(0, MAX_PROBLEMAS);
   }
   const problemas = new Set<string>();
-  revisar(inspeccion.getAllStructuredTags() as Parte[], [], problemas);
+  revisar(inspeccion.getAllStructuredTags() as Parte[], [], problemas, cat);
   return [...problemas].slice(0, MAX_PROBLEMAS);
 }
 

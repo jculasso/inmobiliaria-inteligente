@@ -41,6 +41,10 @@ import { TableroAlquileresController } from './tablero-alquileres.controller';
 import { TableroAlquileresService } from './tablero-alquileres.service';
 import { InformePropietarioController } from './informe-propietario.controller';
 import { InformePropietarioService } from './informe-propietario.service';
+import { InventarioController } from './inventario.controller';
+import { InventarioService } from './inventario.service';
+import { ReservasController } from './reservas.controller';
+import { ReservasService } from './reservas.service';
 
 /** Módulo Alquileres: administración de contratos de alquiler. */
 @Module({
@@ -60,6 +64,9 @@ import { InformePropietarioService } from './informe-propietario.service';
     LiquidacionesController,
     TableroAlquileresController,
     InformePropietarioController,
+    // Entrega C: el inventario del contrato y la reserva (reglas 150 a 168).
+    InventarioController,
+    ReservasController,
     FirmaController,
     FirmaAvisosController,
   ],
@@ -83,6 +90,8 @@ import { InformePropietarioService } from './informe-propietario.service';
     LiquidacionesService,
     TableroAlquileresService,
     InformePropietarioService,
+    InventarioService,
+    ReservasService,
     FirmaService,
     FirmaAvisosService,
     SupabaseStorageService,

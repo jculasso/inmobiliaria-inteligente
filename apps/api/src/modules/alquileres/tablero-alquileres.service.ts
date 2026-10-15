@@ -37,6 +37,7 @@ import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { plata } from './historial';
 import { IndexacionesService } from './indexaciones.service';
 import { LiquidacionesService } from './liquidaciones.service';
+import { CONSULTA_RESERVAS_TABLERO, tareasDeReservas } from './tablero-reservas';
 
 /** «1 día», «29 días». */
 const enDias = (n: number): string => `${n} ${n === 1 ? 'día' : 'días'}`;
@@ -1170,14 +1171,16 @@ export class TableroAlquileresService {
               });
             }),
         ),
+        // Regla 166: las reservas que vencen y las aprobadas sin contrato.
+        ...tareasDeReservas(datos.reservas, hoy, tipo),
       },
     };
   }
 
   /**
-   * Ocho consultas, siempre las mismas, en una transacción: todas ven la
+   * Nueve consultas, siempre las mismas, en una transacción: todas ven la
    * misma foto de la base (regla 82; la octava, las liquidaciones finales
-   * pendientes, regla 139).
+   * pendientes, regla 139; la novena, las reservas abiertas, regla 166).
    */
   private async leer(tx: Tx, hoy: string, mes: string, anio: number) {
     // El año elegido y el anterior, para la planilla, y siempre el mes en
@@ -1187,7 +1190,7 @@ export class TableroAlquileresService {
     const hastaIngresos = `${Math.max(anio, anioHoy) + 1}-01-01`;
     // El cierre de cada mes del año y hoy: la deuda de la foto de cada mes y la de hoy.
     const cierres = [...new Set([...mesesDe(anio).map((m) => cierreDelMes(m, hoy)), hoy])].sort();
-    const [alquileresLeidos, mora, ingresos, reclamos, polizas, boletas, finales] =
+    const [alquileresLeidos, mora, ingresos, reclamos, polizas, boletas, finales, reservas] =
       await Promise.all([
         tx.$queryRaw<FilaAlquiler[]>(sqlAlquileres(`${anio}-01`, `${anio}-12`, mes)),
         tx.$queryRaw<FilaMora[]>(sqlSaldosAlCierre(cierres)),
@@ -1240,6 +1243,8 @@ export class TableroAlquileresService {
           orderBy: { vencimiento: 'asc' },
         }),
         tx.$queryRaw<FilaFinalPendiente[]>(sqlFinalesPendientes()),
+        // Las reservas abiertas (regla 166): una consulta más, siempre la misma.
+        tx.alqReserva.findMany(CONSULTA_RESERVAS_TABLERO),
       ]);
     const alquileres = unirFinales(alquileresLeidos);
     // Los contratos que nombran las listas que viajan con el tablero: los
@@ -1272,6 +1277,16 @@ export class TableroAlquileresService {
       select: SELECT_CONTRATO,
       orderBy: ORDEN_CONTRATOS,
     });
-    return { contratos, alquileres, mora, ingresos, reclamos, polizas, boletas, finales };
+    return {
+      contratos,
+      alquileres,
+      mora,
+      ingresos,
+      reclamos,
+      polizas,
+      boletas,
+      finales,
+      reservas,
+    };
   }
 }

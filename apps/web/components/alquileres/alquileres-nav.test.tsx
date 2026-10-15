@@ -38,10 +38,7 @@ describe('AlquileresNav', () => {
       'page',
     );
     const sub = within(screen.getByRole('navigation', { name: 'Configuración' }));
-    expect(sub.getByRole('link', { name: 'Plantillas de contrato' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    expect(sub.getByRole('link', { name: 'Plantillas' })).toHaveAttribute('aria-current', 'page');
     expect(sub.getByRole('link', { name: 'Configuración' })).not.toHaveAttribute('aria-current');
   });
 
@@ -73,10 +70,30 @@ describe('AlquileresNav', () => {
     );
   });
 
-  it('la ficha de un contrato sigue marcando Contratos, sin segunda fila', () => {
+  // Regla 164: las reservas son una pantalla de Contratos, no una pestaña más.
+  it('la ficha de un contrato sigue marcando Contratos, con Reservas en la segunda fila', () => {
     ruta = '/alquileres/contratos/abc';
     render(<AlquileresNav />);
-    expect(screen.getByRole('link', { name: 'Contratos' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getAllByRole('navigation')).toHaveLength(1);
+    const principal = within(screen.getByRole('navigation', { name: 'Alquileres' }));
+    expect(principal.getAllByRole('link')).toHaveLength(11);
+    expect(principal.getByRole('link', { name: 'Contratos' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const sub = within(screen.getByRole('navigation', { name: 'Contratos' }));
+    expect(sub.getByRole('link', { name: 'Contratos' })).toHaveAttribute('aria-current', 'page');
+    expect(sub.getByRole('link', { name: 'Reservas' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('regla 164: una reserva marca Contratos y, en la segunda fila, Reservas', () => {
+    ruta = '/alquileres/reservas/abc';
+    render(<AlquileresNav />);
+    const principal = within(screen.getByRole('navigation', { name: 'Alquileres' }));
+    expect(principal.getByRole('link', { name: 'Contratos' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const sub = within(screen.getByRole('navigation', { name: 'Contratos' }));
+    expect(sub.getByRole('link', { name: 'Reservas' })).toHaveAttribute('aria-current', 'page');
   });
 });

@@ -23,7 +23,8 @@ export function PersonaFormModal({
 }: {
   persona?: PersonaDto;
   onClose: () => void;
-  onSaved: () => void;
+  /** Con la persona guardada: la reserva la elige apenas se da de alta (regla 154). */
+  onSaved: (persona: PersonaDto) => void;
 }) {
   const [tipo, setTipo] = useState<TipoPersona>(persona?.tipo ?? 'fisica');
   const [nombre, setNombre] = useState(persona?.nombre ?? '');
@@ -67,9 +68,10 @@ export function PersonaFormModal({
     };
     try {
       const accessToken = await getAccessToken();
-      if (persona) await actualizarPersona(accessToken, persona.id, dto);
-      else await crearPersona(accessToken, dto);
-      onSaved();
+      const guardada = persona
+        ? await actualizarPersona(accessToken, persona.id, dto)
+        : await crearPersona(accessToken, dto);
+      onSaved(guardada);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar.');
     } finally {

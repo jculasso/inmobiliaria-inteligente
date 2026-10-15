@@ -44,3 +44,6 @@ export * from './publicacion';
 export * from './alquileres';
 // El informe al propietario (reglas 83 a 98 de la spec de alquileres).
 export * from './informe-propietario';
+// El inventario del contrato y la reserva (reglas 150 a 168).
+export * from './inventario';
+export * from './reservas';

@@ -1,5 +1,10 @@
 import PizZip from 'pizzip';
-import { MARCADORES_PLANTILLA, type CampoMarcador } from '@vacker/types';
+import {
+  MARCADORES_PLANTILLA,
+  MARCADORES_RESERVA,
+  type CampoMarcador,
+  type MarcadorPlantilla,
+} from '@vacker/types';
 
 /**
  * La plantilla de ejemplo que se descarga desde «Plantillas de contrato»:
@@ -118,40 +123,67 @@ export function documentoWord(bloques: Bloque[]): Buffer {
 
 const filaCampo = (c: CampoMarcador) => [`{${c.nombre}}`, c.descripcion, c.ejemplo];
 
+/** De qué documento es la guía: cambia el título, dónde se sube y el ejemplo de cada sintaxis. */
+interface Documento {
+  marcadores: readonly MarcadorPlantilla[];
+  titulo: string;
+  intro: string;
+  /** Un dato de texto, una condición y una lista que existan en ESTA lista de marcadores. */
+  dato: string;
+  condicion: string;
+  lista: { nombre: string; ejemplo: string };
+  datosTitulo: string;
+}
+
+const CONTRATO: Documento = {
+  marcadores: MARCADORES_PLANTILLA,
+  titulo: 'Plantilla de contrato: ejemplo con todos los marcadores',
+  intro:
+    'Este archivo es una guía y un punto de partida. Copiá los marcadores que necesites a tu propio contrato en Word, o editá este mismo, y subilo en Configuración → Plantillas de contrato. Desde cada contrato se descarga el Word con los datos completos.',
+  dato: 'contrato.codigo',
+  condicion: 'deposito',
+  lista: { nombre: 'tramos', ejemplo: 'del {desde} al {hasta}, {importe}; ' },
+  datosTitulo: 'Datos del contrato',
+};
+
+const RESERVA: Documento = {
+  marcadores: MARCADORES_RESERVA,
+  titulo: 'Plantilla de reserva: ejemplo con todos los marcadores',
+  intro:
+    'Este archivo es una guía y un punto de partida. Copiá los marcadores que necesites a tu propio formulario de reserva en Word, o editá este mismo, y subilo en Configuración → Plantillas, como plantilla de reserva. Desde cada reserva se descarga el Word con los datos completos.',
+  dato: 'reserva.numero',
+  condicion: 'sena',
+  lista: { nombre: 'garantes', ejemplo: '{nombre}, DNI {documento}{separador}' },
+  datosTitulo: 'Datos de la reserva',
+};
+
 /** Las partes de la guía: cómo se escribe y cada marcador con su explicación. */
-function guia(): Bloque[] {
-  const textos = MARCADORES_PLANTILLA.filter((m) => m.tipo === 'texto');
-  const condiciones = MARCADORES_PLANTILLA.filter((m) => m.tipo === 'condicion');
-  const listas = MARCADORES_PLANTILLA.filter((m) => m.tipo === 'lista');
+function guia(doc: Documento): Bloque[] {
+  const textos = doc.marcadores.filter((m) => m.tipo === 'texto');
+  const condiciones = doc.marcadores.filter((m) => m.tipo === 'condicion');
+  const listas = doc.marcadores.filter((m) => m.tipo === 'lista');
   return [
-    { t: 'titulo', texto: 'Plantilla de contrato: ejemplo con todos los marcadores' },
-    {
-      t: 'parrafo',
-      texto:
-        'Este archivo es una guía y un punto de partida. Copiá los marcadores que necesites a tu propio contrato en Word, o editá este mismo, y subilo en Configuración → Plantillas de contrato. Desde cada contrato se descarga el Word con los datos completos.',
-    },
+    { t: 'titulo', texto: doc.titulo },
+    { t: 'parrafo', texto: doc.intro },
     { t: 'subtitulo', texto: 'Cómo se escriben' },
     {
       t: 'parrafo',
-      texto:
-        'Un dato va entre llaves, con su nombre exacto: {contrato.codigo}. Al descargar el contrato, se reemplaza por el dato de ese contrato.',
+      texto: `Un dato va entre llaves, con su nombre exacto: {${doc.dato}}. Al descargar el Word, se reemplaza por el dato que corresponde.`,
     },
     {
       t: 'parrafo',
-      texto:
-        'Una parte que aparece solo si se cumple algo va entre {#deposito}la apertura y el cierre{/deposito}. Con ^ en vez de #, aparece solo si NO se cumple: {^deposito}este texto sale cuando no hay depósito{/deposito}.',
+      texto: `Una parte que aparece solo si se cumple algo va entre {#${doc.condicion}}la apertura y el cierre{/${doc.condicion}}. Con ^ en vez de #, aparece solo si NO se cumple: {^${doc.condicion}}este texto sale cuando no se cumple{/${doc.condicion}}.`,
     },
     {
       t: 'parrafo',
-      texto:
-        'Una lista repite lo que encierra una vez por elemento, y adentro se usan sus campos: {#tramos}del {desde} al {hasta}, {importe}; {/tramos}',
+      texto: `Una lista repite lo que encierra una vez por elemento, y adentro se usan sus campos: {#${doc.lista.nombre}}${doc.lista.ejemplo}{/${doc.lista.nombre}}`,
     },
     {
       t: 'nota',
       texto:
         'Si la apertura y el cierre están solos, cada uno en su párrafo, se repite (o se oculta) el párrafo entero: es la forma de poner una línea por tramo o por garante. Al subir la plantilla se revisan todos los marcadores, y si alguno está mal escrito te decimos cuál.',
     },
-    { t: 'subtitulo', texto: 'Datos del contrato' },
+    { t: 'subtitulo', texto: doc.datosTitulo },
     {
       t: 'tabla',
       encabezado: ['Marcador', 'Qué pone', 'Ejemplo'],
@@ -262,7 +294,17 @@ function contratoModelo(): Bloque[] {
       texto:
         'Los servicios de luz, gas, agua y las expensas ordinarias están a cargo de LA PARTE LOCATARIA desde la entrega de la posesión; los impuestos que gravan el inmueble y las expensas extraordinarias, a cargo de LA PARTE LOCADORA, salvo pacto en contrario.',
     },
-    { t: 'clausula', texto: 'DÉCIMA · Domicilios y jurisdicción' },
+    { t: 'clausula', texto: 'DÉCIMA · Inventario' },
+    {
+      t: 'parrafo',
+      texto:
+        '{#inventario}LA PARTE LOCATARIA recibe, junto con el inmueble, los siguientes elementos, en el estado que se indica:{/inventario}{^inventario}El inmueble se entrega sin muebles ni elementos inventariados.{/inventario}',
+    },
+    { t: 'parrafo', texto: '{#inventario}' },
+    { t: 'parrafo', texto: '{numero}. {cantidad} × {descripcion}. {estado}' },
+    { t: 'parrafo', texto: '{/inventario}' },
+    { t: 'parrafo', texto: '{contrato.inventario_observaciones}' },
+    { t: 'clausula', texto: 'UNDÉCIMA · Domicilios y jurisdicción' },
     {
       t: 'parrafo',
       texto:
@@ -276,7 +318,74 @@ function contratoModelo(): Bloque[] {
   ];
 }
 
+/**
+ * Un formulario de reserva armado con los marcadores (regla 163). Es un
+ * punto de partida mientras llega el Word de la inmobiliaria: cuando llegue,
+ * se ubican los marcadores en el suyo.
+ */
+function reservaModelo(): Bloque[] {
+  return [
+    { t: 'subtitulo', texto: 'Un formulario de reserva de ejemplo' },
+    {
+      t: 'nota',
+      texto:
+        'Un punto de partida armado con los marcadores de arriba. Revisalo con el abogado de la inmobiliaria antes de usarlo.',
+    },
+    { t: 'titulo', texto: 'RESERVA DE LOCACIÓN N.º {reserva.numero}' },
+    {
+      t: 'parrafo',
+      texto:
+        'En {propiedad.ciudad}, el {reserva.fecha}, {interesados.texto}, en adelante «EL INTERESADO», reserva ante {inmobiliaria} la locación del inmueble ubicado en {propiedad.direccion}, {propiedad.ciudad}{#propietarios.texto}, de propiedad de {propietarios.texto}{/propietarios.texto}.',
+    },
+    { t: 'clausula', texto: 'PRIMERA · Seña' },
+    {
+      t: 'parrafo',
+      texto:
+        '{#sena}EL INTERESADO entrega {importe} ({letras}) en concepto de seña de la reserva.{/sena}{^sena}La reserva se hace sin seña.{/sena}{#sena_recibida} Recibida el {sena.fecha} por {sena.medio}.{/sena_recibida}',
+    },
+    { t: 'clausula', texto: 'SEGUNDA · Vigencia' },
+    {
+      t: 'parrafo',
+      texto:
+        'La reserva vale hasta el {reserva.vence}. Si para esa fecha no se firmó el contrato, la reserva queda sin efecto.',
+    },
+    { t: 'clausula', texto: 'TERCERA · Condiciones propuestas' },
+    {
+      t: 'parrafo',
+      texto:
+        'Contrato {contrato.tipo}, destinado a {contrato.destino}, por {contrato.meses} meses desde el {contrato.inicio} hasta el {contrato.fin}, con un alquiler inicial de {alquiler.inicial} ({alquiler.inicial.letras}){#indexado}, que se actualiza según {ajuste}{/indexado}{#escalonado}, con importes escalonados{/escalonado}.{#deposito} Depósito en garantía: {importe} ({letras}).{/deposito}',
+    },
+    { t: 'clausula', texto: 'CUARTA · Garantías' },
+    { t: 'parrafo', texto: '{#garantes}' },
+    { t: 'parrafo', texto: 'Garante propuesto: {texto}.' },
+    { t: 'parrafo', texto: '{/garantes}' },
+    { t: 'parrafo', texto: '{#garantias}' },
+    { t: 'parrafo', texto: 'Garantía {tipo}: {garante}. {detalle} (informe: {estado}).' },
+    { t: 'parrafo', texto: '{/garantias}' },
+    {
+      t: 'parrafo',
+      texto:
+        'La firma del contrato queda sujeta a la aprobación de las garantías. {reserva.observaciones}',
+    },
+    {
+      t: 'parrafo',
+      texto: 'Datos de contacto del interesado: {interesado.telefono} · {interesado.email}.',
+    },
+    {
+      t: 'parrafo',
+      texto:
+        'Firma del interesado: {interesado.nombre}, DNI/CUIT {interesado.documento}, domicilio en {interesado.domicilio}.',
+    },
+    { t: 'nota', texto: 'Generado el {fecha.hoy}.' },
+  ];
+}
+
 /** El .docx de ejemplo que se descarga. */
 export function plantillaDeEjemplo(): Buffer {
-  return documentoWord([...guia(), ...contratoModelo()]);
+  return documentoWord([...guia(CONTRATO), ...contratoModelo()]);
+}
+
+/** El .docx de ejemplo de una reserva (regla 163): la guía y un formulario. */
+export function plantillaDeEjemploReserva(): Buffer {
+  return documentoWord([...guia(RESERVA), ...reservaModelo()]);
 }

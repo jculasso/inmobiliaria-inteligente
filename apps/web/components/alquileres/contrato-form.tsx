@@ -20,6 +20,8 @@ import { fechaCorta, generarTramos, validarPartes, validarTramos } from '@vacker
 import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarContrato, crearContrato } from '../../lib/alquileres-api';
+import { convertirReserva } from '../../lib/reservas-api';
+import type { PrecargaContrato } from '../../lib/reserva-a-contrato';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { InputImporte, InputPorcentajeTexto } from '../input-importe';
 import { escribirImporte, leerImporte, leerNumero } from '../../lib/importe';
@@ -77,16 +79,25 @@ const indiceVigente = (tramos: { desde: string; hasta: string }[], fecha: string
 export function ContratoForm({
   personas,
   propiedades,
-  contrato,
+  contrato: editado,
   defectos = DEFECTOS_SIN_CONFIGURAR,
+  desdeReserva,
 }: {
   personas: PersonaDto[];
   propiedades: PropiedadAlquilerDto[];
   contrato?: ContratoDto;
   /** Regla 99: lo que la inmobiliaria configuró para los contratos nuevos. */
   defectos?: DefectosDeContrato;
+  /**
+   * Regla 159: el contrato que sale de una reserva aprobada, precargado con
+   * sus datos. Al guardar, la reserva queda convertida (en la misma
+   * transacción que el alta).
+   */
+  desdeReserva?: { id: string; numero: number; precarga: PrecargaContrato };
 }) {
   const router = useRouter();
+  // Lo que precarga cada campo: el contrato que se edita o lo que trae la reserva.
+  const contrato: PrecargaContrato | undefined = editado ?? desdeReserva?.precarga;
   const [paso, setPaso] = useState(0);
 
   const [codigo, setCodigo] = useState(contrato?.codigo ?? '');
@@ -140,6 +151,10 @@ export function ContratoForm({
   const [depositoImporte, setDepositoImporte] = useState(
     escribirImporte(contrato?.depositoImporte),
   );
+  // Florencia (Vacker), 15/10/2026: el depósito en pesos o en dólares, aunque el alquiler sea en pesos.
+  const [depositoMoneda, setDepositoMoneda] = useState<MonedaAlquiler>(
+    contrato?.depositoMoneda ?? contrato?.moneda ?? 'ARS',
+  );
   const [depositoDevolucion, setDepositoDevolucion] = useState(contrato?.depositoDevolucion ?? '');
   const [obs, setObs] = useState(contrato?.obs ?? '');
 
@@ -182,7 +197,7 @@ export function ContratoForm({
       inquilinoMipyme: tipo === 'comercial' && inquilinoMipyme,
       administradoDesde: enCurso && administradoDesde ? administradoDesde : null,
       depositoImporte: leerImporte(depositoImporte),
-      depositoMoneda: leerImporte(depositoImporte) != null ? moneda : null,
+      depositoMoneda: leerImporte(depositoImporte) != null ? depositoMoneda : null,
       depositoDevolucion: depositoDevolucion || null,
       obs: obs || null,
       partes: partes
@@ -224,6 +239,7 @@ export function ContratoForm({
       alquilerVigente,
       vigente,
       depositoImporte,
+      depositoMoneda,
       depositoDevolucion,
       obs,
       partes,
@@ -298,9 +314,11 @@ export function ContratoForm({
     setGuardando(true);
     try {
       const accessToken = await getAccessToken();
-      const guardado = contrato
-        ? await actualizarContrato(accessToken, contrato.id, dto)
-        : await crearContrato(accessToken, dto);
+      const guardado = editado
+        ? await actualizarContrato(accessToken, editado.id, dto)
+        : desdeReserva
+          ? await convertirReserva(accessToken, desdeReserva.id, dto)
+          : await crearContrato(accessToken, dto);
       router.push(`/alquileres/contratos/${guardado.id}`);
       router.refresh();
     } catch (err) {
@@ -324,11 +342,22 @@ export function ContratoForm({
   return (
     <div className="flex max-w-3xl flex-col gap-4">
       <EncabezadoPagina
-        titulo={contrato ? `Editar el contrato ${contrato.codigo}` : 'Nuevo contrato'}
+        titulo={
+          editado
+            ? `Editar el contrato ${editado.codigo}`
+            : desdeReserva
+              ? `Contrato desde la reserva ${desdeReserva.numero}`
+              : 'Nuevo contrato'
+        }
         volver={
-          contrato
-            ? { href: `/alquileres/contratos/${contrato.id}`, texto: `Contrato ${contrato.codigo}` }
-            : { href: '/alquileres/contratos', texto: 'Contratos' }
+          editado
+            ? { href: `/alquileres/contratos/${editado.id}`, texto: `Contrato ${editado.codigo}` }
+            : desdeReserva
+              ? {
+                  href: `/alquileres/reservas/${desdeReserva.id}`,
+                  texto: `Reserva ${desdeReserva.numero}`,
+                }
+              : { href: '/alquileres/contratos', texto: 'Contratos' }
         }
       />
       <ol className="flex gap-2" aria-label="Pasos del alta">
@@ -492,7 +521,12 @@ export function ContratoForm({
               <select
                 className={inputClass}
                 value={moneda}
-                onChange={(e) => setMoneda(e.target.value as MonedaAlquiler)}
+                onChange={(e) => {
+                  const nueva = e.target.value as MonedaAlquiler;
+                  // El depósito sigue a la moneda del contrato, salvo que se haya elegido otra.
+                  if (depositoMoneda === moneda) setDepositoMoneda(nueva);
+                  setMoneda(nueva);
+                }}
               >
                 <option value="ARS">Pesos</option>
                 <option value="USD">Dólares</option>
@@ -654,9 +688,26 @@ export function ContratoForm({
                 </>
               )}
             </div>
-            <Campo label="Depósito en garantía">
-              <InputImporte moneda={moneda} value={depositoImporte} onChange={setDepositoImporte} />
-            </Campo>
+            <div className="grid grid-cols-[1fr_7rem] gap-3">
+              <Campo label="Depósito en garantía">
+                <InputImporte
+                  moneda={depositoMoneda}
+                  value={depositoImporte}
+                  onChange={setDepositoImporte}
+                />
+              </Campo>
+              <Campo label="En">
+                <select
+                  className={inputClass}
+                  aria-label="Moneda del depósito"
+                  value={depositoMoneda}
+                  onChange={(e) => setDepositoMoneda(e.target.value as MonedaAlquiler)}
+                >
+                  <option value="ARS">Pesos</option>
+                  <option value="USD">Dólares</option>
+                </select>
+              </Campo>
+            </div>
             <Campo label="Devolución del depósito">
               <input
                 type="date"
@@ -811,7 +862,7 @@ export function ContratoForm({
           </Button>
         ) : (
           <Button type="button" variant="primary" onClick={guardar} disabled={!listo || guardando}>
-            {guardando ? 'Guardando…' : contrato ? 'Guardar cambios' : 'Guardar en borrador'}
+            {guardando ? 'Guardando…' : editado ? 'Guardar cambios' : 'Guardar en borrador'}
           </Button>
         )}
       </div>
