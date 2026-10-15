@@ -6,6 +6,7 @@ import {
   type Indicador,
   type TableroAlquileresDto,
 } from '@vacker/types';
+import { PARTES_DE_LA_SENTENCIA } from '../../prisma/en-un-viaje';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import type { IndexacionesService } from './indexaciones.service';
 import type { LiquidacionesService } from './liquidaciones.service';
@@ -239,6 +240,23 @@ function servicio(over: Fixture = {}) {
     },
     $queryRaw: vi.fn(async (q: Prisma.Sql) => {
       consultas.n++;
+      // Varias consultas en una sentencia (`enUnViaje`): la base contesta cada
+      // parte como si fuera sola, y todo vuelve en una fila de JSON.
+      const partes = PARTES_DE_LA_SENTENCIA.get(q);
+      if (partes)
+        return [
+          Object.fromEntries(
+            Object.entries(partes).map(([k, p]) => [
+              k,
+              JSON.parse(JSON.stringify(responder(p.sql))) as unknown,
+            ]),
+          ),
+        ];
+      return responder(q);
+    }),
+  };
+  function responder(q: Prisma.Sql): Record<string, unknown>[] {
+    {
       valores.push(q.values);
       const texto = q.sql;
       if (texto.includes('unnest(')) {
@@ -272,8 +290,8 @@ function servicio(over: Fixture = {}) {
       }
       if (texto.includes('alq_liquidacion')) return enRango(q.values);
       throw new Error(`Consulta inesperada: ${texto.slice(0, 80)}`);
-    }),
-  };
+    }
+  }
   const db = {
     withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
   } as unknown as TenantPrismaService;
@@ -997,8 +1015,10 @@ describe('TableroAlquileresService', () => {
       };
       const cinco = await cuantas(5);
       expect(await cuantas(25)).toEqual(cinco);
-      // Nueve: la última, las reservas abiertas (regla 166).
-      expect(cinco.delTablero).toBe(9);
+      // Seis: las cuatro que se calculan en la base van en una sentencia
+      // (`enUnViaje`), más reclamos, pólizas, boletas, reservas (regla 166) y
+      // los contratos. Eran nueve.
+      expect(cinco.delTablero).toBe(6);
       expect(Math.max(...cinco.delDetalle)).toBeLessThanOrEqual(2);
     });
   });
