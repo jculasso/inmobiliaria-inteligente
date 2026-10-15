@@ -216,30 +216,19 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter @vacker/api exec prisma generate
 
-      # Valores de mentira a propósito: estos tests NO se loguean ni tocan la
-      # base, solo verifican lo que se sirve sin sesión. Así el CI no necesita
-      # ningún secreto y, sobre todo, no puede tocar los datos de producción —
-      # que hoy viven en un plan sin backups automáticos.
-      - name: Variables de entorno de prueba
-        run: |
-          cat > .env <<'EOF'
-          DATABASE_URL=postgresql://u:p@localhost:5432/x
-          DIRECT_URL=postgresql://u:p@localhost:5432/x
-          SUPABASE_URL=https://ejemplo.supabase.co
-          SUPABASE_ANON_KEY=clave-de-mentira
-          SUPABASE_SERVICE_ROLE_KEY=clave-de-mentira
-          API_PORT=3001
-          NEXT_PUBLIC_API_URL=http://localhost:3001
-          NEXT_PUBLIC_SUPABASE_URL=https://ejemplo.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=clave-de-mentira
-          WEB_APP_URL=http://localhost:3210
-          EOF
-
-      # `...` incluye las dependencias: sin compilar `@vacker/types` y compañía
-      # primero, el build de la web no las encuentra. En local pasaba
-      # desapercibido porque el `dist` ya estaba de antes.
-      - name: Build web
-        run: pnpm turbo run build --filter=@vacker/web...
+      # Sin `.env` y sin secretos, a propósito. La web de los tests de navegador
+      # la compila `test:e2e` con `apps/web/e2e/entorno-de-prueba.env`, que está
+      # en el repo y apunta al simulador local (`apps/web/e2e/simulador/`): las
+      # pruebas con sesión hablan con él, nunca con la base de producción —que
+      # vive en un plan sin backups automáticos—. `global-setup.ts` se niega a
+      # correr si la compilación apunta a otro lado.
+      #
+      # Acá solo las dependencias (el `^` de turbo): sin compilar
+      # `@vacker/types` y compañía primero, el build de la web no las encuentra.
+      # El build de la web en sí lo hace `test:e2e`; hacerlo también acá sería
+      # compilar dos veces.
+      - name: Build de las dependencias de la web
+        run: pnpm turbo run build --filter=@vacker/web^...
 
       # Descargar Chromium y WebKit tarda ~50s, y era el paso más lento de todo
       # el CI. La clave lleva la versión de Playwright dentro: cuando se
