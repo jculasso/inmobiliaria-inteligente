@@ -196,6 +196,15 @@ const VISTAS = {
     ['estado', 'Estado'],
     ['importe', 'Importe'],
   ],
+  finales: [
+    ['inquilino', 'Inquilino'],
+    ['contrato', 'Contrato'],
+    ['propiedad', 'Propiedad'],
+    ['detalle', 'Qué'],
+    ['fecha', 'Vence'],
+    ['estado', 'Estado'],
+    ['importe', 'Falta cobrar'],
+  ],
 } satisfies Record<string, [Columna, string][]>;
 
 /**
@@ -803,6 +812,11 @@ export function TableroAlquileres({
     accion?: Detalle['accion'];
   };
   const aIndexar = { href: '/alquileres/indexaciones', texto: 'Ir a indexar' };
+  // Regla 7: la próxima indexación de estos contratos ya pasó pero espera el
+  // índice; en las listas no se pinta «vencida». Sale de la tarea, que es a hoy.
+  const esperanElIndice = new Set(
+    t.tareas.indexacionesEsperan.filas.map((f) => f.contrato).filter((c): c is string => !!c),
+  );
   const tareas: Tarea[] = [
     {
       icono: '⏰',
@@ -812,12 +826,29 @@ export function TableroAlquileres({
       accion: aIndexar,
     },
     {
+      icono: '⏳',
+      // Regla 7: ya empezaron y esperan un índice que no salió. No son vencidas:
+      // mientras tanto el mes se cobra como liquidación parcial (regla 130).
+      titulo: 'Indexaciones que esperan el índice',
+      ind: t.tareas.indexacionesEsperan,
+      columnas: VISTAS.indexaciones,
+      accion: aIndexar,
+    },
+    {
       icono: '📈',
-      // Incluye las que ya empezaron y esperan un índice que no salió: no son vencidas (regla 7).
-      titulo: `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días o que esperan el índice`,
+      titulo: `Indexaciones de los próximos ${DIAS_TABLERO_PROXIMOS} días`,
       ind: t.tareas.indexacionesProximas,
       columnas: VISTAS.indexaciones,
       accion: aIndexar,
+    },
+    {
+      icono: '🧮',
+      // Regla 139: la diferencia de cada mes cobrado como parcial, hasta que se pague.
+      titulo: 'Liquidaciones finales pendientes de cobro',
+      ind: t.tareas.finalesPendientes,
+      columnas: VISTAS.finales,
+      total: 'ARS',
+      accion: { href: '/alquileres/cobros/nuevo', texto: 'Ir a cobrar' },
     },
     {
       icono: '🪜',
@@ -1243,6 +1274,7 @@ export function TableroAlquileres({
           {...detalle}
           tipo={tipo}
           hoy={t.hoy}
+          esperan={esperanElIndice}
           onClose={() => setDetalle(null)}
         />
       )}
@@ -1275,11 +1307,14 @@ function Celda({
   col,
   etiqueta,
   hoy,
+  esperan,
 }: {
   f: FilaTablero;
   col: Columna;
   etiqueta: string;
   hoy: string;
+  /** Los contratos cuyo tramo ya empezó y espera el índice (regla 7): no están vencidos. */
+  esperan: ReadonlySet<string>;
 }) {
   const moneda = f.moneda ?? 'ARS';
   switch (col) {
@@ -1290,6 +1325,12 @@ function Celda({
     }
     case 'indexa':
       if (!f.indexa) return <span className="text-muted">—</span>;
+      if (f.indexa < hoy && f.contrato && esperan.has(f.contrato))
+        return (
+          <>
+            {fmtFecha(f.indexa)} <span className="text-xs text-muted">espera el índice</span>
+          </>
+        );
       return f.indexa < hoy ? (
         <span className="font-semibold text-danger">
           {fmtFecha(f.indexa)} <span className="text-[11px] font-bold uppercase">vencida</span>
@@ -1330,7 +1371,13 @@ function DetalleModal({
   tipo,
   hoy,
   onClose,
-}: Detalle & { tipo: FiltroTipoContrato; hoy: string; onClose: () => void }) {
+  esperan,
+}: Detalle & {
+  tipo: FiltroTipoContrato;
+  hoy: string;
+  esperan: ReadonlySet<string>;
+  onClose: () => void;
+}) {
   const router = useRouter();
   // Regla 79: la lista de un número del período se pide al abrirla.
   const [cargado, setCargado] = useState<Indicador | null>(indicador ?? null);
@@ -1387,7 +1434,15 @@ function DetalleModal({
               const cuerpo = (
                 <>
                   <p className="font-semibold text-ink">
-                    {primera && <Celda f={f} col={primera[0]} etiqueta={primera[1]} hoy={hoy} />}
+                    {primera && (
+                      <Celda
+                        f={f}
+                        col={primera[0]}
+                        etiqueta={primera[1]}
+                        hoy={hoy}
+                        esperan={esperan}
+                      />
+                    )}
                     {f.propiedad && primera?.[0] !== 'propiedad' && (
                       <span className="font-normal text-muted"> · {f.propiedad}</span>
                     )}
@@ -1399,7 +1454,7 @@ function DetalleModal({
                         <div key={c} className="min-w-0">
                           <dt className="text-muted">{etiqueta}</dt>
                           <dd className="truncate text-ink">
-                            <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
+                            <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} esperan={esperan} />
                           </dd>
                         </div>
                       ))}
@@ -1451,10 +1506,10 @@ function DetalleModal({
                             onClick={(e) => e.stopPropagation()}
                             className={`hover:text-brand-red ${CLASE_FOCO}`}
                           >
-                            <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
+                            <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} esperan={esperan} />
                           </Link>
                         ) : (
-                          <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} />
+                          <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} esperan={esperan} />
                         )}
                       </td>
                     ))}

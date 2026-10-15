@@ -34,7 +34,11 @@ export class AlquileresService {
     });
   }
 
-  /** La configuración del módulo: IVA de honorarios, cargos de ingreso, depósito y lo que se propone en cada contrato nuevo (regla 99). */
+  /**
+   * La configuración del módulo: IVA de honorarios, cargos de ingreso,
+   * depósito, lo que se propone en cada contrato nuevo (regla 99) y los días
+   * para pagar la diferencia de la liquidación final (regla 133).
+   */
   async configuracion(ctx: TenantContext): Promise<ConfiguracionAlquileres> {
     return this.db.withTenant(async (tx) => {
       const t = await tx.tenant.findUniqueOrThrow({
@@ -86,5 +90,6 @@ export function deConfig(c: ReturnType<typeof TenantConfigSchema.parse>): Config
     contratoPunitorioDiarioPct: c.contratoPunitorioDiarioPct,
     contratoDiaVencimiento: c.contratoDiaVencimiento,
     contratoDiaPagoPropietario: c.contratoDiaPagoPropietario,
+    diasDiferenciaFinal: c.diasDiferenciaFinal,
   };
 }

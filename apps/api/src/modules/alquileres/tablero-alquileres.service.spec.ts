@@ -120,6 +120,10 @@ type Fixture = {
   alquileres?: ReturnType<typeof alquiler>[];
   mora?: ReturnType<typeof mora>[];
   movimientos?: ReturnType<typeof movimiento>[];
+  /** Lo que devuelve `sqlFinalesPendientes` (regla 139). */
+  finales?: Record<string, unknown>[];
+  /** Los tramos de la bandeja de indexación. */
+  tramos?: Record<string, unknown>[];
 };
 
 /**
@@ -222,6 +226,7 @@ function servicio(over: Fixture = {}) {
         const cierres = q.values[0] as string[];
         return filasMora.filter((m) => cierres.includes(m.cierre));
       }
+      if (texto.includes("k.etapa = 'final' AND k.sentido = 'a_cobrar'")) return over.finales ?? [];
       if (texto.includes("k.tipo = 'alquiler'")) {
         const [desde, hasta, ademas] = q.values as string[];
         return alquileres.filter(
@@ -256,7 +261,7 @@ function servicio(over: Fixture = {}) {
   const indexaciones = {
     bandeja: vi.fn().mockResolvedValue({
       indices: [],
-      tramos: [
+      tramos: over.tramos ?? [
         {
           tramoId: 't1',
           contrato: { id: 'c5', codigo: '5' },
@@ -331,6 +336,8 @@ function indicadores(t: TableroAlquileresDto): [string, Indicador, 'importe' | '
     ]),
     ['indexaciones vencidas', t.tareas.indexacionesVencidas, 'cantidad'],
     ['indexaciones próximas', t.tareas.indexacionesProximas, 'cantidad'],
+    ['indexaciones que esperan el índice', t.tareas.indexacionesEsperan, 'cantidad'],
+    ['liquidaciones finales pendientes', t.tareas.finalesPendientes, 'cantidad'],
     ...t.tareas.vencen.map(
       (v) => [`vencen ${v.dias}`, v.indicador, 'cantidad'] as [string, Indicador, 'cantidad'],
     ),
@@ -532,7 +539,8 @@ describe('TableroAlquileresService', () => {
     const fechas = ingresos!
       .filter((v: unknown) => v instanceof Date)
       .map((v) => (v as Date).toISOString().slice(0, 10));
-    expect(fechas).toEqual(['2024-01-01', '2027-01-01', '2024-01-01', '2027-01-01']);
+    // Cuatro ramas con el mismo rango: cobrado, liquidado y los dos espejos de la regla 134.
+    expect(fechas).toEqual(Array.from({ length: 4 }, () => ['2024-01-01', '2027-01-01']).flat());
   });
 
   it('los ingresos llegan por mes, con los punitorios en cero si no hubo', async () => {
@@ -580,7 +588,8 @@ describe('TableroAlquileresService', () => {
       const antes = rawCalls.length;
       const t = await servicio({ contratos: cartera() }).tableros(HOY, 2026);
       expect(rawCalls.length - antes).toBe(1);
-      expect(rawCalls.at(-1)!.length).toBe(3);
+      // Alquileres, deuda, ingresos y liquidaciones finales pendientes (regla 139).
+      expect(rawCalls.at(-1)!.length).toBe(4);
       expect(t.comercial.tipo).toBe('comercial');
       expect(t.comercial.cartera.vigentes.filas.map((f) => f.contrato)).toEqual(['3']);
       expect(t.todos.cartera.vigentes.filas.length).toBeGreaterThan(
@@ -969,8 +978,154 @@ describe('TableroAlquileresService', () => {
       };
       const cinco = await cuantas(5);
       expect(await cuantas(25)).toEqual(cinco);
-      expect(cinco.delTablero).toBe(7);
+      expect(cinco.delTablero).toBe(8);
       expect(Math.max(...cinco.delDetalle)).toBeLessThanOrEqual(2);
     });
+  });
+});
+
+describe('TableroAlquileresService: liquidación parcial y final (reglas 7 y 139)', () => {
+  /** Un tramo de la bandeja de indexación, como lo devuelve `IndexacionesService.bandeja`. */
+  const tramoBandeja = (over: Record<string, unknown>) => ({
+    tramoId: 't',
+    contrato: { id: 'c5', codigo: '5' },
+    inquilinos: ['Inquilina'],
+    numero: 3,
+    indice: 'IPC',
+    desde: '2026-10-01',
+    estado: 'pendiente_indice',
+    importeAnterior: 600_000,
+    importePropuesto: null,
+    falta: ['el IPC de septiembre de 2026'],
+    vencida: false,
+    ...over,
+  });
+
+  // ALT-0005 de Alteva espera el IPC de septiembre: el Dashboard lo contaba
+  // entre las vencidas (y después, entre las próximas). Regla 7: va aparte.
+  it('regla 139: un tramo que ya empezó y espera el índice va en «esperan el índice», no en vencidas ni en próximas', async () => {
+    const t = (
+      await servicio({
+        tramos: [
+          tramoBandeja({ tramoId: 'alt5' }),
+          tramoBandeja({ tramoId: 'lista', estado: 'lista', vencida: true, falta: [] }),
+          tramoBandeja({ tramoId: 'futura', desde: '2026-11-15' }),
+        ],
+      }).tablero(HOY)
+    ).tareas;
+    expect(t.indexacionesEsperan.filas.map((f) => [f.id, f.estado])).toEqual([
+      ['alt5', 'Espera el IPC de septiembre de 2026'],
+    ]);
+    expect(t.indexacionesVencidas.filas.map((f) => f.id)).toEqual(['lista']);
+    expect(t.indexacionesProximas.filas.map((f) => f.id)).toEqual(['futura']);
+  });
+
+  it('regla 139: la final se suma a su parcial: un alquiler emitido, con el importe definitivo', async () => {
+    const parcial = 'alq|c5|2026-10|2026-10-01|alquiler|a_cobrar|inq5';
+    const final = 'alq|c5|2026-10|2026-10-01~final|alquiler|a_cobrar|inq5';
+    const svc = servicio({
+      alquileres: [
+        alquiler('p', 600_000, 600_000, {
+          clave: parcial,
+          sentido: 'a_cobrar',
+          contrato_id: 'c5',
+          descripcion:
+            'Alquiler octubre 2026 — liquidación parcial (espera el IPC de septiembre de 2026)',
+        }),
+        alquiler('f', 55_916, 0, { clave: final, sentido: 'a_cobrar', contrato_id: 'c5' }),
+      ],
+    });
+    const c = (await svc.tablero(HOY)).cobranza[0]!;
+    expect([c.emitidos.valor, c.cobrados.valor]).toEqual([1, 0]);
+    expect([c.importeEmitido.valor, c.importeCobrado.valor]).toEqual([655_916, 600_000]);
+    expect(c.emitidos.filas[0]!.detalle).toBe(
+      'Alquiler octubre 2026 — liquidación parcial y final',
+    );
+    // El detalle del período lee lo mismo y suma lo mismo (regla 79).
+    const detalle = await svc.detalle(
+      {
+        indicador: 'importeEmitido',
+        desde: '2026-10',
+        hasta: '2026-10',
+        tipo: 'todos',
+        moneda: 'ARS',
+      },
+      HOY,
+    );
+    expect(detalle.valor).toBe(655_916);
+    expect(detalle.filas).toHaveLength(1);
+  });
+
+  it('regla 139: el reintegro de una final negativa le resta a su parcial, y lo cobrado no pasa lo que se debía', async () => {
+    const t = await servicio({
+      alquileres: [
+        alquiler('p', 600_000, 600_000, {
+          clave: 'alq|c5|2026-10|2026-10-01|alquiler|a_cobrar|inq5',
+          sentido: 'a_cobrar',
+          contrato_id: 'c5',
+        }),
+        alquiler('m', 10_000, 0, {
+          clave: 'alq|c5|2026-10|2026-10-01~final|alquiler|a_cobrar|inq5',
+          sentido: 'a_pagar',
+          contrato_id: 'c5',
+        }),
+        // Un reintegro suelto, sin su parcial, no es un alquiler.
+        alquiler('suelto', 5_000, 0, {
+          clave: 'alq|c9|2026-10|2026-10-01~final|alquiler|a_cobrar|inq9',
+          sentido: 'a_pagar',
+          contrato_id: 'c9',
+        }),
+      ],
+    }).tablero(HOY);
+    const c = t.cobranza[0]!;
+    expect([c.emitidos.valor, c.cobrados.valor]).toEqual([1, 1]);
+    expect([c.importeEmitido.valor, c.importeCobrado.valor]).toEqual([590_000, 590_000]);
+  });
+
+  it('regla 139: las diferencias que el inquilino no pagó, una fila por contrato y mes', async () => {
+    const final = (
+      id: string,
+      saldo: number,
+      vence: string,
+      over: Record<string, unknown> = {},
+    ) => ({
+      id,
+      contrato_id: 'c5',
+      tipo_contrato: 'vivienda',
+      persona_id: 'inq5',
+      nombre: 'Inquilina',
+      periodo: '2026-10',
+      moneda: 'ARS',
+      vencimiento: d(vence),
+      saldo: dec(saldo),
+      ...over,
+    });
+    const t = (
+      await servicio({
+        finales: [
+          final('a', 55_916, '2026-10-26'),
+          final('g', 1_353.17, '2026-10-26'),
+          final('sep', 40_000, '2026-10-19', { periodo: '2026-09' }),
+        ],
+      }).tablero(HOY)
+    ).tareas.finalesPendientes;
+    expect(t.valor).toBe(2);
+    expect(t.filas.map((f) => [f.detalle, f.importe, f.fecha, f.estado, f.href])).toEqual([
+      [
+        'Liquidación final de octubre de 2026',
+        57_269.17,
+        '2026-10-26',
+        'Vence en 6 días',
+        '/alquileres/personas/inq5',
+      ],
+      [
+        'Liquidación final de septiembre de 2026',
+        40_000,
+        '2026-10-19',
+        'Vencida hace 1 día',
+        '/alquileres/personas/inq5',
+      ],
+    ]);
+    expect(t.filas[0]).toMatchObject({ contrato: '5', inquilino: 'Inquilina' });
   });
 });

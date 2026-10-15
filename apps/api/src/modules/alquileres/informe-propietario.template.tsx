@@ -203,24 +203,29 @@ export function InformePropietarioDocument({
                   ]}
                 />
                 {c.meses.map((m) => (
-                  <View key={m.periodo} style={e.fila} wrap={false}>
-                    <Celda w="18%" primera>
-                      {mesDe(m.periodo)}
-                    </Celda>
-                    <Celda w="18%" der>
-                      {plata(m.alquiler, c.moneda)}
-                    </Celda>
-                    <Celda w="18%" der>
-                      {plata(m.cobrado, c.moneda)}
-                    </Celda>
-                    <Celda w="20%">
-                      {m.cobradoEl.map(fecha).join(', ') || (m.enEspera ? 'Todavía no pagó' : '—')}
-                    </Celda>
-                    <Celda w="26%">
-                      {m.liquidaciones
-                        .map((l) => `Liq. ${numero(l.numero)} del ${fecha(l.fecha)}`)
-                        .join(', ') || (m.cobrado ? 'Va en la próxima' : '—')}
-                    </Celda>
+                  <View key={m.periodo} wrap={false}>
+                    <View style={e.fila}>
+                      <Celda w="18%" primera>
+                        {mesDe(m.periodo)}
+                      </Celda>
+                      <Celda w="18%" der>
+                        {plata(m.alquiler, c.moneda)}
+                      </Celda>
+                      <Celda w="18%" der>
+                        {plata(m.cobrado, c.moneda)}
+                      </Celda>
+                      <Celda w="20%">
+                        {m.cobradoEl.map(fecha).join(', ') ||
+                          (m.enEspera ? 'Todavía no pagó' : '—')}
+                      </Celda>
+                      <Celda w="26%">
+                        {m.liquidaciones
+                          .map((l) => `Liq. ${numero(l.numero)} del ${fecha(l.fecha)}`)
+                          .join(', ') || (m.cobrado ? 'Va en la próxima' : '—')}
+                      </Celda>
+                    </View>
+                    {/* Regla 140: el mes cobrado como parcial, o ya completado con la final. */}
+                    {m.nota && <Text style={[e.nota, { marginTop: 2 }]}>{m.nota}</Text>}
                   </View>
                 ))}
               </>

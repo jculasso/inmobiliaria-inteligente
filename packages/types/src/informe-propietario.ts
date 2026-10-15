@@ -180,6 +180,12 @@ export const InformePropietarioDtoSchema = z.object({
           cobradoEl: z.array(FechaIso),
           /** En qué liquidaciones se le pagó. */
           liquidaciones: z.array(LiquidacionMiniSchema),
+          /**
+           * Regla 140: si el mes se cobró como liquidación parcial («espera el
+           * IPC de septiembre de 2026») o ya tiene la final. `.default` por el
+           * orden de despliegue.
+           */
+          nota: z.string().nullable().default(null),
         }),
       ),
     }),

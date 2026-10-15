@@ -19,7 +19,13 @@ import {
   type SentidoConcepto,
   type TipoConcepto,
 } from '@vacker/types';
-import { parteDeClave, planificarCobro, proponerPunitorio, redondear2 } from '@vacker/domain';
+import {
+  claveParcialDeFinal,
+  parteDeClave,
+  planificarCobro,
+  proponerPunitorio,
+  redondear2,
+} from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
@@ -62,6 +68,9 @@ const INCLUIR_COBRO = {
           descripcion: true,
           tipo: true,
           sentido: true,
+          periodo: true,
+          etapa: true,
+          claveGeneracion: true,
           contrato: { select: { id: true, codigo: true } },
         },
       },
@@ -261,9 +270,49 @@ export class CobrosService {
     });
   }
 
-  /** El recibo con los nombres de quien lo registró y quien lo anuló. */
+  /**
+   * El recibo con los nombres de quien lo registró y quien lo anuló, y, si
+   * cancela la diferencia de una liquidación final, la parcial que completa
+   * (regla 138). Una consulta más solo en ese caso, sean cuantas sean las
+   * finales del recibo.
+   */
   private async dto(tx: Tx, c: FilaCobro): Promise<CobroDto> {
-    return aDto(c, await nombresDeUsuarios(tx, [c.creadoPorId, c.anuladoPorId]));
+    const bases = [
+      ...new Set(
+        c.registradas
+          .filter((i) => i.concepto.etapa === 'final')
+          .map((i) => claveParcialDeFinal(i.concepto.claveGeneracion))
+          .filter((x): x is string => x !== null),
+      ),
+    ];
+    const [nombres, parciales] = await Promise.all([
+      nombresDeUsuarios(tx, [c.creadoPorId, c.anuladoPorId]),
+      bases.length
+        ? tx.alqConcepto.findMany({
+            where: { claveGeneracion: { in: bases } },
+            select: {
+              claveGeneracion: true,
+              importe: true,
+              imputaciones: {
+                where: IMPUTACION_ACTIVA,
+                select: { registradaEnCobro: { select: { numero: true } } },
+              },
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+    const parcialDe = new Map(
+      parciales.map((k) => [
+        k.claveGeneracion!,
+        {
+          importe: decToNum(k.importe),
+          recibos: [...new Set(k.imputaciones.map((i) => i.registradaEnCobro.numero))].sort(
+            (a, b) => a - b,
+          ),
+        },
+      ]),
+    );
+    return aDto(c, nombres, parcialDe);
   }
 
   async obtener(id: string): Promise<CobroDto> {
@@ -676,15 +725,29 @@ function aDeuda(c: ConceptoConSaldo, p: { dias: number; importe: number }): Deud
   };
 }
 
-function aDto(c: FilaCobro, nombres: Map<string, string>): CobroDto {
-  const imputaciones = c.registradas.map((i) => ({
-    conceptoId: i.concepto.id,
-    contrato: i.concepto.contrato,
-    descripcion: i.concepto.descripcion ?? i.concepto.tipo,
-    sentido: i.concepto.sentido as SentidoConcepto,
-    importe: decToNum(i.importe),
-    deSaldoAFavor: i.cobroId === c.id ? null : i.cobro.numero,
-  }));
+function aDto(
+  c: FilaCobro,
+  nombres: Map<string, string>,
+  parcialDe: Map<string, { importe: number; recibos: number[] }> = new Map(),
+): CobroDto {
+  const imputaciones = c.registradas.map((i) => {
+    const parcial =
+      i.concepto.etapa === 'final'
+        ? parcialDe.get(claveParcialDeFinal(i.concepto.claveGeneracion) ?? '')
+        : undefined;
+    return {
+      conceptoId: i.concepto.id,
+      contrato: i.concepto.contrato,
+      descripcion: i.concepto.descripcion ?? i.concepto.tipo,
+      sentido: i.concepto.sentido as SentidoConcepto,
+      importe: decToNum(i.importe),
+      deSaldoAFavor: i.cobroId === c.id ? null : i.cobro.numero,
+      liquidacionFinal:
+        parcial && i.concepto.periodo
+          ? { periodo: i.concepto.periodo, parcial: parcial.importe, recibos: parcial.recibos }
+          : null,
+    };
+  });
   return {
     id: c.id,
     numero: c.numero,

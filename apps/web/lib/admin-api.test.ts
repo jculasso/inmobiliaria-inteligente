@@ -40,6 +40,7 @@ const TENANT = {
     contratoPunitorioDiarioPct: 0,
     contratoDiaVencimiento: 5,
     contratoDiaPagoPropietario: 10,
+    diasDiferenciaFinal: 5,
   },
   createdAt: '2026-01-01T00:00:00.000Z',
 };

@@ -246,6 +246,83 @@ suite('Tablero de Alquileres contra la base (regla 79)', () => {
     ]);
     await cobro(inq1.id, '2026-07-03', [[julio.id, 500_000]], true);
 
+    // Reglas 130 a 139: septiembre de la vivienda se cobró como liquidación
+    // parcial (el índice no había salido) y se pagó; la final —la diferencia
+    // del alquiler y de los gastos— vence el 26/10 y todavía no se pagó. A la
+    // dueña se le devolvieron 500 de honorarios (una final negativa, regla
+    // 134) en una liquidación del 15/09.
+    const parte = `alq|${k1.id}|2026-09|2026-09-01`;
+    const etapa = (
+      personaId: string,
+      tipo: string,
+      sentido: string,
+      clave: string,
+      importe: number,
+      over: { etapa?: string; vencimiento?: string; liquidacionId?: string } = {},
+    ) =>
+      siembra.alqConcepto.create({
+        data: {
+          tenantId: t,
+          contratoId: k1.id,
+          personaId,
+          tipo,
+          sentido,
+          periodo: '2026-09',
+          vencimiento: d(over.vencimiento ?? '2026-09-05'),
+          importe,
+          claveGeneracion: clave,
+          etapa: over.etapa ?? 'final',
+          tramoNumero: 1,
+          liquidacionId: over.liquidacionId ?? null,
+        },
+      });
+    const parcialSeptiembre = await etapa(
+      inq1.id,
+      'alquiler',
+      'a_cobrar',
+      `${parte}|alquiler|a_cobrar|${inq1.id}`,
+      500_000,
+      { etapa: 'parcial' },
+    );
+    await etapa(
+      inq1.id,
+      'alquiler',
+      'a_cobrar',
+      `${parte}~final|alquiler|a_cobrar|${inq1.id}`,
+      40_000,
+      {
+        vencimiento: '2026-10-26',
+      },
+    );
+    await etapa(
+      inq1.id,
+      'gastos_adm',
+      'a_cobrar',
+      `${parte}~final|gastos_adm|a_cobrar|${inq1.id}`,
+      968,
+      { vencimiento: '2026-10-26' },
+    );
+    const liquidacionSeptiembre = await siembra.alqLiquidacion.create({
+      data: {
+        tenantId: t,
+        numero: 702,
+        personaId: duenio.id,
+        periodo: '2026-09',
+        neto: 500,
+        fecha: d('2026-09-15'),
+        detalle: {},
+      },
+    });
+    await etapa(
+      duenio.id,
+      'otro',
+      'a_pagar',
+      `${parte}~final|honorarios|a_cobrar|${duenio.id}`,
+      500,
+      { liquidacionId: liquidacionSeptiembre.id },
+    );
+    await cobro(inq1.id, '2026-09-04', [[parcialSeptiembre.id, 500_000]]);
+
     prisma = new PrismaService({ datasourceUrl: URL_POOLER });
     await prisma.$connect();
     const ctx: TenantContext = { tenantId: t, userId: ids.usuario, roles: ['admin_tenant'] };
@@ -285,6 +362,24 @@ suite('Tablero de Alquileres contra la base (regla 79)', () => {
     expect(marzo.mora[0]!.tramos.find((x) => x.tramo === '31-60')!.valor).toBe(700_000);
     // A hoy: el vigente, y la deuda de julio (su cobro se anuló) y lo que falta del comercial.
     expect(t.cartera.vigentes.valor).toBe(1);
+    expect(t.morosidad[0]!.total.valor).toBe(700_000);
+  });
+
+  it('regla 139: la final se suma a su parcial y lo que falta de ella es una tarea', () => {
+    const t = tableros.todos;
+    // Un alquiler emitido, con el importe definitivo; pagada solo la parcial.
+    expect(t.evolucion.find((e) => e.mes === '2026-09')).toMatchObject({
+      emitido: 540_000,
+      emitidos: 1,
+      cobrados: 0,
+      cobradoHoy: 500_000,
+    });
+    // Regla 134: los honorarios devueltos restan del ingreso del mes en que se liquidaron.
+    expect(t.ingresos.find((i) => i.mes === '2026-09')).toMatchObject({ honorarios: -500 });
+    expect(t.tareas.finalesPendientes.filas.map((f) => [f.detalle, f.importe, f.fecha])).toEqual([
+      ['Liquidación final de septiembre de 2026', 40_968, '2026-10-26'],
+    ]);
+    // Todavía no venció: no es deuda.
     expect(t.morosidad[0]!.total.valor).toBe(700_000);
   });
 

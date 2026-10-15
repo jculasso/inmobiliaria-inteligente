@@ -61,6 +61,7 @@ function informe(over: Partial<InformePropietarioDto> = {}): InformePropietarioD
             enEspera: 0,
             cobradoEl: ['2026-09-05'],
             liquidaciones: [liq],
+            nota: null,
           },
         ],
       },
@@ -170,6 +171,29 @@ describe('Informe al propietario en PDF (regla 95)', () => {
     );
     expect(t).toContain('Sin movimientos en mayo 2026.');
     expect(t).not.toContain('Neto del período');
+  });
+
+  it('regla 140: el mes cobrado como liquidación parcial lo dice, con lo que espera', async () => {
+    const base = informe();
+    const contrato = base.contratos[0]!;
+    const t = textoDePdf(
+      await pdf(
+        informe({
+          contratos: [
+            {
+              ...contrato,
+              meses: [
+                {
+                  ...contrato.meses[0]!,
+                  nota: 'Liquidación parcial (espera el IPC de septiembre de 2026)',
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+    expect(t).toContain('Liquidación parcial (espera el IPC de septiembre de 2026)');
   });
 
   it('solo dibuja con Montserrat (CONVENCIONES_TECNICAS §14)', async () => {

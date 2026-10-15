@@ -1,7 +1,13 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
-import { generarPeriodo, type ContratoParaGenerar } from '@vacker/domain';
+import {
+  claveParcialDeFinal,
+  diferenciasDeLiquidacionFinal,
+  generarPeriodo,
+  generarPeriodoConParciales,
+  type ContratoParaGenerar,
+} from '@vacker/domain';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { CorreccionTramoService, MARCA_CORREGIDO } from './correccion-tramo.service';
 import { IndexacionesService } from './indexaciones.service';
@@ -329,13 +335,14 @@ describe('CorreccionTramoService.corregir (reglas 108 a 111)', () => {
         tx.alqEvento.createMany,
       ].reduce((s, f) => s + f.mock.calls.length, 0);
     };
-    expect(await contar({ '2026-11': 'generado' }, '2026-11')).toBe(9);
+    // Diez: la décima busca las parciales del tramo para la regla 135.
+    expect(await contar({ '2026-11': 'generado' }, '2026-11')).toBe(10);
     expect(
       await contar(
         { '2026-09': 'generado', '2026-10': 'generado', '2026-11': 'generado' },
         '2026-09',
       ),
-    ).toBe(9);
+    ).toBe(10);
   });
 
   describe('lo que se rechaza', () => {
@@ -374,6 +381,102 @@ describe('CorreccionTramoService.corregir (reglas 108 a 111)', () => {
     it('si otra persona cambió el tramo mientras tanto, no se pisa', async () => {
       const tx = makeTx({ conceptos, anulados: aCorregir.length, tramos: 0 });
       await expect(corregir(tx)).rejects.toThrow(ConflictException);
+      expect(tx.alqConcepto.createMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // Regla 135: septiembre se cobró como parcial (el tramo esperaba el IPC),
+  // se confirmó a 1.137.518 con su final, y el inquilino pagó la parcial.
+  // Después las partes negocian 1.000.000 desde septiembre.
+  describe('liquidación parcial y final (regla 135)', () => {
+    const conEtapa = (importe4: number | null) => ({
+      ...paraGenerar,
+      tramos: paraGenerar.tramos.map((t) => (t.numero === 4 ? { ...t, importe: importe4 } : t)),
+    });
+    const parcial = generarPeriodoConParciales(
+      conEtapa(null),
+      '2026-09',
+      21,
+      new Map([[4, { importeProvisorio: 1_043_387, espera: 'el IPC de julio de 2026' }]]),
+    ).conceptos;
+    const final = diferenciasDeLiquidacionFinal({
+      contrato: conEtapa(1_137_518),
+      tramo: 4,
+      ivaInmobiliariaPct: 21,
+      existentes: parcial.map((k) => ({
+        clave: k.clave,
+        sentido: k.sentido,
+        importe: k.importe,
+        etapa: 'parcial' as const,
+        anulado: false,
+      })),
+      vencimiento: '2026-10-20',
+      indice: 'IPC',
+    });
+    const filas = [
+      ...parcial.map((k, i) => ({ k, etapa: 'parcial', id: `p${i}` })),
+      ...final.map((k, i) => ({ k, etapa: 'final', id: `f${i}` })),
+    ].map(({ k, etapa, id }) => ({
+      id,
+      periodo: k.periodo,
+      claveGeneracion: k.clave,
+      sentido: k.sentido,
+      importe: dec(k.importe),
+      etapa,
+      anuladoEn: null,
+      liquidacionId: null,
+      _count: {
+        imputaciones:
+          etapa === 'parcial' && k.tipo === 'alquiler' && k.sentido === 'a_cobrar' ? 1 : 0,
+      },
+    }));
+
+    it('regla 135: el mes cobrado como parcial queda como estaba y recibe otra final con la diferencia', async () => {
+      const tx = makeTx({ conceptos: filas });
+      Object.assign(tx.alqContrato, {
+        findUniqueOrThrow: vi.fn().mockResolvedValue(contrato({ indice: 'IPC' })),
+      });
+      const r = await new CorreccionTramoService(makeDb(tx)).corregir(CTX, 'c5', 4, {
+        ...DTO,
+        importe: 1_000_000,
+        desde: '2026-09',
+      });
+      expect(r.quedan.map((m) => m.periodo)).toEqual(['2026-09']);
+      expect(tx.$executeRaw).not.toHaveBeenCalled();
+      const creadas = tx.alqConcepto.createMany.mock.calls[0]![0].data as {
+        claveGeneracion: string;
+        tipo: string;
+        sentido: string;
+        importe: number;
+        personaId: string;
+        etapa: string;
+      }[];
+      const alquiler = creadas.find(
+        (k) => k.personaId === INQ && k.claveGeneracion.includes('|alquiler|a_cobrar|'),
+      )!;
+      // 1.000.000 − (1.043.387 + 94.131): se le devuelven 137.518, en otra final.
+      expect(alquiler).toMatchObject({
+        tipo: 'otro',
+        sentido: 'a_pagar',
+        importe: 137_518,
+        etapa: 'final',
+      });
+      expect(alquiler.claveGeneracion).toContain('~final2|');
+      expect(claveParcialDeFinal(alquiler.claveGeneracion)).toBe(
+        parcial.find((k) => k.tipo === 'alquiler' && k.sentido === 'a_cobrar')!.clave,
+      );
+    });
+
+    it('regla 135: los meses de antes del elegido no reciben otra final', async () => {
+      const tx = makeTx({ conceptos: filas });
+      Object.assign(tx.alqContrato, {
+        findUniqueOrThrow: vi.fn().mockResolvedValue(contrato({ indice: 'IPC' })),
+      });
+      await new CorreccionTramoService(makeDb(tx)).corregir(CTX, 'c5', 4, {
+        ...DTO,
+        importe: 1_000_000,
+        desde: '2026-10',
+      });
       expect(tx.alqConcepto.createMany).not.toHaveBeenCalled();
     });
   });

@@ -72,6 +72,7 @@ import {
   EventoDtoSchema,
   type ContratoDatos,
   IndexacionConfirmadaDtoSchema,
+  VistaPreviaDiferenciasDtoSchema,
   ContratoResumenDtoSchema,
   type CambiarEstadoContrato,
   type ContratoInput,
@@ -187,6 +188,22 @@ export async function confirmarIndexacion(
     method: 'POST',
     body: { importe },
   });
+}
+
+/**
+ * Regla 137: qué diferencias generaría confirmar el tramo en los meses
+ * cobrados como liquidación parcial. `importe` solo para Casa Propia.
+ */
+export async function previsualizarDiferencias(
+  accessToken: string,
+  tramoId: string,
+  importe: number | null,
+) {
+  return apiFetch(
+    `/alquileres/indexaciones/${tramoId}/diferencias`,
+    VistaPreviaDiferenciasDtoSchema,
+    { accessToken, searchParams: importe == null ? {} : { importe } },
+  );
 }
 
 /** Los conceptos de un mes (`AAAA-MM`). */

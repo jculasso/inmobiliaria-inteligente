@@ -2,8 +2,8 @@ import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { describe, expect, it } from 'vitest';
 import type { CobroDto } from '@vacker/types';
-import { textoDePdf } from '../../common/texto-pdf';
-import { LEYENDA_NO_FACTURA, ReciboDocument } from './recibo.template';
+import { fuentesUsadasEnPdf, textoDePdf } from '../../common/texto-pdf';
+import { LEYENDA_NO_FACTURA, ReciboDocument, notaDeFinal } from './recibo.template';
 
 const cobro = (over: Partial<CobroDto> = {}): CobroDto => ({
   id: '11111111-1111-4111-8111-111111111111',
@@ -22,6 +22,7 @@ const cobro = (over: Partial<CobroDto> = {}): CobroDto => ({
       sentido: 'a_pagar',
       importe: 140_699,
       deSaldoAFavor: null,
+      liquidacionFinal: null,
     },
     {
       conceptoId: '55555555-5555-4555-8555-555555555555',
@@ -30,6 +31,7 @@ const cobro = (over: Partial<CobroDto> = {}): CobroDto => ({
       sentido: 'a_cobrar',
       importe: 1_137_518,
       deSaldoAFavor: 7,
+      liquidacionFinal: null,
     },
   ],
   aFavor: 103_181,
@@ -89,6 +91,64 @@ describe('Recibo (regla 23)', () => {
         }),
       ),
     ).toContain('Transferencia rechazada');
+  });
+});
+
+describe('Recibo de una liquidación final (regla 138)', () => {
+  const conFinal = (recibos: number[]) =>
+    cobro({
+      numero: 52,
+      importe: 55_916,
+      aFavor: 0,
+      imputaciones: [
+        {
+          conceptoId: '66666666-6666-4666-8666-666666666666',
+          contrato: { id: '44444444-4444-4444-8444-444444444444', codigo: 'ALT-0005' },
+          descripcion: 'Alquiler octubre 2026 — liquidación final (diferencia por IPC)',
+          sentido: 'a_cobrar',
+          importe: 55_916,
+          deSaldoAFavor: null,
+          liquidacionFinal: { periodo: '2026-10', parcial: 600_000, recibos },
+        },
+      ],
+    });
+
+  it('regla 138: la línea dice «Liquidación final de octubre» y nombra la parcial ya pagada y su recibo', async () => {
+    const t = await texto(conFinal([45]));
+    // Montserrat dibuja «fi» como una ligadura: un solo glifo que `textoDePdf`
+    // no traduce. En la hoja se lee «final»; en el texto extraído, «nal».
+    const comoSeExtrae = (s: string) => s.replaceAll('fi', '');
+    expect(t).toContain(
+      comoSeExtrae('Alquiler octubre 2026 — liquidación final (diferencia por IPC)'),
+    );
+    expect(t).toContain(comoSeExtrae('Liquidación final de octubre de 2026'));
+    expect(t).toContain(
+      'completa la liquidación parcial de $ 600.000,00, pagada en el recibo N° 000045',
+    );
+  });
+
+  it('regla 138: si la parcial no se pagó, o se paga en el mismo recibo, lo dice', () => {
+    const c = { numero: 52, moneda: 'ARS' as const };
+    const f = { periodo: '2026-10', parcial: 600_000 };
+    expect(notaDeFinal({ ...f, recibos: [] }, c)).toMatch(/, todavía sin pagar$/);
+    expect(notaDeFinal({ ...f, recibos: [52] }, c)).toMatch(/, pagada en este recibo$/);
+    expect(notaDeFinal({ ...f, recibos: [45, 52] }, c)).toMatch(
+      /, pagada en el recibo N° 000045 y en este$/,
+    );
+  });
+
+  it('regla 138: solo dibuja con Montserrat (CONVENCIONES_TECNICAS §14)', async () => {
+    const familias = fuentesUsadasEnPdf(
+      await renderToBuffer(
+        <ReciboDocument
+          cobro={conFinal([45])}
+          tenantNombre="Alteva Propiedades"
+          logoUrl={null}
+          colorPrimario={null}
+        />,
+      ),
+    );
+    expect(familias.every((f) => f.startsWith('Montserrat'))).toBe(true);
   });
 });
 

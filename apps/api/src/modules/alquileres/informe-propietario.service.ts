@@ -80,6 +80,8 @@ interface Fila {
   descripcion: string;
   clave: string | null;
   claveOrigen: string | null;
+  /** Regla 130: liquidación parcial o final; `null` para un mes normal. */
+  etapa: string | null;
   liquidacion: {
     id: string;
     numero: number;
@@ -242,6 +244,7 @@ export class InformePropietarioService {
           descripcion: true,
           claveGeneracion: true,
           claveOrigen: true,
+          etapa: true,
           origenId: true,
           liquidacionId: true,
           liquidacion: {
@@ -352,6 +355,7 @@ export class InformePropietarioService {
       descripcion: k.descripcion ?? k.tipo,
       clave: k.claveGeneracion,
       claveOrigen: k.claveOrigen,
+      etapa: k.etapa,
       liquidacion: k.liquidacion
         ? {
             id: k.liquidacion.id,
@@ -597,6 +601,8 @@ function contratoDelInforme(
       enEspera: suma((e) => e.espera),
       cobradoEl: cobradoEl.get(`${c.id}|${periodo}`) ?? [],
       liquidaciones: [...liqs.values()].sort((a, b) => a.numero - b.numero),
+      // Todo lo del mes, no solo el alquiler: una final negativa es un reintegro (regla 134).
+      nota: notaDeEtapa(filas.filter((f) => f.contratoId === c.id && f.periodo === periodo)),
     };
   });
   return {
@@ -612,6 +618,26 @@ function contratoDelInforme(
     vence: fromDate(c.rescindidoEl ?? c.fin)!,
     meses,
   };
+}
+
+/**
+ * Regla 140: si el alquiler del mes se cobró como liquidación parcial, lo dice
+ * con lo que espera («Liquidación parcial (espera el IPC de septiembre de
+ * 2026)»); si ya tiene la final, que el mes se completó. Sale de la
+ * descripción que la generación le puso al concepto: la misma frase que el
+ * recibo y la liquidación.
+ */
+function notaDeEtapa(delMes: Fila[]): string | null {
+  const final = delMes.find((f) => f.etapa === 'final');
+  const parcial = delMes.find((f) => f.etapa === 'parcial');
+  if (!parcial && !final) return null;
+  const queDice = (f: Fila) => f.descripcion.split(' — ').at(-1) ?? '';
+  if (final) {
+    const porQue = /\(([^)]*)\)$/.exec(queDice(final))?.[1]?.split(',')[0];
+    return `Liquidación parcial y final${porQue ? ` (${porQue})` : ''}`;
+  }
+  const texto = queDice(parcial!);
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 /** Cómo se llama un descuento: el impuesto, el proveedor (regla 91). */

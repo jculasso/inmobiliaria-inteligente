@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { CobroDto } from '@vacker/types';
+import { mesLargo } from '@vacker/domain';
 import { FUENTE_MARCA } from '../tasador/informes/fuentes';
 
 // Recibo de un cobro (spec alquileres, regla 23). Mismo encabezado que los
@@ -98,6 +99,27 @@ export const pesos = (n: number, moneda: CobroDto['moneda']) =>
 
 export const fecha = (iso: string) => iso.split('-').reverse().join('/');
 
+/**
+ * Regla 138: la línea de una liquidación final dice de qué mes es y qué
+ * parcial completa, y dónde se pagó esa parcial: «Liquidación final de
+ * octubre de 2026 · completa la liquidación parcial de $ 645.321,00, pagada en
+ * el recibo N° 000045».
+ */
+export function notaDeFinal(
+  f: NonNullable<CobroDto['imputaciones'][number]['liquidacionFinal']>,
+  cobro: Pick<CobroDto, 'numero' | 'moneda'>,
+): string {
+  const n = (x: number) => String(x).padStart(6, '0');
+  const otros = f.recibos.filter((r) => r !== cobro.numero);
+  const dondeSePago =
+    f.recibos.length === 0
+      ? 'todavía sin pagar'
+      : otros.length === 0
+        ? 'pagada en este recibo'
+        : `pagada en ${otros.length === 1 ? 'el recibo' : 'los recibos'} N° ${otros.map(n).join(', ')}${otros.length < f.recibos.length ? ' y en este' : ''}`;
+  return `Liquidación final de ${mesLargo(`${f.periodo}-01`)} · completa la liquidación parcial de ${pesos(f.parcial, cobro.moneda)}, ${dondeSePago}`;
+}
+
 export function ReciboDocument({
   cobro,
   tenantNombre,
@@ -171,6 +193,9 @@ export function ReciboDocument({
             <Text style={e.colContrato}>{i.contrato?.codigo ?? '—'}</Text>
             <View style={e.colConcepto}>
               <Text>{i.descripcion}</Text>
+              {i.liquidacionFinal && (
+                <Text style={e.nota}>{notaDeFinal(i.liquidacionFinal, cobro)}</Text>
+              )}
               {i.sentido === 'a_pagar' && (
                 <Text style={e.nota}>Reintegro a su favor, descontado de lo que debía</Text>
               )}

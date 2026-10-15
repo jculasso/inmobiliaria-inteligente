@@ -132,6 +132,8 @@ const tablero = (over: Partial<TableroAlquileresDto> = {}): TableroAlquileresDto
     reclamos: vacio,
     polizas: vacio,
     boletas: vacio,
+    indexacionesEsperan: vacio,
+    finalesPendientes: vacio,
   },
   ...over,
 });
@@ -337,6 +339,64 @@ describe('TableroAlquileres', () => {
     expect(c6).toHaveTextContent('01/10/2026 vencida');
     // Lo de hoy viaja con el tablero: no se pide nada.
     expect(getDetalle).not.toHaveBeenCalled();
+  });
+
+  // ALT-0005 de Alteva espera el IPC de septiembre: no es una indexación vencida.
+  it('regla 139: lo que espera el índice va en su propia tarea y la lista no lo pinta «vencida»', () => {
+    const vigentes = ind([
+      fila(5, null, { contrato: 'ALT-0005', indexa: '2026-10-01' }),
+      fila(6, null, { contrato: 'ALT-0003', indexa: '2026-10-01' }),
+    ]);
+    const esperan = ind([
+      fila(5, null, { contrato: 'ALT-0005', estado: 'Espera el IPC de septiembre de 2026' }),
+    ]);
+    const base = tablero();
+    render(
+      <TableroAlquileres
+        tableros={tres(
+          tablero({
+            cartera: { ...base.cartera, vigentes },
+            tareas: { ...base.tareas, indexacionesVencidas: vacio, indexacionesEsperan: esperan },
+          }),
+        )}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: /Indexaciones que esperan el índice/ }),
+    ).toHaveTextContent('1');
+    fireEvent.click(tarjeta(/^Contratos vigentes: /));
+    const [, alt5, alt3] = within(screen.getByRole('dialog')).getAllByRole('row');
+    expect(alt5).toHaveTextContent('01/10/2026 espera el índice');
+    expect(alt5).not.toHaveTextContent('vencida');
+    expect(alt3).toHaveTextContent('01/10/2026 vencida');
+  });
+
+  it('regla 139: las liquidaciones finales pendientes llevan a cobrar, con lo que falta', () => {
+    const base = tablero();
+    const finales = ind([
+      fila(5, 57_269.17, {
+        contrato: 'ALT-0005',
+        detalle: 'Liquidación final de octubre de 2026',
+        fecha: '2026-10-26',
+        estado: 'Vence en 6 días',
+        href: '/alquileres/personas/inq5',
+      }),
+    ]);
+    render(
+      <TableroAlquileres
+        tableros={tres(tablero({ tareas: { ...base.tareas, finalesPendientes: finales } }))}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Liquidaciones finales pendientes de cobro/ }),
+    );
+    const dialogo = within(screen.getByRole('dialog'));
+    expect(dialogo.getByRole('table')).toHaveTextContent('Liquidación final de octubre de 2026');
+    expect(dialogo.getByRole('table')).toHaveTextContent('$ 57.269,17');
+    expect(dialogo.getByRole('link', { name: 'Ir a cobrar →' })).toHaveAttribute(
+      'href',
+      '/alquileres/cobros/nuevo',
+    );
   });
 
   it('una tarea lleva a donde se resuelve', () => {

@@ -29,6 +29,8 @@ import { aFilas, aParaGenerar } from './conceptos.service';
 import { feriadosDe } from './feriados';
 import { plata, registrarEventos } from './historial';
 import { IMPUTACION_ACTIVA } from './imputacion-activa';
+import { diferenciasFinales } from './liquidacion-final';
+import { hoyArgentina } from '../protocolo/protocolo.calc';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -168,6 +170,20 @@ export class CorreccionTramoService {
         );
         if (filas.length) await tx.alqConcepto.createMany({ data: filas, skipDuplicates: true });
       }
+
+      // Regla 135: un mes que quedó como estaba (algo cobrado o liquidado) y
+      // se había cobrado como liquidación parcial recibe otra final con la
+      // diferencia contra el importe corregido. Los que se volvieron a generar
+      // ya salieron normales: su parcial y su final se anularon arriba.
+      await diferenciasFinales(tx, {
+        tenantId: ctx.tenantId,
+        contratoId: id,
+        tramo: numero,
+        importe,
+        hoy: hoyArgentina(),
+        crear: { ctx },
+        desde: dto.desde,
+      });
 
       const moneda = l.contrato.moneda;
       const quedan = plan.quedan.map((m) => `${mesLargo(`${m.periodo}-01`)} (${ESTADO[m.estado]})`);
