@@ -829,7 +829,8 @@ model AlqConcepto {
   /// el contrato). Columna GENERADA en la base; con índice, para buscar por
   /// origen sin recorrer todos los conceptos con un LIKE.
   claveOrigen               String?   @map("clave_origen")
-  /// El cobro que lo creó: los punitorios nacen al cobrar (regla 16).
+  /// El cobro que lo creó: los punitorios nacen al cobrar (regla 16), y la
+  /// seña con su recibo (regla 169). Anular el cobro anula estos conceptos.
   cobroId                   String?   @map("cobro_id") @db.Uuid
   /// Regla 130: `parcial` si se generó con el importe del tramo anterior porque
   /// el índice no había salido; `final`, la diferencia cuando salió. NULL para
@@ -837,6 +838,9 @@ model AlqConcepto {
   etapa                     String?
   /// El número del tramo del contrato de la parcial o la final.
   tramoNumero               Int?      @map("tramo_numero")
+  /// La reserva de la que sale: la seña y su destino (reglas 169 a 171). Una
+  /// seña retenida no tiene contrato: la reserva dice de quién es.
+  reservaId                 String?   @map("reserva_id") @db.Uuid
   creadoPorId               String?   @map("creado_por_id") @db.Uuid
   anuladoEn                 DateTime? @map("anulado_en") @db.Timestamptz(6)
   anuladoPorId              String?   @map("anulado_por_id") @db.Uuid
@@ -850,6 +854,7 @@ model AlqConcepto {
   liquidacion  AlqLiquidacion? @relation(fields: [liquidacionId], references: [id], onDelete: SetNull)
   imputaciones AlqImputacion[]
   cobro        AlqCobro?       @relation("ConceptoDelCobro", fields: [cobroId], references: [id], onDelete: SetNull)
+  reserva      AlqReserva?     @relation(fields: [reservaId], references: [id], onDelete: Restrict)
 
   @@unique([tenantId, claveGeneracion])
   @@index([tenantId])
@@ -862,6 +867,7 @@ model AlqConcepto {
   @@index([liquidacionId])
   @@index([origenId])
   @@index([contratoId, tramoNumero])
+  @@index([reservaId])
   @@map("alq_concepto")
 }
 
@@ -1445,12 +1451,10 @@ model AlqReserva {
   vence             DateTime  @db.Date
   /// reservada | en_estudio | aprobada | convertida | rechazada | vencida | anulada
   estado            String    @default("reservada")
-  /// La seña: se registra y no genera conceptos (regla 161).
+  /// La seña acordada. Cobrarla da un recibo (regla 169): el concepto `sena`
+  /// del interesado y su cobro; «recibida» sale de ese recibo, no de acá.
   senaImporte       Decimal?  @map("sena_importe") @db.Decimal(14, 2)
   senaMoneda        String?   @map("sena_moneda")
-  senaRecibida      Boolean   @default(false) @map("sena_recibida")
-  senaRecibidaEl    DateTime? @map("sena_recibida_el") @db.Date
-  senaMedio         String?   @map("sena_medio")
   // Las condiciones propuestas: pueden quedar sin cargar.
   tipo              String    @default("vivienda")
   moneda            String    @default("ARS")
@@ -1476,6 +1480,7 @@ model AlqReserva {
   contrato  AlqContrato?      @relation(fields: [contratoId], references: [id], onDelete: SetNull)
   partes    AlqReservaParte[]
   garantias AlqGarantia[]
+  conceptos AlqConcepto[]
 
   @@unique([tenantId, numero])
   @@index([tenantId])

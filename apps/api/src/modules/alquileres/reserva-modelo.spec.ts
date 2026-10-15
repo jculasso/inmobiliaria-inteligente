@@ -42,9 +42,18 @@ function reservaDePrueba(garantes = 1): ReservaParaPlantilla {
     obs: 'Ingresa con una mascota.',
     senaImporte: new Prisma.Decimal(500),
     senaMoneda: 'USD',
-    senaRecibida: true,
-    senaRecibidaEl: d('2026-10-15'),
-    senaMedio: 'transferencia',
+    // Cobrada, con el recibo 000123 (regla 169).
+    conceptos: [
+      {
+        id: 'k-sena',
+        sentido: 'a_cobrar',
+        importe: new Prisma.Decimal(500),
+        moneda: 'USD',
+        personaId: 'ana',
+        contratoId: null,
+        cobro: { id: 'c-sena', numero: 123, fecha: d('2026-10-15'), medio: 'transferencia' },
+      },
+    ],
     tipo: 'vivienda',
     moneda: 'ARS',
     alquilerInicial: new Prisma.Decimal(600_000),
@@ -135,6 +144,7 @@ describe('datosDeReserva (regla 163)', () => {
       'sena.importe': 'U$S 500,00',
       'sena.fecha': '15/10/2026',
       'sena.medio': 'transferencia',
+      'sena.recibo': '000123',
       'contrato.inicio': '01/11/2026',
       'contrato.fin': '31/10/2028',
       'alquiler.inicial': '$ 600.000,00',
@@ -160,7 +170,7 @@ describe('datosDeReserva (regla 163)', () => {
       duracionMeses: null,
       indice: null,
       senaImporte: null,
-      senaRecibida: false,
+      conceptos: [],
       depositoImporte: null,
       obs: null,
     };
@@ -216,7 +226,7 @@ describe('Plantillas de reserva (reglas 162 y 163)', () => {
     const texto = textoDeDocx(completarPlantillaWord(ejemplo, datos()));
     expect(texto).toContain('RESERVA DE LOCACIÓN N.º 12');
     expect(texto).toContain('EL INTERESADO entrega U$S 500,00');
-    expect(texto).toContain('Recibida el 15/10/2026 por transferencia.');
+    expect(texto).toContain('Recibida el 15/10/2026 por transferencia, recibo 000123.');
     expect(texto).toContain('de propiedad de Juan Propietario');
     expect(texto).toContain('Garantía Propietaria: Carlos Garante. Mendoza 900, Rosario');
     expect(texto).not.toContain('undefined');

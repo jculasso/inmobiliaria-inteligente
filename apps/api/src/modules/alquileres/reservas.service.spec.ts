@@ -30,9 +30,6 @@ const entrada = (over: Partial<ReservaInput> = {}) =>
     ],
     senaImporte: 500,
     senaMoneda: 'USD',
-    senaRecibida: true,
-    senaRecibidaEl: '2026-10-15',
-    senaMedio: 'transferencia',
     alquilerInicial: 600_000,
     inicio: '2026-11-01',
     duracionMeses: 24,
@@ -56,9 +53,8 @@ function filaFicha(over: Record<string, unknown> = {}) {
     vence: d('2026-10-22'),
     senaImporte: new Prisma.Decimal(500),
     senaMoneda: 'USD',
-    senaRecibida: true,
-    senaRecibidaEl: d('2026-10-15'),
-    senaMedio: 'transferencia',
+    // La seña todavía sin cobrar; `conSena()` la cobra (regla 169).
+    conceptos: [],
     moneda: 'ARS',
     alquilerInicial: new Prisma.Decimal(600_000),
     inicio: d('2026-11-01'),
@@ -83,6 +79,19 @@ function filaFicha(over: Record<string, unknown> = {}) {
   };
 }
 
+/** La seña cobrada: su concepto con el recibo 000123 (regla 169). */
+const SENA_COBRADA = {
+  id: 'k-sena',
+  sentido: 'a_cobrar',
+  importe: new Prisma.Decimal(500),
+  moneda: 'USD',
+  personaId: ANA,
+  contratoId: null,
+  cobro: { id: 'c-sena', numero: 123, fecha: d('2026-10-15'), medio: 'transferencia' },
+};
+const conSena = (over: Record<string, unknown> = {}) =>
+  filaFicha({ conceptos: [SENA_COBRADA], ...over });
+
 function garantia(estado: string) {
   return {
     id: `g-${estado}-${Math.random()}`,
@@ -104,6 +113,7 @@ function servicio(
     garantias?: ReturnType<typeof garantia>[];
     personas?: number;
     lista?: Record<string, unknown>[];
+    config?: Record<string, unknown>;
   } = {},
 ) {
   const actual = over.actual === undefined ? filaFicha() : over.actual;
@@ -118,7 +128,27 @@ function servicio(
       update: vi.fn().mockResolvedValue({}),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
-    alqReservaParte: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
+    alqReservaParte: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
+      create: vi.fn().mockResolvedValue({}),
+    },
+    // La seña: su concepto, su recibo y la imputación (reglas 169 a 171).
+    alqConcepto: {
+      create: vi.fn().mockResolvedValue({}),
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    alqCobro: {
+      aggregate: vi.fn().mockResolvedValue({ _max: { numero: 122 } }),
+      create: vi.fn().mockResolvedValue({}),
+    },
+    alqImputacion: { create: vi.fn().mockResolvedValue({}) },
+    tenant: {
+      findUniqueOrThrow: vi
+        .fn()
+        .mockResolvedValue({ config: over.config ?? { ivaHonorariosPct: 21 } }),
+    },
+    $executeRaw: vi.fn().mockResolvedValue(1),
     alqPropiedad: {
       findUnique: vi.fn().mockResolvedValue({ direccion: 'Mitre 100', unidad: '2° A' }),
     },
@@ -187,8 +217,6 @@ describe('ReservasService · alta (reglas 154 y 156)', () => {
       propiedadId: PROPIEDAD,
       senaImporte: 500,
       senaMoneda: 'USD',
-      senaRecibida: true,
-      senaMedio: 'transferencia',
       depositoMoneda: 'USD',
     });
     expect(data.partes.create).toEqual([
@@ -433,8 +461,8 @@ describe('ReservasService · convertir en contrato (reglas 159 y 161)', () => {
     expect(tx.alqGarantia.createMany).not.toHaveBeenCalled();
   });
 
-  it('regla 161: la reserva del contrato trae su seña', async () => {
-    const { s, tx } = servicio();
+  it('regla 161: la reserva del contrato trae su seña, con su recibo', async () => {
+    const { s, tx } = servicio({ actual: conSena() });
     expect(await s.delContrato('k1')).toEqual({
       reserva: {
         id: 'r1',
@@ -445,6 +473,7 @@ describe('ReservasService · convertir en contrato (reglas 159 y 161)', () => {
           recibida: true,
           recibidaEl: '2026-10-15',
           medio: 'transferencia',
+          recibo: { id: 'c-sena', numero: 123 },
         },
       },
     });
@@ -458,12 +487,26 @@ describe('ReservasService · convertir en contrato (reglas 159 y 161)', () => {
     expect(await s.delContrato('k1')).toEqual({ reserva: null });
   });
 
-  it('regla 160: borrar el contrato en borrador devuelve la reserva a aprobada', async () => {
-    const { tx } = servicio({ actual: { id: 'r1', numero: 4 } });
-    await devolverReservaDelContrato(tx as never, CTX, 'k1', 'ALT-0012');
+  const convertida = (conceptos: unknown[] = [], estado = 'borrador') => ({
+    id: 'r1',
+    numero: 4,
+    contrato: { codigo: 'ALT-0012', estado },
+    conceptos,
+  });
+
+  it('regla 160: borrar el contrato en borrador devuelve la reserva a aprobada, con su seña', async () => {
+    const { tx } = servicio({ actual: convertida() });
+    const extra = { updateMany: vi.fn(), deleteMany: vi.fn() };
+    Object.assign(tx.alqConcepto, extra);
+    await devolverReservaDelContrato(tx as never, CTX, 'k1');
     expect(tx.alqReserva.update).toHaveBeenCalledWith({
       where: { id: 'r1' },
       data: { estado: 'aprobada', contratoId: null },
+    });
+    // La seña que había pasado a ser el depósito vuelve a la reserva (regla 170).
+    expect(extra.updateMany).toHaveBeenCalledWith({
+      where: { reservaId: 'r1', contratoId: 'k1', tipo: 'sena' },
+      data: { contratoId: null },
     });
     expect(tx.alqEvento.createMany.mock.calls[0]![0].data[0]).toMatchObject({
       entidad: 'reserva',
@@ -473,10 +516,287 @@ describe('ReservasService · convertir en contrato (reglas 159 y 161)', () => {
     });
   });
 
-  it('regla 160: un contrato que no salió de una reserva se borra sin tocar reservas', async () => {
+  it('regla 160: el reintegro de lo que sobraba se deshace; si ya se usó, no se borra', async () => {
+    const sinUsar = servicio({
+      actual: convertida([{ id: 'reint', tipo: 'deposito', imputaciones: [] }]),
+    });
+    Object.assign(sinUsar.tx.alqConcepto, { updateMany: vi.fn(), deleteMany: vi.fn() });
+    await devolverReservaDelContrato(sinUsar.tx as never, CTX, 'k1');
+    expect(
+      (sinUsar.tx.alqConcepto as unknown as { deleteMany: ReturnType<typeof vi.fn> }).deleteMany,
+    ).toHaveBeenCalledWith({ where: { id: { in: ['reint'] } } });
+    const usado = servicio({
+      actual: convertida([{ id: 'reint', tipo: 'deposito', imputaciones: [{ id: 'i' }] }]),
+    });
+    await expect(devolverReservaDelContrato(usado.tx as never, CTX, 'k1')).rejects.toThrow(
+      'El reintegro de la seña de la reserva 4 ya se usó en un cobro: anulá ese cobro primero.',
+    );
+  });
+
+  it('regla 160: un contrato que no salió de una reserva, o que no está en borrador, no toca reservas', async () => {
     const { tx } = servicio({ actual: null });
-    await devolverReservaDelContrato(tx as never, CTX, 'k1', 'ALT-0012');
+    await devolverReservaDelContrato(tx as never, CTX, 'k1');
     expect(tx.alqReserva.update).not.toHaveBeenCalled();
+    const vigente = servicio({ actual: convertida([], 'vigente') });
+    await devolverReservaDelContrato(vigente.tx as never, CTX, 'k1');
+    expect(vigente.tx.alqReserva.update).not.toHaveBeenCalled();
+  });
+});
+
+const PAGO = { fecha: '2026-10-15', medio: 'transferencia', personaId: null, obs: null } as const;
+
+describe('La seña: recibo, depósito y retención (reglas 169 a 172)', () => {
+  it('regla 169: cobrarla da un recibo de Cobros, a nombre del interesado, que la cancela', async () => {
+    const { s, tx } = servicio();
+    await s.cobrarSena(CTX, 'r1', PAGO);
+    // El mismo candado que Cobros: no se repiten números de recibo.
+    expect(tx.$executeRaw).toHaveBeenCalled();
+    const cobro = tx.alqCobro.create.mock.calls[0]![0].data;
+    expect(cobro).toMatchObject({
+      numero: 123,
+      personaId: ANA,
+      moneda: 'USD',
+      importe: 500,
+      medio: 'transferencia',
+      fecha: d('2026-10-15'),
+    });
+    const concepto = tx.alqConcepto.create.mock.calls[0]![0].data;
+    expect(concepto).toMatchObject({
+      tipo: 'sena',
+      sentido: 'a_cobrar',
+      personaId: ANA,
+      reservaId: 'r1',
+      importe: 500,
+      moneda: 'USD',
+      cobroId: cobro.id,
+      descripcion: 'Seña de la reserva 1 · Mitre 100 2° A',
+    });
+    expect(tx.alqImputacion.create.mock.calls[0]![0].data).toMatchObject({
+      cobroId: cobro.id,
+      conceptoId: concepto.id,
+      registradaEnCobroId: cobro.id,
+      importe: 500,
+    });
+    // En la línea de tiempo de la reserva y en el historial de la persona.
+    expect(tx.alqEvento.createMany.mock.calls[0]![0].data).toEqual([
+      expect.objectContaining({
+        entidad: 'reserva',
+        resumen: 'Reserva 1: Seña de U$S 500,00 cobrada: recibo 000123',
+      }),
+      expect.objectContaining({ entidad: 'cobro', personaId: ANA }),
+    ]);
+  });
+
+  it('regla 169: una vez por recibo vigente; la paga un interesado; con la reserva abierta', async () => {
+    const ya = servicio({ actual: conSena() });
+    await expect(ya.s.cobrarSena(CTX, 'r1', PAGO)).rejects.toThrow(
+      'La seña ya se cobró: recibo 000123.',
+    );
+    const otro = servicio();
+    await expect(otro.s.cobrarSena(CTX, 'r1', { ...PAGO, personaId: CARLOS })).rejects.toThrow(
+      'La seña la paga un interesado de la reserva.',
+    );
+    const cerrada = servicio({ actual: filaFicha({ estado: 'anulada' }) });
+    await expect(cerrada.s.cobrarSena(CTX, 'r1', PAGO)).rejects.toThrow(
+      /la seña se cobra con la reserva abierta/,
+    );
+    expect(otro.tx.alqCobro.create).not.toHaveBeenCalled();
+  });
+
+  it('regla 169: con el recibo hecho, el importe de la seña no se cambia', async () => {
+    const { s, tx } = servicio({ actual: conSena() });
+    await expect(s.actualizar(CTX, 'r1', entrada({ senaImporte: 700 }))).rejects.toThrow(
+      'La seña ya tiene el recibo 000123: para cambiarla, anulá ese recibo en Cobros.',
+    );
+    await s.actualizar(CTX, 'r1', entrada({ vence: '2026-10-29' }));
+    expect(tx.alqReserva.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('regla 172: anular la reserva con la seña cobrada pide anular el recibo primero', async () => {
+    const { s, tx } = servicio({ actual: conSena() });
+    await expect(
+      s.cambiarEstado(CTX, 'r1', { estado: 'anulada', motivo: 'Se cargó dos veces' }),
+    ).rejects.toThrow(
+      'La seña tiene el recibo 000123: anulalo primero, en Cobros, y después anulá la reserva.',
+    );
+    expect(tx.alqReserva.update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['en_estudio', { estado: 'rechazada', motivo: 'Garantías insuficientes' }, '2026-10-16'],
+    ['reservada', { estado: 'vencida' }, '2026-10-23'],
+    ['aprobada', { estado: 'no_se_presento' }, '2026-10-20'],
+  ] as const)(
+    'regla 171: %s → %o retiene la seña y se la entrega al propietario',
+    async (desde, cambio, hoy) => {
+      const { s, tx } = servicio({
+        actual: conSena({
+          estado: desde,
+          partes: [
+            { personaId: ANA, papel: 'inquilino', persona: { nombre: 'Ana' } },
+            { personaId: 'duena-1', papel: 'propietario', persona: { nombre: 'Marta' } },
+            { personaId: 'duena-2', papel: 'propietario', persona: { nombre: 'Rosa' } },
+          ],
+        }),
+      });
+      await s.cambiarEstado(CTX, 'r1', cambio as never, hoy);
+      const filas = tx.alqConcepto.createMany.mock.calls[0]![0].data;
+      // En partes iguales, a pagar a cada propietario, ligadas a la seña y a su recibo.
+      expect(filas).toEqual([
+        expect.objectContaining({
+          personaId: 'duena-1',
+          tipo: 'sena',
+          sentido: 'a_pagar',
+          importe: 250,
+          moneda: 'USD',
+          reservaId: 'r1',
+          origenId: 'k-sena',
+          cobroId: 'c-sena',
+        }),
+        expect.objectContaining({ personaId: 'duena-2', importe: 250 }),
+      ]);
+      expect(tx.alqEvento.createMany.mock.calls.at(-1)![0].data[0].resumen).toContain(
+        'la seña de U$S 500,00 se le entrega al propietario en su próxima liquidación',
+      );
+    },
+  );
+
+  it('regla 171: con honorarios configurados, se le descuentan al propietario (más IVA)', async () => {
+    const { s, tx } = servicio({
+      actual: conSena({
+        estado: 'en_estudio',
+        partes: [{ personaId: 'duena-1', papel: 'propietario', persona: { nombre: 'Marta' } }],
+      }),
+      config: { honorariosSenaRetenidaPct: 10, ivaHonorariosPct: 21 },
+    });
+    await s.cambiarEstado(
+      CTX,
+      'r1',
+      { estado: 'rechazada', motivo: 'Sin garantías' },
+      '2026-10-16',
+    );
+    expect(tx.alqConcepto.createMany.mock.calls[0]![0].data).toEqual([
+      expect.objectContaining({ tipo: 'sena', sentido: 'a_pagar', importe: 500 }),
+      expect.objectContaining({
+        tipo: 'honorarios',
+        sentido: 'a_cobrar',
+        personaId: 'duena-1',
+        importe: 60.5,
+      }),
+    ]);
+  });
+
+  it('regla 171: sin propietario cargado, cerrar pide uno; elegido, se suma a la reserva', async () => {
+    const sinDueno = servicio({ actual: conSena({ estado: 'aprobada' }) });
+    await expect(
+      sinDueno.s.cambiarEstado(CTX, 'r1', { estado: 'no_se_presento' }, '2026-10-20'),
+    ).rejects.toThrow(
+      'Para retener la seña hace falta el propietario: elegí a quién se le entrega.',
+    );
+    expect(sinDueno.tx.alqReserva.update).not.toHaveBeenCalled();
+    const elegido = servicio({ actual: conSena({ estado: 'aprobada' }) });
+    await elegido.s.cambiarEstado(
+      CTX,
+      'r1',
+      { estado: 'no_se_presento', propietarioId: 'duena-1' },
+      '2026-10-20',
+    );
+    expect(elegido.tx.alqReservaParte.create).toHaveBeenCalledWith({
+      data: {
+        tenantId: CTX.tenantId,
+        reservaId: 'r1',
+        personaId: 'duena-1',
+        papel: 'propietario',
+      },
+    });
+    expect(elegido.tx.alqConcepto.createMany.mock.calls[0]![0].data[0]).toMatchObject({
+      personaId: 'duena-1',
+      importe: 500,
+    });
+  });
+
+  it('regla 171: sin seña cobrada no hay nada que retener', async () => {
+    const { s, tx } = servicio({ actual: filaFicha({ estado: 'aprobada' }) });
+    await s.cambiarEstado(CTX, 'r1', { estado: 'no_se_presento' }, '2026-10-20');
+    expect(tx.alqConcepto.createMany).not.toHaveBeenCalled();
+    expect(tx.alqReserva.update).toHaveBeenCalledWith({
+      where: { id: 'r1' },
+      data: { estado: 'no_se_presento' },
+    });
+  });
+
+  const contratoCon = (depositoImporte: number | null, depositoMoneda: 'ARS' | 'USD' | null) =>
+    ({
+      propiedadId: PROPIEDAD,
+      moneda: 'ARS',
+      depositoImporte,
+      depositoMoneda,
+    }) as unknown as Contrato;
+
+  it('regla 170: al convertir, la seña pasa a ser el depósito del contrato', async () => {
+    const { s, tx } = servicio({ actual: conSena({ estado: 'aprobada' }) });
+    await s.convertir(CTX, 'r1', contratoCon(500, 'USD'));
+    expect(tx.alqConcepto.update).toHaveBeenCalledWith({
+      where: { id: 'k-sena' },
+      data: { contratoId: 'k1' },
+    });
+    expect(tx.alqConcepto.create).not.toHaveBeenCalled();
+    expect(tx.alqEvento.createMany.mock.calls.at(-1)![0].data[0].resumen).toBe(
+      'Reserva 1 convertida en el contrato ALT-0012. La seña de U$S 500,00 pasa a ser el depósito',
+    );
+  });
+
+  it('regla 170: depósito menor que la seña: se le reintegra la diferencia al inquilino', async () => {
+    const { s, tx } = servicio({ actual: conSena({ estado: 'aprobada' }) });
+    await s.convertir(CTX, 'r1', contratoCon(400, 'USD'));
+    expect(tx.alqConcepto.create.mock.calls[0]![0].data).toMatchObject({
+      contratoId: 'k1',
+      reservaId: 'r1',
+      personaId: ANA,
+      tipo: 'deposito',
+      sentido: 'a_pagar',
+      importe: 100,
+      moneda: 'USD',
+      claveGeneracion: `dep|k1|excedente|${ANA}`,
+      cobroId: 'c-sena',
+    });
+    expect(tx.alqEvento.createMany.mock.calls.at(-1)![0].data[0].resumen).toContain(
+      'se le reintegran U$S 100,00 al inquilino',
+    );
+  });
+
+  it('regla 170: depósito mayor: la diferencia la propone «Cargos de ingreso»', async () => {
+    const { s, tx } = servicio({ actual: conSena({ estado: 'aprobada' }) });
+    await s.convertir(CTX, 'r1', contratoCon(600, 'USD'));
+    expect(tx.alqConcepto.create).not.toHaveBeenCalled();
+    expect(tx.alqEvento.createMany.mock.calls.at(-1)![0].data[0].resumen).toContain(
+      'faltan U$S 100,00, que se proponen como cargo de ingreso',
+    );
+  });
+
+  it('regla 170: la seña y el depósito tienen que ser de la misma moneda', async () => {
+    const { s, tx } = servicio({ actual: conSena({ estado: 'aprobada' }) });
+    await expect(s.convertir(CTX, 'r1', contratoCon(500_000, 'ARS'))).rejects.toThrow(
+      /la seña pasa a ser el depósito, así que tienen que ser de la misma moneda/,
+    );
+    expect(tx.alqConcepto.update).not.toHaveBeenCalled();
+  });
+
+  it('la ficha dice el recibo de la seña y lo que se retuvo', async () => {
+    const retenida = { ...SENA_COBRADA, id: 'k-ret', sentido: 'a_pagar', cobro: null };
+    const { s } = servicio({
+      actual: conSena({ estado: 'rechazada', conceptos: [SENA_COBRADA, retenida] }),
+    });
+    const r = await s.obtener('r1');
+    expect(r.sena).toEqual({
+      importe: 500,
+      moneda: 'USD',
+      recibida: true,
+      recibidaEl: '2026-10-15',
+      medio: 'transferencia',
+      recibo: { id: 'c-sena', numero: 123 },
+    });
+    expect(r.senaRetenida).toBe(500);
   });
 });
 
@@ -504,7 +824,8 @@ describe('ReservasService · lista y ficha (reglas 164 y 168)', () => {
         { personaId: ANA, papel: 'inquilino' },
         { personaId: CARLOS, papel: 'garante' },
       ],
-      sena: { importe: 500, moneda: 'USD', recibida: true },
+      // Acordada y todavía sin cobrar: sin recibo.
+      sena: { importe: 500, moneda: 'USD', recibida: false, recibo: null },
       alquilerInicial: 600_000,
       depositoMoneda: 'USD',
       registrado: { por: 'Lucía Operadora' },

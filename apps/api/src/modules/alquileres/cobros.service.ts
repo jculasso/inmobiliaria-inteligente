@@ -373,6 +373,7 @@ export class CobrosService {
                 where: { ...IMPUTACION_ACTIVA, cobroId: { not: id } },
                 select: { id: true },
               },
+              liquidacion: { select: { numero: true, anuladoEn: true } },
             },
           },
           registradas: {
@@ -393,6 +394,15 @@ export class CobrosService {
       if (c.conceptos.some((k) => k.imputaciones.length > 0)) {
         throw new BadRequestException(
           'Un punitorio de este cobro tiene pagos de otro cobro: anulá ese primero.',
+        );
+      }
+      // Regla 171: la seña retenida nace con el recibo de la seña; si ya se le
+      // liquidó al propietario, anular el recibo lo dejaría cobrado de algo
+      // que no se recibió.
+      const liquidada = c.conceptos.find((k) => k.liquidacion && !k.liquidacion.anuladoEn);
+      if (liquidada?.liquidacion) {
+        throw new BadRequestException(
+          `Lo que nació con este recibo ya se le liquidó al propietario (liquidación ${String(liquidada.liquidacion.numero).padStart(6, '0')}): anulá esa primero.`,
         );
       }
       // Si lo que canceló ya se le liquidó al propietario, anular dejaría al

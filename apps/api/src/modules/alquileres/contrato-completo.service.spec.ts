@@ -149,6 +149,7 @@ describe('Cargos de ingreso (punto 7 de Javier, con los números de Gexion)', ()
 
 describe('Depósito en garantía (punto 12)', () => {
   const k = (sentido: string, clave: string, importe: number, pagado = 0) => ({
+    tipo: 'deposito',
     sentido,
     importe: dec(importe),
     moneda: 'ARS',
@@ -222,5 +223,86 @@ describe('Depósito en garantía (punto 12)', () => {
         claveGeneracion: `dep|c1|entrega|${DUENO}`,
       }),
     ]);
+  });
+});
+
+// Regla 170 (Florencia, Vacker, 15/10/2026): «la seña pasa a ser el depósito».
+describe('La seña de la reserva como depósito (regla 170)', () => {
+  const sena = (importe: number, pagado = importe) => ({
+    tipo: 'sena',
+    sentido: 'a_cobrar',
+    importe: dec(importe),
+    moneda: 'USD',
+    claveGeneracion: 'sena|r1|c-sena',
+    imputaciones: pagado ? [{ importe: dec(pagado) }] : [],
+  });
+  const reintegro = (importe: number) => ({
+    tipo: 'deposito',
+    sentido: 'a_pagar',
+    importe: dec(importe),
+    moneda: 'USD',
+    claveGeneracion: 'dep|c1|excedente|x',
+    imputaciones: [],
+  });
+  const enDolares = (importe: number) =>
+    contrato({ depositoImporte: dec(importe), depositoMoneda: 'USD' }) as never;
+
+  it('la seña igual al depósito lo deja cobrado, en dólares', () => {
+    expect(estadoDeposito(enDolares(500), [sena(500)])).toMatchObject({
+      estado: 'cobrado',
+      cobrado: 500,
+      moneda: 'USD',
+    });
+  });
+
+  it('una seña mayor: cobrado es el depósito, no la seña (lo que sobra se reintegra)', () => {
+    expect(estadoDeposito(enDolares(400), [sena(500), reintegro(100)])).toMatchObject({
+      estado: 'cobrado',
+      cobrado: 400,
+    });
+  });
+
+  it('una seña menor: falta la diferencia, y es lo único que se propone como cargo de ingreso', () => {
+    expect(estadoDeposito(enDolares(600), [sena(500)]).estado).toBe('a_cobrar');
+    const p = propuesta(
+      contrato({ depositoImporte: dec(600), depositoMoneda: 'USD' }) as never,
+      TenantConfigSchema.parse({ comisionInicialPct: 0, selladoComercialPct: 0 }),
+      0,
+      500,
+    );
+    expect(p.filter((x) => x.tipo === 'deposito')).toEqual([
+      expect.objectContaining({
+        importe: 100,
+        moneda: 'USD',
+        descripcion: 'Depósito en garantía (lo que falta después de la seña)',
+      }),
+    ]);
+    // Con la diferencia cobrada, el depósito queda completo.
+    const diferencia = {
+      ...sena(100),
+      tipo: 'deposito',
+      claveGeneracion: 'ing|c1|1|x',
+    };
+    expect(estadoDeposito(enDolares(600), [sena(500), diferencia])).toMatchObject({
+      estado: 'cobrado',
+      cobrado: 600,
+    });
+  });
+
+  it('con la seña igual o mayor, no se propone ningún depósito', () => {
+    const p = propuesta(
+      contrato({ depositoImporte: dec(500), depositoMoneda: 'USD' }) as never,
+      TenantConfigSchema.parse({}),
+      0,
+      500,
+    );
+    expect(p.some((x) => x.tipo === 'deposito')).toBe(false);
+  });
+
+  it('sin depósito en el contrato, una seña reintegrada entera no deja depósito', () => {
+    expect(
+      estadoDeposito(contrato({ depositoImporte: null }) as never, [sena(500), reintegro(500)])
+        .estado,
+    ).toBe('sin_deposito');
   });
 });

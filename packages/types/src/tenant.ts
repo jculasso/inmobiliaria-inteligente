@@ -82,6 +82,12 @@ export const TenantConfigSchema = z.object({
    * el IPC que sale atrasado (Florencia, 15/10/2026).
    */
   diasDiferenciaFinal: z.number().int().min(0).max(60).default(5),
+  /**
+   * Honorarios sobre una seña retenida que se le entrega al propietario
+   * (regla 171; Florencia, Vacker, 15/10/2026). 0 por defecto: la seña pasa
+   * entera.
+   */
+  honorariosSenaRetenidaPct: z.number().min(0).max(100).default(0),
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 

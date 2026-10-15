@@ -8,7 +8,6 @@ import {
   type AjusteContrato,
   type ContratoResumenDto,
   type IndiceAlquiler,
-  type MedioCobro,
   type MonedaAlquiler,
   type PapelContrato,
   type PersonaDto,
@@ -22,12 +21,11 @@ import { Button } from '@vacker/ui';
 import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarReserva, crearReserva } from '../../lib/reservas-api';
 import { escribirImporte, leerImporte, leerNumero } from '../../lib/importe';
-import { hoyIso } from '../../lib/format';
+import { hoyIso, nroDocumento } from '../../lib/format';
 import { mensajeLegible } from '../../lib/mensaje-zod';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { InputImporte } from '../input-importe';
 import { CLASE_FOCO, EncabezadoPagina, MensajeError, Panel } from './piezas';
-import { MEDIOS_COBRO, NOMBRE_MEDIO } from './medios';
 import { NOMBRE_INDICE } from './nombres';
 import { PersonaFormModal } from './persona-form-modal';
 
@@ -88,9 +86,8 @@ export function ReservaForm({
   const [vence, setVence] = useState(reserva?.vence ?? sumarDiasIso(hoy, 7));
   const [senaImporte, setSenaImporte] = useState(escribirImporte(reserva?.sena?.importe));
   const [senaMoneda, setSenaMoneda] = useState<MonedaAlquiler>(reserva?.sena?.moneda ?? 'ARS');
-  const [senaRecibida, setSenaRecibida] = useState(reserva?.sena?.recibida ?? false);
-  const [senaRecibidaEl, setSenaRecibidaEl] = useState(reserva?.sena?.recibidaEl ?? hoy);
-  const [senaMedio, setSenaMedio] = useState<MedioCobro>(reserva?.sena?.medio ?? 'transferencia');
+  // Regla 169: con el recibo hecho, la seña ya no se cambia acá (se anula el recibo).
+  const senaConRecibo = reserva?.sena?.recibo ?? null;
   const [tipo, setTipo] = useState<TipoContrato>(reserva?.tipo ?? 'vivienda');
   const [moneda, setMoneda] = useState<MonedaAlquiler>(reserva?.moneda ?? 'ARS');
   const [alquiler, setAlquiler] = useState(escribirImporte(reserva?.alquilerInicial));
@@ -118,9 +115,6 @@ export function ReservaForm({
         .map((p) => ({ personaId: p.personaId, papel: p.papel })),
       senaImporte: leerImporte(senaImporte),
       senaMoneda,
-      senaRecibida,
-      senaRecibidaEl: senaRecibida ? senaRecibidaEl || null : null,
-      senaMedio: senaRecibida ? senaMedio : null,
       tipo,
       moneda,
       alquilerInicial: leerImporte(alquiler),
@@ -140,9 +134,6 @@ export function ReservaForm({
       partes,
       senaImporte,
       senaMoneda,
-      senaRecibida,
-      senaRecibidaEl,
-      senaMedio,
       tipo,
       moneda,
       alquiler,
@@ -324,13 +315,19 @@ export function ReservaForm({
             />
           </Campo>
           <div className="grid grid-cols-[1fr_7rem] gap-3">
-            <Campo label="Seña" hint="Se registra; no genera cobros ni liquidaciones.">
-              <InputImporte moneda={senaMoneda} value={senaImporte} onChange={setSenaImporte} />
+            <Campo label="Seña" hint="Florencia: un mes de alquiler, igual al depósito.">
+              <InputImporte
+                moneda={senaMoneda}
+                value={senaImporte}
+                onChange={setSenaImporte}
+                disabled={!!senaConRecibo}
+              />
             </Campo>
             <Campo label="En">
               <select
                 className={inputClass}
                 aria-label="Moneda de la seña"
+                disabled={!!senaConRecibo}
                 value={senaMoneda}
                 onChange={(e) => setSenaMoneda(e.target.value as MonedaAlquiler)}
               >
@@ -339,39 +336,15 @@ export function ReservaForm({
               </select>
             </Campo>
           </div>
-          <label className="flex min-h-11 items-center gap-2 self-end text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={senaRecibida}
-              onChange={(e) => setSenaRecibida(e.target.checked)}
-              className="h-5 w-5"
-            />
-            La seña ya se recibió
-          </label>
-          {senaRecibida && (
-            <>
-              <Campo label="Recibida el" requerido>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={senaRecibidaEl}
-                  onChange={(e) => setSenaRecibidaEl(e.target.value)}
-                />
-              </Campo>
-              <Campo label="Cómo" requerido>
-                <select
-                  className={inputClass}
-                  value={senaMedio}
-                  onChange={(e) => setSenaMedio(e.target.value as MedioCobro)}
-                >
-                  {MEDIOS_COBRO.map((m) => (
-                    <option key={m} value={m}>
-                      {NOMBRE_MEDIO[m]}
-                    </option>
-                  ))}
-                </select>
-              </Campo>
-            </>
+          {senaConRecibo ? (
+            <p className="self-end text-xs text-muted">
+              Ya se cobró: recibo {nroDocumento(senaConRecibo.numero)}. Para cambiarla, anulá ese
+              recibo en Cobros.
+            </p>
+          ) : (
+            <p className="self-end text-xs text-muted">
+              Se cobra desde la ficha de la reserva: sale el recibo a nombre del interesado.
+            </p>
           )}
         </div>
       </Panel>

@@ -7,8 +7,10 @@ const descargarPlantilla = vi.fn();
 const descargarEjemploPlantilla = vi.fn();
 const descargarArchivo = vi.fn();
 const descargarEjemploReserva = vi.fn();
+const descargarEjemploAnexo = vi.fn();
 vi.mock('../../lib/reservas-api', () => ({
   descargarEjemploReserva: (...a: unknown[]) => descargarEjemploReserva(...a),
+  descargarEjemploAnexo: (...a: unknown[]) => descargarEjemploAnexo(...a),
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('../../lib/supabase/client', () => ({
@@ -172,5 +174,30 @@ describe('PlantillasVista', () => {
     expect(screen.getByText('Reserva Vacker').closest('p')).toHaveTextContent('Reserva');
     fireEvent.click(screen.getByRole('button', { name: '⬇️ Ejemplo de reserva' }));
     await waitFor(() => expect(descargarArchivo).toHaveBeenCalledWith(blob, 'Reserva.docx'));
+  });
+
+  // Regla 174: el anexo de inventario es una plantilla más, con sus marcadores y su ejemplo.
+  it('regla 174: sube el anexo de inventario y baja su ejemplo', async () => {
+    subirPlantilla.mockResolvedValueOnce({ ...WORD, documento: 'inventario' });
+    const blob = new Blob(['PK']);
+    descargarEjemploAnexo.mockResolvedValueOnce({ blob, nombre: 'Anexo.docx' });
+    render(<PlantillasVista plantillas={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: '⬇️ Ejemplo de anexo de inventario' }));
+    await waitFor(() => expect(descargarArchivo).toHaveBeenCalledWith(blob, 'Anexo.docx'));
+    abrirSubida();
+    fireEvent.change(screen.getByLabelText(/Es la plantilla de/), {
+      target: { value: 'inventario' },
+    });
+    expect(screen.getByLabelText(/Nombre/)).toHaveValue('Anexo de inventario');
+    const archivo = docx();
+    fireEvent.change(screen.getByLabelText(/Archivo de Word/), { target: { files: [archivo] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Subir' }));
+    await waitFor(() =>
+      expect(subirPlantilla).toHaveBeenCalledWith(
+        'token',
+        { nombre: 'Anexo de inventario', tipoContrato: null, documento: 'inventario' },
+        archivo,
+      ),
+    );
   });
 });

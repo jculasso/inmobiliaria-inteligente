@@ -14,6 +14,7 @@ import {
   type PapelContrato,
   type PersonaDto,
   type PropiedadAlquilerDto,
+  type SenaDto,
   type TipoContrato,
 } from '@vacker/types';
 import { fechaCorta, generarTramos, validarPartes, validarTramos } from '@vacker/domain';
@@ -22,6 +23,7 @@ import { getAccessToken } from '../../lib/supabase/client';
 import { actualizarContrato, crearContrato } from '../../lib/alquileres-api';
 import { convertirReserva } from '../../lib/reservas-api';
 import type { PrecargaContrato } from '../../lib/reserva-a-contrato';
+import { SenaComoDeposito } from './sena-como-deposito';
 import { Campo, inputClass, textareaClass } from '../form-ui';
 import { InputImporte, InputPorcentajeTexto } from '../input-importe';
 import { escribirImporte, leerImporte, leerNumero } from '../../lib/importe';
@@ -93,7 +95,13 @@ export function ContratoForm({
    * sus datos. Al guardar, la reserva queda convertida (en la misma
    * transacción que el alta).
    */
-  desdeReserva?: { id: string; numero: number; precarga: PrecargaContrato };
+  desdeReserva?: {
+    id: string;
+    numero: number;
+    precarga: PrecargaContrato;
+    /** Regla 170: la seña cobrada pasa a ser el depósito. */
+    sena?: SenaDto | null;
+  };
 }) {
   const router = useRouter();
   // Lo que precarga cada campo: el contrato que se edita o lo que trae la reserva.
@@ -708,6 +716,13 @@ export function ContratoForm({
                 </select>
               </Campo>
             </div>
+            {desdeReserva?.sena && (
+              <SenaComoDeposito
+                sena={desdeReserva.sena}
+                deposito={leerImporte(depositoImporte)}
+                moneda={depositoMoneda}
+              />
+            )}
             <Campo label="Devolución del depósito">
               <input
                 type="date"

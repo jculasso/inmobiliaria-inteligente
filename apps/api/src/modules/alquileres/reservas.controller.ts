@@ -13,6 +13,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   CambioEstadoReservaSchema,
+  CobrarSenaSchema,
   ContratoInputSchema,
   FiltroReservasSchema,
   GarantiasInputSchema,
@@ -20,6 +21,7 @@ import {
   ReservaInputSchema,
   ROLES_ADMINISTRACION_ALQUILERES,
   type CambioEstadoReserva,
+  type CobrarSena,
   type Contrato,
   type Reserva,
 } from '@vacker/types';
@@ -104,7 +106,7 @@ export class ReservasController {
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({
     summary:
-      'Un paso de la reserva: en estudio, aprobada, rechazada, vencida o anulada (regla 155); rechazar y anular piden motivo',
+      'Un paso de la reserva, siempre a mano: en estudio, aprobada, rechazada, vencida, no se presentó a firmar o anulada (reglas 155 y 173). Rechazar y anular piden motivo; al rechazar, vencer o no presentarse, la seña cobrada se le entrega al propietario (regla 171)',
   })
   cambiarEstado(
     @Param('id', ParseUUIDPipe) id: string,
@@ -112,6 +114,21 @@ export class ReservasController {
     @CurrentUser() user: AuthPrincipal,
   ) {
     return this.reservas.cambiarEstado(ctxDe(user), id, cambio);
+  }
+
+  @Post(':id/sena')
+  @HttpCode(200)
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({
+    summary:
+      'Cobra la seña: el recibo de Cobros a nombre del interesado, que queda en su cuenta corriente (regla 169)',
+  })
+  cobrarSena(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(CobrarSenaSchema)) pago: CobrarSena,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.reservas.cobrarSena(ctxDe(user), id, pago);
   }
 
   @Put(':id/garantias')

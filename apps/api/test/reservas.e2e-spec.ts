@@ -5,13 +5,15 @@ import { ContratoInputSchema, InventarioInputSchema, ReservaInputSchema } from '
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import type { TenantContext } from '../src/prisma/tenant-context';
+import { ContratoCompletoService } from '../src/modules/alquileres/contrato-completo.service';
 import { ContratosService } from '../src/modules/alquileres/contratos.service';
+import { LiquidacionesService } from '../src/modules/alquileres/liquidaciones.service';
 import { InventarioService } from '../src/modules/alquileres/inventario.service';
 import { ReservasService } from '../src/modules/alquileres/reservas.service';
 import { limpiar, nuevosIds, sembrar } from './aislamiento.fixtures';
 
 /**
- * La reserva contra una base de verdad (reglas 153, 156, 157, 159 y 160): lo
+ * La reserva contra una base de verdad (reglas 153, 156, 157 y 159 a 171): lo
  * que una base de mentira no puede probar —el índice único PARCIAL de «una
  * reserva abierta por propiedad», el CHECK de la garantía que es de un
  * contrato o de una reserva, y que convertir sea una sola transacción—.
@@ -34,7 +36,7 @@ if (hayBase && (esProduccion(URL_POOLER!) || esProduccion(URL_DIRECTA!))) {
 }
 const suite = hayBase ? describe : describe.skip;
 
-suite('Reservas e inventario contra la base (reglas 153 a 160)', () => {
+suite('Reservas, seña e inventario contra la base (reglas 153 a 171)', () => {
   let siembra: PrismaClient;
   let prisma: PrismaService;
   let db: TenantPrismaService;
@@ -197,6 +199,110 @@ suite('Reservas e inventario contra la base (reglas 153 a 160)', () => {
     expect(vuelta.estado).toBe('aprobada');
     expect(vuelta.contrato).toBeNull();
     await reservas.cambiarEstado(ctx, r.id, { estado: 'anulada', motivo: 'Fin de la prueba' });
+  }, 60_000);
+
+  /** Una propiedad nueva por prueba: cada una deja su reserva cerrada o convertida. */
+  const otraPropiedad = async (direccion: string) =>
+    (await siembra.alqPropiedad.create({ data: { tenantId: ids.tenant, direccion } })).id;
+
+  /** Una reserva aprobada, con la seña de U$S 500 cobrada (regla 169). */
+  async function aprobadaConSena(propiedadId: string, conDuena = true) {
+    const r = await reservas.crear(
+      ctx,
+      ReservaInputSchema.parse({
+        ...entrada(),
+        propiedadId,
+        partes: [
+          { personaId: interesada, papel: 'inquilino' },
+          ...(conDuena ? [{ personaId: duena, papel: 'propietario' }] : []),
+        ],
+      }),
+    );
+    const cobrada = await reservas.cobrarSena(ctx, r.id, {
+      fecha: '2026-10-15',
+      medio: 'transferencia',
+      personaId: null,
+      obs: null,
+    });
+    await reservas.cambiarEstado(ctx, r.id, { estado: 'en_estudio' });
+    await reservas.guardarGarantias(ctx, r.id, [
+      {
+        tipo: 'caucion',
+        personaId: null,
+        garante: 'Aseguradora',
+        detalle: 'Póliza 1',
+        estado: 'aprobada',
+        aprobadaEl: '2026-10-16',
+        obs: null,
+      },
+    ]);
+    return { r, recibo: cobrada.sena!.recibo! };
+  }
+
+  it('regla 169: la seña cobrada es un recibo de verdad, en la cuenta del interesado', async () => {
+    const { r, recibo } = await aprobadaConSena(await otraPropiedad('Seña 169'));
+    const cobro = await siembra.alqCobro.findUniqueOrThrow({
+      where: { id: recibo.id },
+      include: { imputaciones: { include: { concepto: true } } },
+    });
+    expect(cobro).toMatchObject({ personaId: interesada, moneda: 'USD', medio: 'transferencia' });
+    expect(cobro.imputaciones.map((i) => [i.concepto.tipo, i.concepto.reservaId])).toEqual([
+      ['sena', r.id],
+    ]);
+    // Una reserva con la seña cobrada no se anula sin anular antes el recibo (regla 172).
+    await expect(
+      reservas.cambiarEstado(ctx, r.id, { estado: 'anulada', motivo: 'Prueba' }),
+    ).rejects.toThrow(/anulalo primero/);
+  }, 60_000);
+
+  it('regla 170: al convertir, la seña es el depósito; lo que sobra se le reintegra al inquilino', async () => {
+    const propiedadId = await otraPropiedad('Seña 170');
+    const { r } = await aprobadaConSena(propiedadId);
+    await reservas.cambiarEstado(ctx, r.id, { estado: 'aprobada' });
+    const k = await reservas.convertir(
+      ctx,
+      r.id,
+      ContratoInputSchema.parse({
+        propiedadId,
+        moneda: 'USD',
+        inicio: '2026-11-01',
+        fin: '2028-10-31',
+        ajuste: 'escalonado',
+        depositoImporte: 400,
+        depositoMoneda: 'USD',
+        partes: [
+          { personaId: duena, papel: 'propietario' },
+          { personaId: interesada, papel: 'inquilino' },
+        ],
+        tramos: [{ numero: 1, desde: '2026-11-01', hasta: '2028-10-31', importe: 600 }],
+      }),
+    );
+    const completo = new ContratoCompletoService(db);
+    const { deposito } = await completo.obtener(ctx, k.id);
+    expect(deposito).toMatchObject({ estado: 'cobrado', cobrado: 400, moneda: 'USD' });
+    const reintegro = await siembra.alqConcepto.findFirstOrThrow({
+      where: { contratoId: k.id, claveGeneracion: { contains: '|excedente|' } },
+    });
+    expect(Number(reintegro.importe)).toBe(100);
+  }, 60_000);
+
+  it('regla 171: si la reserva se cae, la seña va a la próxima liquidación del propietario', async () => {
+    const propiedadId = await otraPropiedad('Seña 171');
+    const { r } = await aprobadaConSena(propiedadId, false);
+    // Sin propietario cargado, cerrar pide uno.
+    await expect(
+      reservas.cambiarEstado(ctx, r.id, { estado: 'rechazada', motivo: 'Sin garantías' }),
+    ).rejects.toThrow(/hace falta el propietario/);
+    await reservas.cambiarEstado(ctx, r.id, {
+      estado: 'rechazada',
+      motivo: 'Sin garantías',
+      propietarioId: duena,
+    });
+    const liquidaciones = new LiquidacionesService(db);
+    const prep = await liquidaciones.preparar(duena, 'USD', '2026-10-20');
+    expect(prep.aPagar).toEqual([
+      expect.objectContaining({ tipo: 'sena', contrato: null, importe: 500 }),
+    ]);
   }, 60_000);
 
   it('regla 153: un contrato viejo tiene el inventario vacío; se guarda y se lee entero', async () => {

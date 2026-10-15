@@ -11,9 +11,12 @@ import {
   LIMITE_LISTA_CON_SONDA,
   NOMBRE_ESTADO_RESERVA,
   PASOS_RESERVA,
+  TenantConfigSchema,
   reservaAbierta,
+  retieneLaSena,
   type AccionEvento,
   type CambioEstadoReserva,
+  type CobrarSena,
   type Contrato,
   type ContratoDto,
   type EntidadEvento,
@@ -25,7 +28,7 @@ import {
   type ReservaDelContratoDto,
   type ReservaDto,
   type ReservaResumenDto,
-  type SenaDto,
+  type MonedaAlquiler,
 } from '@vacker/types';
 import type { TenantContext } from '../../prisma/tenant-context';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
@@ -33,6 +36,17 @@ import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { ContratosService } from './contratos.service';
 import { dia, nombresDeUsuarios, registrarEventos } from './historial';
+import {
+  CONCEPTOS_DE_LA_SENA,
+  assertSinReciboVigente,
+  cobrarSena,
+  nroRecibo,
+  retenerSena,
+  senaADeposito,
+  senaCobrada,
+  senaDto,
+  senaRetenida,
+} from './sena';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -45,9 +59,8 @@ const RESUMEN = {
   vence: true,
   senaImporte: true,
   senaMoneda: true,
-  senaRecibida: true,
-  senaRecibidaEl: true,
-  senaMedio: true,
+  // La seña cobrada y su recibo (regla 169): en la misma consulta.
+  conceptos: CONCEPTOS_DE_LA_SENA,
   propiedad: { select: { id: true, direccion: true, unidad: true } },
   partes: {
     where: { papel: 'inquilino' },
@@ -171,6 +184,15 @@ export class ReservasService {
         throw new BadRequestException(
           `La reserva está ${NOMBRE_ESTADO_RESERVA[actual.estado as EstadoReserva].toLowerCase()}: ya no se edita.`,
         );
+      // Regla 169: la seña cobrada ya tiene recibo; cambiarla pide anularlo.
+      const cobrada = senaCobrada(actual.conceptos);
+      if (
+        cobrada?.cobro &&
+        (dto.senaImporte !== decToNum(cobrada.importe) || dto.senaMoneda !== cobrada.moneda)
+      )
+        throw new BadRequestException(
+          `La seña ya tiene el recibo ${nroRecibo(cobrada.cobro.numero)}: para cambiarla, anulá ese recibo en Cobros.`,
+        );
       const propiedad = await this.validar(tx, dto);
       if (dto.propiedadId !== actual.propiedadId)
         await this.assertSinOtraAbierta(tx, dto.propiedadId, propiedad);
@@ -208,7 +230,45 @@ export class ReservasService {
         throw new BadRequestException(
           `La reserva vence el ${dia(vence)}: todavía no venció. Si se cae antes, anulala con el motivo.`,
         );
+      // Regla 172: anular es deshacer un error. Si la seña tiene recibo, primero el recibo.
+      if (cambio.estado === 'anulada') assertSinReciboVigente(actual.conceptos);
       const motivo = 'motivo' in cambio ? cambio.motivo : null;
+      // Regla 171: si se cae (rechazada, vencida o no se presentó a firmar),
+      // la seña cobrada se retiene y se le entrega al propietario.
+      let destino = '';
+      const cobrada = senaCobrada(actual.conceptos);
+      if (retieneLaSena(cambio.estado) && cobrada) {
+        let propietarios = actual.partes
+          .filter((p) => p.papel === 'propietario')
+          .map((p) => p.personaId);
+        const elegido = 'propietarioId' in cambio ? cambio.propietarioId : null;
+        if (propietarios.length === 0 && elegido) {
+          if (!(await tx.alqPersona.findUnique({ where: { id: elegido }, select: { id: true } })))
+            throw new NotFoundException('El propietario elegido no existe.');
+          await tx.alqReservaParte.create({
+            data: {
+              tenantId: ctx.tenantId,
+              reservaId: id,
+              personaId: elegido,
+              papel: 'propietario',
+            },
+          });
+          propietarios = [elegido];
+        }
+        const t = await tx.tenant.findUniqueOrThrow({
+          where: { id: ctx.tenantId },
+          select: { config: true },
+        });
+        const config = TenantConfigSchema.parse(t.config ?? {});
+        destino = await retenerSena(
+          tx,
+          ctx,
+          cobrada,
+          { id, numero: actual.numero, propiedad: unidad(actual.propiedad) },
+          propietarios,
+          { pct: config.honorariosSenaRetenidaPct, ivaPct: config.ivaHonorariosPct },
+        );
+      }
       await tx.alqReserva.update({
         where: { id },
         data: { estado: cambio.estado, ...(motivo ? { motivo } : {}) },
@@ -218,8 +278,45 @@ export class ReservasService {
         ctx,
         id,
         cambio.estado === 'anulada' ? 'anulacion' : 'estado',
-        `Reserva ${actual.numero}: ${NOMBRE_ESTADO_RESERVA[cambio.estado].toLowerCase()}${motivo ? `. Motivo: ${motivo}` : ''}`,
+        `Reserva ${actual.numero}: ${NOMBRE_ESTADO_RESERVA[cambio.estado].toLowerCase()}${motivo ? `. Motivo: ${motivo}` : ''}${destino ? `; ${destino}` : ''}`,
         motivo ? { motivo } : undefined,
+      );
+    });
+    return this.obtener(id);
+  }
+
+  /**
+   * Regla 169: cobrar la seña da un recibo de verdad —el de Cobros— a nombre
+   * del interesado, y queda en su cuenta corriente. Una vez por reserva
+   * mientras el recibo esté vigente; si se anula, se puede volver a cobrar.
+   */
+  async cobrarSena(ctx: TenantContext, id: string, pago: CobrarSena): Promise<ReservaDto> {
+    await this.db.withTenant(async (tx) => {
+      const r = await this.buscar(tx, id);
+      if (!reservaAbierta(r.estado as EstadoReserva))
+        throw new BadRequestException(
+          `La reserva está ${NOMBRE_ESTADO_RESERVA[r.estado as EstadoReserva].toLowerCase()}: la seña se cobra con la reserva abierta.`,
+        );
+      if (r.senaImporte == null)
+        throw new BadRequestException('La reserva no tiene seña: cargá el importe primero.');
+      const ya = senaCobrada(r.conceptos);
+      if (ya?.cobro)
+        throw new ConflictException(`La seña ya se cobró: recibo ${nroRecibo(ya.cobro.numero)}.`);
+      const interesados = r.partes.filter((p) => p.papel === 'inquilino').map((p) => p.personaId);
+      const personaId = pago.personaId ?? interesados[0];
+      if (!personaId || !interesados.includes(personaId))
+        throw new BadRequestException('La seña la paga un interesado de la reserva.');
+      await cobrarSena(
+        tx,
+        ctx,
+        {
+          id,
+          numero: r.numero,
+          importe: decToNum(r.senaImporte),
+          moneda: (r.senaMoneda ?? 'ARS') as MonedaAlquiler,
+          propiedad: unidad(r.propiedad),
+        },
+        { personaId, fecha: pago.fecha, medio: pago.medio, obs: pago.obs },
       );
     });
     return this.obtener(id);
@@ -275,7 +372,12 @@ export class ReservasService {
     return this.contratos.crear(ctx, dto, async (tx, contratoId, codigo) => {
       const r = await tx.alqReserva.findUnique({
         where: { id },
-        select: { numero: true, estado: true, propiedadId: true },
+        select: {
+          numero: true,
+          estado: true,
+          propiedadId: true,
+          conceptos: CONCEPTOS_DE_LA_SENA,
+        },
       });
       if (!r) throw new NotFoundException('La reserva no existe.');
       if (r.estado !== 'aprobada')
@@ -310,13 +412,30 @@ export class ReservasService {
         await tx.alqGarantia.createMany({
           data: aprobadas.map((g) => ({ ...g, tenantId: ctx.tenantId, contratoId })),
         });
+      // Regla 170: la seña cobrada pasa a ser el depósito.
+      const cobrada = senaCobrada(r.conceptos);
+      const deposito = cobrada
+        ? await senaADeposito(
+            tx,
+            ctx,
+            cobrada,
+            {
+              id: contratoId,
+              codigo,
+              moneda: dto.moneda,
+              depositoImporte: dto.depositoImporte,
+              depositoMoneda: dto.depositoMoneda,
+            },
+            { id, numero: r.numero },
+          )
+        : null;
       await registrarEventos(tx, ctx, {
         entidad: 'reserva',
         entidadId: id,
         // También en el historial del contrato: de dónde salió.
         contratoId,
         accion: 'estado',
-        resumen: `Reserva ${r.numero} convertida en el contrato ${codigo}`,
+        resumen: `Reserva ${r.numero} convertida en el contrato ${codigo}${deposito ? `. ${deposito}` : ''}`,
       });
     });
   }
@@ -331,19 +450,34 @@ export class ReservasService {
           numero: true,
           senaImporte: true,
           senaMoneda: true,
-          senaRecibida: true,
-          senaRecibidaEl: true,
-          senaMedio: true,
+          conceptos: CONCEPTOS_DE_LA_SENA,
         },
       });
-      return { reserva: r ? { id: r.id, numero: r.numero, sena: sena(r) } : null };
+      return {
+        reserva: r ? { id: r.id, numero: r.numero, sena: senaDto(r, r.conceptos) } : null,
+      };
     });
   }
 
   private async buscar(tx: Tx, id: string) {
     const r = await tx.alqReserva.findUnique({
       where: { id },
-      select: { numero: true, estado: true, propiedadId: true, vence: true },
+      // Una consulta con lo que miran todos los pasos: el estado, las partes
+      // y la seña con su recibo (reglas 169 a 172).
+      select: {
+        numero: true,
+        estado: true,
+        propiedadId: true,
+        vence: true,
+        senaImporte: true,
+        senaMoneda: true,
+        propiedad: { select: { direccion: true, unidad: true } },
+        partes: {
+          select: { personaId: true, papel: true },
+          orderBy: { persona: { nombre: 'asc' } },
+        },
+        conceptos: CONCEPTOS_DE_LA_SENA,
+      },
     });
     if (!r) throw new NotFoundException('La reserva no existe.');
     return r;
@@ -431,9 +565,6 @@ function columnas(dto: Reserva) {
     vence: toDate(dto.vence)!,
     senaImporte: dto.senaImporte,
     senaMoneda: dto.senaMoneda,
-    senaRecibida: dto.senaRecibida,
-    senaRecibidaEl: toDate(dto.senaRecibidaEl),
-    senaMedio: dto.senaMedio,
     tipo: dto.tipo,
     moneda: dto.moneda,
     alquilerInicial: dto.alquilerInicial,
@@ -452,23 +583,6 @@ function partes(tenantId: string, dto: Reserva) {
   return dto.partes.map((p) => ({ tenantId, personaId: p.personaId, papel: p.papel }));
 }
 
-function sena(r: {
-  senaImporte: Prisma.Decimal | null;
-  senaMoneda: string | null;
-  senaRecibida: boolean;
-  senaRecibidaEl: Date | null;
-  senaMedio: string | null;
-}): SenaDto | null {
-  if (r.senaImporte == null) return null;
-  return {
-    importe: decToNum(r.senaImporte),
-    moneda: (r.senaMoneda ?? 'ARS') as SenaDto['moneda'],
-    recibida: r.senaRecibida,
-    recibidaEl: fromDate(r.senaRecibidaEl),
-    medio: r.senaMedio as SenaDto['medio'],
-  };
-}
-
 function aResumen(r: FilaResumen): ReservaResumenDto {
   return {
     id: r.id,
@@ -479,7 +593,7 @@ function aResumen(r: FilaResumen): ReservaResumenDto {
     vence: fromDate(r.vence)!,
     propiedad: r.propiedad,
     interesados: r.partes.map((p) => ({ id: p.personaId, nombre: p.persona.nombre })),
-    sena: sena(r),
+    sena: senaDto(r, r.conceptos),
     contrato: r.contrato,
   };
 }
@@ -518,6 +632,7 @@ function aDto(
     depositoMoneda: r.depositoMoneda as ReservaDto['depositoMoneda'],
     obs: r.obs,
     motivo: r.motivo,
+    senaRetenida: senaRetenida(r.conceptos),
     registrado: {
       en: r.createdAt.toISOString(),
       por: r.creadoPorId ? (nombres.get(r.creadoPorId) ?? null) : null,

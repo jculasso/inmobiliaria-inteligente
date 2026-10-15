@@ -623,3 +623,40 @@ describe('CobrosService · liquidación parcial y final (reglas 133, 134 y 138)'
     expect(r.imputaciones).toEqual([]);
   });
 });
+// Reglas 169 y 171 (Florencia, Vacker, 15/10/2026): el recibo de la seña.
+describe('CobrosService.anular · el recibo de la seña (reglas 169 y 171)', () => {
+  it('anularlo anula la seña y lo que nació con ella (la retenida para el propietario)', async () => {
+    const tx = makeTx({
+      cobroAAnular: {
+        anuladoEn: null,
+        numero: 123,
+        imputaciones: [],
+        conceptos: [
+          { imputaciones: [], liquidacion: null },
+          { imputaciones: [], liquidacion: null },
+        ],
+        registradas: [],
+      },
+    });
+    await new CobrosService(makeDb(tx)).anular(CTX, 'c-sena', 'Se cargó a la persona equivocada');
+    expect(tx.alqConcepto.updateMany.mock.calls[0]![0]).toMatchObject({
+      where: { cobroId: 'c-sena', anuladoEn: null },
+    });
+  });
+
+  it('si la seña retenida ya se le liquidó al propietario, primero hay que anular la liquidación', async () => {
+    const tx = makeTx({
+      cobroAAnular: {
+        anuladoEn: null,
+        numero: 123,
+        imputaciones: [],
+        conceptos: [{ imputaciones: [], liquidacion: { numero: 41, anuladoEn: null } }],
+        registradas: [],
+      },
+    });
+    await expect(new CobrosService(makeDb(tx)).anular(CTX, 'c-sena', 'x x x')).rejects.toThrow(
+      'Lo que nació con este recibo ya se le liquidó al propietario (liquidación 000041): anulá esa primero.',
+    );
+    expect(tx.alqCobro.updateMany).not.toHaveBeenCalled();
+  });
+});

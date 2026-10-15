@@ -41,6 +41,7 @@ const TENANT = {
     contratoDiaVencimiento: 5,
     contratoDiaPagoPropietario: 10,
     diasDiferenciaFinal: 5,
+    honorariosSenaRetenidaPct: 0,
   },
   createdAt: '2026-01-01T00:00:00.000Z',
 };

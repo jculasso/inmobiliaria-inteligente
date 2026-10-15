@@ -50,6 +50,7 @@ const NOMBRE_TIPO: Record<TipoConcepto, string> = {
   informe: 'Informe de garantía',
   deposito: 'Depósito en garantía',
   sellado: 'Sellado',
+  sena: 'Seña de reserva',
 };
 
 const mesDe = (periodo: string) => mesLargo(`${periodo}-01`);

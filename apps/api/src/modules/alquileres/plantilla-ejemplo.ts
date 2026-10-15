@@ -1,5 +1,6 @@
 import PizZip from 'pizzip';
 import {
+  MARCADORES_ANEXO_INVENTARIO,
   MARCADORES_PLANTILLA,
   MARCADORES_RESERVA,
   type CampoMarcador,
@@ -157,6 +158,17 @@ const RESERVA: Documento = {
   datosTitulo: 'Datos de la reserva',
 };
 
+const ANEXO: Documento = {
+  marcadores: MARCADORES_ANEXO_INVENTARIO,
+  titulo: 'Anexo de inventario: ejemplo con todos los marcadores',
+  intro:
+    'Este archivo es una guía y un punto de partida. Copiá los marcadores que necesites a tu propio anexo de inventario en Word, o editá este mismo, y subilo en Configuración → Plantillas, como anexo de inventario. Desde cada contrato se descarga el anexo con su inventario.',
+  dato: 'contrato.codigo',
+  condicion: 'inventario',
+  lista: { nombre: 'inventario', ejemplo: '{numero}. {cantidad} × {descripcion}; ' },
+  datosTitulo: 'Datos del contrato',
+};
+
 /** Las partes de la guía: cómo se escribe y cada marcador con su explicación. */
 function guia(doc: Documento): Bloque[] {
   const textos = doc.marcadores.filter((m) => m.tipo === 'texto');
@@ -189,12 +201,21 @@ function guia(doc: Documento): Bloque[] {
       encabezado: ['Marcador', 'Qué pone', 'Ejemplo'],
       filas: textos.map((m) => [`{${m.nombre}}`, m.descripcion, m.ejemplo]),
     },
-    { t: 'subtitulo', texto: 'Condiciones' },
-    {
-      t: 'tabla',
-      encabezado: ['Marcador', 'Cuándo aparece', 'Ejemplo'],
-      filas: condiciones.map((m) => [`{#${m.nombre}}…{/${m.nombre}}`, m.descripcion, m.ejemplo]),
-    },
+    // El anexo de inventario no tiene condiciones propias: su lista hace de condición.
+    ...(condiciones.length
+      ? ([
+          { t: 'subtitulo', texto: 'Condiciones' },
+          {
+            t: 'tabla',
+            encabezado: ['Marcador', 'Cuándo aparece', 'Ejemplo'],
+            filas: condiciones.map((m) => [
+              `{#${m.nombre}}…{/${m.nombre}}`,
+              m.descripcion,
+              m.ejemplo,
+            ]),
+          },
+        ] satisfies Bloque[])
+      : []),
     { t: 'subtitulo', texto: 'Listas' },
     ...listas.flatMap((m): Bloque[] => [
       { t: 'clausula', texto: `${m.descripcion}: ${m.ejemplo}` },
@@ -341,7 +362,7 @@ function reservaModelo(): Bloque[] {
     {
       t: 'parrafo',
       texto:
-        '{#sena}EL INTERESADO entrega {importe} ({letras}) en concepto de seña de la reserva.{/sena}{^sena}La reserva se hace sin seña.{/sena}{#sena_recibida} Recibida el {sena.fecha} por {sena.medio}.{/sena_recibida}',
+        '{#sena}EL INTERESADO entrega {importe} ({letras}) en concepto de seña de la reserva.{/sena}{^sena}La reserva se hace sin seña.{/sena}{#sena_recibida} Recibida el {sena.fecha} por {sena.medio}, recibo {sena.recibo}.{/sena_recibida}',
     },
     { t: 'clausula', texto: 'SEGUNDA · Vigencia' },
     {
@@ -380,6 +401,43 @@ function reservaModelo(): Bloque[] {
   ];
 }
 
+/**
+ * El anexo de inventario (regla 174; Florencia, Vacker, 15/10/2026: «lo
+ * mejor es que sea un apéndice del contrato»): las partes, la propiedad y un
+ * renglón por ítem.
+ */
+function anexoModelo(): Bloque[] {
+  return [
+    { t: 'titulo', texto: 'ANEXO DE INVENTARIO · CONTRATO {contrato.codigo}' },
+    {
+      t: 'parrafo',
+      texto:
+        'Anexo al contrato de locación {contrato.codigo} entre {propietarios.texto}, LA PARTE LOCADORA, y {inquilinos.texto}, LA PARTE LOCATARIA, sobre el inmueble ubicado en {propiedad.direccion}, {propiedad.ciudad}, por el plazo del {contrato.inicio} al {contrato.fin}.',
+    },
+    {
+      t: 'parrafo',
+      texto:
+        '{#inventario}LA PARTE LOCATARIA recibe, junto con el inmueble, los siguientes elementos, en el estado que se indica:{/inventario}{^inventario}El inmueble se entrega sin muebles ni elementos inventariados.{/inventario}',
+    },
+    { t: 'parrafo', texto: '{#inventario}' },
+    { t: 'parrafo', texto: '{numero}. {cantidad} × {descripcion}. {estado}' },
+    { t: 'parrafo', texto: '{/inventario}' },
+    { t: 'clausula', texto: 'Observaciones' },
+    { t: 'parrafo', texto: '{contrato.inventario_observaciones}' },
+    {
+      t: 'parrafo',
+      texto:
+        'Las partes firman este anexo, que forma parte del contrato, en {propiedad.ciudad}, el {fecha.hoy}.',
+    },
+    { t: 'parrafo', texto: '{#propietarios}' },
+    { t: 'parrafo', texto: 'Firma de LA PARTE LOCADORA: {nombre}' },
+    { t: 'parrafo', texto: '{/propietarios}' },
+    { t: 'parrafo', texto: '{#inquilinos}' },
+    { t: 'parrafo', texto: 'Firma de LA PARTE LOCATARIA: {nombre}' },
+    { t: 'parrafo', texto: '{/inquilinos}' },
+  ];
+}
+
 /** El .docx de ejemplo que se descarga. */
 export function plantillaDeEjemplo(): Buffer {
   return documentoWord([...guia(CONTRATO), ...contratoModelo()]);
@@ -388,4 +446,17 @@ export function plantillaDeEjemplo(): Buffer {
 /** El .docx de ejemplo de una reserva (regla 163): la guía y un formulario. */
 export function plantillaDeEjemploReserva(): Buffer {
   return documentoWord([...guia(RESERVA), ...reservaModelo()]);
+}
+
+/** Regla 174: el Word de ejemplo del anexo de inventario, con la guía y el modelo. */
+export function plantillaDeEjemploAnexo(): Buffer {
+  return documentoWord([...guia(ANEXO), ...anexoModelo()]);
+}
+
+/**
+ * Regla 174: el anexo con el modelo de la plataforma, sin la guía, para la
+ * inmobiliaria que todavía no subió el suyo.
+ */
+export function anexoDeLaPlataforma(): Buffer {
+  return documentoWord(anexoModelo());
 }

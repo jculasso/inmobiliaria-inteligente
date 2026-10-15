@@ -25,7 +25,11 @@ const crearReserva = vi.fn();
 const cambiarEstadoReserva = vi.fn();
 const guardarInventario = vi.fn();
 const convertirReserva = vi.fn();
+const cobrarSenaReserva = vi.fn();
+const generarAnexoInventario = vi.fn();
 vi.mock('../../lib/reservas-api', () => ({
+  cobrarSenaReserva: (...a: unknown[]) => cobrarSenaReserva(...a),
+  generarAnexoInventario: (...a: unknown[]) => generarAnexoInventario(...a),
   crearReserva: (...a: unknown[]) => crearReserva(...a),
   actualizarReserva: vi.fn(),
   cambiarEstadoReserva: (...a: unknown[]) => cambiarEstadoReserva(...a),
@@ -41,6 +45,13 @@ vi.mock('../../lib/alquileres-api', () => ({
   crearContrato: (...a: unknown[]) => crearContrato(...a),
   actualizarContrato: vi.fn(),
   guardarGarantias: vi.fn(),
+  generarRecibo: vi.fn(),
+  enviarReciboPorMail: vi.fn(),
+  generarDesdePlantilla: vi.fn(),
+}));
+const descargarArchivo = vi.fn();
+vi.mock('../../lib/descargar-archivo', () => ({
+  descargarArchivo: (...a: unknown[]) => descargarArchivo(...a),
 }));
 
 import { ReservasLista } from './reservas-lista';
@@ -51,6 +62,8 @@ import { ReservaDelContrato } from './reserva-del-contrato';
 import { ContratoForm } from './contrato-form';
 import { contratoDesdeReserva } from '../../lib/reserva-a-contrato';
 import { PropiedadesLista } from './propiedades-lista';
+import { SenaComoDeposito } from './sena-como-deposito';
+import { GenerarContrato } from './generar-contrato';
 
 const persona = (id: string, nombre: string): PersonaDto => ({
   id,
@@ -98,6 +111,7 @@ const resumen = (over: Partial<ReservaResumenDto> = {}): ReservaResumenDto => ({
     recibida: true,
     recibidaEl: '2026-10-10',
     medio: 'transferencia',
+    recibo: { id: '88888888-8888-4888-8888-888888888888', numero: 123 },
   },
   contrato: null,
   ...over,
@@ -122,6 +136,7 @@ const reserva = (over: Partial<ReservaDto> = {}): ReservaDto => ({
   depositoMoneda: 'USD',
   obs: null,
   motivo: null,
+  senaRetenida: null,
   registrado: { en: '2026-10-10T13:00:00Z', por: 'Lucía' },
   garantias: [],
   historial: [],
@@ -207,19 +222,14 @@ describe('ReservaForm (regla 154)', () => {
     expect(screen.getByLabelText('Persona (propietario)')).toHaveValue(DUENA.id);
   });
 
-  it('una seña recibida pide cuándo y cómo; con todo, manda la reserva', async () => {
+  it('la seña se acuerda acá (importe y moneda); se cobra después, desde la ficha', async () => {
     crearReserva.mockResolvedValueOnce({ id: RID });
     render(<ReservaForm personas={[ANA]} propiedades={[PROP]} contratos={[]} />);
     await userEvent.selectOptions(screen.getByLabelText(/Propiedad/), PROP.id);
     await userEvent.selectOptions(screen.getByLabelText('Persona (interesado)'), ANA.id);
     await userEvent.type(screen.getByLabelText(/^Seña/), '500');
     await userEvent.selectOptions(screen.getByLabelText('Moneda de la seña'), 'USD');
-    await userEvent.click(screen.getByLabelText('La seña ya se recibió'));
-    await userEvent.clear(screen.getByLabelText(/Recibida el/));
-    expect(screen.getByRole('list', { name: 'Lo que falta' })).toHaveTextContent(
-      'Indicá cuándo y cómo se recibió la seña.',
-    );
-    await userEvent.type(screen.getByLabelText(/Recibida el/), '2026-10-15');
+    expect(screen.queryByLabelText('La seña ya se recibió')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Registrar la reserva' }));
     await waitFor(() => expect(crearReserva).toHaveBeenCalled());
     expect(crearReserva.mock.calls[0]![1]).toMatchObject({
@@ -227,11 +237,21 @@ describe('ReservaForm (regla 154)', () => {
       partes: [{ personaId: ANA.id, papel: 'inquilino' }],
       senaImporte: 500,
       senaMoneda: 'USD',
-      senaRecibida: true,
-      senaRecibidaEl: '2026-10-15',
-      senaMedio: 'transferencia',
     });
     expect(push).toHaveBeenCalledWith(`/alquileres/reservas/${RID}`);
+  });
+
+  it('regla 169: con el recibo hecho, la seña no se cambia desde el formulario', () => {
+    render(
+      <ReservaForm
+        personas={[ANA, DUENA, CARLOS]}
+        propiedades={[PROP]}
+        contratos={[]}
+        reserva={reserva()}
+      />,
+    );
+    expect(screen.getByLabelText(/^Seña/)).toBeDisabled();
+    expect(screen.getByText(/Ya se cobró: recibo 000123/)).toBeInTheDocument();
   });
 });
 
@@ -397,7 +417,14 @@ describe('ReservaDelContrato (regla 161)', () => {
         reserva={{
           id: RID,
           numero: 3,
-          sena: { importe: 500, moneda: 'USD', recibida: false, recibidaEl: null, medio: null },
+          sena: {
+            importe: 500,
+            moneda: 'USD',
+            recibida: false,
+            recibidaEl: null,
+            medio: null,
+            recibo: null,
+          },
         }}
       />,
     );
@@ -426,5 +453,146 @@ describe('PropiedadesLista (regla 165)', () => {
       `/alquileres/reservas/${RID}`,
     );
     expect(tabla.getAllByRole('link', { name: /Reservada/ })).toHaveLength(1);
+  });
+});
+
+describe('La seña en la ficha (reglas 169 a 172)', () => {
+  const sinCobrar = () =>
+    reserva({
+      sena: {
+        importe: 500,
+        moneda: 'USD',
+        recibida: false,
+        recibidaEl: null,
+        medio: null,
+        recibo: null,
+      },
+    });
+
+  it('regla 169: «Cobrar la seña» hace el recibo a nombre del interesado', async () => {
+    cobrarSenaReserva.mockResolvedValueOnce({});
+    render(<ReservaFicha reserva={sinCobrar()} hoy="2026-10-12" />);
+    await userEvent.click(screen.getByRole('button', { name: '💵 Cobrar la seña' }));
+    const modal = await screen.findByRole('dialog');
+    await userEvent.selectOptions(within(modal).getByLabelText(/Medio/), 'efectivo');
+    await userEvent.click(within(modal).getByRole('button', { name: 'Cobrar y hacer el recibo' }));
+    await waitFor(() => expect(cobrarSenaReserva).toHaveBeenCalled());
+    expect(cobrarSenaReserva.mock.calls[0]![1]).toBe(RID);
+    expect(cobrarSenaReserva.mock.calls[0]![2]).toMatchObject({
+      medio: 'efectivo',
+      personaId: ANA.id,
+    });
+  });
+
+  it('regla 169: cobrada, muestra el recibo con su PDF y «Mandar por mail»; no se cobra de nuevo', () => {
+    render(<ReservaFicha reserva={reserva()} hoy="2026-10-12" />);
+    expect(screen.getByRole('button', { name: '🧾 Recibo 000123' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '✉️ Mandar por mail' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '💵 Cobrar la seña' })).not.toBeInTheDocument();
+  });
+
+  it('regla 171: «No se presentó a firmar» avisa que la seña va al propietario', async () => {
+    render(<ReservaFicha reserva={reserva({ estado: 'aprobada' })} hoy="2026-10-12" />);
+    await userEvent.click(screen.getByRole('button', { name: 'No se presentó a firmar' }));
+    const modal = await screen.findByRole('dialog');
+    expect(modal).toHaveTextContent(
+      'La seña de U$S 500,00 se retiene y se le entrega a Marta Propietaria en su próxima liquidación.',
+    );
+  });
+
+  it('regla 171: sin propietario cargado, pide a quién entregársela', async () => {
+    cambiarEstadoReserva.mockResolvedValueOnce({});
+    const sinDueno = reserva({
+      estado: 'aprobada',
+      partes: [{ personaId: ANA.id, nombre: ANA.nombre, papel: 'inquilino' }],
+    });
+    render(<ReservaFicha reserva={sinDueno} hoy="2026-10-12" personas={[DUENA, ANA]} />);
+    await userEvent.click(screen.getByRole('button', { name: 'No se presentó a firmar' }));
+    const modal = await screen.findByRole('dialog');
+    const cerrar = within(modal).getByRole('button', { name: 'Cerrar la reserva' });
+    expect(cerrar).toBeDisabled();
+    await userEvent.selectOptions(within(modal).getByLabelText(/Propietario/), DUENA.id);
+    await userEvent.click(cerrar);
+    await waitFor(() =>
+      expect(cambiarEstadoReserva).toHaveBeenCalledWith('token', RID, {
+        estado: 'no_se_presento',
+        propietarioId: DUENA.id,
+      }),
+    );
+  });
+
+  it('regla 171: cerrada con retención, lo dice', () => {
+    render(
+      <ReservaFicha
+        reserva={reserva({ estado: 'no_se_presento', senaRetenida: 500 })}
+        hoy="2026-10-20"
+      />,
+    );
+    expect(screen.getByText(/se le entrega al propietario en su próxima/)).toHaveTextContent(
+      'U$S 500,00',
+    );
+  });
+});
+
+describe('La seña como depósito, al convertir (regla 170)', () => {
+  const sena = reserva().sena!;
+
+  it.each([
+    [500, 'USD', 'La seña de U$S 500,00 pasa a ser el depósito: ya está cobrado.'],
+    [600, 'USD', 'Faltan U$S 100,00: se proponen como cargo de ingreso al activar el contrato.'],
+    [400, 'USD', 'Sobran U$S 100,00: al guardar, se le reintegran al inquilino'],
+    [500_000, 'ARS', 'tienen que ser de la misma moneda'],
+  ] as const)('depósito de %s %s', (deposito, moneda, texto) => {
+    render(<SenaComoDeposito sena={sena} deposito={deposito} moneda={moneda} />);
+    expect(screen.getByRole('status')).toHaveTextContent(texto);
+  });
+});
+
+describe('El anexo de inventario (regla 174)', () => {
+  it('sin plantilla de anexo, se descarga con el modelo de la plataforma', async () => {
+    const blob = new Blob(['PK']);
+    generarAnexoInventario.mockResolvedValueOnce({ blob, nombre: 'Anexo-inventario-ALT-1.docx' });
+    render(
+      <GenerarContrato
+        contrato={{ id: 'k1', tipo: 'vivienda', estado: 'vigente' } as never}
+        plantillas={[]}
+      />,
+    );
+    expect(screen.getByLabelText('Plantilla del anexo de inventario')).toHaveValue('__modelo__');
+    await userEvent.click(
+      screen.getByRole('button', { name: '⬇️ Descargar el anexo de inventario (Word)' }),
+    );
+    await waitFor(() =>
+      expect(descargarArchivo).toHaveBeenCalledWith(blob, 'Anexo-inventario-ALT-1.docx'),
+    );
+    expect(generarAnexoInventario).toHaveBeenCalledWith('token', 'k1', null);
+  });
+
+  it('con una plantilla de anexo, la propone primero; las de contrato no se mezclan', () => {
+    const plantilla = (id: string, documento: 'contrato' | 'inventario', nombre: string) => ({
+      id,
+      nombre,
+      tipoContrato: null,
+      documento,
+      formato: 'word' as const,
+      nombreArchivo: `${nombre}.docx`,
+      tamano: 1,
+      actualizada: '2026-10-15T12:00:00Z',
+    });
+    render(
+      <GenerarContrato
+        contrato={{ id: 'k1', tipo: 'vivienda', estado: 'vigente' } as never}
+        plantillas={[
+          plantilla('11111111-1111-4111-8111-111111111111', 'contrato', 'Locación'),
+          plantilla('22222222-2222-4222-8222-222222222222', 'inventario', 'Anexo Vacker'),
+        ]}
+      />,
+    );
+    const anexo = screen.getByLabelText('Plantilla del anexo de inventario');
+    expect(anexo).toHaveValue('22222222-2222-4222-8222-222222222222');
+    expect(within(anexo).queryByText('Locación')).not.toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText('Plantilla')).queryByText('Anexo Vacker'),
+    ).not.toBeInTheDocument();
   });
 });

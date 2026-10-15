@@ -47,3 +47,4 @@ export * from './informe-propietario';
 // El inventario del contrato y la reserva (reglas 150 a 168).
 export * from './inventario';
 export * from './reservas';
+export * from './plantillas-documentos';

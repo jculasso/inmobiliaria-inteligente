@@ -42,6 +42,7 @@ const PRINCIPAL = {
       contratoDiaVencimiento: 5,
       contratoDiaPagoPropietario: 10,
       diasDiferenciaFinal: 5,
+      honorariosSenaRetenidaPct: 0,
     },
   },
 };

@@ -822,6 +822,9 @@ export const TipoConceptoSchema = z.enum([
   'informe',
   'deposito',
   'sellado',
+  // La seña de una reserva (reglas 169 a 172): la paga el interesado con su
+  // recibo, y después pasa a ser el depósito o se le entrega al propietario.
+  'sena',
 ]);
 export type TipoConcepto = z.infer<typeof TipoConceptoSchema>;
 
@@ -1834,6 +1837,8 @@ export const ConfiguracionAlquileresSchema = z.object({
    * que se confirma la indexación. `.default` por el orden de despliegue.
    */
   diasDiferenciaFinal: z.number().int().min(0).max(60).default(5),
+  /** Regla 171: honorarios sobre la seña retenida que se le entrega al propietario; 0, sin honorarios. */
+  honorariosSenaRetenidaPct: z.number().min(0).max(100).default(0),
 });
 export type ConfiguracionAlquileres = z.infer<typeof ConfiguracionAlquileresSchema>;
 
@@ -2223,10 +2228,11 @@ export const PLANTILLA_MAX_BYTES = 5 * 1024 * 1024;
  * multipart al subir el Word: un «Para contratos» sin elegir llega como «».
  */
 /**
- * Regla 162: una plantilla es de contrato o de reserva. Las que ya existían
+ * Reglas 162 y 174: una plantilla es de contrato, de reserva o el anexo de
+ * inventario del contrato. Las que ya existían
  * son de contrato (la columna nueva tiene ese valor por defecto).
  */
-export const DocumentoPlantillaSchema = z.enum(['contrato', 'reserva']);
+export const DocumentoPlantillaSchema = z.enum(['contrato', 'reserva', 'inventario']);
 export type DocumentoPlantilla = z.infer<typeof DocumentoPlantillaSchema>;
 
 export const PlantillaMetadatosSchema = z.object({

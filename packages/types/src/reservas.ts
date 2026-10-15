@@ -31,6 +31,7 @@ export const EstadoReservaSchema = z.enum([
   'convertida',
   'rechazada',
   'vencida',
+  'no_se_presento',
   'anulada',
 ]);
 export type EstadoReserva = z.infer<typeof EstadoReservaSchema>;
@@ -42,6 +43,7 @@ export const NOMBRE_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   convertida: 'Convertida en contrato',
   rechazada: 'Rechazada',
   vencida: 'Vencida',
+  no_se_presento: 'No se presentó a firmar',
   anulada: 'Anulada',
 };
 
@@ -55,29 +57,55 @@ export const reservaAbierta = (e: EstadoReserva) =>
 
 /**
  * Regla 155: a qué estado se puede pasar desde cada uno. `convertida` solo
- * llega al guardar el contrato (regla 159), no por un cambio de estado.
+ * llega al guardar el contrato (regla 159), no por un cambio de estado. Todos
+ * los pasos son a mano: ninguna reserva cambia sola (regla 173).
  */
 export const PASOS_RESERVA: Record<EstadoReserva, readonly EstadoReserva[]> = {
   reservada: ['en_estudio', 'vencida', 'anulada'],
   en_estudio: ['aprobada', 'rechazada', 'vencida', 'anulada'],
-  aprobada: ['convertida', 'vencida', 'anulada'],
+  aprobada: ['convertida', 'no_se_presento', 'vencida', 'anulada'],
   convertida: [],
   rechazada: [],
   vencida: [],
+  no_se_presento: [],
   anulada: [],
 };
+
+/**
+ * Regla 171 (Florencia, Vacker, 15/10/2026): «si la reserva vence, el
+ * inquilino no se presenta a firmar o no logra presentar garantías adecuadas,
+ * la seña se retiene y se le entrega al propietario».
+ */
+export const ESTADOS_QUE_RETIENEN_LA_SENA = ['rechazada', 'vencida', 'no_se_presento'] as const;
+export const retieneLaSena = (e: EstadoReserva) =>
+  (ESTADOS_QUE_RETIENEN_LA_SENA as readonly EstadoReserva[]).includes(e);
 
 /** Las garantías se cargan antes de aprobar (regla 157). */
 export const ESTADOS_RESERVA_CON_GARANTIAS = ['reservada', 'en_estudio'] as const;
 
 const Motivo = z.string().trim().min(3, 'Escribí el motivo.').max(300);
 
+/**
+ * El propietario a quien se le entrega la seña retenida, si la reserva no
+ * tiene uno cargado (regla 171): se suma a la reserva al cerrarla.
+ */
+const PropietarioParaLaSena = z.string().uuid({ message: 'Elegí el propietario.' }).nullish();
+
 /** Lo que se pide para cada paso: rechazar y anular, con motivo. */
 export const CambioEstadoReservaSchema = z.discriminatedUnion('estado', [
   z.object({ estado: z.literal('en_estudio') }),
   z.object({ estado: z.literal('aprobada') }),
-  z.object({ estado: z.literal('vencida') }),
-  z.object({ estado: z.literal('rechazada'), motivo: Motivo }),
+  z.object({ estado: z.literal('vencida'), propietarioId: PropietarioParaLaSena }),
+  z.object({
+    estado: z.literal('no_se_presento'),
+    motivo: z.string().trim().max(300).nullish(),
+    propietarioId: PropietarioParaLaSena,
+  }),
+  z.object({
+    estado: z.literal('rechazada'),
+    motivo: Motivo,
+    propietarioId: PropietarioParaLaSena,
+  }),
   z.object({ estado: z.literal('anulada'), motivo: Motivo }),
 ]);
 export type CambioEstadoReserva = z.infer<typeof CambioEstadoReservaSchema>;
@@ -97,12 +125,9 @@ export const ReservaInputSchema = z
     fecha: FechaIso,
     vence: FechaIso,
     partes: z.array(ParteReservaInputSchema).max(20),
-    // La seña: se registra, no genera conceptos (regla 161).
+    // La seña acordada. Cobrarla es otro paso, que da el recibo (regla 169).
     senaImporte: opcional(Monto.positive('La seña tiene que ser mayor que cero.')),
     senaMoneda: opcional(MonedaAlquilerSchema),
-    senaRecibida: z.boolean().default(false),
-    senaRecibidaEl: opcional(FechaIso),
-    senaMedio: opcional(MedioCobroSchema),
     // Las condiciones propuestas: pueden quedar sin cargar.
     tipo: TipoContratoSchema.default('vivienda'),
     moneda: MonedaAlquilerSchema.default('ARS'),
@@ -145,23 +170,11 @@ export const ReservaInputSchema = z
         });
       vistas.add(clave);
     }
-    if (r.senaRecibida && (r.senaImporte == null || !r.senaRecibidaEl || !r.senaMedio))
-      ctx.addIssue({
-        code: 'custom',
-        path: ['senaRecibidaEl'],
-        message:
-          r.senaImporte == null
-            ? 'Indicá el importe de la seña que se recibió.'
-            : 'Indicá cuándo y cómo se recibió la seña.',
-      });
   })
-  // Sin seña no hay nada recibido; sin moneda, la del alquiler.
+  // Sin moneda, la del alquiler.
   .transform((r) => ({
     ...r,
     senaMoneda: r.senaImporte == null ? null : (r.senaMoneda ?? r.moneda),
-    senaRecibida: r.senaImporte != null && r.senaRecibida,
-    senaRecibidaEl: r.senaImporte != null && r.senaRecibida ? r.senaRecibidaEl : null,
-    senaMedio: r.senaImporte != null && r.senaRecibida ? r.senaMedio : null,
     depositoMoneda: r.depositoImporte ? (r.depositoMoneda ?? r.moneda) : null,
     indice: r.ajuste === 'indexado' ? r.indice : null,
   }));
@@ -172,12 +185,36 @@ export type Reserva = z.output<typeof ReservaInputSchema>;
 
 const PersonaMini = z.object({ id: z.string().uuid(), nombre: z.string() });
 
+/**
+ * Regla 169: cobrar la seña. Da un recibo de verdad —el mismo de Cobros, con
+ * número, PDF y «Mandar por mail»— a nombre del interesado.
+ */
+export const CobrarSenaSchema = z.object({
+  fecha: FechaIso,
+  medio: MedioCobroSchema.default('transferencia'),
+  /** Quién la paga, entre los interesados; si no se dice, el primero. */
+  personaId: opcional(z.string().uuid()),
+  obs: z
+    .string()
+    .trim()
+    .max(500)
+    .nullish()
+    .transform((v) => (v ? v : null)),
+});
+export type CobrarSenaInput = z.input<typeof CobrarSenaSchema>;
+export type CobrarSena = z.output<typeof CobrarSenaSchema>;
+
+/**
+ * La seña: la acordada y, si se cobró, su recibo. «Recibida» sale del recibo
+ * vigente, no de un tilde: anular el recibo la deja sin recibir.
+ */
 export const SenaDtoSchema = z.object({
   importe: z.number(),
   moneda: MonedaAlquilerSchema,
   recibida: z.boolean(),
   recibidaEl: FechaIso.nullable(),
   medio: MedioCobroSchema.nullable(),
+  recibo: z.object({ id: z.string().uuid(), numero: z.number().int() }).nullable().default(null),
 });
 export type SenaDto = z.infer<typeof SenaDtoSchema>;
 
@@ -221,6 +258,8 @@ export const ReservaDtoSchema = ReservaResumenDtoSchema.extend({
   obs: z.string().nullable(),
   /** El motivo del rechazo o de la anulación. */
   motivo: z.string().nullable(),
+  /** Regla 171: lo que se le entrega al propietario de la seña retenida (antes de honorarios). */
+  senaRetenida: z.number().nullable().default(null),
   registrado: RegistroSchema,
   garantias: z.array(GarantiaDtoSchema),
   /** La línea de tiempo: los pasos y cambios de la reserva, lo más nuevo primero. */
@@ -344,6 +383,12 @@ export const MARCADORES_RESERVA: readonly MarcadorPlantilla[] = [
     tipo: 'texto',
     descripcion: 'Cuándo se recibió la seña (vacío si todavía no)',
     ejemplo: '15/10/2026',
+  },
+  {
+    nombre: 'sena.recibo',
+    tipo: 'texto',
+    descripcion: 'El número del recibo de la seña (vacío si todavía no se cobró)',
+    ejemplo: '000123',
   },
   {
     nombre: 'sena.medio',

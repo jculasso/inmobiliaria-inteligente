@@ -6,6 +6,7 @@ import {
   ReservaDtoSchema,
   ReservaResumenDtoSchema,
   type CambioEstadoReserva,
+  type CobrarSenaInput,
   type ContratoInput,
   type FiltroReservas,
   type GarantiaInput,
@@ -68,6 +69,15 @@ export async function guardarGarantiasReserva(
   });
 }
 
+/** Regla 169: cobrar la seña da el recibo de Cobros, a nombre del interesado. */
+export async function cobrarSenaReserva(accessToken: string, id: string, pago: CobrarSenaInput) {
+  return apiFetch(`/alquileres/reservas/${id}/sena`, ReservaDtoSchema, {
+    accessToken,
+    method: 'POST',
+    body: pago,
+  });
+}
+
 /** Regla 159: el contrato que sale de la reserva, y la reserva convertida, todo junto. */
 export async function convertirReserva(accessToken: string, id: string, dto: ContratoInput) {
   return apiFetch(`/alquileres/reservas/${id}/convertir`, ContratoDtoSchema, {
@@ -121,5 +131,27 @@ export async function guardarInventario(
     accessToken,
     method: 'PUT',
     body: inventario,
+  });
+}
+
+/** Regla 174: el anexo de inventario en Word; sin plantilla, con el modelo de la plataforma. */
+export async function generarAnexoInventario(
+  accessToken: string,
+  contratoId: string,
+  plantillaId: string | null,
+) {
+  return apiFetchArchivo(`/alquileres/contratos/${contratoId}/anexo-inventario`, {
+    accessToken,
+    method: 'POST',
+    body: { plantillaId },
+    nombrePorDefecto: 'Anexo-inventario.docx',
+  });
+}
+
+/** Regla 174: el Word de ejemplo del anexo de inventario. */
+export async function descargarEjemploAnexo(accessToken: string) {
+  return apiFetchArchivo('/alquileres/plantillas/ejemplo-inventario', {
+    accessToken,
+    nombrePorDefecto: 'Plantilla de anexo de inventario - ejemplo.docx',
   });
 }

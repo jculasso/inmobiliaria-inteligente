@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ContratoDto, PlantillaDto } from '@vacker/types';
 
 const generarDesdePlantilla = vi.fn();
@@ -70,7 +70,12 @@ describe('GenerarContrato', () => {
         ]}
       />,
     );
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Particular']);
+    // El desplegable del contrato; el del anexo de inventario va aparte (regla 174).
+    expect(
+      within(screen.getByLabelText('Plantilla'))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Particular']);
   });
 
   it('sin plantillas de Word, invita a subir una', () => {

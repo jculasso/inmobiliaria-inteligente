@@ -296,6 +296,10 @@ export class ContratosService {
    */
   async borrar(ctx: TenantContext, id: string): Promise<{ id: string }> {
     return this.db.withTenant(async (tx) => {
+      // Regla 160: si salió de una reserva, la reserva vuelve a aprobada y se
+      // lleva su seña (regla 170). Antes de contar los conceptos: la seña
+      // convertida en depósito no es un concepto del contrato que lo frene.
+      await devolverReservaDelContrato(tx, ctx, id);
       const c = await tx.alqContrato.findUnique({
         where: { id },
         select: {
@@ -317,8 +321,6 @@ export class ContratosService {
         throw new ConflictException(
           `El contrato ${c.codigo} tiene el PDF cargado: no se borra, se anula con un motivo.`,
         );
-      // Regla 160: si salió de una reserva, la reserva vuelve a aprobada.
-      await devolverReservaDelContrato(tx, ctx, id, c.codigo);
       await tx.alqContrato.delete({ where: { id } });
       await registrarEventos(tx, ctx, {
         entidad: 'contrato',

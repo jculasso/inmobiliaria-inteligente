@@ -72,6 +72,19 @@ export function leerItemsInventario(valor: unknown): ItemInventario[] {
   return r.success ? r.data : [];
 }
 
+/**
+ * Regla 174: el anexo de inventario en Word, con una plantilla de anexo de la
+ * inmobiliaria o, sin `plantillaId`, con el modelo de la plataforma.
+ */
+export const GenerarAnexoSchema = z.object({
+  plantillaId: z
+    .string()
+    .uuid()
+    .nullish()
+    .transform((v) => v ?? null),
+});
+export type GenerarAnexo = z.output<typeof GenerarAnexoSchema>;
+
 /** Regla 151: el inventario no toca plata, así que se edita en borrador y en vigente. */
 export const ESTADOS_CONTRATO_CON_INVENTARIO_EDITABLE = ['borrador', 'vigente'] as const;
 
