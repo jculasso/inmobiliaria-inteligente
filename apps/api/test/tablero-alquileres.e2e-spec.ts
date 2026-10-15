@@ -323,7 +323,7 @@ suite('Tablero de Alquileres contra la base (regla 79)', () => {
     );
     await cobro(inq1.id, '2026-09-04', [[parcialSeptiembre.id, 500_000]]);
 
-    prisma = new PrismaService({ datasourceUrl: URL_POOLER });
+    prisma = new PrismaService({ url: URL_POOLER });
     await prisma.$connect();
     const ctx: TenantContext = { tenantId: t, userId: ids.usuario, roles: ['admin_tenant'] };
     const cls = { get: () => ctx } as unknown as ClsService;

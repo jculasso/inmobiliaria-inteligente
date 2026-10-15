@@ -79,7 +79,7 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
     await sembrar(siembra, idsA);
     await sembrar(siembra, idsB);
 
-    prisma = new PrismaService({ datasourceUrl: URL_POOLER });
+    prisma = new PrismaService({ url: URL_POOLER });
     await prisma.$connect();
 
     // `withTenant` solo mira el CLS si no recibe contexto; acá siempre lo recibe.
@@ -246,8 +246,10 @@ suite('Aislamiento entre inmobiliarias (ruta real: Prisma + pooler)', () => {
   it('al terminar la transacción, el contexto no queda pegado a la conexión', async () => {
     await tenantPrisma.withTenant(async (tx) => tx.tenant.findMany(), ctxA);
 
+    // `::text`: el adaptador de node-postgres no lee columnas de tipo `name`
+    // (lo que devuelve `current_user`); el motor de Prisma sí.
     const filas = await prisma.$queryRawUnsafe<{ tenant_guc: string | null; rol: string }[]>(
-      `SELECT current_setting('app.tenant_id', true) AS tenant_guc, current_user AS rol`,
+      `SELECT current_setting('app.tenant_id', true) AS tenant_guc, current_user::text AS rol`,
     );
     const estado = filas[0];
     expect(estado).toBeDefined();
