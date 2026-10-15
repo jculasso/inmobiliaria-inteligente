@@ -76,6 +76,12 @@ export const TenantConfigSchema = z.object({
   depositoGestion: z
     .enum(['entrega_propietario', 'retiene_inmobiliaria'])
     .default('entrega_propietario'),
+  /**
+   * Días para pagar la diferencia de la liquidación final, desde que se
+   * confirma la indexación (regla 133). 5 por defecto: lo pidió Vacker para
+   * el IPC que sale atrasado (Florencia, 15/10/2026).
+   */
+  diasDiferenciaFinal: z.number().int().min(0).max(60).default(5),
 });
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 

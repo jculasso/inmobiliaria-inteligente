@@ -526,3 +526,100 @@ describe('CobrosService.cuenta (reglas 18 y 24)', () => {
     ]);
   });
 });
+
+describe('CobrosService · liquidación parcial y final (reglas 133, 134 y 138)', () => {
+  const PARCIAL = 'alq|c5|2026-10|2026-10-01|alquiler|a_cobrar|inq';
+  const FINAL = 'alq|c5|2026-10|2026-10-01~final|alquiler|a_cobrar|inq';
+  /** La diferencia de octubre: vence el 20/10, a los cinco días de confirmar (regla 133). */
+  const final = (over: Record<string, unknown> = {}) =>
+    concepto({
+      importe: dec(55_916),
+      periodo: '2026-10',
+      vencimiento: d('2026-10-20'),
+      descripcion: 'Alquiler octubre 2026 — liquidación final (diferencia por IPC)',
+      ...over,
+    });
+
+  it('regla 133: la diferencia no tiene punitorio antes de su vencimiento; después, sí', async () => {
+    const svc = (fecha: string) =>
+      new CobrosService(makeDb(makeTx({ conceptos: [final()] }))).preparar(PERSONA, 'ARS', fecha);
+    expect((await svc('2026-10-20')).deudas[0]!.punitorio).toBeNull();
+    expect((await svc('2026-10-23')).deudas[0]!.punitorio).toEqual({ dias: 3, importe: 167.75 });
+  });
+
+  it('regla 134: el reintegro de una final negativa se compensa en el próximo cobro, como un gasto del dueño', async () => {
+    const reintegro = concepto({
+      tipo: 'otro',
+      sentido: 'a_pagar',
+      importe: dec(5_321),
+      periodo: '2026-10',
+      descripcion: 'Alquiler octubre 2026 — liquidación final (diferencia por IPC, a su favor)',
+    });
+    const noviembre = concepto();
+    const prep = await new CobrosService(
+      makeDb(makeTx({ conceptos: [reintegro, noviembre] })),
+    ).preparar(PERSONA, 'ARS', '2026-11-05');
+    expect(prep.compensables).toEqual([
+      { conceptoId: reintegro.id, descripcion: reintegro.descripcion, saldo: 5_321 },
+    ]);
+    const tx = makeTx({ conceptos: [reintegro, noviembre] });
+    await new CobrosService(makeDb(tx)).registrar(CTX, input({ importe: 1_137_518 - 5_321 }));
+    expect(imputaciones(tx).map((i) => [i.conceptoId, i.importe])).toEqual([
+      [reintegro.id, 5_321],
+      [noviembre.id, 1_137_518],
+    ]);
+  });
+
+  it('regla 138: el recibo de una final dice qué parcial completa y en qué recibo se pagó', async () => {
+    const tx = makeTx();
+    tx.alqCobro.findUnique.mockResolvedValue({
+      ...filaCobro,
+      numero: 52,
+      registradas: [
+        {
+          cobroId: 'nuevo',
+          importe: dec(55_916),
+          cobro: { numero: 52 },
+          concepto: {
+            id: 'k-final',
+            descripcion: 'Alquiler octubre 2026 — liquidación final (diferencia por IPC)',
+            tipo: 'alquiler',
+            sentido: 'a_cobrar',
+            periodo: '2026-10',
+            etapa: 'final',
+            claveGeneracion: FINAL,
+            contrato: { id: 'c5', codigo: 'ALT-0005' },
+          },
+        },
+      ],
+    });
+    tx.alqConcepto.findMany.mockResolvedValue([
+      {
+        claveGeneracion: PARCIAL,
+        importe: dec(600_000),
+        imputaciones: [
+          { registradaEnCobro: { numero: 45 } },
+          { registradaEnCobro: { numero: 41 } },
+          { registradaEnCobro: { numero: 45 } },
+        ],
+      },
+    ]);
+    const r = await new CobrosService(makeDb(tx)).obtener('nuevo');
+    expect(tx.alqConcepto.findMany.mock.calls[0]![0].where).toEqual({
+      claveGeneracion: { in: [PARCIAL] },
+    });
+    expect(r.imputaciones[0]!.liquidacionFinal).toEqual({
+      periodo: '2026-10',
+      parcial: 600_000,
+      recibos: [41, 45],
+    });
+  });
+
+  it('regla 138: un recibo sin finales no hace la consulta de más', async () => {
+    const tx = makeTx();
+    tx.alqCobro.findUnique.mockResolvedValue(filaCobro);
+    const r = await new CobrosService(makeDb(tx)).obtener('nuevo');
+    expect(tx.alqConcepto.findMany).not.toHaveBeenCalled();
+    expect(r.imputaciones).toEqual([]);
+  });
+});

@@ -24,11 +24,24 @@ import { CLASE_FOCO, EncabezadoPagina, Panel } from './piezas';
 /** Un día de vencimiento: de 1 a 28, para que exista en todos los meses. */
 const diaDelMes = (texto: string) => Math.min(28, Math.max(1, Math.round(Number(texto)) || 1));
 
+/** Regla 133: los días para pagar la diferencia de la liquidación final, de 0 a 60. */
+const diasDeLaDiferencia = (texto: string) =>
+  Math.min(60, Math.max(0, Math.round(Number(texto)) || 0));
+
 /**
  * El día se acomoda entre 1 y 28 al salir del campo, no en cada tecla: si no,
- * borrar el 5 para escribir 10 dejaba un 1 y terminaba en 28.
+ * borrar el 5 para escribir 10 dejaba un 1 y terminaba en 28. `acomodar`
+ * cambia el rango (los días de la diferencia van de 0 a 60).
  */
-function InputDia({ valor, onValor }: { valor: number; onValor: (n: number) => void }) {
+function InputDia({
+  valor,
+  onValor,
+  acomodar = diaDelMes,
+}: {
+  valor: number;
+  onValor: (n: number) => void;
+  acomodar?: (texto: string) => number;
+}) {
   const [texto, setTexto] = useState(String(valor));
   return (
     <input
@@ -38,9 +51,9 @@ function InputDia({ valor, onValor }: { valor: number; onValor: (n: number) => v
       value={texto}
       onChange={(e) => {
         setTexto(e.target.value);
-        if (e.target.value.trim()) onValor(diaDelMes(e.target.value));
+        if (e.target.value.trim()) onValor(acomodar(e.target.value));
       }}
-      onBlur={() => setTexto(String(diaDelMes(texto)))}
+      onBlur={() => setTexto(String(acomodar(texto)))}
     />
   );
 }
@@ -210,6 +223,19 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
             <option value="entrega_propietario">Se le entrega al propietario</option>
             <option value="retiene_inmobiliaria">Lo retiene la inmobiliaria</option>
           </select>
+        </Campo>
+      </Panel>
+      {/* Regla 133 (Florencia, Vacker, 15/10/2026): el IPC sale atrasado. */}
+      <Panel icono="🧮" titulo="Liquidación final">
+        <Campo
+          label="Días para pagar la diferencia de la liquidación final"
+          hint="Cuando sale el índice y se confirma, la diferencia de los meses cobrados como parcial vence a estos días (corrida al siguiente día hábil). Antes no hay punitorio."
+        >
+          <InputDia
+            valor={c.diasDiferenciaFinal}
+            onValor={(n) => cambiar({ diasDiferenciaFinal: n })}
+            acomodar={diasDeLaDiferencia}
+          />
         </Campo>
       </Panel>
       <Panel icono="🏢" titulo="IVA de la inmobiliaria">

@@ -311,6 +311,8 @@ function Propiedades({ informe }: { informe: InformePropietarioDto }) {
                   key={m.periodo}
                   importe={fmtMoneda(m.alquiler, c.moneda)}
                   detalle={[
+                    // Regla 140: el mes cobrado como parcial, o completado con la final.
+                    m.nota,
                     m.cobradoEl.length
                       ? `Cobrado ${fmtMoneda(m.cobrado, c.moneda)} el ${m.cobradoEl.map(fmtFecha).join(', ')}`
                       : null,

@@ -234,6 +234,7 @@ function GrupoContrato({
                 {c.adelantadoPorInmobiliaria && !c.anulado && (
                   <Insignia tono="aviso">Adelantado</Insignia>
                 )}
+                {c.etapa && <InsigniaEtapa etapa={c.etapa} />}
                 {c.estado === 'parcial' && (
                   <span className="text-xs text-muted">falta {fmtMoneda(c.saldo, c.moneda)}</span>
                 )}
@@ -284,6 +285,11 @@ function GrupoContrato({
                   {c.adelantadoPorInmobiliaria && !c.anulado && (
                     <span className="ml-2">
                       <Insignia tono="aviso">Adelantado</Insignia>
+                    </span>
+                  )}
+                  {c.etapa && (
+                    <span className="ml-2">
+                      <InsigniaEtapa etapa={c.etapa} />
                     </span>
                   )}
                   {c.anulado && (
@@ -345,6 +351,26 @@ function GrupoContrato({
  * generaron 11 conceptos de 11 contratos» cuando los nuevos eran de 3: la
  * respuesta no dice de cuántos contratos son los nuevos, así que no se afirma.
  */
+/**
+ * Regla 130: de un vistazo, qué alquiler se cobró con el importe anterior
+ * porque el índice no había salido (parcial) y cuál es la diferencia (final).
+ * La descripción dice el resto: qué índice espera, o por qué es la diferencia.
+ */
+function InsigniaEtapa({ etapa }: { etapa: NonNullable<ConceptoDto['etapa']> }) {
+  return etapa === 'parcial' ? (
+    <Insignia tono="aviso">Liquidación parcial</Insignia>
+  ) : (
+    <Insignia tono="marca">Liquidación final</Insignia>
+  );
+}
+
+/** Regla 130: qué contratos se generaron como liquidación parcial, y qué esperan. */
+export function textoParciales(r: ResultadoGeneracionDto): string | null {
+  if (r.parciales.length === 0) return null;
+  const cuales = r.parciales.map((p) => `${p.codigo} (espera ${p.espera})`).join(', ');
+  return `Como liquidación parcial, con el importe del tramo anterior: ${cuales}. Al confirmar la indexación se genera la diferencia.`;
+}
+
 export function textoGeneracion(r: ResultadoGeneracionDto): string {
   const revisados = `se ${r.contratos === 1 ? 'revisó' : 'revisaron'} ${cantidad(r.contratos, 'contrato')}`;
   if (r.creados === 0) return `No había nada nuevo para generar: ${revisados}.`;
@@ -419,9 +445,10 @@ export function ConceptosMes({
           className="flex flex-col gap-1 rounded-brand border border-success/30 bg-success/5 px-3 py-2 text-sm text-ink"
         >
           <p>{textoGeneracion(resultado)}</p>
+          {textoParciales(resultado) && <p>{textoParciales(resultado)}</p>}
           {resultado.sinIndexar.length > 0 && (
             <p>
-              Sin generar, porque el tramo no está indexado:{' '}
+              Sin generar, porque falta confirmar la indexación del tramo:{' '}
               {resultado.sinIndexar
                 .map(
                   (s) =>

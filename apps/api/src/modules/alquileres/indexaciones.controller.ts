@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   ConfirmarIndexacionSchema,
+  PrevisualizarDiferenciasQuerySchema,
   ROLES_ADMINISTRACION_ALQUILERES,
   type ConfirmarIndexacion,
+  type PrevisualizarDiferenciasQuery,
 } from '@vacker/types';
 import { CurrentUser, Modulo, Roles } from '../../auth/decorators';
 import type { AuthPrincipal } from '../../auth/auth-principal';
@@ -26,9 +28,27 @@ export class IndexacionesController {
     return this.indexaciones.bandeja();
   }
 
+  @Get(':tramoId/diferencias')
+  @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
+  @ApiOperation({
+    summary:
+      'Vista previa de la liquidación final: qué diferencias generaría confirmar el tramo en los meses cobrados como parcial (null si no hay)',
+  })
+  diferencias(
+    @Param('tramoId', ParseUUIDPipe) tramoId: string,
+    @Query(new ZodValidationPipe(PrevisualizarDiferenciasQuerySchema))
+    q: PrevisualizarDiferenciasQuery,
+    @CurrentUser() user: AuthPrincipal,
+  ) {
+    return this.indexaciones.previsualizar(ctxDe(user), tramoId, q);
+  }
+
   @Post(':tramoId/confirmar')
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
-  @ApiOperation({ summary: 'Confirma la indexación de un tramo; el importe lo recalcula la API' })
+  @ApiOperation({
+    summary:
+      'Confirma la indexación de un tramo; el importe lo recalcula la API. Genera la liquidación final de los meses cobrados como parcial',
+  })
   confirmar(
     @Param('tramoId', ParseUUIDPipe) tramoId: string,
     @Body(new ZodValidationPipe(ConfirmarIndexacionSchema)) dto: ConfirmarIndexacion,

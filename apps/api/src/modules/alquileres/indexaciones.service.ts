@@ -9,6 +9,7 @@ import {
   DIAS_ANTICIPACION_INDEXACION,
   type BandejaIndexacionDto,
   type ConfirmarIndexacion,
+  type VistaPreviaDiferenciasDto,
   type EstadoIndiceDto,
   type IndexacionConfirmadaDto,
   type IndexacionDto,
@@ -17,10 +18,8 @@ import {
 import {
   alertaIndice,
   esTramoAnterior,
-  fechaDelIndice,
   proponerIndexacion,
   sumarDiasIso,
-  type IndiceConFuente,
   type PropuestaIndexacion,
 } from '@vacker/domain';
 import type { TenantContext } from '../../prisma/tenant-context';
@@ -28,6 +27,8 @@ import { plata, registrarEventos } from './historial';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { decToNum, fromDate, toDate } from '../tablero/tablero.util';
 import { hoyArgentina } from '../protocolo/protocolo.calc';
+import { claveDeValor, valoresDeIndices, type ValoresDeIndices } from './esperas-indice';
+import { diferenciasFinales } from './liquidacion-final';
 
 type Tx = Parameters<Parameters<TenantPrismaService['withTenant']>[0]>[0];
 
@@ -53,8 +54,8 @@ const INCLUIR = {
 type FilaTramo = Prisma.AlqTramoGetPayload<{ include: typeof INCLUIR }>;
 
 /** Los valores cargados del índice, para buscarlos por índice y fecha en memoria. */
-type Valores = Map<string, number>;
-const clave = (indice: string, fecha: string) => `${indice}:${fecha}`;
+type Valores = ValoresDeIndices;
+const clave = claveDeValor;
 
 /**
  * La bandeja «a indexar» (spec alquileres-fase-1.md, reglas 5 a 7).
@@ -116,33 +117,11 @@ export class IndexacionesService {
     ctx: TenantContext,
     tramoId: string,
     dto: ConfirmarIndexacion,
+    hoy = hoyArgentina(),
   ): Promise<IndexacionConfirmadaDto> {
     return this.db.withTenant(async (tx) => {
-      const fila = await tx.alqTramo.findUnique({ where: { id: tramoId }, include: INCLUIR });
-      if (!fila) throw new NotFoundException('El tramo no existe.');
+      const { fila, anterior, propuesta, importe } = await this.aConfirmar(tx, tramoId, dto);
       const c = fila.contrato;
-      if (c.estado !== 'vigente')
-        throw new BadRequestException('Solo se indexan contratos vigentes.');
-      if (c.ajuste !== 'indexado' || !c.indice)
-        throw new BadRequestException('El contrato no se ajusta por índice.');
-      if (fila.importe != null)
-        throw new ConflictException(`El tramo ${fila.numero} ya está indexado.`);
-      if (esAnterior(fila))
-        throw new BadRequestException(
-          `El tramo ${fila.numero} es de antes de que se administrara el contrato: no se indexa.`,
-        );
-      const anterior = c.tramos.find((t) => t.numero === fila.numero - 1);
-      if (anterior?.importe == null) {
-        throw new BadRequestException(
-          `Primero hay que indexar el tramo ${fila.numero - 1}: este se calcula sobre aquel.`,
-        );
-      }
-
-      const valores = await this.cargarValores(tx, [
-        { indice: c.indice, desdes: [fromDate(anterior.desde)!, fromDate(fila.desde)!] },
-      ]);
-      const propuesta = proponer(fila, anterior, valores);
-      const importe = importeAConfirmar(propuesta, dto);
 
       // `importe: null` en el where: si otra persona confirmó mientras tanto,
       // no se pisa su importe.
@@ -168,32 +147,80 @@ export class IndexacionesService {
         accion: 'indexacion',
         resumen: `Indexó el tramo ${fila.numero} (${c.indice}): ${plata(decToNum(anterior.importe), c.moneda)} → ${plata(importe, c.moneda)}`,
       });
-      return { tramoId, numero: fila.numero, importe };
+      // Regla 131: los meses que se cobraron como parcial reciben su
+      // diferencia, en el mismo mes y en la misma transacción.
+      const diferencias = await diferenciasFinales(tx, {
+        tenantId: ctx.tenantId,
+        contratoId: c.id,
+        tramo: fila.numero,
+        importe,
+        hoy,
+        crear: { ctx },
+      });
+      return { tramoId, numero: fila.numero, importe, diferencias };
     });
   }
 
-  /** Una sola consulta para todos los valores que hacen falta, sean cuantos sean los tramos. */
-  private async cargarValores(
+  /**
+   * Regla 137: lo que generaría confirmar el tramo, sin confirmarlo. Las
+   * mismas validaciones y el mismo importe que la confirmación: lo que se
+   * muestra es lo que se va a generar.
+   */
+  async previsualizar(
+    ctx: TenantContext,
+    tramoId: string,
+    dto: ConfirmarIndexacion,
+    hoy = hoyArgentina(),
+  ): Promise<VistaPreviaDiferenciasDto> {
+    return this.db.withTenant(async (tx) => {
+      const { fila, importe } = await this.aConfirmar(tx, tramoId, dto);
+      const diferencias = await diferenciasFinales(tx, {
+        tenantId: ctx.tenantId,
+        contratoId: fila.contrato.id,
+        tramo: fila.numero,
+        importe,
+        hoy,
+        crear: null,
+      });
+      // Siempre un objeto: un `null` suelto viaja como cuerpo vacío.
+      return { diferencias };
+    });
+  }
+
+  /** El tramo, su anterior y el importe que se confirmaría, con todas las validaciones (regla 6). */
+  private async aConfirmar(tx: Tx, tramoId: string, dto: ConfirmarIndexacion) {
+    const fila = await tx.alqTramo.findUnique({ where: { id: tramoId }, include: INCLUIR });
+    if (!fila) throw new NotFoundException('El tramo no existe.');
+    const c = fila.contrato;
+    if (c.estado !== 'vigente')
+      throw new BadRequestException('Solo se indexan contratos vigentes.');
+    if (c.ajuste !== 'indexado' || !c.indice)
+      throw new BadRequestException('El contrato no se ajusta por índice.');
+    if (fila.importe != null)
+      throw new ConflictException(`El tramo ${fila.numero} ya está indexado.`);
+    if (esAnterior(fila))
+      throw new BadRequestException(
+        `El tramo ${fila.numero} es de antes de que se administrara el contrato: no se indexa.`,
+      );
+    const anterior = c.tramos.find((t) => t.numero === fila.numero - 1);
+    if (anterior?.importe == null) {
+      throw new BadRequestException(
+        `Primero hay que indexar el tramo ${fila.numero - 1}: este se calcula sobre aquel.`,
+      );
+    }
+    const valores = await this.cargarValores(tx, [
+      { indice: c.indice, desdes: [fromDate(anterior.desde)!, fromDate(fila.desde)!] },
+    ]);
+    const propuesta = proponer(fila, anterior, valores);
+    return { fila, anterior, propuesta, importe: importeAConfirmar(propuesta, dto) };
+  }
+
+  /** Una sola consulta para todos los valores que hacen falta (la misma que usa la generación del mes). */
+  private cargarValores(
     tx: Tx,
     pedidos: { indice: string | null; desdes: string[] }[],
   ): Promise<Valores> {
-    const porIndice = new Map<IndiceConFuente, Set<string>>();
-    for (const { indice, desdes } of pedidos) {
-      if (indice !== 'ICL' && indice !== 'IPC') continue;
-      const set = porIndice.get(indice) ?? new Set<string>();
-      for (const d of desdes) set.add(fechaDelIndice(indice, d));
-      porIndice.set(indice, set);
-    }
-    if (porIndice.size === 0) return new Map();
-    const filas = await tx.indiceValor.findMany({
-      where: {
-        OR: [...porIndice].map(([indice, fechas]) => ({
-          indice,
-          fecha: { in: [...fechas].map((f) => toDate(f)!) },
-        })),
-      },
-    });
-    return new Map(filas.map((f) => [clave(f.indice, fromDate(f.fecha)!), Number(f.valor)]));
+    return valoresDeIndices(tx, pedidos);
   }
 
   /** Hasta dónde llega cada índice y si hay que avisar (regla 8). */

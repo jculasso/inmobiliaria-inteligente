@@ -14,7 +14,7 @@ vi.mock('../../lib/alquileres-api', () => ({
   anularConcepto: vi.fn(),
 }));
 
-import { ConceptosMes, textoGeneracion } from './conceptos-mes';
+import { ConceptosMes, textoGeneracion, textoParciales } from './conceptos-mes';
 
 const C5 = '55555555-5555-4555-8555-555555555555';
 const k = (over: Partial<ConceptoDto>): ConceptoDto => ({
@@ -36,6 +36,7 @@ const k = (over: Partial<ConceptoDto>): ConceptoDto => ({
   estado: 'pendiente',
   papel: 'inquilino',
   registrado: null,
+  etapa: null,
   ...over,
 });
 
@@ -180,6 +181,7 @@ describe('ConceptosMes', () => {
           hasta: '2026-12-31',
         },
       ],
+      parciales: [],
     });
     render(<ConceptosMes periodo="2026-12" conceptos={[]} contratos={[contrato]} />);
     fireEvent.click(screen.getByRole('button', { name: '⚙️ Generar diciembre' }));
@@ -187,7 +189,9 @@ describe('ConceptosMes', () => {
     expect(estado).toHaveTextContent(
       'Se generaron 300 conceptos nuevos. 4 ya estaban (se revisaron 78 contratos).',
     );
-    expect(estado).toHaveTextContent('5 (15/12 al 31/12)');
+    expect(estado).toHaveTextContent(
+      'Sin generar, porque falta confirmar la indexación del tramo: 5 (15/12 al 31/12)',
+    );
     expect(within(estado).getByRole('link', { name: 'Ir a indexar' })).toHaveAttribute(
       'href',
       '/alquileres/indexaciones',
@@ -243,7 +247,7 @@ describe('ConceptosMes', () => {
   });
 
   it('lo que informa «Generar» no afirma de cuántos contratos son los nuevos, y respeta el singular', () => {
-    const r = { periodo: '2026-10', sinIndexar: [] };
+    const r = { periodo: '2026-10', sinIndexar: [], parciales: [] };
     expect(textoGeneracion({ ...r, contratos: 11, creados: 11, existentes: 30 })).toBe(
       'Se generaron 11 conceptos nuevos. 30 ya estaban (se revisaron 11 contratos).',
     );
@@ -252,6 +256,61 @@ describe('ConceptosMes', () => {
     );
     expect(textoGeneracion({ ...r, contratos: 4, creados: 0, existentes: 12 })).toBe(
       'No había nada nuevo para generar: se revisaron 4 contratos.',
+    );
+  });
+
+  it('regla 130: la parcial y la final se distinguen de un vistazo, con la descripción que dice qué espera', () => {
+    render(
+      <ConceptosMes
+        periodo="2026-10"
+        conceptos={[
+          k({
+            periodo: '2026-10',
+            importe: 600_000,
+            etapa: 'parcial',
+            descripcion:
+              'Alquiler octubre 2026 — liquidación parcial (espera el IPC de septiembre de 2026)',
+          }),
+          k({
+            periodo: '2026-10',
+            importe: 55_916,
+            etapa: 'final',
+            descripcion: 'Alquiler octubre 2026 — liquidación final (diferencia por IPC)',
+          }),
+        ]}
+        contratos={[contrato]}
+      />,
+    );
+    // Teléfono y compu: cada insignia dos veces (las dos vistas están en el DOM).
+    expect(screen.getAllByText('Liquidación parcial')).toHaveLength(2);
+    expect(screen.getAllByText('Liquidación final')).toHaveLength(2);
+    expect(
+      screen.getAllByText(
+        'Alquiler octubre 2026 — liquidación parcial (espera el IPC de septiembre de 2026)',
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('regla 130: «Generar» dice qué contratos salieron como parcial y qué esperan', () => {
+    const r = { periodo: '2026-10', contratos: 2, creados: 8, existentes: 0, sinIndexar: [] };
+    expect(textoParciales({ ...r, parciales: [] })).toBeNull();
+    expect(
+      textoParciales({
+        ...r,
+        parciales: [
+          {
+            contratoId: C5,
+            codigo: 'ALT-0005',
+            direccion: 'Mendoza 3340',
+            tramo: 3,
+            desde: '2026-10-01',
+            hasta: '2026-10-31',
+            espera: 'el IPC de septiembre de 2026',
+          },
+        ],
+      }),
+    ).toBe(
+      'Como liquidación parcial, con el importe del tramo anterior: ALT-0005 (espera el IPC de septiembre de 2026). Al confirmar la indexación se genera la diferencia.',
     );
   });
 });
