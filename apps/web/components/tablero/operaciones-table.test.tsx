@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LIMITE_LISTA, LIMITE_LISTA_CON_SONDA, type OperacionDto } from '@vacker/types';
@@ -15,8 +15,14 @@ vi.mock('../../lib/supabase/client', () => ({
   getAccessToken: vi.fn().mockResolvedValue('token'),
 }));
 const deleteOperacion = vi.fn().mockResolvedValue({ id: '1' });
+const getOperacion = vi.fn();
+const updateOperacion = vi.fn().mockResolvedValue({ id: '1' });
 vi.mock('../../lib/tablero-api', () => ({
   deleteOperacion: (...args: unknown[]) => deleteOperacion(...args),
+  getOperacion: (...args: unknown[]) => getOperacion(...args),
+  // Los usa el formulario de edición, que se abre desde esta tabla.
+  updateOperacion: (...args: unknown[]) => updateOperacion(...args),
+  createOperacion: vi.fn(),
 }));
 
 const OPERACIONES: OperacionDto[] = [
@@ -63,6 +69,16 @@ const OPERACIONES: OperacionDto[] = [
 // aplica). Los tests dicen explícitamente qué vista miran.
 const enLaTabla = () => within(screen.getByRole('table'));
 const enLasTarjetas = () => within(screen.getByRole('list', { name: 'Operaciones' }));
+
+beforeEach(() => {
+  // Por defecto, el detalle es la misma operación de la lista.
+  getOperacion.mockReset();
+  getOperacion.mockImplementation(async (_token: string, id: string) =>
+    OPERACIONES.find((o) => o.id === id),
+  );
+  updateOperacion.mockClear();
+  deleteOperacion.mockClear();
+});
 
 describe('OperacionesTable', () => {
   it('muestra las operaciones y el contador', () => {
@@ -224,7 +240,7 @@ describe('OperacionesTable', () => {
 
     await user.click(enLaTabla().getAllByRole('button', { name: /Borrar/ })[0]!);
 
-    const dialogo = screen.getByRole('dialog');
+    const dialogo = await screen.findByRole('dialog');
     expect(within(dialogo).getByText('Borrar venta')).toBeInTheDocument();
     expect(within(dialogo).getByText('OP-1001')).toBeInTheDocument();
     expect(within(dialogo).getByText('Av. Siempre Viva 742')).toBeInTheDocument();
@@ -292,9 +308,156 @@ describe('OperacionesTable', () => {
     expect(deleteOperacion).not.toHaveBeenCalled();
 
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Sí, borrar' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Sí, borrar' }),
     );
     expect(deleteOperacion).toHaveBeenCalledWith('token', '1');
+  });
+});
+
+/**
+ * Editar una venta compartida desde «lo mío» borraba la punta del otro
+ * vendedor (revisión de seguridad del 17/10/2026, H1).
+ *
+ * Dirección sin «Ver todo» recibe la lista enmascarada: una venta compartida
+ * llega con su punta sola. Editar abría el formulario con esa fila, y al
+ * guardar viajaban las puntas visibles como el set completo: la punta ajena y
+ * su comisión desaparecían aunque solo se hubiera tocado el estado. Ahora
+ * Editar y Borrar piden el detalle, que a quien escribe no le oculta nada.
+ */
+describe('OperacionesTable — editar y borrar con la venta completa', () => {
+  const VENDEDORES = [
+    { id: 'u1', nombre: 'Ana' },
+    { id: 'u2', nombre: 'Beto' },
+  ] as never;
+
+  /** Como llega en la lista a Ana (dirección) en «lo mío»: su punta sola. */
+  const EN_LA_LISTA: OperacionDto = {
+    id: '3',
+    codigo: 'OP-1003',
+    tipo: 'venta',
+    direccion: 'Pasaje Compartido 50',
+    precio: 200000,
+    valorMensual: null,
+    moneda: 'USD',
+    cantPuntas: 2,
+    comTotal: 5000,
+    estado: 'escriturada',
+    fechaReserva: null,
+    fechaFirma: '2026-05-10',
+    anio: 2026,
+    mes: 5,
+    obs: null,
+    puntas: [{ id: 'p1', lado: 'vendedora', usuarioId: 'u1', nombre: 'Ana', comision: 5000 }],
+  };
+
+  /** Lo que devuelve el detalle: las dos puntas y la comisión entera. */
+  const COMPLETA: OperacionDto = {
+    ...EN_LA_LISTA,
+    comTotal: 8000,
+    puntas: [
+      ...EN_LA_LISTA.puntas,
+      { id: 'p2', lado: 'compradora', usuarioId: 'u2', nombre: 'Beto', comision: 3000 },
+    ],
+  };
+
+  function renderCompartida() {
+    getOperacion.mockResolvedValue(COMPLETA);
+    render(
+      <OperacionesTable
+        tipo="venta"
+        operaciones={[EN_LA_LISTA]}
+        vendedores={VENDEDORES}
+        puedeEscribir={true}
+        orden="codigo"
+        dir="desc"
+      />,
+    );
+  }
+
+  const botonEditar = () =>
+    enLaTabla().getByRole('button', { name: 'Editar la venta OP-1003 (Pasaje Compartido 50)' });
+  const botonBorrar = () =>
+    enLaTabla().getByRole('button', { name: 'Borrar la venta OP-1003 (Pasaje Compartido 50)' });
+
+  it('Editar pide la venta completa, y el formulario muestra las dos puntas', async () => {
+    const user = userEvent.setup();
+    renderCompartida();
+
+    await user.click(botonEditar());
+
+    const dialogo = await screen.findByRole('dialog');
+    expect(getOperacion).toHaveBeenCalledWith('token', '3');
+    expect(within(dialogo).getByDisplayValue('Ana')).toBeInTheDocument();
+    expect(within(dialogo).getByDisplayValue('Beto')).toBeInTheDocument();
+    expect(
+      within(dialogo).getByRole('textbox', { name: 'Comisión de la punta compradora' }),
+    ).toHaveValue('3.000,00');
+  });
+
+  it('al guardar sin tocar las puntas, la del otro vendedor sigue viajando', async () => {
+    const user = userEvent.setup();
+    renderCompartida();
+
+    await user.click(botonEditar());
+    const dialogo = await screen.findByRole('dialog');
+    await user.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
+
+    expect(updateOperacion).toHaveBeenCalledTimes(1);
+    const [, id, dto] = updateOperacion.mock.calls[0]!;
+    expect(id).toBe('3');
+    expect(dto.puntas).toEqual([
+      { lado: 'vendedora', usuarioId: 'u1', comision: 5000 },
+      { lado: 'compradora', usuarioId: 'u2', comision: 3000 },
+    ]);
+    expect(dto.puntasVistas).toEqual(['p1', 'p2']);
+  });
+
+  it('la confirmación de borrado lista a los dos vendedores y la comisión entera', async () => {
+    const user = userEvent.setup();
+    renderCompartida();
+
+    await user.click(botonBorrar());
+
+    const dialogo = await screen.findByRole('dialog');
+    expect(getOperacion).toHaveBeenCalledWith('token', '3');
+    expect(within(dialogo).getByText('Ana · Beto')).toBeInTheDocument();
+    expect(within(dialogo).getByText('U$S 8.000')).toBeInTheDocument();
+  });
+
+  it('mientras pide la venta, el botón muestra que está cargando', async () => {
+    const user = userEvent.setup();
+    renderCompartida();
+    let soltar: (op: OperacionDto) => void = () => {};
+    getOperacion.mockReturnValueOnce(new Promise((resolve) => (soltar = resolve)));
+
+    await user.click(botonEditar());
+
+    expect(botonEditar()).toHaveAttribute('aria-busy', 'true');
+    expect(botonEditar()).toHaveAttribute('title', 'Abriendo…');
+    // En la tarjeta del teléfono, con texto.
+    expect(enLasTarjetas().getByRole('button', { name: '⏳ Abriendo…' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    soltar(COMPLETA);
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(botonEditar()).not.toHaveAttribute('aria-busy');
+  });
+
+  it('si la venta no llega, avisa y no abre el formulario', async () => {
+    const user = userEvent.setup();
+    renderCompartida();
+    getOperacion.mockRejectedValueOnce(
+      new Error('No hay conexión con el servidor. Revisá internet y probá de nuevo.'),
+    );
+
+    await user.click(botonEditar());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo abrir la venta OP-1003 (Pasaje Compartido 50) para editarla. No hay conexión con el servidor.',
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(botonEditar()).not.toHaveAttribute('aria-busy');
   });
 });
 

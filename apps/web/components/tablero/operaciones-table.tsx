@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   compararOperaciones,
@@ -12,15 +12,24 @@ import {
   type VendedorDto,
 } from '@vacker/types';
 import { getAccessToken } from '../../lib/supabase/client';
-import { deleteOperacion } from '../../lib/tablero-api';
+import { deleteOperacion, getOperacion } from '../../lib/tablero-api';
 import { fmtFecha, fmtUSD } from '../../lib/format';
 import { estadoLabel, estadoTono } from '../../lib/operacion-estado';
-import { AccionesFila, BarraLista, BotonNuevo, CLASE_LISTA_MOVIL, Insignia } from '../piezas';
+import {
+  AccionesFila,
+  BarraLista,
+  BotonNuevo,
+  CLASE_LISTA_MOVIL,
+  Insignia,
+  MensajeError,
+} from '../piezas';
 import { AvisoListaRecortada } from '../aviso-lista-recortada';
 import { CamposTarjeta, CampoTarjeta, ListaTarjetas, Tarjeta } from '../tabla-movil';
 import { ConfirmarBorradoModal, DatoBorrado } from '../confirmar-borrado-modal';
 import { EncabezadoOrdenable } from './encabezado-ordenable';
 import { OperacionFormModal } from './operacion-form-modal';
+
+type Accion = 'editar' | 'borrar';
 
 interface Props {
   tipo: TipoOperacion;
@@ -47,6 +56,11 @@ export function OperacionesTable({
   const [busqueda, setBusqueda] = useState('');
   const [modal, setModal] = useState<'create' | OperacionDto | null>(null);
   const [aBorrar, setABorrar] = useState<OperacionDto | null>(null);
+  /** La fila cuyo Editar o Borrar está pidiendo el detalle. */
+  const [abriendo, setAbriendo] = useState<{ id: string; accion: Accion } | null>(null);
+  const [errorAlAbrir, setErrorAlAbrir] = useState<string | null>(null);
+  /** Número del último pedido: si se tocó otra fila mientras tanto, la respuesta vieja se descarta. */
+  const ultimoPedido = useRef(0);
 
   /**
    * Orden en el que se está mostrando la tabla.
@@ -100,6 +114,43 @@ export function OperacionesTable({
   const nombreFila = (op: OperacionDto) =>
     `${tipo === 'venta' ? 'la venta' : 'el alquiler'} ${op.codigo} (${op.direccion})`;
 
+  /**
+   * Editar y Borrar se abren con la operación COMPLETA, pedida al detalle, y
+   * nunca con la fila de la lista.
+   *
+   * La lista enmascara las puntas con el alcance de la vista (CONVENCIONES §2):
+   * dirección en «lo mío» ve una venta compartida con su punta sola. Abrir el
+   * formulario con esa fila y guardar borraba la punta del otro vendedor y su
+   * comisión, porque el guardado manda las puntas como el set completo; y la
+   * confirmación de borrado listaba solo a quien miraba (revisión de seguridad
+   * del 17/10/2026). El detalle enmascara con el alcance del permiso, que a
+   * quien puede escribir no le oculta nada.
+   *
+   * Si el detalle no llega, no se abre nada: un formulario con la fila sería
+   * justamente el que borra.
+   */
+  async function abrir(op: OperacionDto, accion: Accion) {
+    const pedido = ++ultimoPedido.current;
+    setErrorAlAbrir(null);
+    setAbriendo({ id: op.id, accion });
+    try {
+      const completa = await getOperacion(await getAccessToken(), op.id);
+      if (pedido !== ultimoPedido.current) return;
+      if (accion === 'editar') setModal(completa);
+      else setABorrar(completa);
+    } catch (err) {
+      if (pedido !== ultimoPedido.current) return;
+      const motivo = err instanceof Error ? err.message : 'Probá de nuevo en un momento.';
+      const para = `${accion}${tipo === 'venta' ? 'la' : 'lo'}`; // «editarla», «borrarlo»
+      setErrorAlAbrir(`No se pudo abrir ${nombreFila(op)} para ${para}. ${motivo}`);
+    } finally {
+      if (pedido === ultimoPedido.current) setAbriendo(null);
+    }
+  }
+
+  /** Qué botón de esta fila está cargando, si alguno. */
+  const cargandoEn = (op: OperacionDto) => (abriendo?.id === op.id ? abriendo.accion : null);
+
   return (
     <div className="flex flex-col gap-3">
       {hayMas && <AvisoListaRecortada que={tipo === 'venta' ? 'ventas' : 'alquileres'} />}
@@ -120,6 +171,8 @@ export function OperacionesTable({
           </BotonNuevo>
         )}
       </BarraLista>
+
+      <MensajeError className="rounded-brand bg-danger/10 px-3 py-2">{errorAlAbrir}</MensajeError>
 
       <div className={CLASE_LISTA_MOVIL}>
         {filtradas.length === 0 ? (
@@ -157,8 +210,9 @@ export function OperacionesTable({
                   {puedeEscribir && (
                     <AccionesFila
                       nombre={nombreFila(op)}
-                      onEditar={() => setModal(op)}
-                      onBorrar={() => setABorrar(op)}
+                      onEditar={() => abrir(op, 'editar')}
+                      onBorrar={() => abrir(op, 'borrar')}
+                      cargando={cargandoEn(op)}
                       tarjeta
                     />
                   )}
@@ -298,8 +352,9 @@ export function OperacionesTable({
                       <td className="sticky right-0 border-l border-line bg-white px-2 py-2">
                         <AccionesFila
                           nombre={nombreFila(op)}
-                          onEditar={() => setModal(op)}
-                          onBorrar={() => setABorrar(op)}
+                          onEditar={() => abrir(op, 'editar')}
+                          onBorrar={() => abrir(op, 'borrar')}
+                          cargando={cargandoEn(op)}
                         />
                       </td>
                     )}

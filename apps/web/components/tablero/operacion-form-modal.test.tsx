@@ -107,3 +107,106 @@ describe('OperacionFormModal · importes', () => {
     expect(screen.getByRole('textbox', { name: 'Precio' })).toHaveValue('150.000,00');
   });
 });
+
+/**
+ * El guardado manda las puntas como el set completo. Para que la API pueda
+ * rechazar un formulario que no vio todas —el que borró la punta de otro
+ * vendedor (revisión de seguridad del 17/10/2026)—, viajan también los ids de
+ * las puntas con las que se abrió.
+ */
+describe('OperacionFormModal · puntas vistas', () => {
+  const VENDEDORES_DOS = [
+    { id: 'u1', nombre: 'Ana' },
+    { id: 'u2', nombre: 'Beto' },
+  ] as never;
+
+  const compartida = {
+    id: '1',
+    codigo: 'OP-1',
+    tipo: 'venta',
+    direccion: 'Calle Falsa 123',
+    precio: 150000,
+    valorMensual: null,
+    moneda: 'USD',
+    cantPuntas: 2,
+    comTotal: 8000,
+    estado: 'escriturada',
+    fechaReserva: null,
+    fechaFirma: '2026-05-10',
+    anio: 2026,
+    mes: 5,
+    obs: null,
+    puntas: [
+      { id: 'p1', lado: 'vendedora', usuarioId: 'u1', nombre: 'Ana', comision: 5000 },
+      { id: 'p2', lado: 'compradora', usuarioId: 'u2', nombre: 'Beto', comision: 3000 },
+    ],
+  } as OperacionDto;
+
+  beforeEach(() => updateOperacion.mockClear());
+
+  it('al editar una venta, manda como vistas las puntas con las que se abrió', async () => {
+    const user = userEvent.setup();
+    render(
+      <OperacionFormModal
+        tipo="venta"
+        vendedores={VENDEDORES_DOS}
+        operacion={compartida}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    const dto = updateOperacion.mock.calls[0]![2];
+    expect(dto.puntasVistas).toEqual(['p1', 'p2']);
+    expect(dto.puntas).toHaveLength(2);
+  });
+
+  it('quitar una punta a propósito: no viaja en `puntas`, pero sí en las vistas', async () => {
+    const user = userEvent.setup();
+    render(
+      <OperacionFormModal
+        tipo="venta"
+        vendedores={VENDEDORES_DOS}
+        operacion={compartida}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await user.selectOptions(screen.getByDisplayValue('Beto'), '');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    const dto = updateOperacion.mock.calls[0]![2];
+    expect(dto.puntas).toEqual([{ lado: 'vendedora', usuarioId: 'u1', comision: 5000 }]);
+    expect(dto.puntasVistas).toEqual(['p1', 'p2']);
+  });
+
+  it('un alquiler no tiene puntas: no manda ninguna de las dos', async () => {
+    const user = userEvent.setup();
+    const alquiler = {
+      ...compartida,
+      tipo: 'alquiler',
+      precio: null,
+      valorMensual: 900,
+      estado: 'firmado',
+      puntas: [],
+    } as OperacionDto;
+    render(
+      <OperacionFormModal
+        tipo="alquiler"
+        vendedores={VENDEDORES_DOS}
+        operacion={alquiler}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    const dto = updateOperacion.mock.calls[0]![2];
+    expect(dto).not.toHaveProperty('puntas');
+    expect(dto).not.toHaveProperty('puntasVistas');
+  });
+});

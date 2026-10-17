@@ -458,6 +458,7 @@ export function AccionesFila({
   anula = false,
   tarjeta = false,
   extra,
+  cargando,
 }: {
   /** De qué es la fila, para lectores de pantalla: «el contrato ALT-0003». */
   nombre: string;
@@ -468,6 +469,12 @@ export function AccionesFila({
   tarjeta?: boolean;
   /** Lo propio de la fila, antes del lápiz y la papelera: «📄 PDF». Va con `AccionFila`. */
   extra?: ReactNode;
+  /**
+   * La acción que se está abriendo, cuando hay que pedir algo antes (el
+   * detalle completo de la fila). Ese botón muestra que carga y los dos quedan
+   * deshabilitados hasta que termine.
+   */
+  cargando?: 'editar' | 'borrar' | null;
 }) {
   if (!onEditar && !onBorrar && !extra) return null;
   return (
@@ -487,6 +494,8 @@ export function AccionesFila({
           title="Editar"
           onClick={onEditar}
           tarjeta={tarjeta}
+          cargando={cargando === 'editar'}
+          deshabilitado={Boolean(cargando)}
         />
       )}
       {onBorrar && (
@@ -498,6 +507,8 @@ export function AccionesFila({
           onClick={onBorrar}
           tarjeta={tarjeta}
           peligro
+          cargando={cargando === 'borrar'}
+          deshabilitado={Boolean(cargando)}
         />
       )}
     </div>
@@ -517,6 +528,8 @@ export function AccionFila({
   onClick,
   tarjeta = false,
   peligro = false,
+  cargando = false,
+  deshabilitado = false,
 }: {
   icono: string;
   texto: string;
@@ -527,20 +540,33 @@ export function AccionFila({
   tarjeta?: boolean;
   /** Anular o borrar: el texto de la tarjeta va en rojo de urgencia, no en el color de la marca. */
   peligro?: boolean;
+  /** Está pidiendo lo que necesita para abrirse: el reloj en vez del ícono, y «Abriendo…». */
+  cargando?: boolean;
+  /**
+   * No responde al clic. Con `aria-disabled` y no con `disabled`: un botón
+   * deshabilitado pierde el foco, y el teclado quedaba al principio de la página.
+   */
+  deshabilitado?: boolean;
 }) {
   const parar = (e: MouseEvent) => {
     e.stopPropagation();
-    onClick();
+    if (!deshabilitado) onClick();
   };
+  const estado = {
+    'aria-busy': cargando || undefined,
+    'aria-disabled': deshabilitado || undefined,
+  };
+  const apagado = deshabilitado ? 'cursor-wait opacity-60' : '';
   if (tarjeta) {
     return (
       <button
         type="button"
         onClick={parar}
+        {...estado}
         // En pantalla táctil, 40 px como mínimo: con 28 px el dedo erraba entre Editar y Borrar.
-        className={`inline-flex items-center justify-center rounded px-2 py-1 text-xs font-semibold pointer-coarse:min-h-10 pointer-coarse:min-w-10 ${CLASE_FOCO} ${peligro ? 'text-danger hover:bg-danger/5' : 'text-ink hover:bg-surface'}`}
+        className={`inline-flex items-center justify-center rounded px-2 py-1 text-xs font-semibold pointer-coarse:min-h-10 pointer-coarse:min-w-10 ${CLASE_FOCO} ${peligro ? 'text-danger hover:bg-danger/5' : 'text-ink hover:bg-surface'} ${apagado}`}
       >
-        {icono} {texto}
+        {cargando ? '⏳ Abriendo…' : `${icono} ${texto}`}
       </button>
     );
   }
@@ -548,11 +574,12 @@ export function AccionFila({
     <button
       type="button"
       onClick={parar}
+      {...estado}
       aria-label={etiqueta}
-      title={title ?? texto}
-      className={`rounded px-1.5 py-0.5 text-base ${CLASE_FOCO} ${peligro ? 'hover:bg-danger/5' : 'hover:bg-surface'}`}
+      title={cargando ? 'Abriendo…' : (title ?? texto)}
+      className={`rounded px-1.5 py-0.5 text-base ${CLASE_FOCO} ${peligro ? 'hover:bg-danger/5' : 'hover:bg-surface'} ${apagado}`}
     >
-      {icono}
+      {cargando ? '⏳' : icono}
     </button>
   );
 }

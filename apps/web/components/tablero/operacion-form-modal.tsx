@@ -44,6 +44,11 @@ function nuevoCodigo(tipo: TipoOperacion): string {
 interface Props {
   tipo: TipoOperacion;
   vendedores: VendedorDto[];
+  /**
+   * Al editar, la operación COMPLETA, la del detalle (`getOperacion`). Nunca la
+   * fila de la lista: puede venir con una punta oculta, y el guardado manda las
+   * puntas como el set completo.
+   */
   operacion?: OperacionDto;
   onClose: () => void;
   onSaved: () => void;
@@ -129,7 +134,10 @@ export function OperacionFormModal({ tipo, vendedores, operacion, onClose, onSav
           fechaReserva: fechaReserva || null,
           fechaFirma: fechaFirma || null,
           obs: obs || null,
-          ...(tipo === 'venta' ? { puntas } : {}),
+          // `puntas` reemplaza el set completo; `puntasVistas` le dice a la API
+          // cuáles había al abrir. Si no coinciden con la base, rechaza en vez
+          // de borrar una punta que acá no se vio.
+          ...(tipo === 'venta' ? { puntas, puntasVistas: operacion.puntas.map((p) => p.id) } : {}),
         };
         await updateOperacion(accessToken, operacion.id, dto);
       } else {

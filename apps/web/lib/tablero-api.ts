@@ -41,6 +41,18 @@ export async function listOperaciones(accessToken: string, filtro: OperacionFilt
   });
 }
 
+/**
+ * Una operación completa, para editarla o borrarla.
+ *
+ * La lista enmascara las puntas con el alcance de la VISTA: dirección en «lo
+ * mío» ve una venta compartida con su punta sola. El detalle enmascara con el
+ * del PERMISO, que a quien puede escribir no le oculta nada. Editar con la fila
+ * de la lista borraba la punta del otro vendedor al guardar.
+ */
+export async function getOperacion(accessToken: string, id: string) {
+  return apiFetch(`/tablero/operaciones/${id}`, OperacionDtoSchema, { accessToken });
+}
+
 export async function createOperacion(accessToken: string, dto: CreateOperacion) {
   return apiFetch('/tablero/operaciones', OperacionDtoSchema, {
     accessToken,
