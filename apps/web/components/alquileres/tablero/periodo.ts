@@ -43,7 +43,9 @@ export function delPeriodo(t: TableroAlquileresDto, periodo: PeriodoTablero) {
 
   const evolucion = t.evolucion.filter((e) => enPeriodo(e.mes));
   const cobranza = [...new Set(evolucion.map((e) => e.moneda))].sort().map((moneda) => {
-    const es = evolucion.filter((e) => e.moneda === moneda);
+    const es = evolucion
+      .filter((e) => e.moneda === moneda)
+      .sort((a, b) => a.mes.localeCompare(b.mes));
     return {
       moneda,
       emitidos: suma(es.map((e) => e.emitidos)),
@@ -52,6 +54,8 @@ export function delPeriodo(t: TableroAlquileresDto, periodo: PeriodoTablero) {
       importeCobrado: suma(es.map((e) => e.cobradoHoy)),
       // Regla 76: se recalcula sobre los totales, nunca el promedio de los porcentajes.
       alCierre: suma(es.map((e) => e.cobrado)),
+      // Regla 188: la misma cuenta, mes por mes; la tarjeta es la suma de estos.
+      porMes: es.map((e) => ({ mes: e.mes, emitido: e.emitido, alCierre: e.cobrado })),
     };
   });
 
@@ -90,6 +94,24 @@ export function delPeriodo(t: TableroAlquileresDto, periodo: PeriodoTablero) {
   };
 }
 export type DelPeriodo = ReturnType<typeof delPeriodo>;
+
+/**
+ * Los ingresos del mes en curso de «Hoy» (regla 177), por moneda: cada parte y
+ * el total. Los lee la tarjeta y el pedido anticipado de su lista (regla 190).
+ */
+export function ingresosDelMes(t: TableroAlquileresDto) {
+  const de = (moneda: Moneda) => {
+    const i = t.ingresos.find((x) => x.mes === t.mes && x.moneda === moneda);
+    const partes = {
+      honorarios: i?.honorarios ?? 0,
+      gastos: i?.gastos ?? 0,
+      punitorios: i?.punitorios ?? 0,
+      comisiones: i?.comisiones ?? 0,
+    };
+    return { partes, total: suma(Object.values(partes)) };
+  };
+  return { ARS: de('ARS'), USD: de('USD') };
+}
 
 /** Doce meses, o los cuatro trimestres sumados. */
 export function agrupados(porMes: number[], trimestral: boolean) {

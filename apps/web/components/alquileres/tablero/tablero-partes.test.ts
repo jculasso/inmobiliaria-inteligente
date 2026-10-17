@@ -5,7 +5,8 @@ import {
   type FilaTablero,
   type Indicador,
 } from '@vacker/types';
-import { fmtSinCentavos, fmtTarjeta } from './formatos';
+import { filasDeCobranza, resumenDeCobranza } from './cobranza-del-mes';
+import { fmtSinCentavos, fmtTarjeta, totalesPorMoneda } from './formatos';
 import { carriles, hitosDelCiclo } from './linea-del-mes';
 import { gruposDeTareas, partirPorHoy } from './tareas';
 
@@ -193,5 +194,82 @@ describe('regla 184: los importes de las tarjetas', () => {
   it('regla 184: en dólares, «U$S»', () => {
     expect(fmtTarjeta(1_409.25, 'USD')).toBe('U$S 1.409');
     expect(fmtSinCentavos(1_204_500.4)).toBe('$ 1.204.500');
+  });
+});
+
+describe('regla 187: la lista de la cobranza del mes, armada con lo que viaja con el tablero', () => {
+  const alquiler = (id: string, importe: number, fecha: string, over: Partial<FilaTablero> = {}) =>
+    fila(id, { importe, fecha, inquilino: `Inquilino ${id}`, moneda: 'ARS', ...over });
+  // Como las manda la API: por vencimiento. Lo cobrado, solo de los que pagaron algo.
+  const emitidos = [
+    alquiler('parcial', 400_000, '2026-10-01', { estado: 'Pagó $ 150.000,00, falta $ 250.000,00' }),
+    alquiler('pagado', 1_000_000, '2026-10-01', { estado: 'Cobrado' }),
+    alquiler('debe5', 300_000, '2026-10-05', { estado: 'Vencido hace 15 días' }),
+    alquiler('debe10', 500_000, '2026-10-10', { estado: 'Vencido hace 10 días' }),
+    // Pagó de más: lo que falta no puede quedar negativo.
+    alquiler('demas', 200_000, '2026-10-03', { estado: 'Cobrado' }),
+  ];
+  const cobrados = [
+    alquiler('parcial', 150_000, '2026-10-01'),
+    alquiler('pagado', 1_000_000, '2026-10-01'),
+    alquiler('demas', 250_000, '2026-10-03'),
+  ];
+  const cobranza = [
+    {
+      moneda: 'ARS' as const,
+      emitidos: ind(emitidos),
+      cobrados: ind([emitidos[1]!, emitidos[4]!]),
+      importeEmitido: { valor: 2_400_000, filas: emitidos },
+      importeCobrado: { valor: 1_400_000, filas: cobrados },
+    },
+    {
+      moneda: 'USD' as const,
+      emitidos: ind([alquiler('usd', 1_500, '2026-10-05', { moneda: 'USD' })]),
+      cobrados: ind([]),
+      importeEmitido: {
+        valor: 1_500,
+        filas: [alquiler('usd', 1_500, '2026-10-05', { moneda: 'USD' })],
+      },
+      importeCobrado: {
+        valor: 500,
+        filas: [alquiler('usd', 500, '2026-10-05', { moneda: 'USD' })],
+      },
+    },
+  ];
+
+  it('regla 187: une por id el alquiler con lo cobrado; lo que falta nunca es negativo', () => {
+    const filas = filasDeCobranza(cobranza);
+    const de = (id: string) => filas.find((f) => f.id === id)!;
+    expect([de('parcial').importe, de('parcial').cobrado, de('parcial').falta]).toEqual([
+      400_000, 150_000, 250_000,
+    ]);
+    expect([de('debe10').cobrado, de('debe10').falta]).toEqual([0, 500_000]);
+    expect(de('demas').falta).toBe(0);
+    expect(de('usd').moneda).toBe('USD');
+    // El pago parcial lo dicen sus columnas; el resto conserva el estado de la API.
+    expect(de('parcial').estado).toBe('Pago parcial');
+    expect(de('debe5').estado).toBe('Vencido hace 15 días');
+  });
+
+  it('regla 187: primero los que no pagaron nada, por vencimiento; después los parciales; al final los pagados', () => {
+    expect(filasDeCobranza(cobranza).map((f) => f.id)).toEqual([
+      'debe5',
+      'debe10',
+      'parcial',
+      'usd',
+      'pagado',
+      'demas',
+    ]);
+  });
+
+  it('regla 187: los totales por moneda son los de la tarjeta, y el resumen los dice exactos', () => {
+    const filas = filasDeCobranza(cobranza);
+    expect(totalesPorMoneda(filas, 'ARS')).toEqual({ ARS: 2_400_000, USD: 1_500 });
+    expect(totalesPorMoneda(filas, 'ARS', 'cobrado')).toEqual({ ARS: 1_400_000, USD: 500 });
+    // Lo que falta suma por fila: el que pagó de más no le resta a otro.
+    expect(totalesPorMoneda(filas, 'ARS', 'falta')).toEqual({ ARS: 1_050_000, USD: 1_000 });
+    expect(resumenDeCobranza(filas)).toBe(
+      'Cobrado $ 1.400.000,00 de $ 2.400.000,00 (58%) · 3 sin pagar — En dólares: U$S 500,00 de U$S 1.500,00 (33%) · 1 sin pagar',
+    );
   });
 });

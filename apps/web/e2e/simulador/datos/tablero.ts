@@ -124,15 +124,20 @@ function tablero(tipo: FiltroTipoContrato): Tablero {
       importePorMes: Array.from({ length: 12 }, (_, i) => (i + 1 === 3 ? 850_000 : 0)),
       anterior: Array.from({ length: 12 }, (_, i) => (i + 1 === 5 ? 700_000 : 0)),
     },
-    cobranza: [
-      {
-        moneda: 'ARS',
-        emitidos: porCantidad([fila(0), fila(1)]),
-        cobrados: porCantidad([fila(0)]),
-        importeEmitido: porImporte([fila(0), fila(1)]),
-        importeCobrado: porImporte([fila(0)]),
-      },
-    ],
+    // Octubre venció el 5: Lucía pagó y la panadería no (regla 187).
+    cobranza: (() => {
+      const pagado = fila(0, { fecha: '2026-10-05', estado: 'Cobrado' });
+      const debe = fila(1, { fecha: '2026-10-05', estado: 'Vencido hace 10 días' });
+      return [
+        {
+          moneda: 'ARS' as const,
+          emitidos: porCantidad([pagado, debe]),
+          cobrados: porCantidad([pagado]),
+          importeEmitido: porImporte([pagado, debe]),
+          importeCobrado: porImporte([pagado]),
+        },
+      ];
+    })(),
     morosidad: [
       {
         moneda: 'ARS',

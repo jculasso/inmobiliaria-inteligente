@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import {
   compactarTableros,
   type CicloDelMes,
@@ -202,9 +202,37 @@ const bloque = (nombre: string) => within(screen.getByRole('region', { name: nom
 const tareas = (t: TableroAlquileresDto = tablero()) =>
   render(<TableroAlquileres tableros={tres(t)} />);
 
+/**
+ * Regla 190: lo que se pide en segundo plano espera a que el navegador esté
+ * libre. Acá el navegador se libera solo cuando la prueba lo dice
+ * (`liberar`): las pruebas que no lo llaman no ven ningún pedido anticipado.
+ */
+const libre = new Map<number, IdleRequestCallback>();
+let siguienteLibre = 0;
+async function liberar() {
+  for (let vuelta = 0; vuelta < 10 && libre.size > 0; vuelta++) {
+    const hacer = [...libre.values()];
+    libre.clear();
+    await act(async () => {
+      for (const h of hacer) h({ didTimeout: false, timeRemaining: () => 50 });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  }
+}
+/** Los pedidos de listas hechos hasta ahora, sin el token. */
+const pedidos = () => getDetalle.mock.calls.map(([, q]) => q as Record<string, string>);
+
 beforeEach(() => {
   push.mockClear();
   getDetalle.mockReset();
+  libre.clear();
+  window.requestIdleCallback = (hacer: IdleRequestCallback) => {
+    libre.set(++siguienteLibre, hacer);
+    return siguienteLibre;
+  };
+  window.cancelIdleCallback = (id: number) => {
+    libre.delete(id);
+  };
 });
 
 describe('TableroAlquileres en tres bloques (17/10/2026)', () => {
@@ -241,15 +269,120 @@ describe('TableroAlquileres en tres bloques (17/10/2026)', () => {
       expect(falta).toHaveClass('text-muted');
     });
 
-    it('regla 177: la cobranza abre los alquileres emitidos del mes, con su estado, y la lista suma lo emitido', () => {
-      tareas();
-      fireEvent.click(tarjeta(/^Cobranza de octubre: /));
-      const dialogo = within(
-        screen.getByRole('dialog', { name: 'Alquileres emitidos de octubre' }),
-      );
-      expect(dialogo.getByRole('table')).toHaveTextContent('Pagó $ 150.000,00, falta $ 250.000,00');
-      expect(dialogo.getByText('Total').parentElement).toHaveTextContent('$ 1.537.518,00');
-      expect(getDetalle).not.toHaveBeenCalled();
+    describe('regla 187: la lista de la cobranza explica la tarjeta', () => {
+      // Como los manda la API: por vencimiento. Lo cobrado, solo de los que pagaron algo.
+      const alq = (n: number, importe: number, fecha: string, over: Partial<FilaTablero> = {}) =>
+        fila(n, importe, { fecha, ...over });
+      const emitidos = [
+        alq(23, 400_000, '2026-10-01', { estado: 'Pagó $ 150.000,00, falta $ 250.000,00' }),
+        alq(24, 1_000_000, '2026-10-01', { estado: 'Cobrado' }),
+        alq(22, 300_000, '2026-10-05', { estado: 'Vencido hace 15 días' }),
+        alq(21, 500_000, '2026-10-10', { estado: 'Vencido hace 10 días' }),
+      ];
+      const usd = alq(25, 1_500, '2026-10-05', { moneda: 'USD', estado: 'Pagó U$S 500,00' });
+      const conCobranza = () =>
+        tablero({
+          cobranza: [
+            {
+              moneda: 'ARS',
+              emitidos: ind(emitidos),
+              cobrados: ind([emitidos[1]!]),
+              importeEmitido: ind(emitidos, true),
+              importeCobrado: ind(
+                [alq(23, 150_000, '2026-10-01'), alq(24, 1_000_000, '2026-10-01')],
+                true,
+              ),
+            },
+            {
+              moneda: 'USD',
+              emitidos: ind([usd]),
+              cobrados: ind([]),
+              importeEmitido: ind([usd], true),
+              importeCobrado: ind([{ ...usd, importe: 500 }], true),
+            },
+          ],
+        });
+
+      it('regla 187: se titula como la tarjeta y dice, exacto, lo cobrado de lo emitido y cuántos no pagaron', () => {
+        tareas(conCobranza());
+        const cobranza = tarjeta(/^Cobranza de octubre: 52%/);
+        expect(cobranza).toHaveTextContent('1 de 4 pagaron · 3 atrasados');
+        fireEvent.click(cobranza);
+        // Abre en el acto: la lista viaja con el tablero, no hay nada que esperar.
+        const dialogo = within(screen.getByRole('dialog', { name: 'Cobranza de octubre' }));
+        expect(dialogo.getByRole('table')).toBeInTheDocument();
+        expect(dialogo.getByText(/^Cobrado \$ 1\.150\.000,00/)).toHaveTextContent(
+          'Cobrado $ 1.150.000,00 de $ 2.200.000,00 (52%) · 3 sin pagar — En dólares: U$S 500,00 de U$S 1.500,00 (33%) · 1 sin pagar',
+        );
+      });
+
+      it('regla 187: columnas de alquiler, cobrado y falta; primero los que deben, por vencimiento; después los parciales; al final los pagados', () => {
+        tareas(conCobranza());
+        fireEvent.click(tarjeta(/^Cobranza de octubre: /));
+        const tabla = within(within(screen.getByRole('dialog')).getByRole('table'));
+        expect(tabla.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+          'Inquilino',
+          'Propiedad',
+          'Contrato',
+          'Vence',
+          'Alquiler',
+          'Cobrado',
+          'Falta',
+          'Estado',
+        ]);
+        const filas = tabla.getAllByRole('row').slice(1, -1);
+        expect(filas.map((r) => r.firstElementChild!.textContent)).toEqual([
+          'Inquilino 22',
+          'Inquilino 21',
+          'Inquilino 23',
+          'Inquilino 25',
+          'Inquilino 24',
+        ]);
+        const celdas = (r: HTMLElement) => [...r.children].slice(4).map((td) => td.textContent);
+        expect(celdas(filas[0]!)).toEqual([
+          '$ 300.000,00',
+          '$ 0,00',
+          '$ 300.000,00',
+          'Vencido hace 15 días',
+        ]);
+        // Lo que pagó y lo que falta ya están en sus columnas.
+        expect(celdas(filas[2]!)).toEqual([
+          '$ 400.000,00',
+          '$ 150.000,00',
+          '$ 250.000,00',
+          'Pago parcial',
+        ]);
+        expect(celdas(filas[4]!)).toEqual([
+          '$ 1.000.000,00',
+          '$ 1.000.000,00',
+          '$ 0,00',
+          'Cobrado',
+        ]);
+      });
+
+      it('regla 187: los totales de alquiler, cobrado y falta, por moneda, son los de la tarjeta, también en el teléfono', () => {
+        tareas(conCobranza());
+        fireEvent.click(tarjeta(/^Cobranza de octubre: /));
+        const dialogo = within(screen.getByRole('dialog'));
+        const total = dialogo.getByText('Total', { selector: 'td' }).closest('tr')!;
+        expect([...total.children].map((td) => td.textContent)).toEqual([
+          'Total',
+          '',
+          '',
+          '',
+          '$ 2.200.000,00 · U$S 1.500,00',
+          '$ 1.150.000,00 · U$S 500,00',
+          '$ 1.050.000,00 · U$S 1.000,00',
+          '',
+        ]);
+        expect(dialogo.getByLabelText('Totales')).toHaveTextContent(
+          'Total alquiler$ 2.200.000,00 · U$S 1.500,00Total cobrado$ 1.150.000,00 · U$S 500,00Total falta$ 1.050.000,00 · U$S 1.000,00',
+        );
+        // Las tarjetas del teléfono muestran alquiler, cobrado y falta.
+        const [primera] = within(dialogo.getAllByRole('list')[0]!).getAllByRole('listitem');
+        expect(primera).toHaveTextContent('Inquilino 22 · Calle 22');
+        expect(primera).toHaveTextContent('Alquiler$ 300.000,00Cobrado$ 0,00Falta$ 300.000,00');
+      });
     });
 
     it('regla 177: «Hoy» no lo cambian el tipo, el período ni el año', () => {
@@ -294,7 +427,8 @@ describe('TableroAlquileres en tres bloques (17/10/2026)', () => {
       expect(liquidar).toHaveTextContent('2 propietarios con cobros sin liquidar');
       expect(liquidar).toHaveTextContent('Se pagó el mar 13');
       fireEvent.click(liquidar);
-      const dialogo = within(screen.getByRole('dialog'));
+      // Se titula como la tarjeta: «Propietarios para liquidar» era la tarea que reemplazó.
+      const dialogo = within(screen.getByRole('dialog', { name: 'A liquidar a propietarios' }));
       expect(dialogo.getByText('Total').parentElement).toHaveTextContent('$ 1.928.307,62');
       expect(dialogo.getByRole('link', { name: 'Ir a liquidar →' })).toHaveAttribute(
         'href',
@@ -443,6 +577,30 @@ describe('TableroAlquileres en tres bloques (17/10/2026)', () => {
       expect(porVencer.getByText('12', { selector: 'td *, td' })).toBeTruthy();
       expect(porVencer.queryByText('10', { selector: 'td *, td' })).toBeNull();
       expect(porVencer.getByText('Total').parentElement).toHaveTextContent('$ 1.204.500,40');
+    });
+
+    it('regla 179: el plazo cumplido dice cuándo venció y hace cuánto, no «Faltan: hace 5 días»', () => {
+      const base = tablero();
+      const vencido = fila(13, null, { fecha: null, vence: '2026-10-15', dias: -5 });
+      tareas(
+        tablero({
+          tareas: {
+            ...base.tareas,
+            vencen: [
+              { dias: 30, indicador: ind([vencido]) },
+              { dias: 60, indicador: vacio },
+              { dias: 90, indicador: vacio },
+            ],
+          },
+        }),
+      );
+      fireEvent.click(screen.getByRole('button', { name: /^Contratos con el plazo cumplido/ }));
+      const tabla = within(within(screen.getByRole('dialog')).getByRole('table'));
+      const encabezados = tabla.getAllByRole('columnheader').map((th) => th.textContent);
+      expect(encabezados.slice(-2)).toEqual(['Venció', 'Hace']);
+      expect(
+        [...tabla.getAllByRole('row')[1]!.children].slice(-2).map((td) => td.textContent),
+      ).toEqual(['15/10/2026', '5 días']);
     });
 
     it('regla 180: lo que está en cero no se muestra y se nombra en «Al día»; un grupo sin tareas no aparece', () => {
@@ -597,23 +755,58 @@ describe('TableroAlquileres en tres bloques (17/10/2026)', () => {
       );
     });
 
-    it('regla 182: cada tarjeta abre su lista; lo del período se pide al abrirlo', async () => {
-      getDetalle.mockResolvedValue(ind([fila(5, 1_137_518), fila(6, 400_000)], true));
-      render(
-        <TableroAlquileres tableros={tres(tablero())} periodoInicial={{ por: 'mes', mes: 10 }} />,
+    it('regla 188: «Cobrado dentro del mes» abre la cuenta mes por mes, sin pedir nada, con el total recalculado sobre los totales: el de la tarjeta', () => {
+      tareas();
+      // Enero 90 %, febrero 70 % y octubre 65 %: el promedio daría 75 %; sobre los totales, 73 %.
+      fireEvent.click(tarjeta(/^Cobrado dentro del mes: 73%/));
+      const dialogo = within(screen.getByRole('dialog', { name: 'Cobrado dentro del mes, 2026' }));
+      const tabla = within(dialogo.getByRole('table'));
+      expect(tabla.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+        'Mes',
+        'Emitido',
+        'Cobrado dentro del mes',
+        '%',
+      ]);
+      const filas = tabla.getAllByRole('row').slice(1);
+      expect(filas.map((r) => [...r.children].map((td) => td.textContent))).toEqual([
+        ['Enero', '$ 1.000.000,00', '$ 900.000,00', '90%'],
+        ['Febrero', '$ 1.000.000,00', '$ 700.000,00', '70%'],
+        // El mes en curso lo dice: su cierre todavía no llegó.
+        ['Octubre · en curso', '$ 1.537.518,00', '$ 1.000.000,00', '65%'],
+        ['Total', '$ 3.537.518,00', '$ 2.600.000,00', '73%'],
+      ]);
+      // En el teléfono, el total también.
+      expect(dialogo.getByLabelText('Total')).toHaveTextContent(
+        'Total73%Emitido$ 3.537.518,00Cobrado dentro del mes$ 2.600.000,00',
       );
+      expect(getDetalle).not.toHaveBeenCalled();
+    });
+
+    it('regla 188: un mes abre sus alquileres emitidos, que se piden, y «← Mes por mes» vuelve; abrirlo otra vez no pide de nuevo (regla 189)', async () => {
+      getDetalle.mockResolvedValue(ind([fila(5, 600_000), fila(6, 400_000)], true));
+      tareas();
       fireEvent.click(tarjeta(/^Cobrado dentro del mes: /));
+      const febrero = () =>
+        within(screen.getByRole('table')).getByRole('button', { name: 'Febrero' });
+      fireEvent.click(febrero());
       const dialogo = within(
-        screen.getByRole('dialog', { name: 'Alquileres emitidos de octubre 2026' }),
+        screen.getByRole('dialog', { name: 'Alquileres emitidos de febrero 2026' }),
       );
-      expect((await dialogo.findByText('Total')).parentElement).toHaveTextContent('$ 1.537.518,00');
-      expect(getDetalle).toHaveBeenCalledWith('t', {
-        indicador: 'importeEmitido',
-        desde: '2026-10',
-        hasta: '2026-10',
-        moneda: 'ARS',
-        tipo: 'todos',
-      });
+      expect((await dialogo.findByText('Total')).parentElement).toHaveTextContent('$ 1.000.000,00');
+      expect(pedidos()).toEqual([
+        {
+          indicador: 'importeEmitido',
+          desde: '2026-02',
+          hasta: '2026-02',
+          tipo: 'todos',
+          moneda: 'ARS',
+        },
+      ]);
+      fireEvent.click(dialogo.getByRole('button', { name: '← Mes por mes' }));
+      expect(screen.getByRole('dialog', { name: 'Cobrado dentro del mes, 2026' })).toBeTruthy();
+      fireEvent.click(febrero());
+      expect(within(screen.getByRole('dialog')).getByRole('table')).toBeInTheDocument();
+      expect(getDetalle).toHaveBeenCalledTimes(1);
     });
 
     it('regla 182: contratos nuevos abre su lista, con el alquiler inicial y su total', () => {
@@ -812,5 +1005,148 @@ describe('TableroAlquileres en tres bloques (17/10/2026)', () => {
     expect(
       await within(screen.getByRole('dialog')).findByText(/No se pudo cargar la lista/),
     ).toBeInTheDocument();
+  });
+
+  describe('los clics que piden su lista (17/10/2026)', () => {
+    const cerrar = () => fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    const ingresosDelMes = {
+      indicador: 'ingresos',
+      desde: '2026-10',
+      hasta: '2026-10',
+      tipo: 'todos',
+      moneda: 'ARS',
+    };
+
+    it('regla 190: apenas se pinta, se piden en segundo plano las listas de las tarjetas a la vista, y tocar después no vuelve a pedir', async () => {
+      getDetalle.mockResolvedValue(ind([fila(1, 75_000)], true));
+      tareas();
+      // Espera a que el navegador esté libre: no compite con la carga de la página.
+      expect(getDetalle).not.toHaveBeenCalled();
+      await liberar();
+      // En el orden de la pantalla: «Ingresos de octubre» en «Hoy» e «Ingresos» del año.
+      expect(pedidos()).toEqual([
+        ingresosDelMes,
+        { indicador: 'ingresos', desde: '2026-01', hasta: '2026-12', tipo: 'todos', moneda: 'ARS' },
+      ]);
+      fireEvent.click(tarjeta(/^Ingresos de octubre: /));
+      // Ya llegó: la lista se ve en el primer cuadro, sin pasar por la carga.
+      expect(within(screen.getByRole('dialog')).getByRole('table')).toBeInTheDocument();
+      expect(getDetalle).toHaveBeenCalledTimes(2);
+    });
+
+    it('regla 190: si se toca antes de que la lista llegue, el modal espera ese mismo pedido, y mientras muestra una carga que se ve (regla 191)', async () => {
+      const llegar: ((i: Indicador) => void)[] = [];
+      getDetalle.mockImplementation(() => new Promise<Indicador>((r) => llegar.push(r)));
+      tareas();
+      await liberar();
+      expect(getDetalle).toHaveBeenCalledTimes(2);
+      fireEvent.click(tarjeta(/^Ingresos de octubre: /));
+      const dialogo = within(
+        screen.getByRole('dialog', { name: 'Ingresos de la inmobiliaria, octubre' }),
+      );
+      const cargando = dialogo.getByRole('status');
+      expect(cargando).toHaveTextContent('Cargando la lista…');
+      expect(cargando.querySelectorAll('[data-cargando] > div')).toHaveLength(5);
+      expect(getDetalle).toHaveBeenCalledTimes(2);
+      await act(async () => llegar[0]!(ind([fila(1, 75_000)], true)));
+      expect(await dialogo.findByRole('table')).toBeInTheDocument();
+      expect(getDetalle).toHaveBeenCalledTimes(2);
+    });
+
+    it('regla 189: abrir otra vez la misma tarjeta no vuelve a pedir; con otro tipo es otra lista', async () => {
+      getDetalle.mockResolvedValue(ind([fila(1, 105_000)], true));
+      tareas();
+      fireEvent.click(tarjeta(/^Ingresos: /));
+      await within(screen.getByRole('dialog')).findByRole('table');
+      cerrar();
+      fireEvent.click(tarjeta(/^Ingresos: /));
+      expect(within(screen.getByRole('dialog')).getByRole('table')).toBeInTheDocument();
+      expect(getDetalle).toHaveBeenCalledTimes(1);
+      cerrar();
+      fireEvent.click(screen.getByRole('button', { name: 'Particulares' }));
+      fireEvent.click(tarjeta(/^Ingresos: /));
+      await within(screen.getByRole('dialog')).findByRole('table');
+      expect(pedidos().map((q) => q.tipo)).toEqual(['todos', 'vivienda']);
+    });
+
+    it('regla 189: con otro tablero —otro año, o al recargar— la memoria empieza de cero', async () => {
+      getDetalle.mockResolvedValue(ind([fila(1, 105_000)], true));
+      const { rerender } = tareas();
+      fireEvent.click(tarjeta(/^Ingresos: /));
+      await within(screen.getByRole('dialog')).findByRole('table');
+      cerrar();
+      rerender(<TableroAlquileres tableros={tres(tablero())} />);
+      fireEvent.click(tarjeta(/^Ingresos: /));
+      await within(screen.getByRole('dialog')).findByRole('table');
+      expect(getDetalle).toHaveBeenCalledTimes(2);
+    });
+
+    it('regla 190: al cambiar el período se piden las del período nuevo, y lo que no salió del anterior se descarta', async () => {
+      getDetalle.mockResolvedValue(ind([], true));
+      tareas();
+      // Antes de que el navegador se libere, del año pasa a Q1, que ya cerró.
+      fireEvent.click(grupo('Período').getByRole('button', { name: 'Trimestre' }));
+      fireEvent.click(grupo('Trimestre').getByRole('button', { name: 'Q1' }));
+      await liberar();
+      expect(pedidos()).toEqual([
+        ingresosDelMes,
+        { indicador: 'ingresos', desde: '2026-01', hasta: '2026-03', tipo: 'todos', moneda: 'ARS' },
+        // La cartera al cierre de marzo: su lista no viaja con el tablero.
+        { indicador: 'vigentes', desde: '2026-01', hasta: '2026-03', tipo: 'todos', moneda: 'ARS' },
+      ]);
+      // Marzo: sin ingresos, su tarjeta no se abre y no se pide; la cartera, sí.
+      fireEvent.click(grupo('Período').getByRole('button', { name: 'Mes' }));
+      fireEvent.change(screen.getByLabelText('Mes'), { target: { value: '3' } });
+      await liberar();
+      expect(pedidos().slice(3)).toEqual([
+        { indicador: 'vigentes', desde: '2026-03', hasta: '2026-03', tipo: 'todos', moneda: 'ARS' },
+      ]);
+      fireEvent.click(tarjeta(/^Cartera: 7/));
+      expect(within(screen.getByRole('dialog')).queryByText('Cargando la lista…')).toBeNull();
+      expect(getDetalle).toHaveBeenCalledTimes(4);
+    });
+
+    it('regla 190: ninguna tarjeta a la vista espera su lista: las que piden algo ya lo pidieron en segundo plano', async () => {
+      getDetalle.mockResolvedValue(ind([fila(1, 1_000, { moneda: 'USD' })], true));
+      const base = tablero();
+      const enDolares = (mes: string) => ({
+        mes,
+        moneda: 'USD' as const,
+        honorarios: 100,
+        gastos: 0,
+        punitorios: 0,
+        comisiones: 0,
+      });
+      const usd = { ...base.cobranza[0]!, moneda: 'USD' as const };
+      const t = tablero({
+        ingresos: [...base.ingresos, enDolares('2026-10'), enDolares('2026-01')],
+        cobranza: [...base.cobranza, usd],
+        evolucion: [...base.evolucion, { ...base.evolucion[0]!, moneda: 'USD' }],
+      });
+      render(<TableroAlquileres tableros={tres(t)} periodoInicial={{ por: 'trimestre', q: 1 }} />);
+      await liberar();
+      const anticipados = getDetalle.mock.calls.length;
+      expect(anticipados).toBe(5);
+      const queSeAbren = ['Hoy', 'Cómo vamos'].flatMap((nombre) =>
+        within(screen.getByRole('region', { name: nombre }))
+          .getAllByRole('button')
+          .filter(
+            (b) =>
+              /Ver el detalle$|en dólares|^En dólares/.test(b.textContent ?? '') ||
+              /Ver el detalle$/.test(b.getAttribute('aria-label') ?? ''),
+          ),
+      );
+      expect(queSeAbren.length).toBeGreaterThanOrEqual(10);
+      for (const boton of queSeAbren) {
+        fireEvent.click(boton);
+        const dialogo = screen.getByRole('dialog');
+        expect(
+          within(dialogo).queryByText('Cargando la lista…'),
+          `${boton.getAttribute('aria-label') ?? boton.textContent} esperó su lista`,
+        ).toBeNull();
+        cerrar();
+      }
+      expect(getDetalle).toHaveBeenCalledTimes(anticipados);
+    });
   });
 });

@@ -1,5 +1,6 @@
-import type { FilaTablero, MonedaAlquiler } from '@vacker/types';
+import type { MonedaAlquiler } from '@vacker/types';
 import { fmtK, fmtMoneda, fmtNum } from '../../../lib/format';
+import type { FilaDetalle } from './vistas';
 
 export const pct = (parte: number, total: number) =>
   total > 0 ? `${Math.round((parte / total) * 100)}%` : '—';
@@ -20,12 +21,17 @@ export const plural = (n: number, uno: string, varios: string) =>
  * Lo que suman las filas, moneda por moneda. Una lista puede mezclar pesos y
  * dólares (un contrato en U$S entre los propietarios a liquidar), y sumarlos
  * juntos da un número que no es de ninguna moneda. La fila sin moneda va en la
- * del número.
+ * del número. Por defecto suma el importe; la cobranza del mes suma también lo
+ * cobrado y lo que falta (regla 187).
  */
-export function totalesPorMoneda(filas: FilaTablero[], porDefecto: MonedaAlquiler) {
+export function totalesPorMoneda(
+  filas: FilaDetalle[],
+  porDefecto: MonedaAlquiler,
+  campo: 'importe' | 'alquiler' | 'cobrado' | 'falta' = 'importe',
+) {
   const t: Record<MonedaAlquiler, number> = { ARS: 0, USD: 0 };
-  for (const f of filas) t[f.moneda ?? porDefecto] += f.importe ?? 0;
-  return t;
+  for (const f of filas) t[f.moneda ?? porDefecto] += f[campo] ?? 0;
+  return { ARS: suma([t.ARS]), USD: suma([t.USD]) };
 }
 
 /** «$ 1.928.307,62 · U$S 1.409,25»: cada moneda con lo suyo, sin la que está en cero. */

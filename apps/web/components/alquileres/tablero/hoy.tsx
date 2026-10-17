@@ -13,11 +13,13 @@ import { KpiCard } from '@vacker/ui';
 import { fmtNum } from '../../../lib/format';
 import { CLASE_FOCO } from '../piezas';
 import { CabezaBloque, diaCorto, fechaLarga, nombreDelMes } from './bloque';
+import { filasDeCobranza, resumenDeCobranza } from './cobranza-del-mes';
 import { fmtTarjeta, pct, plural, suma, totalesPorMoneda } from './formatos';
 import { LineaDelMes } from './linea-del-mes';
+import { ingresosDelMes } from './periodo';
 import { VISTAS, type Abrir, type Columna, type Detalle } from './vistas';
 
-/** Abre la lista de un flujo del mes en curso: se pide al abrirla (regla 79). */
+/** Abre la lista de un flujo del mes en curso: se pide, en segundo plano o al abrirla (reglas 79 y 190). */
 export type PedirDelMes = (
   titulo: string,
   indicador: IndicadorDetalleTablero,
@@ -110,7 +112,9 @@ export function BloqueHoy({
 /**
  * Cobranza de {mes}: cuánto se cobró de lo emitido, en pesos. Lo que falta
  * está atrasado si ya pasó el vencimiento del mes (regla 178); si no, todavía
- * vence. Su lista son los alquileres emitidos, con su estado.
+ * vence. Su lista (regla 187) son los alquileres emitidos con lo cobrado y lo
+ * que falta de cada uno, primero los que deben: los totales son los números
+ * de la tarjeta.
  */
 function Cobranza({ t, mes, abrir }: { t: TableroAlquileresDto; mes: string; abrir: Abrir }) {
   const titulo = `Cobranza de ${mes}`;
@@ -124,16 +128,16 @@ function Cobranza({ t, mes, abrir }: { t: TableroAlquileresDto; mes: string; abr
   const faltan = principal.emitidos.valor - principal.cobrados.valor;
   const cobrado = principal.importeCobrado.valor;
   const emitido = principal.importeEmitido.valor;
+  const filas = filasDeCobranza(t.cobranza);
   return (
     <KpiCard
       label={titulo}
       value={pct(cobrado, emitido)}
-      onClick={abrir(
-        `Alquileres emitidos de ${mes}`,
-        juntas([ars?.emitidos, usd?.emitidos]),
-        VISTAS.cobranza,
-        { total: moneda },
-      )}
+      onClick={abrir(titulo, { valor: filas.length, filas }, VISTAS.cobranzaDelMes, {
+        total: moneda,
+        sumar: ['importe', 'cobrado', 'falta'],
+        resumen: resumenDeCobranza(filas),
+      })}
     >
       <Barra
         partes={[
@@ -291,7 +295,8 @@ function ALiquidar({ t, abrir }: { t: TableroAlquileresDto; abrir: Abrir }) {
     <KpiCard
       label="A liquidar a propietarios"
       value={fmtTarjeta(totales[moneda], moneda)}
-      onClick={abrir('Propietarios para liquidar', liq, VISTAS.liquidaciones, {
+      // El título es el de la tarjeta: «Propietarios para liquidar» era la tarea que reemplazó.
+      onClick={abrir('A liquidar a propietarios', liq, VISTAS.liquidaciones, {
         total: 'ARS',
         accion: { href: '/alquileres/liquidaciones/nueva', texto: 'Ir a liquidar' },
       })}
@@ -354,18 +359,8 @@ function IngresosDelMes({
   mes: string;
   pedirDelMes: PedirDelMes;
 }) {
-  const de = (moneda: MonedaAlquiler) => {
-    const i = t.ingresos.find((x) => x.mes === t.mes && x.moneda === moneda);
-    const partes = {
-      honorarios: i?.honorarios ?? 0,
-      gastos: i?.gastos ?? 0,
-      punitorios: i?.punitorios ?? 0,
-      comisiones: i?.comisiones ?? 0,
-    };
-    return { partes, total: suma(Object.values(partes)) };
-  };
-  const ars = de('ARS');
-  const usd = de('USD');
+  // Las mismas cuentas con que se anticipa su lista (regla 190).
+  const { ARS: ars, USD: usd } = ingresosDelMes(t);
   const titulo = `Ingresos de ${mes}`;
   return (
     <KpiCard
