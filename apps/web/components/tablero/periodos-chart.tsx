@@ -37,6 +37,7 @@ export function PeriodosChart({
   titulo,
   barrasEnteras = false,
   transcurridos,
+  compacto = false,
 }: {
   etiquetas: string[];
   /** El panel de arriba: la magnitud principal (volumen, alquileres firmados). */
@@ -63,6 +64,13 @@ export function PeriodosChart({
    * no llevan barra: valen «todavía no», no cero. Sin el dato se dibujan todos.
    */
   transcurridos?: number;
+  /**
+   * Más bajo, para una pantalla donde el gráfico no es lo principal (el
+   * Dashboard de Alquileres, regla 186): los paneles más bajos y, en el
+   * teléfono, solo los períodos que ya empezaron, como en las barras de la
+   * compu. Sin él, el gráfico es el de siempre.
+   */
+  compacto?: boolean;
 }) {
   const n = etiquetas.length;
   const width = 720;
@@ -85,7 +93,7 @@ export function PeriodosChart({
       formato: formatoBarras,
       eje: marcasDelEje(Math.max(...barras), barrasEnteras),
       top: 26,
-      alto: 140,
+      alto: compacto ? 96 : 140,
     },
     {
       clave: 'linea',
@@ -93,13 +101,13 @@ export function PeriodosChart({
       valores: linea,
       formato: formatoLinea,
       eje: marcasDelEje(Math.max(...linea), false, 3),
-      top: 210,
-      alto: 84,
+      top: compacto ? 166 : 210,
+      alto: compacto ? 60 : 84,
     },
   ];
   /** El largo de las barras acostadas del celular, contra el mismo techo. */
   const barMax = paneles[0]!.eje.techo;
-  const yEtiquetas = 294 + 20;
+  const yEtiquetas = paneles[1]!.top + paneles[1]!.alto + 20;
   const height = yEtiquetas + 8;
 
   // El scroller queda solo para pantalla ancha: si el gráfico no entra en una
@@ -110,7 +118,7 @@ export function PeriodosChart({
           deslizarlo de costado. Las mismas barras, acostadas, entran enteras y
           se leen sin mover nada. */}
       <ul aria-label={titulo} className={`flex flex-col ${n > 6 ? 'gap-1' : 'gap-2'} sm:hidden`}>
-        {barras.map((v, i) => {
+        {(compacto ? barras.slice(0, hasta) : barras).map((v, i) => {
           const activo = seleccionado === i + 1;
           const marco = activo ? 'border-brand-red/40 bg-brand-red/5' : 'border-line bg-white';
           return (
