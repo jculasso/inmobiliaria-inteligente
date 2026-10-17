@@ -91,7 +91,11 @@ arrastrar de costado, y que ningún campo mida menos de 16px en el teléfono.
 
 **`alquileres/`** — los flujos de Alquileres de la entrega A y de reservas, en
 escritorio y en el teléfono de 375: el dashboard (período y cierre «al
-30/09/2026», la lista de una tarjeta), el contrato ya en curso, corregir el
+30/09/2026», la lista de una tarjeta, la cobranza con lo cobrado y lo que
+falta, «Cobrado dentro del mes» mes por mes, y el pedido anticipado: una
+tarjeta que pide su lista no la vuelve a pedir al tocarla —por eso, para
+mirar los pedidos de una prueba, escuchá desde ANTES del `goto`: el
+anticipado sale apenas se pinta—), el contrato ya en curso, corregir el
 importe de un tramo, el tramo que espera el índice y la vista previa de las
 diferencias, las insignias de liquidación parcial y final, las reservas (alta,
 seña con recibo, estados, convertir en contrato, «No se presentó a firmar»), el
