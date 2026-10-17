@@ -105,7 +105,7 @@ export function gruposDeTareas(t: TableroAlquileresDto): Grupo[] {
           titulo: 'Contratos con el plazo cumplido, sin renovar ni terminar',
           corto: 'plazos cumplidos',
           ind: plazoCumplido,
-          columnas: VISTAS.vencen,
+          columnas: VISTAS.plazoCumplido,
         },
         {
           titulo: 'Boletas vencidas que paga la inmobiliaria',

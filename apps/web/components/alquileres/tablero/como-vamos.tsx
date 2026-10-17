@@ -1,6 +1,6 @@
 'use client';
 
-import type { FiltroTipoContrato, TableroAlquileresDto } from '@vacker/types';
+import type { FiltroTipoContrato, MonedaAlquiler, TableroAlquileresDto } from '@vacker/types';
 import { KpiCard } from '@vacker/ui';
 import { fmtNum } from '../../../lib/format';
 import { periodoPorDefecto, type PeriodoTablero } from '../../../lib/periodo-tablero';
@@ -19,7 +19,7 @@ const Linea = ({ children }: { children: React.ReactNode }) => (
   <span className="block text-xs tabular-nums text-muted">{children}</span>
 );
 
-/** Lo de dólares que se abre por su cuenta: su lista se pide aparte (regla 79). */
+/** Lo de dólares que se abre por su cuenta: su lista es otra (regla 79). */
 function EnDolares({ texto, abrir }: { texto: string; abrir: () => void }) {
   return (
     <button
@@ -48,6 +48,7 @@ export function ComoVamos({
   actualizando,
   abrir,
   pedir,
+  abrirCobradoPorMes,
 }: {
   /** El corte del tipo elegido. */
   t: TableroAlquileresDto;
@@ -60,6 +61,8 @@ export function ComoVamos({
   actualizando: boolean;
   abrir: Abrir;
   pedir: Pedir;
+  /** Regla 188: la cuenta de «Cobrado dentro del mes», mes por mes, en una moneda. */
+  abrirCobradoPorMes: (moneda: MonedaAlquiler) => () => void;
 }) {
   const p = delPeriodo(t, periodo);
 
@@ -157,24 +160,12 @@ export function ComoVamos({
               label="Cobrado dentro del mes"
               value={pct(principal.alCierre, principal.importeEmitido)}
               sub={`de ${fmtTarjeta(principal.importeEmitido, monedaCobranza)} emitidos`}
-              onClick={pedir(
-                `Alquileres emitidos de ${p.nombre}`,
-                'importeEmitido',
-                monedaCobranza,
-                VISTAS.cobranza,
-                { total: monedaCobranza },
-              )}
+              onClick={abrirCobradoPorMes(monedaCobranza)}
               pie={
                 cobranzaArs && cobranzaUsd ? (
                   <EnDolares
                     texto={`En dólares: ${pct(cobranzaUsd.alCierre, cobranzaUsd.importeEmitido)} de ${fmtTarjeta(cobranzaUsd.importeEmitido, 'USD')}`}
-                    abrir={pedir(
-                      `Alquileres emitidos en dólares de ${p.nombre}`,
-                      'importeEmitido',
-                      'USD',
-                      VISTAS.cobranza,
-                      { total: 'USD' },
-                    )}
+                    abrir={abrirCobradoPorMes('USD')}
                   />
                 ) : undefined
               }

@@ -3,33 +3,40 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { FilaTablero, FiltroTipoContrato, Indicador } from '@vacker/types';
 import { Modal } from '@vacker/ui';
-import { getDetalleTableroAlquileres } from '../../../lib/alquileres-api';
 import { fmtFecha, fmtMoneda } from '../../../lib/format';
-import { getAccessToken } from '../../../lib/supabase/client';
 import { CLASE_FOCO, CLASE_TH } from '../piezas';
 import { fmtTotales, totalesPorMoneda } from './formatos';
-import type { Columna, Detalle } from './vistas';
+import type { Listas } from './listas';
+import {
+  COLUMNAS_DE_PLATA,
+  type Columna,
+  type Detalle,
+  type FilaDetalle,
+  type IndicadorDetalle,
+} from './vistas';
 
-/** «en 12 días», «hoy», «hace 5 días»: para lo que falta o lo que pasó. */
+/**
+ * «en 12 días», «hoy», «hace 5 días»: para lo que falta o lo que pasó. Bajo
+ * «Atraso» o «Hace», solo los días: en el plazo cumplido llegan negativos
+ * (faltan −5), y bajo «Hace» se leen 5.
+ */
 function enDias(n: number, columna: string) {
-  if (columna === 'Atraso' || columna === 'Hace') return `${n} ${n === 1 ? 'día' : 'días'}`;
+  if (columna === 'Atraso' || columna === 'Hace') {
+    const d = Math.abs(n);
+    return `${d} ${d === 1 ? 'día' : 'días'}`;
+  }
   if (n === 0) return 'hoy';
   return n > 0 ? `en ${n} ${n === 1 ? 'día' : 'días'}` : `hace ${-n} ${n === -1 ? 'día' : 'días'}`;
 }
 
-const DERECHA: Columna[] = ['alquiler', 'importe', 'dias'];
+const DERECHA: Columna[] = [...COLUMNAS_DE_PLATA, 'dias'];
 /** Lo que no se corta en dos renglones: códigos, fechas e importes. */
-const SIN_CORTE: Columna[] = [
-  'contrato',
-  'fecha',
-  'vence',
-  'indexa',
-  'alquiler',
-  'importe',
-  'dias',
-];
+const SIN_CORTE: Columna[] = ['contrato', 'fecha', 'vence', 'indexa', ...DERECHA];
+/** Las columnas que se leen primero: el importe del número y, en la cobranza, lo cobrado y lo que falta. */
+const DESTACADAS: Columna[] = ['importe', 'cobrado', 'falta'];
+type ColumnaQueSuma = 'importe' | 'alquiler' | 'cobrado' | 'falta';
+const esDePlata = (c: Columna): c is ColumnaQueSuma => COLUMNAS_DE_PLATA.includes(c);
 
 /** Lo que va en una celda, formateado. */
 function Celda({
@@ -39,7 +46,7 @@ function Celda({
   hoy,
   esperan,
 }: {
-  f: FilaTablero;
+  f: FilaDetalle;
   col: Columna;
   etiqueta: string;
   hoy: string;
@@ -52,6 +59,17 @@ function Celda({
     case 'importe': {
       const v = f[col];
       return v == null ? <span className="text-muted">—</span> : <>{fmtMoneda(v, moneda)}</>;
+    }
+    case 'cobrado':
+    case 'falta': {
+      // Regla 187: el cero se ve (no pagó nada, o no falta nada), pero en gris.
+      const v = f[col];
+      if (v == null) return <span className="text-muted">—</span>;
+      return v === 0 ? (
+        <span className="font-normal text-muted">{fmtMoneda(0, moneda)}</span>
+      ) : (
+        <>{fmtMoneda(v, moneda)}</>
+      );
     }
     case 'indexa':
       if (!f.indexa) return <span className="text-muted">—</span>;
@@ -87,73 +105,120 @@ function Celda({
 }
 
 /**
+ * Regla 191: mientras la lista llega, una carga que se ve —la rueda y
+ * renglones grises donde va a estar la tabla—, no un «Cargando…» chico.
+ */
+function Cargando() {
+  return (
+    <div role="status" aria-live="polite" className="flex flex-col gap-3">
+      <p className="flex items-center gap-2 text-sm font-semibold text-muted">
+        <span
+          aria-hidden
+          className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand-red"
+        />
+        Cargando la lista…
+      </p>
+      <div aria-hidden data-cargando className="flex flex-col gap-2">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-10 animate-pulse rounded-md bg-surface" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
  * El detalle de un número: una tabla con las columnas de ese número en la
  * computadora, y tarjetas en el teléfono. Cada fila lleva a su ficha. Si es un
  * importe, el total es el número de la tarjeta.
+ *
+ * Si la lista se pide (regla 79), sale de la memoria de listas: si ya llegó
+ * —porque se pidió en segundo plano o porque ya se abrió—, se ve en el primer
+ * cuadro; si está en camino, espera ese mismo pedido (reglas 189 y 190).
  */
 export function DetalleModal({
   titulo,
+  resumen,
   indicador,
   pedido,
   columnas,
   total,
+  sumar = ['importe'],
   accion,
-  tipo,
+  volver,
+  listas,
   hoy,
   onClose,
   esperan,
 }: Detalle & {
-  tipo: FiltroTipoContrato;
+  listas: Listas;
   hoy: string;
   esperan: ReadonlySet<string>;
   onClose: () => void;
 }) {
   const router = useRouter();
-  // Regla 79: la lista de un número del período se pide al abrirla.
-  const [cargado, setCargado] = useState<Indicador | null>(indicador ?? null);
+  const [cargado, setCargado] = useState<IndicadorDetalle | null>(
+    () => indicador ?? (pedido ? listas.ya(pedido) : undefined) ?? null,
+  );
   const [error, setError] = useState(false);
   useEffect(() => {
+    // Siempre por la memoria: si ya llegó, devuelve la misma lista sin pedir
+    // nada; si llegó entre el primer cuadro y este efecto, también.
     if (!pedido) return;
     let cancelado = false;
-    getAccessToken()
-      .then((token) => getDetalleTableroAlquileres(token, { ...pedido, tipo }))
-      .then((ind) => {
+    listas.pedir(pedido).then(
+      (ind) => {
         if (!cancelado) setCargado(ind);
-      })
-      .catch(() => {
+      },
+      () => {
         if (!cancelado) setError(true);
-      });
+      },
+    );
     return () => {
       cancelado = true;
     };
-  }, [pedido, tipo]);
+  }, [pedido, listas]);
   const filas = cargado?.filas ?? [];
   // Una columna vacía en todas las filas no se muestra.
   const cols = columnas.filter(([c]) => filas.some((f) => f[c] != null && f[c] !== ''));
-  const conTotal = total && cols.some(([c]) => c === 'importe');
   // El total es lo que suman las filas, por moneda. No `indicador.valor`: en
   // las tareas es la CANTIDAD de filas, y salía «Total $ 5,00».
-  const textoTotal = total ? fmtTotales(totalesPorMoneda(filas, total), total) : '';
-  const ir = (f: FilaTablero) => {
+  const conTotal = total
+    ? cols.flatMap(([c, etiqueta]) =>
+        esDePlata(c) && sumar.includes(c)
+          ? [{ c, etiqueta, texto: fmtTotales(totalesPorMoneda(filas, total, c), total) }]
+          : [],
+      )
+    : [];
+  const totalDe = (c: Columna) => conTotal.find((x) => x.c === c)?.texto;
+  const ir = (f: FilaDetalle) => {
     if (f.href) router.push(f.href);
   };
   return (
     <Modal
       title={titulo}
       subtitle={
-        cargado
-          ? `${filas.length} ${filas.length === 1 ? 'fila' : 'filas'}${filas.some((f) => f.href) ? ' · tocá una para abrir su ficha' : ''}`
-          : undefined
+        !cargado
+          ? undefined
+          : (resumen ??
+            `${filas.length} ${filas.length === 1 ? 'fila' : 'filas'}${filas.some((f) => f.href) ? ' · tocá una para abrir su ficha' : ''}`)
       }
       onClose={onClose}
       size="xl"
     >
+      {volver && (
+        <button
+          type="button"
+          onClick={volver.ir}
+          className={`-mt-1 mb-3 inline-flex min-h-10 items-center gap-1 rounded-md text-sm font-bold text-brand-red hover:underline ${CLASE_FOCO}`}
+        >
+          ← {volver.texto}
+        </button>
+      )}
       {error ? (
         <p className="text-sm text-danger">No se pudo cargar la lista. Cerrala y probá de nuevo.</p>
       ) : !cargado ? (
-        <p role="status" className="text-sm text-muted">
-          Cargando…
-        </p>
+        <Cargando />
       ) : filas.length === 0 ? (
         <p className="text-sm text-muted">Nada por ahora.</p>
       ) : (
@@ -183,7 +248,9 @@ export function DetalleModal({
                       .map(([c, etiqueta]) => (
                         <div key={c} className="min-w-0">
                           <dt className="text-muted">{etiqueta}</dt>
-                          <dd className="truncate text-ink">
+                          <dd
+                            className={`truncate ${DESTACADAS.includes(c) ? 'font-semibold tabular-nums' : ''} text-ink`}
+                          >
                             <Celda f={f} col={c} etiqueta={etiqueta} hoy={hoy} esperan={esperan} />
                           </dd>
                         </div>
@@ -228,7 +295,7 @@ export function DetalleModal({
                     {cols.map(([c, etiqueta], i) => (
                       <td
                         key={c}
-                        className={`px-3 py-2 align-top ${SIN_CORTE.includes(c) ? 'whitespace-nowrap' : ''} ${DERECHA.includes(c) ? 'text-right tabular-nums' : ''} ${c === 'importe' || i === 0 ? 'font-semibold text-ink' : 'text-muted'}`}
+                        className={`px-3 py-2 align-top ${SIN_CORTE.includes(c) ? 'whitespace-nowrap' : ''} ${DERECHA.includes(c) ? 'text-right tabular-nums' : ''} ${DESTACADAS.includes(c) || i === 0 ? 'font-semibold text-ink' : 'text-muted'}`}
                       >
                         {i === 0 && f.href ? (
                           <Link
@@ -246,15 +313,15 @@ export function DetalleModal({
                   </tr>
                 ))}
               </tbody>
-              {conTotal && (
+              {conTotal.length > 0 && (
                 <tfoot className="sticky bottom-0 bg-white">
                   <tr className="border-t-2 border-line font-bold text-ink">
                     {cols.map(([c], i) => (
                       <td
                         key={c}
-                        className={`px-3 py-2 ${c === 'importe' ? 'whitespace-nowrap text-right tabular-nums' : ''}`}
+                        className={`px-3 py-2 ${totalDe(c) ? 'whitespace-nowrap text-right tabular-nums' : ''}`}
                       >
-                        {i === 0 ? 'Total' : c === 'importe' ? textoTotal : ''}
+                        {i === 0 ? 'Total' : (totalDe(c) ?? '')}
                       </td>
                     ))}
                   </tr>
@@ -262,10 +329,23 @@ export function DetalleModal({
               )}
             </table>
           </div>
-          {(conTotal || accion) && (
+          {(conTotal.length > 0 || accion) && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-              {conTotal ? (
-                <p className="text-sm font-bold text-ink sm:hidden">Total {textoTotal}</p>
+              {conTotal.length === 1 ? (
+                <p className="text-sm font-bold text-ink sm:hidden">Total {conTotal[0]!.texto}</p>
+              ) : conTotal.length > 1 ? (
+                // Regla 187: en el teléfono, cada total en su renglón.
+                <dl aria-label="Totales" className="flex w-full flex-col gap-1 text-sm sm:hidden">
+                  {conTotal.map((x) => (
+                    <div
+                      key={x.c}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3"
+                    >
+                      <dt className="font-semibold text-muted">Total {x.etiqueta.toLowerCase()}</dt>
+                      <dd className="ml-auto font-bold tabular-nums text-ink">{x.texto}</dd>
+                    </div>
+                  ))}
+                </dl>
               ) : (
                 <span />
               )}

@@ -95,9 +95,11 @@ test('regla 177: la deuda vencida abre su lista sin pedir nada, y un tramo de la
   esTelefono,
 }) => {
   await page.goto('/alquileres');
+  // Los anticipados de otras tarjetas (regla 190) pueden salir en este rato; la deuda, no.
   let pidio = false;
   page.on('request', (r) => {
-    if (r.url().includes('/alquileres/tablero/detalle')) pidio = true;
+    if (r.url().includes('/alquileres/tablero/detalle') && r.url().includes('indicador=mora'))
+      pidio = true;
   });
   const deuda = page.getByRole('button', { name: /^Deuda vencida: \$ 600\.000\. Ver el detalle/ });
   await esTocable(deuda);
@@ -181,24 +183,162 @@ test('regla 182: en «Cómo vamos», Mes → septiembre cambia las cuatro tarjet
   await revisarEnTelefono(page, esTelefono, 'la planilla abierta');
 });
 
-test('regla 79: la cartera de un mes cerrado pide su lista al abrirla, y la lista se lee en el teléfono', async ({
+/** Los pedidos de listas del Dashboard (regla 79), desde antes de abrir la página. */
+function pedidosDeListas(page: Page) {
+  const urls: URL[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/alquileres/tablero/detalle')) urls.push(new URL(r.url()));
+  });
+  return {
+    urls,
+    de: (indicador: string, desde: string, hasta = desde) =>
+      urls.filter(
+        (u) =>
+          u.searchParams.get('indicador') === indicador &&
+          u.searchParams.get('desde') === desde &&
+          u.searchParams.get('hasta') === hasta,
+      ).length,
+  };
+}
+
+test('reglas 79 y 190: la cartera de un mes cerrado pide su lista en segundo plano, abrirla no la pide otra vez, y la lista se lee en el teléfono', async ({
   page,
   esTelefono,
 }) => {
+  const pedidos = pedidosDeListas(page);
   await page.goto('/alquileres?periodo=mes&mes=9');
   const tarjeta = page.getByRole('button', { name: /^Cartera: 2\. Ver el detalle/ });
   await expect(tarjeta).toContainText('al 30/09/2026');
+  // No viaja con el tablero: se pide apenas la tarjeta está a la vista.
+  await expect.poll(() => pedidos.de('vigentes', '2026-09')).toBe(1);
+  await page.waitForLoadState('networkidle');
   await esTocable(tarjeta);
-  const pedido = page.waitForRequest((r) => r.url().includes('/alquileres/tablero/detalle'));
   await tarjeta.click();
-  const url = new URL((await pedido).url());
-  expect(url.searchParams.get('indicador')).toBe('vigentes');
-  expect(url.searchParams.get('desde')).toBe('2026-09');
-  expect(url.searchParams.get('hasta')).toBe('2026-09');
 
   const dialogo = page.getByRole('dialog', { name: 'Contratos vigentes al 30/09/2026' });
   await expect(dialogo.getByText('ALT-0001').filter({ visible: true }).first()).toBeVisible();
   await expect(dialogo.getByText('ALT-0002').filter({ visible: true }).first()).toBeVisible();
   await revisarModal(page, dialogo, esTelefono);
+  await cerrarModal(dialogo);
+  expect(pedidos.de('vigentes', '2026-09')).toBe(1);
+});
+
+test('reglas 189 y 190: después de pintar, tocar «Ingresos de octubre» no pide nada si el anticipado ya llegó: la lista se ve en el acto', async ({
+  page,
+  esTelefono,
+}) => {
+  const pedidos = pedidosDeListas(page);
+  const anticipado = page.waitForResponse(
+    (r) =>
+      r.url().includes('/alquileres/tablero/detalle') &&
+      r.url().includes('indicador=ingresos') &&
+      r.url().includes('desde=2026-10&hasta=2026-10'),
+  );
+  await page.goto('/alquileres');
+  expect((await anticipado).ok()).toBe(true);
+  await page.waitForLoadState('networkidle');
+  const antes = pedidos.urls.length;
+
+  const tarjeta = page.getByRole('button', { name: /^Ingresos de octubre: / });
+  await esTocable(tarjeta);
+  await tarjeta.click();
+  const dialogo = page.getByRole('dialog', { name: 'Ingresos de la inmobiliaria, octubre' });
+  await expect(dialogo).toBeVisible();
+  // La lista ya está: ni un cuadro de «Cargando la lista…».
+  await expect(dialogo.getByText('Cargando la lista…')).toHaveCount(0);
+  await expect(
+    dialogo.getByText('Alquiler — ingresos').filter({ visible: true }).first(),
+  ).toBeVisible();
+  await revisarModal(page, dialogo, esTelefono);
+  await cerrarModal(dialogo);
+
+  // Y abrirla otra vez tampoco pide nada (regla 189).
+  await tarjeta.click();
+  await expect(
+    dialogo.getByText('Alquiler — ingresos').filter({ visible: true }).first(),
+  ).toBeVisible();
+  await cerrarModal(dialogo);
+  expect(pedidos.urls.length).toBe(antes);
+  expect(pedidos.de('ingresos', '2026-10')).toBe(1);
+});
+
+test('regla 187: la lista de «Cobranza de octubre» muestra lo cobrado y lo que falta, con sus totales, primero los que deben', async ({
+  page,
+  esTelefono,
+}) => {
+  const pedidos = pedidosDeListas(page);
+  await page.goto('/alquileres');
+  const tarjeta = page.getByRole('button', { name: /^Cobranza de octubre: 41%/ });
+  await expect(tarjeta).toContainText('1 de 2 pagaron · 1 atrasado');
+  await esTocable(tarjeta);
+  await tarjeta.click();
+
+  const dialogo = page.getByRole('dialog', { name: 'Cobranza de octubre' });
+  await expect(
+    dialogo.getByText('Cobrado $ 850.000,00 de $ 2.050.000,00 (41%) · 1 sin pagar'),
+  ).toBeVisible();
+  if (esTelefono) {
+    // Cada tarjeta de la lista muestra el alquiler, lo cobrado y lo que falta.
+    const tarjetas = dialogo.getByRole('listitem').filter({ visible: true });
+    await expect(tarjetas.first()).toContainText('Panadería El Trigal SRL');
+    await expect(tarjetas.first()).toContainText('Alquiler$ 1.200.000,00');
+    await expect(tarjetas.first()).toContainText('Cobrado$ 0,00');
+    await expect(tarjetas.first()).toContainText('Falta$ 1.200.000,00');
+    await expect(tarjetas.nth(1)).toContainText('Lucía Fernández');
+    const totales = dialogo.getByLabel('Totales');
+    await expect(totales).toBeVisible();
+    await expect(totales).toContainText('Total alquiler$ 2.050.000,00');
+    await expect(totales).toContainText('Total cobrado$ 850.000,00');
+    await expect(totales).toContainText('Total falta$ 1.200.000,00');
+  } else {
+    const tabla = dialogo.getByRole('table');
+    await expect(tabla.getByRole('columnheader')).toHaveText([
+      'Inquilino',
+      'Propiedad',
+      'Contrato',
+      'Vence',
+      'Alquiler',
+      'Cobrado',
+      'Falta',
+      'Estado',
+    ]);
+    const filas = tabla.getByRole('row');
+    await expect(filas.nth(1)).toContainText('Panadería El Trigal SRL');
+    await expect(filas.nth(2)).toContainText('Lucía Fernández');
+    await expect(filas.last()).toHaveText(
+      /^Total\s*\$ 2\.050\.000,00\s*\$ 850\.000,00\s*\$ 1\.200\.000,00\s*$/,
+    );
+  }
+  await revisarModal(page, dialogo, esTelefono);
+  await cerrarModal(dialogo);
+  // Se arma con lo que viaja con el tablero: no pide ninguna lista de cobranza.
+  expect(pedidos.urls.filter((u) => /emitid|cobrad/i.test(u.search))).toEqual([]);
+});
+
+test('regla 188: «Cobrado dentro del mes» abre la cuenta mes por mes, y un mes abre sus alquileres', async ({
+  page,
+  esTelefono,
+}) => {
+  await page.goto('/alquileres');
+  const tarjeta = page.getByRole('button', { name: /^Cobrado dentro del mes: \d+%/ });
+  const porcentaje = (await tarjeta.getAttribute('aria-label'))!.match(/: (\d+%)/)![1]!;
+  await esTocable(tarjeta);
+  await tarjeta.click();
+  const dialogo = page.getByRole('dialog', { name: 'Cobrado dentro del mes, 2026' });
+  // El total es el de la tarjeta (regla 76).
+  if (esTelefono) await expect(dialogo.getByLabel('Total')).toContainText(`Total${porcentaje}`);
+  else
+    await expect(dialogo.getByRole('row').last()).toHaveText(new RegExp(`^Total.*${porcentaje}$`));
+  await expect(dialogo.getByText('· en curso').filter({ visible: true })).toBeVisible();
+  await revisarModal(page, dialogo, esTelefono);
+
+  await dialogo
+    .getByRole('button', { name: /^Septiembre/ })
+    .filter({ visible: true })
+    .click();
+  const mes = page.getByRole('dialog', { name: 'Alquileres emitidos de septiembre 2026' });
+  await expect(mes.getByText('ALT-0002').filter({ visible: true }).first()).toBeVisible();
+  await mes.getByRole('button', { name: '← Mes por mes' }).click();
+  await expect(dialogo).toBeVisible();
   await cerrarModal(dialogo);
 });
