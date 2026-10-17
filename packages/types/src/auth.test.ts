@@ -40,6 +40,7 @@ const base = {
       contratoPunitorioDiarioPct: 0,
       contratoDiaVencimiento: 5,
       contratoDiaPagoPropietario: 10,
+      diaAvisoGenerar: 25,
       diasDiferenciaFinal: 5,
       honorariosSenaRetenidaPct: 0,
     },

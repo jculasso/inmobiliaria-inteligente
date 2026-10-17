@@ -1,18 +1,21 @@
 'use client';
 
+import { useId, useState } from 'react';
 import type { TableroAlquileresDto } from '@vacker/types';
-import { fmtMoneda } from '../../../lib/format';
+import { fmtNum } from '../../../lib/format';
 import type { PeriodoTablero } from '../../../lib/periodo-tablero';
 import { PeriodosChart } from '../../tablero/periodos-chart';
 import { PeriodosTabla, type FilaPeriodos } from '../../tablero/periodos-tabla';
-import { pct, plata, porcentaje, suma } from './formatos';
-import { agrupados, delPeriodo, ejeDelPeriodo } from './periodo';
+import { CLASE_FOCO } from '../piezas';
+import { plata, porcentaje, suma } from './formatos';
+import { agrupados, ejeDelPeriodo } from './periodo';
 
 /**
- * El año mes a mes —o por trimestre—, como la sección Alquileres del Tablero
- * Comercial: el gráfico de dos paneles —lo emitido y lo que gana la
- * inmobiliaria— y, abajo, la planilla con cada número. Tocar un mes o un
- * trimestre lo elige en toda la pantalla (regla 80).
+ * El año mes a mes —o por trimestre— de «Cómo vamos» (regla 182): UN gráfico,
+ * el de lo emitido y lo que gana la inmobiliaria, y debajo la planilla con
+ * cada número, plegada en «Ver mes por mes». Tocar un mes o un trimestre lo
+ * elige en el bloque (regla 80). Sin comparación con el año anterior (regla
+ * 183) ni pie: lo del período ya está en las tarjetas.
  */
 export function EvolucionAnual({
   t,
@@ -23,9 +26,11 @@ export function EvolucionAnual({
   periodo: PeriodoTablero;
   elegir: (p: PeriodoTablero) => void;
 }) {
+  const [abierta, setAbierta] = useState(false);
+  const idPlanilla = useId();
   const eje = ejeDelPeriodo(t, periodo);
   const meses = Array.from({ length: 12 }, (_, i) => `${t.anio}-${String(i + 1).padStart(2, '0')}`);
-  // Los gráficos van en pesos, la moneda de toda la cartera de Vacker.
+  // Los gráficos van en pesos, la moneda de toda la cartera de Vacker (regla 26).
   const evolucion = (m: string) => t.evolucion.find((x) => x.mes === m && x.moneda === 'ARS');
   const ingreso = (m: string) => t.ingresos.find((x) => x.mes === m && x.moneda === 'ARS');
   const deIngreso = (campo: 'honorarios' | 'gastos' | 'punitorios' | 'comisiones') =>
@@ -47,18 +52,21 @@ export function EvolucionAnual({
     eje.trimestral,
   );
   const ingresos = agrupados(meses.map(totalIngreso), eje.trimestral);
-  const ingresosAntes = agrupados(
-    meses.map((m) => totalIngreso(`${t.anio - 1}${m.slice(4)}`)),
-    eje.trimestral,
-  );
   const pctCobrado = (c: number, e: number) => (e > 0 ? (c / e) * 100 : 0);
 
   if (suma(emitido) === 0 && suma(ingresos) === 0) {
     return (
-      <p className="p-5 text-sm text-muted">Todavía no hay alquileres generados en {t.anio}.</p>
+      <p className="rounded-brand border border-line bg-white p-5 text-sm text-muted">
+        Todavía no hay alquileres generados en {t.anio}.
+      </p>
     );
   }
 
+  const nuevos = agrupados(
+    t.nuevos.porMes.map((i) => i.valor),
+    eje.trimestral,
+  );
+  const inicial = agrupados(t.nuevos.importePorMes, eje.trimestral);
   const honorarios = deIngreso('honorarios');
   const gastos = deIngreso('gastos');
   const punitorios = deIngreso('punitorios');
@@ -74,12 +82,14 @@ export function EvolucionAnual({
       formato: porcentaje,
     },
     {
-      label: 'Honorarios',
-      valores: honorarios,
-      total: suma(honorarios),
+      label: 'Ingresos',
+      valores: ingresos,
+      total: suma(ingresos),
       formato: plata,
+      destaca: true,
       separa: true,
     },
+    { label: 'Honorarios', valores: honorarios, total: suma(honorarios), formato: plata },
     { label: 'Gastos adm.', valores: gastos, total: suma(gastos), formato: plata },
     { label: 'Punitorios', valores: punitorios, total: suma(punitorios), formato: plata },
     {
@@ -88,25 +98,32 @@ export function EvolucionAnual({
       total: suma(comisiones),
       formato: plata,
     },
-    { label: 'Ingresos', valores: ingresos, total: suma(ingresos), formato: plata, destaca: true },
-    {
-      label: `Ingresos ${t.anio - 1}`,
-      valores: ingresosAntes,
-      total: suma(ingresosAntes),
-      formato: plata,
-    },
+    ...(t.nuevos.porMes.length === 12
+      ? [
+          {
+            label: 'Contratos nuevos',
+            valores: nuevos,
+            total: suma(nuevos),
+            formato: (x: number) => fmtNum(x),
+            separa: true,
+          },
+          {
+            label: 'Alquiler inicial de los nuevos',
+            valores: inicial,
+            total: suma(inicial),
+            formato: plata,
+          },
+        ]
+      : []),
   ];
   const elegirBarra = (i: number) =>
     elegir(eje.trimestral ? { por: 'trimestre', q: i } : { por: 'mes', mes: i });
-  // El pie es del período elegido: un mes, un trimestre o el año.
-  const p = delPeriodo(t, periodo);
-  const enPesos = p.cobranza.find((c) => c.moneda === 'ARS');
-  const ganado = p.ingresos.find((i) => i.moneda === 'ARS')?.total ?? 0;
+  const titulo = `Alquileres e ingresos por ${eje.porMesOTrimestre} de ${t.anio}`;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-2">
       <PeriodosChart
-        titulo={`Alquileres e ingresos por ${eje.porMesOTrimestre} de ${t.anio}`}
+        titulo={titulo}
         etiquetas={eje.etiquetas}
         barras={emitido}
         linea={ingresos}
@@ -119,20 +136,36 @@ export function EvolucionAnual({
         seleccionado={eje.seleccionado}
         onSelect={elegirBarra}
         pista={eje.pista}
+        // Regla 186: acá el gráfico acompaña; las tarjetas y las tareas van primero.
+        compacto
       />
-      <PeriodosTabla
-        titulo={`Alquileres e ingresos por ${eje.porMesOTrimestre} de ${t.anio}`}
-        etiquetas={eje.etiquetas}
-        filas={filas}
-        seleccionado={eje.seleccionado}
-        onSelect={elegirBarra}
-        anchoMinimo={eje.anchoMinimo}
-      />
-      <p className="text-sm text-muted">
-        <span className="font-bold text-ink">{p.nombre}</span>: cobrado al cierre de cada mes{' '}
-        {pct(enPesos?.alCierre ?? 0, enPesos?.importeEmitido ?? 0)} de lo emitido · ingresos{' '}
-        {fmtMoneda(ganado, 'ARS')}
-      </p>
+      <button
+        type="button"
+        aria-expanded={abierta}
+        aria-controls={idPlanilla}
+        onClick={() => setAbierta((x) => !x)}
+        className={`inline-flex min-h-10 items-center gap-1.5 self-start rounded-md text-sm font-bold text-brand-red hover:underline ${CLASE_FOCO}`}
+      >
+        <span
+          aria-hidden
+          className={`inline-block transition-transform ${abierta ? 'rotate-90' : ''}`}
+        >
+          ›
+        </span>
+        {abierta ? 'Ocultar mes por mes' : 'Ver mes por mes'}
+      </button>
+      <div id={idPlanilla} hidden={!abierta} className="rounded-brand border border-line bg-white">
+        {abierta && (
+          <PeriodosTabla
+            titulo={titulo}
+            etiquetas={eje.etiquetas}
+            filas={filas}
+            seleccionado={eje.seleccionado}
+            onSelect={elegirBarra}
+            anchoMinimo={eje.anchoMinimo}
+          />
+        )}
+      </div>
     </div>
   );
 }

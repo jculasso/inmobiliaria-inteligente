@@ -3,11 +3,13 @@ import {
   informePorDefecto,
   leerPeriodo,
   leerPeriodoInforme,
+  leerPeriodoTablero,
   parametrosDelInforme,
   type PeriodoInforme,
   mesesDelPeriodo,
   nombreDelPeriodo,
   parametrosDelPeriodo,
+  parametrosDelPeriodoTablero,
   periodoPorDefecto,
   rangoDelPeriodo,
   type PeriodoTablero,
@@ -57,6 +59,35 @@ describe('periodo-tablero', () => {
       q: 4,
     });
     expect(leerPeriodo({ periodo: 'semana' }, HOY, 2026)).toEqual({ por: 'mes', mes: 10 });
+  });
+
+  // Regla 182 (17/10/2026): el mes en curso ya está en «Hoy»; «Cómo vamos» abre en el año.
+  it('regla 182: el Dashboard abre en el año, que no se escribe; el mes se escribe siempre', () => {
+    expect(leerPeriodoTablero({}, HOY, 2026)).toEqual({ por: 'anio' });
+    expect(parametrosDelPeriodoTablero({ por: 'anio' })).toEqual([]);
+    expect(parametrosDelPeriodoTablero({ por: 'mes', mes: 10 })).toEqual([
+      ['periodo', 'mes'],
+      ['mes', '10'],
+    ]);
+    const periodos: PeriodoTablero[] = [
+      { por: 'mes', mes: 10 },
+      { por: 'mes', mes: 3 },
+      { por: 'trimestre', q: 4 },
+      { por: 'anio' },
+    ];
+    for (const p of periodos)
+      expect(
+        leerPeriodoTablero(Object.fromEntries(parametrosDelPeriodoTablero(p)), HOY, 2026),
+      ).toEqual(p);
+  });
+
+  it('regla 182: una dirección que no se entiende es el año; un trimestre sin número, el de hoy', () => {
+    expect(leerPeriodoTablero({ periodo: 'mes', mes: '13' }, HOY, 2026)).toEqual({ por: 'anio' });
+    expect(leerPeriodoTablero({ periodo: 'semana' }, HOY, 2026)).toEqual({ por: 'anio' });
+    expect(leerPeriodoTablero({ periodo: 'trimestre', q: 'x' }, HOY, 2026)).toEqual({
+      por: 'trimestre',
+      q: 4,
+    });
   });
 
   it('los meses, el rango y el nombre de cada período', () => {

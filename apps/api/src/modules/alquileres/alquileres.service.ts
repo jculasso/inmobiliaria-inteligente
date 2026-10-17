@@ -90,6 +90,7 @@ export function deConfig(c: ReturnType<typeof TenantConfigSchema.parse>): Config
     contratoPunitorioDiarioPct: c.contratoPunitorioDiarioPct,
     contratoDiaVencimiento: c.contratoDiaVencimiento,
     contratoDiaPagoPropietario: c.contratoDiaPagoPropietario,
+    diaAvisoGenerar: c.diaAvisoGenerar,
     diasDiferenciaFinal: c.diasDiferenciaFinal,
     honorariosSenaRetenidaPct: c.honorariosSenaRetenidaPct,
   };

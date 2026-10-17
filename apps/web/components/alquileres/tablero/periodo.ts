@@ -4,7 +4,7 @@ import { ABREV_MES, periodosTranscurridos } from '../../../lib/meses';
 import {
   mesesDelPeriodo,
   nombreDelPeriodo,
-  parametrosDelPeriodo,
+  parametrosDelPeriodoTablero,
   rangoDelPeriodo,
   type PeriodoTablero,
 } from '../../../lib/periodo-tablero';
@@ -13,7 +13,8 @@ import type { Moneda } from './vistas';
 
 /**
  * La dirección del tablero con su año, su tipo y su período: se puede
- * compartir o recargar y queda igual.
+ * compartir o recargar y queda igual. El año entero, que es el período al
+ * entrar (regla 182), no escribe nada.
  */
 export function direccion(
   pathname: string,
@@ -25,7 +26,7 @@ export function direccion(
   const q = new URLSearchParams();
   if (anio !== Number(hoy.slice(0, 4))) q.set('anio', String(anio));
   if (tipo !== 'todos') q.set('tipo', tipo);
-  for (const [k, v] of parametrosDelPeriodo(periodo, hoy, anio)) q.set(k, v);
+  for (const [k, v] of parametrosDelPeriodoTablero(periodo)) q.set(k, v);
   return `${pathname}${q.toString() ? `?${q}` : ''}`;
 }
 
@@ -72,7 +73,6 @@ export function delPeriodo(t: TableroAlquileresDto, periodo: PeriodoTablero) {
   const nuevos = {
     indicador: { valor: nuevosFilas.length, filas: nuevosFilas } satisfies Indicador,
     importe: suma(numeros.map((m) => t.nuevos.importePorMes[m - 1] ?? 0)),
-    anterior: suma(numeros.map((m) => t.nuevos.anterior[m - 1] ?? 0)),
   };
 
   const cierre = t.cierres.find((c) => c.mes === meses.at(-1));

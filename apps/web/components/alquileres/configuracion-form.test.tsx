@@ -28,6 +28,7 @@ const INICIAL: ConfiguracionAlquileres = {
   contratoPunitorioDiarioPct: 0,
   contratoDiaVencimiento: 5,
   contratoDiaPagoPropietario: 10,
+  diaAvisoGenerar: 25,
   diasDiferenciaFinal: 5,
   honorariosSenaRetenidaPct: 0,
 };
@@ -63,6 +64,25 @@ describe('ConfiguracionForm — Entrega A de Vacker (Florencia, 15/10/2026)', ()
     expect(paga).toHaveValue('28');
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     expect(guardarConfiguracionAlquileres.mock.calls[0]![1].contratoDiaPagoPropietario).toBe(28);
+  });
+
+  // Regla 181 (17/10/2026): desde qué día el Dashboard pide generar el mes siguiente.
+  it('regla 181: el día del aviso de generar el mes siguiente se guarda, entre 1 y 28', async () => {
+    guardarConfiguracionAlquileres.mockImplementation(async (_t, c) => c);
+    render(<ConfiguracionForm inicial={INICIAL} />);
+    const aviso = screen.getByLabelText(/generar el mes siguiente desde el día/);
+    expect(aviso).toHaveValue('25');
+    await userEvent.clear(aviso);
+    await userEvent.type(aviso, '30');
+    await userEvent.tab();
+    expect(aviso).toHaveValue('28');
+    await userEvent.clear(aviso);
+    await userEvent.type(aviso, '20');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(guardarConfiguracionAlquileres.mock.calls[0]![1]).toMatchObject({
+      diaAvisoGenerar: 20,
+      contratoDiaVencimiento: 5,
+    });
   });
 
   it('regla 103: el sellado se configura por tipo de contrato', async () => {

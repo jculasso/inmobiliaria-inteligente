@@ -2,7 +2,7 @@
 // Ver docs/specs/alquileres-fase-1.md.
 import { z } from 'zod';
 import { FechaIsoSchema } from './fecha-iso';
-import { SELLADO_POR_DEFECTO } from './tenant';
+import { DIA_AVISO_GENERAR_POR_DEFECTO, SELLADO_POR_DEFECTO } from './tenant';
 // Los marcadores del inventario (regla 152) viven con el inventario.
 import { MARCADORES_INVENTARIO } from './inventario';
 
@@ -1465,6 +1465,32 @@ export const CierreTableroSchema = z.object({
 });
 export type CierreTablero = z.infer<typeof CierreTableroSchema>;
 
+/** Una fecha de la línea del mes (regla 178): el día que pide la configuración y dónde cayó. */
+export const HitoDelCicloSchema = z.object({
+  /** El día del mes que pide la configuración de la inmobiliaria. */
+  dia: z.number().int().min(1).max(31),
+  /** La fecha, corrida al primer día hábil si cayó sábado, domingo o feriado (regla 100). */
+  fecha: FechaIso,
+  /** Por qué se corrió, si se corrió: «el 10 fue sábado y el 12 feriado». */
+  motivo: z.string().nullable(),
+});
+export type HitoDelCiclo = z.infer<typeof HitoDelCicloSchema>;
+
+/**
+ * Regla 178: la línea del mes en curso —cuándo vencen los alquileres, cuándo
+ * se paga a los propietarios y desde cuándo hay que generar el mes
+ * siguiente—. La calcula la API con la configuración y los feriados, con la
+ * misma función que el vencimiento de los conceptos.
+ */
+export const CicloDelMesSchema = z.object({
+  mes: PeriodoSchema,
+  vencimiento: HitoDelCicloSchema,
+  pagoPropietarios: HitoDelCicloSchema,
+  /** Regla 181: el aviso de generar el mes siguiente (`mes`), desde `fecha`. */
+  generarSiguiente: HitoDelCicloSchema.extend({ mes: PeriodoSchema }),
+});
+export type CicloDelMes = z.infer<typeof CicloDelMesSchema>;
+
 export const TableroAlquileresDtoSchema = z.object({
   hoy: FechaIso,
   mes: PeriodoSchema,
@@ -1472,6 +1498,12 @@ export const TableroAlquileresDtoSchema = z.object({
   anio: z.number().int().default(new Date().getFullYear()),
   /** Qué contratos mira el tablero: todos, solo particulares o solo comerciales (punto 8 de Javier). */
   tipo: FiltroTipoContratoSchema.default('todos'),
+  /**
+   * Regla 178: la línea del mes en curso. Es la misma en los tres cortes.
+   * `.default(null)` por el orden de despliegue: con una API anterior, la
+   * pantalla no dibuja la línea.
+   */
+  ciclo: CicloDelMesSchema.nullable().default(null),
   /** Regla 27. */
   cartera: z.object({
     vigentes: IndicadorSchema,
@@ -1601,6 +1633,17 @@ export const TableroAlquileresDtoSchema = z.object({
     reservasPorVencer: IndicadorSchema.default({ valor: 0, filas: [] }),
     /** Regla 166: reservas aprobadas que todavía no tienen contrato. */
     reservasAprobadas: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /**
+     * Regla 181: los contratos con el alquiler del mes en curso sin generar.
+     * `.default` por el orden de despliegue.
+     */
+    generarMes: IndicadorSchema.default({ valor: 0, filas: [] }),
+    /**
+     * Regla 181: lo mismo para el mes siguiente, desde el aviso de la línea
+     * del mes. Antes, `null`: la tarea no existe todavía, ni siquiera en
+     * «Al día».
+     */
+    generarSiguiente: IndicadorSchema.nullable().default(null),
   }),
 });
 export type TableroAlquileresDto = z.infer<typeof TableroAlquileresDtoSchema>;
@@ -1844,6 +1887,11 @@ export const ConfiguracionAlquileresSchema = z.object({
   contratoPunitorioDiarioPct: z.number().min(0).max(10).default(0),
   contratoDiaVencimiento: z.number().int().min(1).max(28).default(5),
   contratoDiaPagoPropietario: z.number().int().min(1).max(28).default(10),
+  /**
+   * Regla 181: desde qué día del mes el Dashboard avisa que hay que generar el
+   * mes siguiente. `.default` por el orden de despliegue.
+   */
+  diaAvisoGenerar: z.number().int().min(1).max(28).default(DIA_AVISO_GENERAR_POR_DEFECTO),
   /**
    * Regla 133: días para pagar la diferencia de la liquidación final, desde
    * que se confirma la indexación. `.default` por el orden de despliegue.

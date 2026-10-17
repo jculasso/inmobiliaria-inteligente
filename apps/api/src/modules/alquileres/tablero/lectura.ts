@@ -1,23 +1,29 @@
-import { ESTADOS_RECLAMO_ABIERTOS } from '@vacker/types';
-import { cierreDelMes, sumarDiasIso } from '@vacker/domain';
+import { Prisma } from '@prisma/client';
+import { ESTADOS_RECLAMO_ABIERTOS, TenantConfigSchema } from '@vacker/types';
+import { cierreDelMes, sumarDiasIso, sumarMesesIso } from '@vacker/domain';
 import { enUnViaje } from '../../../prisma/en-un-viaje';
 import { toDate } from '../../tablero/tablero.util';
+import { rangoDeFeriados } from '../feriados';
 import { CONSULTA_RESERVAS_TABLERO } from '../tablero-reservas';
 import { sqlAlquileres, unirFinales, type FilaAlquiler } from './cobranza';
 import { mesesDe, type Tx } from './comun';
 import { ORDEN_CONTRATOS, SELECT_CONTRATO } from './fichas';
+import { sqlAlquileresGenerados, type FilaGenerado } from './generar';
 import { sqlIngresosPorMes, type FilaIngresoMes } from './ingresos';
 import { sqlSaldosAlCierre, type FilaMora } from './morosidad';
 import { sqlFinalesPendientes, type FilaFinalPendiente } from './tareas';
 
 /**
  * Seis consultas, siempre las mismas, en una transacción (regla 82). Las
- * cuatro que se calculan en la base —los alquileres, la deuda a cada cierre,
- * los ingresos por mes y las liquidaciones finales pendientes (regla
- * 139)— van en UNA sentencia (`enUnViaje`): un viaje a São Paulo en vez de
- * cuatro, y una sola foto de la base para las cuatro. Después, los
- * reclamos, las pólizas, las boletas, las reservas abiertas (regla 166) y
- * los contratos que todo eso nombra.
+ * que se calculan en la base —los alquileres, la deuda a cada cierre, los
+ * ingresos por mes y las liquidaciones finales pendientes (regla 139)— van
+ * en UNA sentencia (`enUnViaje`): un viaje a São Paulo en vez de cuatro, y
+ * una sola foto de la base para todas. En la misma sentencia, desde el
+ * 17/10/2026, lo que piden la línea del mes y «Generar el mes» (reglas 178
+ * y 181): los alquileres ya generados del mes en curso y del siguiente, los
+ * feriados y la configuración de la inmobiliaria. Después, los reclamos, las
+ * pólizas, las boletas, las reservas abiertas (regla 166) y los contratos
+ * que todo eso nombra.
  */
 export async function leerTablero(tx: Tx, hoy: string, mes: string, anio: number) {
   // El año elegido y el anterior, para la planilla, y siempre el mes en
@@ -27,6 +33,10 @@ export async function leerTablero(tx: Tx, hoy: string, mes: string, anio: number
   const hastaIngresos = `${Math.max(anio, anioHoy) + 1}-01-01`;
   // El cierre de cada mes del año y hoy: la deuda de la foto de cada mes y la de hoy.
   const cierres = [...new Set([...mesesDe(anio).map((m) => cierreDelMes(m, hoy)), hoy])].sort();
+  // Reglas 178 y 181: el mes en curso y el siguiente —qué falta generar y
+  // los feriados que corren las fechas de la línea del mes—.
+  const siguiente = sumarMesesIso(`${mes}-01`, 1).slice(0, 7);
+  const feriadosEntre = rangoDeFeriados([mes, siguiente]);
   const [enLaBase, reclamos, polizas, boletas, reservas] = await Promise.all([
     enUnViaje(tx, {
       alquileres: {
@@ -37,6 +47,16 @@ export async function leerTablero(tx: Tx, hoy: string, mes: string, anio: number
       mora: { sql: sqlSaldosAlCierre(cierres), decimales: ['saldo'], fechas: ['vencimiento'] },
       ingresos: { sql: sqlIngresosPorMes(desdeIngresos, hastaIngresos), decimales: ['importe'] },
       finales: { sql: sqlFinalesPendientes(), decimales: ['saldo'], fechas: ['vencimiento'] },
+      generados: { sql: sqlAlquileresGenerados([mes, siguiente]) },
+      feriados: {
+        sql: Prisma.sql`SELECT to_char(f.fecha, 'YYYY-MM-DD') AS fecha FROM feriado f
+                         WHERE f.fecha BETWEEN ${feriadosEntre.desde}::date AND ${feriadosEntre.hasta}::date`,
+      },
+      // La de la inmobiliaria del pedido: RLS no deja ver otra, y el WHERE lo dice.
+      config: {
+        sql: Prisma.sql`SELECT t.config FROM tenant t
+                         WHERE t.id = nullif(current_setting('app.tenant_id', true), '')::uuid`,
+      },
     }),
     // Reclamos abiertos o en curso (entrega 15).
     tx.alqReclamo.findMany({
@@ -84,6 +104,9 @@ export async function leerTablero(tx: Tx, hoy: string, mes: string, anio: number
   const mora = enLaBase.mora as unknown as FilaMora[];
   const ingresos = enLaBase.ingresos as unknown as FilaIngresoMes[];
   const finales = enLaBase.finales as unknown as FilaFinalPendiente[];
+  const generados = new Set((enLaBase.generados as unknown as FilaGenerado[]).map((g) => g.clave));
+  const feriados = new Set(enLaBase.feriados.map((f) => String(f.fecha)));
+  const config = TenantConfigSchema.parse(enLaBase.config[0]?.config ?? {});
   const alquileres = unirFinales(alquileresLeidos);
   // Los contratos que nombran las listas que viajan con el tablero: los
   // alquileres del mes, la deuda de hoy, los reclamos y las boletas.
@@ -107,6 +130,9 @@ export async function leerTablero(tx: Tx, hoy: string, mes: string, anio: number
       OR: [
         { estado: 'vigente' },
         { fin: { gte: toDate(`${anio}-01-01`)! } },
+        // Los que terminan en el mes en curso todavía lo generan (regla 181),
+        // aunque se mire otro año.
+        { fin: { gte: toDate(`${mes}-01`)! } },
         { inicio: { gte: toDate(`${anio - 1}-01-01`)! } },
         { depositoImporte: { gt: 0 }, depositoDevolucion: null },
         { id: { in: nombrados } },
@@ -125,6 +151,10 @@ export async function leerTablero(tx: Tx, hoy: string, mes: string, anio: number
     boletas,
     finales,
     reservas,
+    generados,
+    feriados,
+    config,
+    siguiente,
   };
 }
 export type DatosTablero = Awaited<ReturnType<typeof leerTablero>>;

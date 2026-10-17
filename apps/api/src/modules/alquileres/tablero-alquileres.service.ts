@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   DIAS_TABLERO_PROXIMOS,
+  type CicloDelMes,
   type DetalleTableroQuery,
   type FiltroTipoContrato,
   type Indicador,
@@ -12,6 +13,7 @@ import { hoyArgentina } from '../protocolo/protocolo.calc';
 import { IndexacionesService } from './indexaciones.service';
 import { LiquidacionesService } from './liquidaciones.service';
 import { carteraAl, carteraDelTablero, cierresDelAnio, contratosNuevos } from './tablero/cartera';
+import { cicloDelMes } from './tablero/ciclo';
 import { cobranzaDelMes, evolucionDelAnio } from './tablero/cobranza';
 import { mesesDe } from './tablero/comun';
 import { detalleDeUnNumero } from './tablero/detalle';
@@ -80,8 +82,10 @@ export class TableroAlquileresService {
       this.indexaciones.bandeja(hoy, DIAS_TABLERO_PROXIMOS),
       this.liquidaciones.pendientes(),
     ]);
+    // Regla 178: la línea del mes es una sola, de toda la inmobiliaria.
+    const ciclo = cicloDelMes(hoy, datos.config, datos.feriados);
     const armar = (tipo: FiltroTipoContrato) =>
-      this.armar(datos, bandeja, aLiquidar, hoy, mes, anio, tipo);
+      this.armar(datos, bandeja, aLiquidar, ciclo, hoy, mes, anio, tipo);
     return { todos: armar('todos'), vivienda: armar('vivienda'), comercial: armar('comercial') };
   }
 
@@ -103,6 +107,7 @@ export class TableroAlquileresService {
     datos: DatosTablero,
     bandejaTodas: Awaited<ReturnType<IndexacionesService['bandeja']>>,
     aLiquidarTodos: Awaited<ReturnType<LiquidacionesService['pendientes']>>,
+    ciclo: CicloDelMes,
     hoy: string,
     mes: string,
     anio: number,
@@ -144,6 +149,7 @@ export class TableroAlquileresService {
       mes,
       anio,
       tipo,
+      ciclo,
       nuevos: contratosNuevos(contratos, meses, anio, f),
       cartera: carteraDelTablero(todos, cartera, f),
       cobranza: cobranzaDelMes(alquileres, mes, f, hoy),
@@ -166,6 +172,9 @@ export class TableroAlquileresService {
         polizas: datos.polizas,
         boletas: datos.boletas,
         reservas: datos.reservas,
+        mes,
+        generados: datos.generados,
+        ciclo,
       }),
     };
   }

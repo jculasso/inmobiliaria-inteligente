@@ -10,32 +10,32 @@ import {
   type TramoMora,
   tablerosDeRespuesta,
 } from '@vacker/types';
-import { Card } from '@vacker/ui';
-import { periodoPorDefecto, type PeriodoTablero } from '../../lib/periodo-tablero';
-import { EncabezadoPagina, TituloSeccion } from './piezas';
-import { FiltroAnio, FiltroPeriodo } from './selector-periodo';
-import { Cartera } from './tablero/cartera';
-import { Cobranza } from './tablero/cobranza';
-import { ContratosNuevos } from './tablero/contratos-nuevos';
+import type { PeriodoTablero } from '../../lib/periodo-tablero';
+import { EncabezadoPagina } from './piezas';
+import { ComoVamos } from './tablero/como-vamos';
 import { DetalleModal } from './tablero/detalle-modal';
-import { EvolucionAnual } from './tablero/evolucion-anual';
-import { Ingresos } from './tablero/ingresos';
-import { Morosidad } from './tablero/morosidad';
+import { BloqueHoy, type PedirDelMes } from './tablero/hoy';
 import { delPeriodo, direccion } from './tablero/periodo';
 import { contratosQueEsperanElIndice, LoQueHayQueHacer } from './tablero/tareas';
-import { FiltroTipo } from './tablero/tipo-de-contrato';
-import { VISTAS, type Columna, type Detalle, type Moneda } from './tablero/vistas';
+import type { Columna, Detalle, Moneda } from './tablero/vistas';
 
 /**
- * El tablero del módulo (reglas 26 a 32 y 74 a 82), armado con las piezas del
- * Tablero Comercial: tarjetas con ícono que se abren, rótulos de sección con
- * ícono y el gráfico de dos paneles con su planilla. Cada número abre la lista
- * de lo que cuenta, y esa lista suma el número: lo de hoy llega junto con el
- * tablero; lo de un período se pide al abrirlo, a la misma cuenta.
+ * El Dashboard del módulo, en tres bloques (reglas 176 a 186, 17/10/2026):
  *
- * Este archivo es la composición: el estado (tipo, período y año), las dos
- * formas de abrir un detalle y el orden de las secciones. Cada sección vive
- * en `tablero/`.
+ * - **Hoy** (regla 177): el mes en curso, a hoy y de toda la cartera —la
+ *   línea del mes y cuatro tarjetas—.
+ * - **Lo que hay que hacer** (reglas 179 a 181): a hoy y de toda la cartera,
+ *   en tres grupos.
+ * - **Cómo vamos** (regla 182): el período, con los únicos filtros de la
+ *   pantalla —tipo, período y año—.
+ *
+ * Cada número abre la lista de lo que cuenta, y esa lista suma el número
+ * (regla 26): lo de hoy llega junto con el tablero; lo de un período se pide
+ * al abrirlo, a la misma cuenta (regla 79).
+ *
+ * Este archivo es la composición: el estado (tipo, período y año), las formas
+ * de abrir un detalle y el orden de los bloques. Cada bloque vive en
+ * `tablero/`.
  */
 export function TableroAlquileres({
   tableros,
@@ -57,12 +57,14 @@ export function TableroAlquileres({
   // Se expande acá, en el navegador, y una sola vez: así la forma compacta
   // viaja también de Vercel al navegador, no solo de la API a Vercel.
   const cortes = useMemo(() => tablerosDeRespuesta(tableros), [tableros]);
+  // «Hoy» y lo que hay que hacer: siempre de toda la cartera (reglas 177 y 179).
+  const todos = cortes.todos;
+  // «Cómo vamos»: el corte del tipo elegido (regla 182).
   const t = cortes[tipo];
   const [anioElegido, setAnioElegido] = useState(t.anio);
-  // Regla 74: los doce meses también están acá; cambiar de período tampoco pide nada.
-  const [periodo, setPeriodo] = useState<PeriodoTablero>(
-    periodoInicial ?? periodoPorDefecto(t.hoy, t.anio),
-  );
+  // Regla 182: al entrar, el año; los doce meses también están acá, así que
+  // cambiar de período tampoco pide nada.
+  const [periodo, setPeriodo] = useState<PeriodoTablero>(periodoInicial ?? { por: 'anio' });
   const elegirTipo = (nuevo: FiltroTipoContrato) => {
     setTipo(nuevo);
     // La dirección acompaña, sin pedirle nada al servidor.
@@ -78,6 +80,7 @@ export function TableroAlquileres({
       router.push(direccion(pathname, t.hoy, anio, tipo, periodo), { scroll: false }),
     );
   };
+  /** Abre el detalle de un número que viaja con el tablero: lo de hoy, con su lista. */
   const abrir =
     (
       titulo: string,
@@ -89,7 +92,7 @@ export function TableroAlquileres({
       setDetalle({ titulo, indicador, columnas, ...extra });
 
   const p = delPeriodo(t, periodo);
-  /** Abre la lista de un número del período: se pide al abrirla (regla 79). */
+  /** Abre la lista de un número del período de «Cómo vamos»: se pide al abrirla (regla 79). */
   const pedir =
     (
       titulo: string,
@@ -107,72 +110,47 @@ export function TableroAlquileres({
         ...resto,
       });
     };
+  /** Un flujo del mes en curso, de toda la cartera, para «Hoy» (regla 177). */
+  const pedirDelMes: PedirDelMes =
+    (titulo, indicador, moneda, columnas, extra = {}) =>
+    () =>
+      setDetalle({
+        titulo,
+        pedido: { indicador, desde: todos.mes, hasta: todos.mes, moneda },
+        columnas,
+        tipo: 'todos',
+        ...extra,
+      });
 
-  const esperanElIndice = contratosQueEsperanElIndice(t);
+  const esperanElIndice = contratosQueEsperanElIndice(todos);
 
   return (
-    <div className="flex flex-col gap-5">
-      <EncabezadoPagina titulo="Dashboard">
-        {actualizando && (
-          <span
-            role="status"
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted"
-          >
-            <span
-              aria-hidden
-              className="h-3 w-3 animate-spin rounded-full border-2 border-line border-t-brand-red"
-            />
-            Actualizando…
-          </span>
-        )}
-        <FiltroTipo tipo={tipo} cambiar={elegirTipo} />
-        <FiltroPeriodo
-          periodo={periodo}
-          porDefecto={periodoPorDefecto(t.hoy, t.anio).mes}
-          cambiar={elegirPeriodo}
-        />
-        <FiltroAnio hoy={t.hoy} anio={anioElegido} cambiar={elegirAnio} />
-      </EncabezadoPagina>
+    <div className="flex flex-col gap-6">
+      <EncabezadoPagina titulo="Dashboard" />
 
-      <div
-        aria-busy={actualizando}
-        className={`flex flex-col gap-5 transition-opacity ${actualizando ? 'pointer-events-none opacity-50' : ''}`}
-      >
-        <Cartera t={t} p={p} abrir={abrir} pedir={pedir} elegirTipo={elegirTipo} />
+      <BloqueHoy t={todos} abrir={abrir} pedirDelMes={pedirDelMes} />
 
-        <ContratosNuevos
-          t={t}
-          periodo={periodo}
-          elegir={elegirPeriodo}
-          onAbrir={(titulo, ind, total) =>
-            setDetalle({ titulo, indicador: ind, columnas: VISTAS.nuevos, total })
-          }
-        />
+      <LoQueHayQueHacer t={todos} abrir={abrir} />
 
-        <Cobranza p={p} periodo={periodo} pedir={pedir} />
-
-        <Ingresos p={p} pedir={pedir} />
-
-        <Morosidad t={t} p={p} abrir={abrir} pedir={pedir} />
-
-        <section className="flex flex-col gap-2">
-          <TituloSeccion icono="📊" detalle={`en pesos, ${t.anio}`}>
-            Alquileres e ingresos
-          </TituloSeccion>
-          <Card className="p-0">
-            <EvolucionAnual t={t} periodo={periodo} elegir={elegirPeriodo} />
-          </Card>
-        </section>
-
-        <LoQueHayQueHacer t={t} abrir={abrir} />
-      </div>
+      <ComoVamos
+        t={t}
+        tipo={tipo}
+        elegirTipo={elegirTipo}
+        periodo={periodo}
+        elegirPeriodo={elegirPeriodo}
+        anio={anioElegido}
+        elegirAnio={elegirAnio}
+        actualizando={actualizando}
+        abrir={abrir}
+        pedir={pedir}
+      />
 
       {detalle && (
         <DetalleModal
           // Una lista nueva arranca de cero: no muestra la anterior mientras carga.
           key={`${detalle.titulo}|${JSON.stringify(detalle.pedido ?? null)}`}
           {...detalle}
-          tipo={tipo}
+          tipo={detalle.tipo ?? tipo}
           hoy={t.hoy}
           esperan={esperanElIndice}
           onClose={() => setDetalle(null)}

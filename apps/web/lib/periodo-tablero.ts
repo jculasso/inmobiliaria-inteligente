@@ -64,6 +64,45 @@ export function parametrosDelPeriodo(
       ];
 }
 
+/**
+ * Regla 182 (17/10/2026): el período del Dashboard. Abre en el año, porque el
+ * mes en curso ya está en el bloque «Hoy»; el año no se escribe en la
+ * dirección y el mes sí, siempre (`?periodo=mes&mes=10`). Lo que no se
+ * entiende es el año. Un trimestre sin número es el del mes en curso.
+ */
+export function leerPeriodoTablero(
+  params: { periodo?: string; mes?: string; q?: string },
+  hoy: string,
+  anio: number,
+): PeriodoTablero {
+  if (params.periodo === 'trimestre') {
+    const q = Number(params.q);
+    return {
+      por: 'trimestre',
+      q: entre(q, 1, 4) ? q : Math.ceil(periodoPorDefecto(hoy, anio).mes / 3),
+    };
+  }
+  if (params.periodo === 'mes') {
+    const mes = Number(params.mes);
+    if (entre(mes, 1, 12)) return { por: 'mes', mes };
+  }
+  return { por: 'anio' };
+}
+
+/** Lo que el período del Dashboard escribe en la dirección (regla 182): el año, nada. */
+export function parametrosDelPeriodoTablero(p: PeriodoTablero): [string, string][] {
+  if (p.por === 'anio') return [];
+  if (p.por === 'trimestre')
+    return [
+      ['periodo', 'trimestre'],
+      ['q', String(p.q)],
+    ];
+  return [
+    ['periodo', 'mes'],
+    ['mes', String(p.mes)],
+  ];
+}
+
 /** Los meses del período, del 1 al 12. */
 export function mesesDelPeriodo(p: PeriodoTablero): number[] {
   if (p.por === 'mes') return [p.mes];

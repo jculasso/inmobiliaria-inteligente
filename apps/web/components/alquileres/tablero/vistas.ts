@@ -1,5 +1,6 @@
 import type {
   DetalleTableroQuery,
+  FiltroTipoContrato,
   Indicador,
   IndicadorDetalleTablero,
   MonedaAlquiler,
@@ -43,6 +44,11 @@ export interface Detalle {
   /** Si el número es un importe, la columna `importe` suma y lleva total. */
   total?: MonedaAlquiler;
   accion?: { href: string; texto: string };
+  /**
+   * El corte con que se pide la lista. Sin él, el del filtro de «Cómo vamos»;
+   * lo de «Hoy» es siempre de toda la cartera (regla 177).
+   */
+  tipo?: FiltroTipoContrato;
 }
 
 /** Abre el detalle de un número que viaja con el tablero: lo de hoy, con su lista. */
@@ -162,6 +168,8 @@ export const VISTAS = {
     ['importe', 'Deuda'],
   ],
   sinFirmar: [...DE_CONTRATO, ['fecha', 'Empezó'], ['vence', 'Vence'], ['estado', 'Qué falta']],
+  // Regla 181: los contratos con el alquiler del mes sin generar.
+  generar: [...DE_CONTRATO, ['alquiler', 'Alquiler hoy'], ['estado', 'Estado']],
   reclamos: [
     ['contrato', 'Contrato'],
     ['propiedad', 'Propiedad'],
