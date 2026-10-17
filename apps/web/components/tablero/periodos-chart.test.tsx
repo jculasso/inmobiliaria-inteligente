@@ -92,3 +92,36 @@ describe('PeriodosChart — los meses que no llegaron', () => {
     expect(grafico.getByText('Dic')).toBeInTheDocument();
   });
 });
+
+// Dashboard de Alquileres en tres bloques (regla 186, 17/10/2026): el gráfico
+// de «Cómo vamos» es más bajo; el del Tablero Comercial no cambia.
+describe('PeriodosChart compacto', () => {
+  const props = {
+    titulo: 'Alquileres e ingresos por mes',
+    etiquetas: ABREV_MES,
+    barras: FIRMADOS,
+    linea: COMISION,
+    formatoBarras: fmtNum,
+    formatoLinea: (n: number) => `$${fmtK(n)}`,
+    nombreBarras: 'Alquileres emitidos',
+    nombreLinea: 'Ingresos',
+    seleccionado: 0,
+    onSelect: vi.fn(),
+    pista: 'tocá una barra o un mes',
+    transcurridos: 10,
+  };
+  const alto = (svg: Element) => Number(svg.getAttribute('viewBox')!.split(' ')[3]);
+  const renglones = () =>
+    within(screen.getByRole('list', { name: props.titulo })).getAllByRole('listitem');
+
+  it('regla 186: compacto es más bajo, y en el teléfono solo lleva los meses que ya empezaron', () => {
+    const { unmount } = render(<PeriodosChart {...props} />);
+    const normal = alto(screen.getByRole('img', { name: props.titulo }));
+    expect(normal).toBe(322);
+    expect(renglones()).toHaveLength(12);
+    unmount();
+    render(<PeriodosChart {...props} compacto />);
+    expect(alto(screen.getByRole('img', { name: props.titulo }))).toBeLessThan(normal);
+    expect(renglones()).toHaveLength(10);
+  });
+});

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Card } from './card';
 
 export type KpiTone = 'default' | 'success' | 'warning' | 'brand' | 'danger';
@@ -20,6 +21,18 @@ export interface KpiCardProps {
   tone?: KpiTone;
   /** Si viene, la tarjeta se vuelve clickeable (drill-down al detalle). */
   onClick?: () => void;
+  /**
+   * Lo que va debajo del número, dentro de la tarjeta: una barra, las partes
+   * de un total. Si la tarjeta se abre, va dentro del botón, así que no puede
+   * tener nada que se toque por su cuenta (para eso, `pie`).
+   */
+  children?: ReactNode;
+  /**
+   * Lo que va al pie, FUERA del botón: lo que se abre por su cuenta, como la
+   * leyenda de la deuda del Dashboard de Alquileres, donde cada tramo abre su
+   * lista (un botón dentro de otro no es HTML válido).
+   */
+  pie?: ReactNode;
 }
 
 /**
@@ -46,7 +59,16 @@ function Lupa() {
   );
 }
 
-export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: KpiCardProps) {
+export function KpiCard({
+  label,
+  value,
+  sub,
+  icon,
+  tone = 'default',
+  onClick,
+  children,
+  pie,
+}: KpiCardProps) {
   const content = (
     <>
       {/* Las tarjetas de una fila tienen el mismo ancho: si son angostas, la etiqueta reserva dos
@@ -72,25 +94,35 @@ export function KpiCard({ label, value, sub, icon, tone = 'default', onClick }: 
         ))}
       </p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
+      {children != null && <div className="mt-2 flex flex-col gap-1.5">{children}</div>}
     </>
   );
+  const alPie = pie != null && <div className="px-4 pb-4">{pie}</div>;
 
   if (onClick) {
     return (
-      <Card className={`h-full p-0 @container ${TONE_BG[tone]}`}>
+      <Card
+        className={`h-full p-0 @container ${pie != null ? 'flex flex-col' : ''} ${TONE_BG[tone]}`}
+      >
         <button
           type="button"
           onClick={onClick}
           aria-label={`${label}: ${value}. Ver el detalle`}
-          className="group relative flex h-full w-full flex-col justify-start rounded-brand p-4 pr-8 text-left transition-colors hover:bg-black/[0.03]"
+          className={`group relative flex w-full flex-col justify-start rounded-brand p-4 pr-8 text-left transition-colors hover:bg-black/[0.03] ${pie != null ? 'flex-1 pb-2' : 'h-full'}`}
         >
           <Lupa />
           {content}
         </button>
+        {alPie}
       </Card>
     );
   }
 
   // `h-full`: en una fila de tarjetas, todas del mismo alto aunque una tenga subtítulo y otra no.
-  return <Card className={`h-full p-4 @container ${TONE_BG[tone]}`}>{content}</Card>;
+  return (
+    <Card className={`h-full p-4 @container ${TONE_BG[tone]}`}>
+      {content}
+      {pie != null && <div className="mt-2">{pie}</div>}
+    </Card>
+  );
 }

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { KpiCard } from './index';
 
 describe('KpiCard', () => {
@@ -46,6 +46,40 @@ describe('KpiCard', () => {
     expect(container.querySelector('svg')).not.toBeNull();
     rerender(<KpiCard label="Volumen" value="$1" />);
     expect(container.querySelector('svg')).toBeNull();
+  });
+
+  // Dashboard de Alquileres en tres bloques (17/10/2026): la cobranza con su
+  // barra y la deuda con su leyenda, donde cada tramo abre su lista.
+  it('lo de abajo del número va dentro de la tarjeta; el pie, fuera del botón y con sus propios botones', () => {
+    const abrirTramo = vi.fn();
+    const abrir = vi.fn();
+    render(
+      <KpiCard
+        label="Deuda vencida"
+        value="$ 9,8 M"
+        onClick={abrir}
+        pie={
+          <button type="button" onClick={abrirTramo}>
+            31–60 $ 1,4 M
+          </button>
+        }
+      >
+        <span>9 inquilinos</span>
+      </KpiCard>,
+    );
+    const tarjeta = screen.getByRole('button', { name: 'Deuda vencida: $ 9,8 M. Ver el detalle' });
+    expect(tarjeta).toContainElement(screen.getByText('9 inquilinos'));
+    const tramo = screen.getByRole('button', { name: '31–60 $ 1,4 M' });
+    expect(tarjeta).not.toContainElement(tramo);
+    fireEvent.click(tramo);
+    expect(abrirTramo).toHaveBeenCalledTimes(1);
+    expect(abrir).not.toHaveBeenCalled();
+  });
+
+  it('sin lo nuevo, la tarjeta del Tablero Comercial queda igual', () => {
+    const { container } = render(<KpiCard label="Volumen" value="$1" onClick={() => {}} />);
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(container.querySelector('button')).toHaveClass('h-full');
   });
 
   it('la que se abre dice qué hace al tocarla', () => {
