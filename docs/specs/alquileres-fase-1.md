@@ -576,6 +576,11 @@ los indicadores». Amplía las reglas 26 a 31; no cambia quién ve el Dashboard
     un año como máximo, los mismos roles del Dashboard). El número y la lista
     salen de la misma consulta y de la misma definición. Lo que es a hoy —y
     los contratos nuevos— viajan con el tablero, con su lista.
+    **Modificada el 17/10/2026** (reglas 189 y 190): esas listas siguen sin
+    viajar con el tablero, pero no se esperan al tocar: se piden en segundo
+    plano apenas la tarjeta está a la vista —o al abrirla, si todavía no
+    llegaron—, y la misma lista no se pide dos veces mientras la pantalla
+    esté abierta.
 80. **El gráfico y la planilla** siguen al período: con Mes o Año, doce meses
     —con Mes, el elegido marcado; con Año, ninguno, porque es todo el año—;
     con Trimestre, Q1 a Q4 con el elegido marcado. Tocar una barra o una
@@ -637,7 +642,8 @@ período se pide al abrirla), 82 (las consultas no crecen con la cartera) y
        se nombra «K atrasados» si hoy es posterior al vencimiento del mes
        (regla 178); si no, en gris y «K por vencer». Su lista son los
        alquileres emitidos del mes con su estado, y viaja con el tablero
-       (`cobranza`).
+       (`cobranza`). **Modificada el 17/10/2026** (regla 187): la lista
+       muestra lo cobrado y lo que falta de cada alquiler.
      - **Deuda vencida**: la deuda vencida de inquilinos a hoy (regla 29),
        una barra con los cuatro tramos de antigüedad, una leyenda con los
        tramos que no están en cero —cada uno abre su lista; en el teléfono
@@ -647,7 +653,10 @@ período se pide al abrirla), 82 (las consultas no crecen con la cartera) y
      - **A liquidar a propietarios**: el neto a liquidar —la misma cuenta de
        la tarea «Propietarios para liquidar», que sale de su lista—, «N
        propietarios con cobros sin liquidar» y la fecha de pago del mes
-       (regla 178). Su lista tiene la acción «Ir a liquidar».
+       (regla 178). Su lista se titula como la tarjeta —«A liquidar a
+       propietarios»; hasta el 17/10/2026 decía «Propietarios para
+       liquidar», el nombre de la tarea que reemplazó— y tiene la acción
+       «Ir a liquidar».
      - **Ingresos de {mes}**: el total de ingresos de la inmobiliaria del mes
        y sus partes que no están en cero (honorarios, gastos adm.,
        punitorios, comisiones e informes). Es un flujo: la lista se pide al
@@ -696,7 +705,8 @@ período se pide al abrirla), 82 (las consultas no crecen con la cartera) y
      anterior a hoy va a Atrasado; hoy y lo que viene, a Por vencer. Las
      franjas «31 a 60» y «61 a 90» se juntan en Renovaciones. Las filas de
      las partes suman exactamente las de la tarea original: ninguna se pierde
-     ni se repite.
+     ni se repite. La lista de «Contratos con el plazo cumplido» dice
+     «Venció» y «Hace 5 días» (hasta el 17/10/2026, «Faltan: hace 5 días»).
 
 180. **Una tarea en cero no se muestra.** Las que están en cero se nombran en
      una línea, «Al día: …»; un grupo sin tareas no se muestra, y sin
@@ -740,7 +750,8 @@ período se pide al abrirla), 82 (las consultas no crecen con la cartera) y
      - **Cobrado dentro del mes**: lo cobrado al cierre de cada mes sobre lo
        emitido, recalculado sobre los totales (regla 76), con «de $ X
        emitidos» debajo. Lista: los alquileres emitidos del período, que
-       suman X.
+       suman X. **Modificada el 17/10/2026** (regla 188): abre la cuenta mes
+       por mes, y desde cada mes, sus alquileres emitidos.
      - **Contratos nuevos**: la cantidad, con «Alquiler inicial $ …» debajo.
        Lista: los contratos nuevos, con el alquiler inicial y su total.
      - **Cartera**: los vigentes al cierre (regla 77), con «$ … por mes» y «N
@@ -770,6 +781,62 @@ período se pide al abrirla), 82 (las consultas no crecen con la cartera) y
      (375 × 812). «Lo que hay que hacer» empieza dentro de la primera
      pantalla en la compu y dentro de la primera y media en el teléfono. Lo
      comprueba un e2e que mide la posición del título del bloque.
+
+**Los clics (17/10/2026).** Javier, probándolo en producción: «podés revisar
+los clicks en cada caja, en algunas demora más y me parece que por ejemplo,
+cobranza del mes de octubre no está claro lo que trae». La cobranza decía
+«89 % · 9 atrasados» y abría los alquileres emitidos con su alquiler: nada de
+la lista se correspondía con el porcentaje ni con los atrasados. «Cobrado
+dentro del mes» mostraba un porcentaje y abría una lista que sumaba lo
+emitido. Y las tarjetas que piden su lista al abrirla (regla 79) esperaban el
+viaje a la API cada vez que se tocaban.
+
+187. **La lista de «Cobranza de {mes}» explica la tarjeta.** Se titula
+     «Cobranza de {mes}» y debajo dice «Cobrado $ X de $ Y (89%) · 9 sin
+     pagar», con los importes exactos (y lo mismo en dólares, si hay).
+     Columnas: Inquilino, Propiedad, Contrato, Vence, **Alquiler**,
+     **Cobrado**, **Falta** y Estado. Falta es el alquiler menos lo cobrado,
+     nunca negativo; el estado de un pago parcial dice «Pago parcial»,
+     porque lo que pagó y lo que falta ya están en sus columnas. Primero los
+     que no pagaron nada, por vencimiento; después los que pagaron una
+     parte; al final los pagados. Alquiler, Cobrado y Falta llevan su total,
+     por moneda: el de Alquiler es lo emitido de la tarjeta, el de Cobrado
+     es lo cobrado de la tarjeta, y los «sin pagar» son los que faltan de
+     «N de M pagaron» (regla 26). Se arma en el navegador uniendo por el id
+     del concepto las dos listas que ya viajan con el tablero —
+     `cobranza[].importeEmitido`, con el alquiler, e `importeCobrado`, con
+     lo cobrado hasta hoy—: abrirla no pide nada. En el teléfono, cada
+     tarjeta de la lista muestra el alquiler, lo cobrado y lo que falta.
+188. **«Cobrado dentro del mes» abre su cuenta mes por mes**: una fila por
+     cada mes del período con alquileres emitidos en esa moneda —Mes,
+     Emitido, Cobrado dentro del mes y %— y una fila de total con el
+     porcentaje recalculado sobre los totales (regla 76), que es el de la
+     tarjeta. Sale de `evolucion`, que viaja con el tablero: abre al
+     instante. El mes en curso lo dice («en curso»): su cierre todavía no
+     llegó. Tocar un mes abre los alquileres emitidos de ese mes —la lista
+     de antes, que se pide (regla 79)—, con «← Mes por mes» para volver. Lo
+     de dólares abre lo mismo, en dólares.
+189. **Una lista pedida no se vuelve a pedir.** Las listas que se piden
+     (regla 79) quedan en la memoria de la pantalla, con la clave indicador
+     - desde + hasta + tipo + moneda + tramo: abrir de nuevo la misma
+       tarjeta es instantáneo. Es memoria de esa pantalla abierta: se borra al
+       recargar, al salir del Dashboard y cuando llega otro tablero (al
+       cambiar el año), así que no se cruza entre usuarios ni inmobiliarias.
+       Un pedido que falla no queda guardado: abrir otra vez lo reintenta.
+190. **Pedido anticipado.** Apenas se pinta el Dashboard, y otra vez cada vez
+     que cambian el período, el tipo o el año, se piden en segundo plano las
+     listas de las tarjetas que están a la vista y piden la suya al abrirla:
+     «Ingresos de {mes}» en «Hoy», «Ingresos» del período y «Cartera» cuando
+     el período no llega a hoy, con lo de dólares si lo hay. De a dos como
+     mucho y cuando el navegador está libre (`requestIdleCallback`, o un
+     instante después donde no existe), para no competir con la carga de la
+     página. Al cambiar de período, las que todavía no salieron se
+     descartan. Si se toca la tarjeta antes de que la lista llegue, el modal
+     espera ese mismo pedido: no hace otro.
+191. **La lista se abre en el acto.** El modal aparece al tocar, y mientras
+     la lista llega muestra una carga que se ve —una rueda con «Cargando la
+     lista…» y renglones grises en el lugar de la tabla—, no un «Cargando…»
+     chico.
 
 **Casos borde.** Un mes sin alquileres emitidos: la tarjeta de cobranza lo
 dice («No hay alquileres emitidos de octubre») y no se abre; la tarea «Generar
@@ -1754,6 +1821,7 @@ Con los datos reales de Vacker migrados al día de corte:
 | 169 – 174         | Types: `reservas.test.ts` (169, 171: cobrar la seña, los cierres que retienen, el propietario elegido), `alquileres.test.ts`; API: `reservas.service.spec.ts` (`regla 169`–`172` en el nombre: el recibo, una vez por recibo, la seña con recibo no se cambia, la seña como depósito con diferencia en los dos sentidos y en otra moneda, la retención en partes iguales, con honorarios, sin propietario y sin seña, anular con recibo, el contrato borrado devuelve la seña), `contrato-completo.service.spec.ts` (170: depósito cobrado, mayor, menor, sin depósito y lo que propone «Cargos de ingreso»), `liquidaciones.service.spec.ts` (171: la retenida sin contrato entra en la liquidación, con honorarios), `cobros.service.spec.ts` (169 y 171: anular el recibo de la seña, frenado si la retenida ya se liquidó), `anexo-inventario.spec.ts` (174: marcadores, validación, ejemplo, modelo de la plataforma, plantilla propia, cruces 400, anulado); base: `reservas.e2e-spec.ts` (169 a 171 de punta a punta); web: `reservas.test.tsx` (169 a 171 y 174: cobrar, recibo, cierre que pide propietario, seña como depósito, anexo), `plantillas-vista.test.tsx` (174)                                                                                                                                                                                                               |
 | 175               | Types: `tablero-alquileres-compacto.test.ts` (expandir lo compactado devuelve lo mismo; cada fila una vez; las dos formas); API: `tablero-alquileres.service.spec.ts` (`regla 82`: seis consultas con 5 y con 25 contratos), `en-un-viaje.spec.ts`; base: `tablero-alquileres.e2e-spec.ts` (el SQL en una sentencia, contra Postgres); web: `tablero-alquileres.test.tsx` (la forma compacta se ve igual y el filtro no pide nada)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 176 – 186         | Types: `tablero-tres-bloques.test.ts` (178: `ciclo` y su default; 181: `diaAvisoGenerar`, 25, de 1 a 28); domain: `generar-mes.test.ts` (181: lo mismo que `generarPeriodoConParciales`); API: `tablero-alquileres.service.spec.ts` (`regla 178`: sábado, feriados, presente, pago tras el vencimiento; `regla 181`: mes en curso, administrado desde, rescisión, antes y después del aviso, falta confirmar, y contra `ConceptosService.generar` con los mismos datos; `regla 82`: seis consultas con 5 y 25 contratos); base: `tablero-alquileres.e2e-spec.ts` (178 y 181 contra Postgres, anulados incluidos); web: `tablero-alquileres.test.tsx` (`regla 17x`/`18x`: 176 a 185, fallan contra el Dashboard anterior), `tablero/tablero-partes.test.ts` (179: ayer, hoy y mañana; 178; 184), `periodo-tablero.test.ts` (182), `configuracion-form.test.tsx` (181); e2e: `alquileres/dashboard.spec.ts` (186 en 1440 × 900 y 375 × 812; 176 a 182)                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 187 – 191         | Web: `tablero/listas.test.ts` (`regla 189`: la clave con el tipo, la moneda y el tramo, una sola vez aunque se pida dos veces a la vez, un pedido que falla no queda; `regla 190`: nada hasta que el navegador está libre, de a dos, lo ya pedido no se repite, cancelar descarta lo que no salió), `tablero/tablero-partes.test.ts` (`regla 187`: unir por id, el orden, falta nunca negativo, los totales y el resumen), `tablero-alquileres.test.tsx` (`regla 187`: título, resumen, columnas, orden y totales por moneda que coinciden con la tarjeta, sin esperar nada, y las tarjetas del teléfono; `regla 188`: mes por mes con el total recalculado, el mes en curso, seguir a un mes y volver; `regla 189`: abrir dos veces, otro tipo, otro tablero; `regla 190`: el anticipado al pintar, el clic antes de que llegue, el cambio de período que descarta lo anterior, ninguna tarjeta que espere su lista; `regla 191`: la carga que se ve; `regla 177`/`179`: lo corregido en la revisión de los clics; fallan contra el Dashboard anterior salvo «otro tablero»); e2e: `alquileres/dashboard.spec.ts` (189 y 190: «Ingresos de octubre» no pide nada si el anticipado llegó, la cartera de un mes cerrado se pide sola; 187: Cobrado y Falta con sus totales; 188: el total de la tarjeta; en 1440 y 375)                                                                            |
 | §3 (roles)        | API: 403 para `vendedor`, `team_leader`, `publicador`; 200 para `administracion`, `direccion`, `admin_tenant`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Aislamiento       | Cada tabla nueva en `isolation.e2e-spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Licencia          | API: 403 en una inmobiliaria sin el módulo, aun con rol `direccion`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
