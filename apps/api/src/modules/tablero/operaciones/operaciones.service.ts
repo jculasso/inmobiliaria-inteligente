@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   EstadoAlquilerSchema,
@@ -151,13 +156,21 @@ export class OperacionesService {
     });
   }
 
-  /** Edita una operación. Si se envían `puntas`, reemplazan el set completo. */
+  /**
+   * Edita una operación. Si se envían `puntas`, reemplazan el set completo, y
+   * solo si coinciden con las que vio quien edita (`puntasVistas`).
+   */
   async update(id: string, dto: UpdateOperacion, ctx: TenantContext) {
     return this.db.withTenant(async (tx) => {
+      // Reemplazar las puntas es leer, comparar y escribir: la fila se bloquea
+      // ANTES de leerla (CONVENCIONES §19), para que otro pedido no cambie las
+      // puntas entre la comparación y el borrado. Sin `puntas` no hace falta.
+      if (dto.puntas !== undefined) await bloquearOperacion(tx, id);
       const actual = await tx.operacion.findUnique({ where: { id }, include: operacionInclude });
       if (!actual) throw new NotFoundException('Operación no encontrada.');
       assertEnScope(actual, await scopeDePermiso(ctx, tx));
       this.assertUpdateCoherente(actual.tipo, dto);
+      if (dto.puntas !== undefined) assertVioLasPuntas(actual.puntas, dto.puntasVistas);
 
       const fechaFirma =
         dto.fechaFirma !== undefined ? dto.fechaFirma : fromDate(actual.fechaFirma);
@@ -259,6 +272,57 @@ export class OperacionesService {
 
 function sumaComision(puntas: PuntaInput[]): number {
   return puntas.reduce((acc, p) => acc + p.comision, 0);
+}
+
+/**
+ * La operación, bloqueada hasta el final de la transacción. Dos ediciones de
+ * la misma venta se hacen una detrás de la otra, y la segunda compara sus
+ * `puntasVistas` contra lo que dejó la primera.
+ */
+async function bloquearOperacion(tx: Prisma.TransactionClient, id: string): Promise<void> {
+  await tx.$executeRaw`SELECT 1 FROM operacion WHERE id = ${id}::uuid FOR UPDATE`;
+}
+
+/**
+ * Un PATCH con `puntas` borra todas las puntas y crea las recibidas. Solo se
+ * deja hacer si quien edita vio exactamente las que hay en la base.
+ *
+ * El caso que lo motivó (revisión de seguridad del 17/10/2026, H1): dirección
+ * en «lo mío» recibe la lista enmascarada con el alcance de la vista, y una
+ * venta compartida le llega con su punta sola. El formulario abierto con esa
+ * fila mandaba `puntas` con lo visible, y la punta del otro vendedor y su
+ * comisión se borraban aunque solo se hubiera cambiado el estado.
+ *
+ * Se compara el conjunto entero, en los dos sentidos:
+ * - una punta de la base que no está en `puntasVistas` es una punta que no se
+ *   vio: reemplazar la borraría sin que nadie lo haya decidido;
+ * - una punta vista que ya no está en la base quiere decir que otro editó la
+ *   venta en el medio (cada reemplazo crea puntas con ids nuevos).
+ *
+ * Quitar una punta a propósito sigue funcionando: se vio, su id está en
+ * `puntasVistas`, y no viene en `puntas`.
+ *
+ * **Sin `puntasVistas` también se rechaza.** Lo manda un cliente viejo —una
+ * PWA que todavía no recargó—, que es justamente el que abre el formulario con
+ * la fila enmascarada: aceptarlo dejaría el bug vivo en cada teléfono sin
+ * recargar. Y aplicar el resto ignorando las puntas perdería en silencio un
+ * cambio de punta que sí se quiso hacer. Recargar alcanza para destrabarlo.
+ */
+function assertVioLasPuntas(actuales: { id: string }[], vistas: string[] | undefined): void {
+  if (vistas === undefined) {
+    throw new ConflictException(
+      'Esta pantalla quedó desactualizada: recargá la página y volvé a editar la venta.',
+    );
+  }
+  const enLaBase = new Set(actuales.map((p) => p.id));
+  const vistasSet = new Set(vistas);
+  const coinciden =
+    enLaBase.size === vistasSet.size && [...enLaBase].every((id) => vistasSet.has(id));
+  if (!coinciden) {
+    throw new ConflictException(
+      'La venta cambió o la estabas viendo incompleta: recargá y volvé a editar.',
+    );
+  }
 }
 
 /** Rechaza el acceso si la operación no cae en el alcance del rol. */

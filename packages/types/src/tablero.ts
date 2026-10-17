@@ -124,7 +124,21 @@ export const CreateOperacionSchema = z.discriminatedUnion('tipo', [
 ]);
 export type CreateOperacion = z.infer<typeof CreateOperacionSchema>;
 
-/** Edición parcial. No permite cambiar `tipo`. `puntas` reemplaza el set completo. */
+/**
+ * Edición parcial. No permite cambiar `tipo`.
+ *
+ * `puntas` reemplaza el set completo: la API borra todas y crea las que
+ * vienen. Por eso viaja con **`puntasVistas`**, los ids de las puntas que
+ * tenía el formulario al abrirse. Si no coinciden con las de la base —el
+ * formulario se abrió con la venta enmascarada, u otro la cambió en el
+ * medio—, la API responde 409 y no toca nada. Sin `puntasVistas`, un PATCH con
+ * `puntas` también es 409: es lo que manda un cliente viejo, justo el que abría
+ * el formulario con la fila enmascarada de la lista y borraba la punta del
+ * otro vendedor (revisión de seguridad del 17/10/2026).
+ *
+ * Quitar una punta a propósito sigue siendo posible: su id está en
+ * `puntasVistas` y no viene en `puntas`. Sin `puntas`, `puntasVistas` se ignora.
+ */
 export const UpdateOperacionSchema = z
   .object({
     codigo: z.string().min(1).max(40),
@@ -138,6 +152,7 @@ export const UpdateOperacionSchema = z
     fechaFirma: IsoDateSchema.nullable(),
     obs: z.string().nullable(),
     puntas: z.array(PuntaInputSchema).max(2),
+    puntasVistas: z.array(z.string().uuid()).max(2),
   })
   .partial();
 export type UpdateOperacion = z.infer<typeof UpdateOperacionSchema>;

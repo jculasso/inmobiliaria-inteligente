@@ -95,3 +95,25 @@ describe('Moneda de una operación del Tablero', () => {
     expect(CreateOperacionSchema.parse(venta).moneda).toBe('USD');
   });
 });
+
+describe('Puntas vistas al editar una venta', () => {
+  const ID = '00000000-0000-4000-8000-000000000001';
+
+  // El pipe de validación de la API se queda con lo que devuelve `parse`, y
+  // Zod descarta las claves que el schema no declara. Si `puntasVistas` no
+  // estuviera acá, la API nunca la recibiría y rechazaría toda edición de una
+  // venta con 409.
+  it('llega a la API: el schema no la descarta', () => {
+    const dto = UpdateOperacionSchema.parse({
+      puntas: [{ lado: 'vendedora', usuarioId: ID }],
+      puntasVistas: [ID],
+    });
+    expect(dto.puntasVistas).toEqual([ID]);
+  });
+
+  it('son ids de punta, y una venta tiene una o dos', () => {
+    expect(UpdateOperacionSchema.safeParse({ puntasVistas: ['p1'] }).success).toBe(false);
+    expect(UpdateOperacionSchema.safeParse({ puntasVistas: [ID, ID, ID] }).success).toBe(false);
+    expect(UpdateOperacionSchema.safeParse({ puntasVistas: [] }).success).toBe(true);
+  });
+});
