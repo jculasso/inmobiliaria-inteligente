@@ -91,6 +91,27 @@ confidencial, el nombre sí. Y `comTotal` se recalcula **solo si se ocultó algo
 porque los alquileres no tienen puntas y recalcularlos los dejaría en cero. Lo
 fijan `operaciones.service.spec.ts` y `kpis.calc.spec.ts`.
 
+### Nunca editar con la fila de una lista enmascarada
+
+**La fila de la lista es para mirar, no para escribir.** Hasta el 17/10/2026
+«Editar» abría el formulario con la fila tal como vino. Dirección en «lo mío»
+recibe una venta compartida con su punta sola, y el guardado manda `puntas`
+como el set completo. Resultado: la punta del otro vendedor y su comisión se
+borraban aunque solo se hubiera cambiado el estado. Pasó en producción, en
+Vacker.
+
+Por eso son dos defensas:
+
+1. **La web** abre Editar y Borrar con el detalle (`GET /tablero/operaciones/:id`),
+   que enmascara con el **permiso**: a quien puede escribir no le oculta nada.
+2. **La API** exige `puntasVistas` en todo PATCH con `puntas`: los ids de las
+   puntas que había al abrir el formulario. Si no coinciden con la base, o no
+   vienen, responde 409 y no toca nada. La comparación va después de bloquear
+   la fila (§19).
+
+Lo fijan `operaciones.service.spec.ts` («editar una venta compartida») y
+`operaciones-table.test.tsx` («editar y borrar con la venta completa»).
+
 ---
 
 ## 3. Quién escribe en el Tablero
