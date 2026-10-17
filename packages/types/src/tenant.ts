@@ -5,6 +5,14 @@ export const PlanTenantSchema = z.enum(['basico', 'profesional', 'enterprise']);
 export type PlanTenant = z.infer<typeof PlanTenantSchema>;
 
 /**
+ * Regla 181: el día del mes desde el que se avisa que hay que generar el mes
+ * siguiente, si la inmobiliaria no eligió otro. El 25 lo recomendó el
+ * análisis del 15/10/2026; falta que lo confirme Florencia (Vacker), que sabe
+ * cuándo manda los avisos de pago.
+ */
+export const DIA_AVISO_GENERAR_POR_DEFECTO = 25;
+
+/**
  * Configuración propia de cada inmobiliaria: su marca, y su criterio de
  * tasación.
  *
@@ -72,6 +80,12 @@ export const TenantConfigSchema = z.object({
   contratoPunitorioDiarioPct: z.number().min(0).max(10).default(0),
   contratoDiaVencimiento: z.number().int().min(1).max(28).default(5),
   contratoDiaPagoPropietario: z.number().int().min(1).max(28).default(10),
+  /**
+   * Regla 181: desde qué día del mes el Dashboard avisa que hay que generar
+   * los alquileres del mes siguiente (corrido al primer día hábil, como los
+   * vencimientos). Del 1 al 28, como los otros días.
+   */
+  diaAvisoGenerar: z.number().int().min(1).max(28).default(DIA_AVISO_GENERAR_POR_DEFECTO),
   /** El depósito en garantía: Javier, 6/10/2026, «se le entrega al propietario». */
   depositoGestion: z
     .enum(['entrega_propietario', 'retiene_inmobiliaria'])

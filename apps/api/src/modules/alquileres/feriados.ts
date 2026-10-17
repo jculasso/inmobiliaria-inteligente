@@ -23,17 +23,26 @@ const DIAS_DE_MARGEN = 15;
  */
 export async function feriadosDe(tx: Tx, periodos: string[]): Promise<Set<string>> {
   if (periodos.length === 0) return new Set();
-  const orden = [...periodos].sort();
-  const ultimo = orden.at(-1)!;
-  const [anio, mes] = ultimo.split('-').map(Number) as [number, number];
+  const { desde, hasta } = rangoDeFeriados(periodos);
   const filas = await tx.feriado.findMany({
-    where: {
-      fecha: {
-        gte: toDate(`${orden[0]}-01`)!,
-        lte: toDate(sumarDiasIso(`${ultimo}-${diasDelMes(anio, mes)}`, DIAS_DE_MARGEN))!,
-      },
-    },
+    where: { fecha: { gte: toDate(desde)!, lte: toDate(hasta)! } },
     select: { fecha: true },
   });
   return new Set(filas.map((f) => fromDate(f.fecha)!));
+}
+
+/**
+ * Las fechas de feriados que pueden mover un vencimiento de estos períodos:
+ * desde el primer día del primero hasta `DIAS_DE_MARGEN` después del último.
+ * La usan `feriadosDe` y el Dashboard, que lee los feriados dentro de su
+ * sentencia única (regla 178): los dos miran la misma ventana.
+ */
+export function rangoDeFeriados(periodos: string[]): { desde: string; hasta: string } {
+  const orden = [...periodos].sort();
+  const ultimo = orden.at(-1)!;
+  const [anio, mes] = ultimo.split('-').map(Number) as [number, number];
+  return {
+    desde: `${orden[0]}-01`,
+    hasta: sumarDiasIso(`${ultimo}-${diasDelMes(anio, mes)}`, DIAS_DE_MARGEN),
+  };
 }

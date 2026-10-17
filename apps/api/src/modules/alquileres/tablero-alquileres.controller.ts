@@ -25,7 +25,10 @@ export class TableroAlquileresController {
   @Get()
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({
-    summary: 'Cartera, cobranza del mes, morosidad, ingresos y lo que hay que hacer',
+    summary:
+      'Cartera, cobranza del mes, morosidad, ingresos, la línea del mes y lo que hay que hacer',
+    description:
+      '`ciclo` (regla 178): el vencimiento, el pago a propietarios y el aviso de generar el mes siguiente, corridos al primer día hábil y con el motivo. `tareas.generarMes` y `tareas.generarSiguiente` (regla 181): los contratos con el alquiler del mes sin generar; el siguiente es `null` antes del aviso.',
   })
   @ApiQuery({
     name: 'tipo',
@@ -47,6 +50,8 @@ export class TableroAlquileresController {
   @Roles(...ROLES_ADMINISTRACION_ALQUILERES)
   @ApiOperation({
     summary: 'Los tres cortes del tablero —todos, particulares y comerciales— de una sola lectura',
+    description:
+      'Cada corte con la forma de `GET /alquileres/tablero`, incluidos `ciclo` (regla 178) y las tareas de generar el mes (regla 181).',
   })
   @ApiQuery({ name: 'anio', required: false, example: 2026 })
   @ApiQuery({

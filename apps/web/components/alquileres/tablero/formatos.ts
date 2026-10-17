@@ -29,7 +29,34 @@ export function totalesPorMoneda(filas: FilaTablero[], porDefecto: MonedaAlquile
 }
 
 /** «$ 1.928.307,62 · U$S 1.409,25»: cada moneda con lo suyo, sin la que está en cero. */
-export function fmtTotales(t: Record<MonedaAlquiler, number>, porDefecto: MonedaAlquiler) {
+export function fmtTotales(
+  t: Record<MonedaAlquiler, number>,
+  porDefecto: MonedaAlquiler,
+  formato: (n: number, m: MonedaAlquiler) => string = fmtMoneda,
+) {
   const monedas = (['ARS', 'USD'] as const).filter((m) => t[m] !== 0);
-  return (monedas.length ? monedas : [porDefecto]).map((m) => fmtMoneda(t[m], m)).join(' · ');
+  return (monedas.length ? monedas : [porDefecto]).map((m) => formato(t[m], m)).join(' · ');
+}
+
+const simbolo = (m: MonedaAlquiler) => (m === 'USD' ? 'U$S' : '$');
+
+/** «$ 412.300», «U$S 1.409»: el importe sin centavos, para los renglones de las tareas. */
+export function fmtSinCentavos(n: number, moneda: MonedaAlquiler = 'ARS') {
+  const v = Math.round(n);
+  return `${v < 0 ? '-' : ''}${simbolo(moneda)} ${Math.abs(v).toLocaleString('es-AR')}`;
+}
+
+/**
+ * Regla 184: el importe de una tarjeta, abreviado para que entren dos por fila
+ * en el teléfono. Desde un millón, en millones con un decimal («$ 62,4 M»);
+ * debajo, sin centavos («$ 412.300»). La lista de la tarjeta muestra el
+ * importe exacto, y su total es exacto (regla 26).
+ */
+export function fmtTarjeta(n: number, moneda: MonedaAlquiler = 'ARS') {
+  if (Math.abs(n) < 1_000_000) return fmtSinCentavos(n, moneda);
+  const millones = (Math.abs(n) / 1_000_000).toLocaleString('es-AR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return `${n < 0 ? '-' : ''}${simbolo(moneda)} ${millones} M`;
 }

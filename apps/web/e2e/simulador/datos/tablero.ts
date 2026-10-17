@@ -90,6 +90,23 @@ function tablero(tipo: FiltroTipoContrato): Tablero {
     mes: mes(MES_ACTUAL),
     anio: ANIO,
     tipo,
+    // Regla 178: octubre de 2026 con la configuración de prueba (5, 10 y 25) y
+    // el feriado del 12/10: como lo calcula la API.
+    ciclo: {
+      mes: '2026-10',
+      vencimiento: { dia: 5, fecha: '2026-10-05', motivo: null },
+      pagoPropietarios: {
+        dia: 10,
+        fecha: '2026-10-13',
+        motivo: 'el 10 fue sábado y el 12 feriado',
+      },
+      generarSiguiente: {
+        dia: 25,
+        fecha: '2026-10-26',
+        motivo: 'el 25 es domingo',
+        mes: '2026-11',
+      },
+    },
     cartera: {
       vigentes,
       vivienda: 1,
@@ -187,6 +204,28 @@ function tablero(tipo: FiltroTipoContrato): Tablero {
       indexacionesEsperan: porCantidad([
         fila(1, { detalle: 'Tramo 2 · espera el índice', fecha: '2026-10-01' }),
       ]),
+      // Regla 179: una boleta vencida (Atrasado) y una que vence en 7 días (Por vencer).
+      boletas: porCantidad([
+        fila(0, {
+          id: `${IDS.contrato}-boleta-1`,
+          href: '/alquileres/impuestos?ver=pagar',
+          detalle: 'ABL · cuota 5 de 12',
+          fecha: '2026-10-10',
+          importe: 41_200,
+          estado: 'Vencida hace 5 días',
+        }),
+        fila(1, {
+          id: `${IDS.contrato2}-boleta-2`,
+          href: '/alquileres/impuestos?ver=pagar',
+          detalle: 'Aysam · cuota 10 de 12',
+          fecha: '2026-10-20',
+          importe: 18_350,
+          estado: 'Vence en 5 días',
+        }),
+      ]),
+      // Regla 181: octubre ya generado; noviembre se avisa desde el 26.
+      generarMes: vacio,
+      generarSiguiente: null,
     },
   };
 }

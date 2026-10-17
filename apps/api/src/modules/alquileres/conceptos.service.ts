@@ -58,6 +58,39 @@ function limites(periodo: string): { desde: string; hasta: string } {
   };
 }
 
+/** Los estados de un contrato que generan su mes: un borrador o uno anulado, no. */
+export const ESTADOS_QUE_GENERAN = ['vigente', 'finalizado', 'rescindido'];
+
+/**
+ * Los contratos que «Generar el período» lee para un mes: los que generan y
+ * se cruzan con él. Después decide `generarPeriodo` (la rescisión, «administrado
+ * desde»…). Lo mismo, en memoria, es `contratosQueGeneran`: el Dashboard
+ * avisa con esa lista cuáles faltan generar (regla 181), y las dos tienen que
+ * mirar los mismos contratos.
+ */
+export function contratosDelMes(periodo: string) {
+  const { desde, hasta } = limites(periodo);
+  return {
+    estado: { in: ESTADOS_QUE_GENERAN },
+    inicio: { lte: toDate(hasta)! },
+    fin: { gte: toDate(desde)! },
+  } satisfies Prisma.AlqContratoWhereInput;
+}
+
+/** `contratosDelMes`, sobre contratos ya leídos (regla 181). */
+export function contratosQueGeneran<C extends Pick<FilaContrato, 'estado' | 'inicio' | 'fin'>>(
+  contratos: C[],
+  periodo: string,
+): C[] {
+  const { desde, hasta } = limites(periodo);
+  return contratos.filter(
+    (c) =>
+      ESTADOS_QUE_GENERAN.includes(c.estado) &&
+      fromDate(c.inicio)! <= hasta &&
+      fromDate(c.fin)! >= desde,
+  );
+}
+
 /**
  * Conceptos del módulo Alquileres: la generación del período (reglas 9 a 13),
  * los gastos sueltos (regla 14) y la anulación (regla 19).
@@ -98,11 +131,7 @@ export class ConceptosService {
       const iva = TenantConfigSchema.parse(tenant.config ?? {}).ivaHonorariosPct;
 
       const contratos = await tx.alqContrato.findMany({
-        where: {
-          estado: { in: ['vigente', 'finalizado', 'rescindido'] },
-          inicio: { lte: toDate(hasta)! },
-          fin: { gte: toDate(desde)! },
-        },
+        where: contratosDelMes(periodo),
         include: {
           propiedad: { select: { direccion: true } },
           partes: { select: { personaId: true, papel: true, porcentaje: true } },
@@ -373,12 +402,29 @@ export function aFilas(
   }));
 }
 
-type FilaContrato = Prisma.AlqContratoGetPayload<{
-  include: {
-    partes: { select: { personaId: true; papel: true; porcentaje: true } };
-    tramos: { select: { numero: true; desde: true; hasta: true; importe: true } };
-  };
-}>;
+/**
+ * Lo que la generación necesita de un contrato. Lo lee «Generar el período»
+ * y también el Dashboard, que avisa qué falta generar (regla 181) con los
+ * contratos que ya tiene: cada uno con su consulta, la misma conversión.
+ */
+type FilaContrato = Pick<
+  Prisma.AlqContratoGetPayload<object>,
+  | 'id'
+  | 'estado'
+  | 'moneda'
+  | 'inicio'
+  | 'fin'
+  | 'administradoDesde'
+  | 'rescindidoEl'
+  | 'diaVencimiento'
+  | 'diaPagoPropietario'
+  | 'honorariosPct'
+  | 'gastosAdmPct'
+  | 'ivaPct'
+> & {
+  partes: { personaId: string; papel: string; porcentaje: Prisma.Decimal | null }[];
+  tramos: { numero: number; desde: Date; hasta: Date; importe: Prisma.Decimal | null }[];
+};
 
 /**
  * Con más de un inquilino, los cargos van a uno solo, siempre el mismo: el de

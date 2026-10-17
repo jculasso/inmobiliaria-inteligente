@@ -17,10 +17,25 @@ export const SELECT_CONTRATO = {
   rescindidoEl: true,
   depositoImporte: true,
   depositoDevolucion: true,
+  // Lo que necesita la generación del mes (`aParaGenerar`): el Dashboard avisa
+  // qué contratos tienen el mes sin generar con la misma cuenta (regla 181).
+  administradoDesde: true,
+  diaVencimiento: true,
+  diaPagoPropietario: true,
+  honorariosPct: true,
+  gastosAdmPct: true,
+  ivaPct: true,
   propiedad: { select: { direccion: true, unidad: true } },
-  partes: { select: { personaId: true, papel: true, persona: { select: { nombre: true } } } },
+  partes: {
+    select: {
+      personaId: true,
+      papel: true,
+      porcentaje: true,
+      persona: { select: { nombre: true } },
+    },
+  },
   tramos: {
-    select: { numero: true, desde: true, importe: true },
+    select: { numero: true, desde: true, hasta: true, importe: true },
     orderBy: { numero: 'asc' },
   },
   documentos: { select: { estadoFirma: true } },

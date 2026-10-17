@@ -67,6 +67,7 @@ export const CONFIGURACION: z.input<typeof ConfiguracionAlquileresSchema> = {
   contratoPunitorioDiarioPct: 0.3,
   contratoDiaVencimiento: 5,
   contratoDiaPagoPropietario: 10,
+  diaAvisoGenerar: 25,
   diasDiferenciaFinal: 5,
   honorariosSenaRetenidaPct: 0,
 };

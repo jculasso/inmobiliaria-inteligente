@@ -8,6 +8,8 @@ import {
 } from '@vacker/types';
 import { PARTES_DE_LA_SENTENCIA } from '../../prisma/en-un-viaje';
 import type { TenantPrismaService } from '../../prisma/tenant-prisma.service';
+import { ConceptosService } from './conceptos.service';
+import { mocksDeHistorial } from './historial.testing';
 import type { IndexacionesService } from './indexaciones.service';
 import type { LiquidacionesService } from './liquidaciones.service';
 import { TableroAlquileresService } from './tablero-alquileres.service';
@@ -16,8 +18,10 @@ const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 const dec = (n: number) => new Prisma.Decimal(n);
 const HOY = '2026-10-20';
 
-function contrato(over: Record<string, unknown> = {}) {
-  return {
+type TramoFixture = { numero: number; desde: Date; hasta?: Date; importe: Prisma.Decimal | null };
+
+function contrato(over: Record<string, unknown> & { tramos?: TramoFixture[] } = {}) {
+  const c = {
     id: 'c5',
     codigo: '5',
     estado: 'vigente',
@@ -26,22 +30,42 @@ function contrato(over: Record<string, unknown> = {}) {
     ajuste: 'indexado',
     inicio: d('2025-08-15'),
     fin: d('2027-08-14'),
-    rescindidoEl: null,
+    rescindidoEl: null as Date | null,
+    administradoDesde: null as Date | null,
     depositoImporte: null,
     depositoDevolucion: null,
+    // Lo que lee la generación del mes (regla 181).
+    diaVencimiento: 5,
+    diaPagoPropietario: 10,
+    honorariosPct: dec(8),
+    gastosAdmPct: dec(2),
+    ivaPct: dec(0),
     propiedad: { direccion: 'Calle 1', unidad: null },
     partes: [
-      { personaId: 'inq5', papel: 'inquilino', persona: { nombre: 'Inquilina' } },
-      { personaId: 'dueno', papel: 'propietario', persona: { nombre: 'Dueño' } },
+      { personaId: 'inq5', papel: 'inquilino', porcentaje: null, persona: { nombre: 'Inquilina' } },
+      {
+        personaId: 'dueno',
+        papel: 'propietario',
+        porcentaje: dec(100),
+        persona: { nombre: 'Dueño' },
+      },
     ],
     tramos: [
       { numero: 1, desde: d('2026-04-15'), importe: dec(1_043_387) },
       { numero: 2, desde: d('2026-08-15'), importe: dec(1_137_518) },
       { numero: 3, desde: d('2026-12-15'), importe: null },
-    ],
+    ] as TramoFixture[],
     documentos: [] as { estadoFirma: string }[],
     ...over,
   };
+  // Cada tramo termina el día antes del siguiente, y el último con el contrato.
+  const tramos = c.tramos.map((t, i) => ({
+    ...t,
+    hasta:
+      t.hasta ??
+      (c.tramos[i + 1] ? new Date(c.tramos[i + 1]!.desde.getTime() - 86_400_000) : c.fin),
+  }));
+  return { ...c, tramos };
 }
 
 /** Un alquiler del lado del inquilino, como lo lee `sqlAlquileres`. */
@@ -125,6 +149,12 @@ type Fixture = {
   finales?: Record<string, unknown>[];
   /** Los tramos de la bandeja de indexación. */
   tramos?: Record<string, unknown>[];
+  /** Las claves de los alquileres ya generados (regla 181), anulados incluidos. */
+  generados?: string[];
+  /** Los feriados cargados (regla 178). */
+  feriados?: string[];
+  /** La configuración de la inmobiliaria (los días de la línea del mes). */
+  config?: Record<string, unknown>;
 };
 
 /**
@@ -264,6 +294,21 @@ function servicio(over: Fixture = {}) {
         return filasMora.filter((m) => cierres.includes(m.cierre));
       }
       if (texto.includes("k.etapa = 'final' AND k.sentido = 'a_cobrar'")) return over.finales ?? [];
+      // Regla 181: las claves ya generadas de los meses pedidos (el tercer segmento es el mes).
+      if (texto.includes('FROM alq_concepto g')) {
+        const meses = q.values[0] as string[];
+        return (over.generados ?? [])
+          .filter((c) => meses.includes(c.split('|')[2]!))
+          .map((clave) => ({ clave }));
+      }
+      // Regla 178: los feriados de la ventana pedida, y la configuración.
+      if (texto.includes('FROM feriado f')) {
+        const [desde, hasta] = q.values as string[];
+        return (over.feriados ?? [])
+          .filter((f) => f >= desde! && f <= hasta!)
+          .map((fecha) => ({ fecha }));
+      }
+      if (texto.includes('FROM tenant t')) return [{ config: over.config ?? {} }];
       if (texto.includes("k.tipo = 'alquiler'")) {
         const [desde, hasta, ademas] = q.values as string[];
         return alquileres.filter(
@@ -385,6 +430,7 @@ function indicadores(t: TableroAlquileresDto): [string, Indicador, 'importe' | '
     ['reclamos', t.tareas.reclamos, 'cantidad'],
     ['polizas', t.tareas.polizas, 'cantidad'],
     ['boletas', t.tareas.boletas, 'cantidad'],
+    ['generar el mes', t.tareas.generarMes, 'cantidad'],
   ];
 }
 
@@ -625,8 +671,10 @@ describe('TableroAlquileresService', () => {
       const antes = rawCalls.length;
       const t = await servicio({ contratos: cartera() }).tableros(HOY, 2026);
       expect(rawCalls.length - antes).toBe(1);
-      // Alquileres, deuda, ingresos y liquidaciones finales pendientes (regla 139).
-      expect(rawCalls.at(-1)!.length).toBe(4);
+      // Alquileres, deuda, ingresos y liquidaciones finales pendientes (regla
+      // 139); y los alquileres generados, los feriados y la configuración
+      // (reglas 178 y 181).
+      expect(rawCalls.at(-1)!.length).toBe(7);
       expect(t.comercial.tipo).toBe('comercial');
       expect(t.comercial.cartera.vigentes.filas.map((f) => f.contrato)).toEqual(['3']);
       expect(t.todos.cartera.vigentes.filas.length).toBeGreaterThan(
@@ -1167,5 +1215,319 @@ describe('TableroAlquileresService: liquidación parcial y final (reglas 7 y 139
       ],
     ]);
     expect(t.filas[0]).toMatchObject({ contrato: '5', inquilino: 'Inquilina' });
+  });
+});
+
+// Dashboard en tres bloques (17/10/2026): la línea del mes de «Hoy».
+describe('TableroAlquileresService: la línea del mes (regla 178)', () => {
+  it('regla 178: en octubre de 2026 vence el lunes 5 y se paga el martes 13, porque el 10 fue sábado y el 12 feriado', async () => {
+    const t = await servicio({ feriados: ['2026-10-12', '2026-11-09'] }).tableros(HOY, 2026);
+    expect(t.todos.ciclo).toEqual({
+      mes: '2026-10',
+      vencimiento: { dia: 5, fecha: '2026-10-05', motivo: null },
+      pagoPropietarios: {
+        dia: 10,
+        fecha: '2026-10-13',
+        motivo: 'el 10 fue sábado y el 12 feriado',
+      },
+      // El 25 todavía no llegó: en presente.
+      generarSiguiente: {
+        dia: 25,
+        fecha: '2026-10-26',
+        motivo: 'el 25 es domingo',
+        mes: '2026-11',
+      },
+    });
+    // Es una sola, de toda la inmobiliaria: la misma en los tres cortes.
+    expect(t.vivienda.ciclo).toEqual(t.todos.ciclo);
+    expect(t.comercial.ciclo).toEqual(t.todos.ciclo);
+  });
+
+  it('regla 178: los días salen de la configuración; sin el feriado cargado, solo se corre por el fin de semana', async () => {
+    const t = await servicio({
+      config: { contratoDiaVencimiento: 10, contratoDiaPagoPropietario: 15, diaAvisoGenerar: 20 },
+    }).tablero(HOY);
+    expect(t.ciclo).toEqual({
+      mes: '2026-10',
+      vencimiento: { dia: 10, fecha: '2026-10-12', motivo: 'el 10 fue sábado' },
+      pagoPropietarios: { dia: 15, fecha: '2026-10-15', motivo: null },
+      generarSiguiente: { dia: 20, fecha: '2026-10-20', motivo: null, mes: '2026-11' },
+    });
+  });
+
+  it('regla 178: dos feriados seguidos se nombran juntos, y diciembre avisa enero', async () => {
+    const t = await servicio({
+      feriados: ['2026-12-07', '2026-12-08', '2026-12-25'],
+      config: { contratoDiaPagoPropietario: 7 },
+    }).tablero('2026-12-20');
+    expect(t.ciclo).toEqual({
+      mes: '2026-12',
+      vencimiento: {
+        dia: 5,
+        fecha: '2026-12-09',
+        motivo: 'el 5 fue sábado y el 7 y el 8 feriados',
+      },
+      pagoPropietarios: { dia: 7, fecha: '2026-12-09', motivo: 'el 7 y el 8 fueron feriados' },
+      generarSiguiente: {
+        dia: 25,
+        fecha: '2026-12-28',
+        motivo: 'el 25 es feriado y el 26 sábado',
+        mes: '2027-01',
+      },
+    });
+  });
+
+  it('regla 178: el pago a propietarios no va antes del vencimiento (regla 112), y lo dice', async () => {
+    const t = await servicio({
+      feriados: ['2026-10-12'],
+      config: { contratoDiaVencimiento: 10, contratoDiaPagoPropietario: 5 },
+    }).tablero('2026-10-02');
+    expect(t.ciclo!.vencimiento).toEqual({
+      dia: 10,
+      fecha: '2026-10-13',
+      // El 10 todavía no llegó: en presente.
+      motivo: 'el 10 es sábado y el 12 feriado',
+    });
+    expect(t.ciclo!.pagoPropietarios).toEqual({
+      dia: 5,
+      fecha: '2026-10-13',
+      motivo: 'no se paga antes del vencimiento de los alquileres',
+    });
+  });
+});
+
+// Dashboard en tres bloques (17/10/2026): la tarea «Generar los alquileres de {mes}».
+describe('TableroAlquileresService: generar el mes (regla 181)', () => {
+  const claveDe = (id: string, periodo: string, desde = `${periodo}-01`) =>
+    `alq|${id}|${periodo}|${desde}|alquiler|a_cobrar|inq5`;
+
+  it('regla 181: el mes en curso sin generar es tarea desde el día 1; ya generado, no', async () => {
+    const t = (await servicio().tablero('2026-10-01')).tareas;
+    expect(t.generarMes.filas.map((f) => [f.contrato, f.detalle, f.estado, f.href])).toEqual([
+      ['5', 'Alquiler de octubre de 2026', 'Sin generar', '/alquileres/contratos/c5'],
+    ]);
+    const generado = await servicio({ generados: [claveDe('c5', '2026-10')] }).tablero(
+      '2026-10-01',
+    );
+    expect(generado.tareas.generarMes).toEqual({ valor: 0, filas: [] });
+  });
+
+  it('regla 181: respeta «administrado desde» (regla 104) y la rescisión (regla 3)', async () => {
+    const contratos = [
+      contrato({ id: 'adm', codigo: 'ADM', administradoDesde: d('2026-11-05') }),
+      contrato({
+        id: 'r9',
+        codigo: 'R9',
+        estado: 'rescindido',
+        rescindidoEl: d('2026-09-10'),
+      }),
+      contrato({
+        id: 'r10',
+        codigo: 'R10',
+        estado: 'rescindido',
+        rescindidoEl: d('2026-10-10'),
+      }),
+    ];
+    const t = (await servicio({ contratos, config: { diaAvisoGenerar: 20 } }).tablero('2026-10-20'))
+      .tareas;
+    // Octubre: el rescindido en octubre lo genera entero; el de septiembre, ya no; el
+    // que se administra desde noviembre, todavía no.
+    expect(t.generarMes.filas.map((f) => f.contrato)).toEqual(['R10']);
+    // Noviembre: el que se toma el 5, sí; los rescindidos, no.
+    expect(t.generarSiguiente!.filas.map((f) => f.contrato)).toEqual(['ADM']);
+  });
+
+  it('regla 181: el mes siguiente aparece desde el aviso de la línea del mes, y antes no existe', async () => {
+    // El 25 de octubre de 2026 es domingo: el aviso es el lunes 26.
+    const antes = await servicio().tablero('2026-10-25');
+    expect(antes.tareas.generarSiguiente).toBeNull();
+    const desde = await servicio().tablero('2026-10-26');
+    expect(desde.tareas.generarSiguiente!.filas.map((f) => [f.contrato, f.detalle])).toEqual([
+      ['5', 'Alquiler de noviembre de 2026'],
+    ]);
+    // Con otro día en la configuración, desde ese día.
+    const configurado = await servicio({ config: { diaAvisoGenerar: 20 } }).tablero(HOY);
+    expect(configurado.tareas.generarSiguiente!.valor).toBe(1);
+    // Ya generado, la tarea existe pero en cero: va a «Al día».
+    const generado = await servicio({ generados: [claveDe('c5', '2026-11')] }).tablero(
+      '2026-10-26',
+    );
+    expect(generado.tareas.generarSiguiente).toEqual({ valor: 0, filas: [] });
+  });
+
+  it('regla 181: el que espera confirmar la indexación cuenta igual, y el estado lo dice', async () => {
+    // Cambia de tramo el 15/10: la primera mitad está generada; la segunda no tiene importe.
+    const espera = contrato({
+      id: 'c7',
+      codigo: '7',
+      tramos: [
+        { numero: 1, desde: d('2026-04-15'), importe: dec(1_000_000) },
+        { numero: 2, desde: d('2026-10-15'), importe: null },
+      ],
+    });
+    const tramoBandeja = (estado: string, falta: string[]) => ({
+      tramoId: 't7',
+      contrato: { id: 'c7', codigo: '7' },
+      inquilinos: [],
+      numero: 2,
+      indice: 'IPC',
+      desde: '2026-10-15',
+      estado,
+      importeAnterior: 1_000_000,
+      importePropuesto: estado === 'lista' ? 1_100_000 : null,
+      falta,
+      vencida: true,
+    });
+    const generados = [claveDe('c7', '2026-10')];
+    const lista = await servicio({
+      contratos: [espera],
+      generados,
+      tramos: [tramoBandeja('lista', [])],
+    }).tablero(HOY);
+    expect(lista.tareas.generarMes.filas.map((f) => [f.contrato, f.estado])).toEqual([
+      ['7', 'Falta confirmar la indexación'],
+    ]);
+    const sinIndice = await servicio({
+      contratos: [espera],
+      generados,
+      tramos: [tramoBandeja('pendiente_indice', ['el IPC de septiembre de 2026'])],
+    }).tablero(HOY);
+    expect(sinIndice.tareas.generarMes.filas.map((f) => f.estado)).toEqual([
+      'Espera el IPC de septiembre de 2026: se genera como parcial',
+    ]);
+    // La segunda mitad generada (como parcial, regla 130): ya no falta nada.
+    const completo = await servicio({
+      contratos: [espera],
+      generados: [...generados, claveDe('c7', '2026-10', '2026-10-15')],
+      tramos: [tramoBandeja('pendiente_indice', ['el IPC de septiembre de 2026'])],
+    }).tablero(HOY);
+    expect(completo.tareas.generarMes.valor).toBe(0);
+  });
+
+  /*
+   * La fuente de verdad es «Generar el período». Mismos contratos, mismos
+   * alquileres ya generados: la tarea cuenta exactamente los contratos a los
+   * que la generación les crea el alquiler del mes, más los que deja en
+   * `sinIndexar` porque falta confirmar la indexación (que cuentan igual).
+   */
+  it('regla 181: cuenta exactamente los contratos a los que «Generar el período» les crearía el alquiler del mes', async () => {
+    const PERIODO = '2026-10';
+    const contratos = [
+      contrato({ id: 'normal', codigo: 'NORMAL' }),
+      contrato({ id: 'ya', codigo: 'YA' }),
+      contrato({ id: 'adm', codigo: 'ADM', administradoDesde: d('2026-11-05') }),
+      contrato({ id: 'r9', codigo: 'R9', estado: 'rescindido', rescindidoEl: d('2026-09-10') }),
+      contrato({ id: 'r10', codigo: 'R10', estado: 'rescindido', rescindidoEl: d('2026-10-10') }),
+      contrato({ id: 'fin', codigo: 'FIN', estado: 'finalizado', fin: d('2026-10-14') }),
+      contrato({ id: 'borr', codigo: 'BORR', estado: 'borrador' }),
+      contrato({
+        id: 'sin',
+        codigo: 'SIN',
+        partes: [
+          {
+            personaId: 'dueno',
+            papel: 'propietario',
+            porcentaje: dec(100),
+            persona: { nombre: 'Dueño' },
+          },
+        ],
+      }),
+      contrato({
+        id: 'nov',
+        codigo: 'NOV',
+        inicio: d('2026-11-01'),
+        tramos: [{ numero: 1, desde: d('2026-11-01'), importe: dec(700_000) }],
+      }),
+      // Un tramo sin importe que espera el índice: «Generar» lo crea como parcial (regla 130).
+      contrato({
+        id: 'parcial',
+        codigo: 'PARCIAL',
+        tramos: [
+          { numero: 1, desde: d('2026-04-15'), importe: dec(1_000_000) },
+          { numero: 2, desde: d('2026-10-01'), importe: null },
+        ],
+      }),
+      // Un escalón sin importe: «Generar» no lo crea y lo deja en `sinIndexar` (regla 11).
+      contrato({
+        id: 'confirmar',
+        codigo: 'CONFIRMAR',
+        ajuste: 'escalonado',
+        tramos: [
+          { numero: 1, desde: d('2026-04-15'), importe: dec(1_000_000) },
+          { numero: 2, desde: d('2026-10-01'), importe: null },
+        ],
+      }),
+      // Cambia de tramo el 15: la primera parte ya está, la segunda no.
+      contrato({
+        id: 'mitad',
+        codigo: 'MITAD',
+        tramos: [
+          { numero: 1, desde: d('2026-04-15'), importe: dec(1_000_000) },
+          { numero: 2, desde: d('2026-10-15'), importe: dec(1_100_000) },
+        ],
+      }),
+    ];
+    const existentes = [claveDe('ya', PERIODO), claveDe('mitad', PERIODO)];
+
+    // «Generar el período», con una base de mentira que contesta como la de verdad.
+    type Creado = { contratoId: string; tipo: string; sentido: string; claveGeneracion: string };
+    const creados: Creado[] = [];
+    const tx = {
+      ...mocksDeHistorial(),
+      $executeRaw: vi.fn(async () => 1),
+      tenant: { findUniqueOrThrow: vi.fn().mockResolvedValue({ config: {} }) },
+      feriado: { findMany: vi.fn().mockResolvedValue([]) },
+      indiceValor: { findMany: vi.fn().mockResolvedValue([]) },
+      alqContrato: {
+        findMany: vi.fn(
+          async (a: {
+            where: { estado: { in: string[] }; inicio: { lte: Date }; fin: { gte: Date } };
+          }) =>
+            contratos
+              .filter(
+                (c) =>
+                  a.where.estado.in.includes(c.estado) &&
+                  c.inicio <= a.where.inicio.lte &&
+                  c.fin >= a.where.fin.gte,
+              )
+              .map((c) => ({ ...c, indice: null })),
+        ),
+      },
+      alqConcepto: {
+        findMany: vi.fn(async (a: { where: { claveGeneracion: { in: string[] } } }) =>
+          existentes
+            .filter((k) => a.where.claveGeneracion.in.includes(k))
+            .map((claveGeneracion) => ({ claveGeneracion })),
+        ),
+        createMany: vi.fn(async (a: { data: Creado[] }) => {
+          const nuevos = a.data.filter((k) => !existentes.includes(k.claveGeneracion));
+          creados.push(...nuevos);
+          return { count: nuevos.length };
+        }),
+      },
+    };
+    const db = {
+      withTenant: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx)),
+    } as unknown as TenantPrismaService;
+    const r = await new ConceptosService(db).generar(
+      { tenantId: 't1', userId: 'u1', roles: ['administracion'] },
+      PERIODO,
+    );
+    const deGenerar = new Set([
+      ...creados
+        .filter((k) => k.tipo === 'alquiler' && k.sentido === 'a_cobrar')
+        .map((k) => k.contratoId),
+      ...r.sinIndexar.map((x) => x.contratoId),
+    ]);
+
+    const t = await servicio({ contratos, generados: existentes, tramos: [] }).tablero(HOY);
+    const deLaTarea = new Set(t.tareas.generarMes.filas.map((f) => f.id.split('|')[0]!));
+    expect(deLaTarea).toEqual(deGenerar);
+    // Y no por casualidad: son estos seis.
+    expect([...deLaTarea].sort()).toEqual(
+      ['confirmar', 'fin', 'mitad', 'normal', 'parcial', 'r10'].sort(),
+    );
+    expect(r.parciales.map((x) => x.contratoId)).toEqual(['parcial']);
+    expect(r.sinIndexar.map((x) => x.contratoId)).toEqual(['confirmar']);
   });
 });

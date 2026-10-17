@@ -5,3 +5,4 @@ export * from './alquileres';
 export * from './boletas';
 export * from './informe-propietario';
 export * from './liquidacion-final';
+export * from './generar-mes';

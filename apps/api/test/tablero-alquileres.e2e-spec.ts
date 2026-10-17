@@ -76,6 +76,8 @@ suite('Tablero de Alquileres contra la base (regla 79)', () => {
   let prisma: PrismaService;
   let servicio: TableroAlquileresService;
   let tableros: Record<FiltroTipoContrato, TableroAlquileresDto>;
+  /** El contrato vigente de vivienda y su inquilina (regla 181). */
+  let vivienda: { contrato: string; inquilino: string };
   const ids = nuevosIds(7);
 
   beforeAll(async () => {
@@ -144,6 +146,7 @@ suite('Tablero de Alquileres contra la base (regla 79)', () => {
       },
       inq1.id,
     );
+    vivienda = { contrato: k1.id, inquilino: inq1.id };
     const k2 = await contrato(
       'E2E-2',
       {
@@ -417,4 +420,50 @@ suite('Tablero de Alquileres contra la base (regla 79)', () => {
       }
     },
   );
+
+  // Va última: escribe la configuración y dos alquileres, y vuelve a leer el tablero.
+  it('reglas 178 y 181: la línea del mes y «Generar el mes» salen de la base, con los anulados', async () => {
+    await siembra.tenant.update({
+      where: { id: ids.tenant },
+      data: { config: { diaAvisoGenerar: 20 } },
+    });
+    let t = (await servicio.tableros(HOY, 2026)).todos;
+    // Regla 178: los días de la configuración y el feriado del 12/10, que trae la migración.
+    expect(t.ciclo).toEqual({
+      mes: '2026-10',
+      vencimiento: { dia: 5, fecha: '2026-10-05', motivo: null },
+      pagoPropietarios: {
+        dia: 10,
+        fecha: '2026-10-13',
+        motivo: 'el 10 fue sábado y el 12 feriado',
+      },
+      generarSiguiente: { dia: 20, fecha: '2026-10-20', motivo: null, mes: '2026-11' },
+    });
+    // Regla 181: el vigente no tiene octubre ni noviembre; el comercial terminó en mayo.
+    expect(t.tareas.generarMes.filas.map((f) => [f.contrato, f.estado])).toEqual([
+      ['E2E-1', 'Sin generar'],
+    ]);
+    expect(t.tareas.generarSiguiente!.filas.map((f) => f.contrato)).toEqual(['E2E-1']);
+
+    // Octubre generado y después anulado: «Generar» no lo vuelve a crear, así
+    // que no falta. Noviembre, generado.
+    const alquiler = (periodo: string, anuladoEn: Date | null) => ({
+      tenantId: ids.tenant,
+      contratoId: vivienda.contrato,
+      personaId: vivienda.inquilino,
+      tipo: 'alquiler',
+      sentido: 'a_cobrar',
+      periodo,
+      vencimiento: d(`${periodo}-05`),
+      importe: 500_000,
+      claveGeneracion: `alq|${vivienda.contrato}|${periodo}|${periodo}-01|alquiler|a_cobrar|${vivienda.inquilino}`,
+      anuladoEn,
+    });
+    await siembra.alqConcepto.createMany({
+      data: [alquiler('2026-10', new Date('2026-10-06T12:00:00Z')), alquiler('2026-11', null)],
+    });
+    t = (await servicio.tableros(HOY, 2026)).todos;
+    expect(t.tareas.generarMes).toEqual({ valor: 0, filas: [] });
+    expect(t.tareas.generarSiguiente).toEqual({ valor: 0, filas: [] });
+  });
 });

@@ -5,6 +5,7 @@ import {
   PrioridadReclamoSchema,
   nombrePrioridad,
   textoCuota,
+  type CicloDelMes,
   type EstadoContrato,
   type FilaTablero,
   type FiltroTipoContrato,
@@ -19,6 +20,7 @@ import type { LiquidacionesService } from '../liquidaciones.service';
 import { tareasDeReservas } from '../tablero-reservas';
 import { aContrato, aPersona, enDias, porCantidad } from './comun';
 import type { ContratoLeido, Fichas } from './fichas';
+import { faltaGenerar } from './generar';
 import type { DatosTablero } from './lectura';
 import type { moraAl } from './morosidad';
 
@@ -85,6 +87,12 @@ export interface ParaLasTareas {
   polizas: DatosTablero['polizas'];
   boletas: DatosTablero['boletas'];
   reservas: DatosTablero['reservas'];
+  /** El mes en curso, `AAAA-MM`. */
+  mes: string;
+  /** Las claves de los alquileres ya generados del mes en curso y del siguiente (regla 181). */
+  generados: ReadonlySet<string>;
+  /** La línea del mes (regla 178): desde cuándo se avisa que hay que generar el siguiente. */
+  ciclo: CicloDelMes;
 }
 
 /** Lo que hay que hacer (regla 31): siempre a hoy, cada tarea con su lista. */
@@ -175,6 +183,8 @@ export function tareasDelTablero(e: ParaLasTareas): TableroAlquileresDto['tareas
       importe: redondear2((previo?.importe ?? 0) + x.fila.importe!),
     });
   }
+
+  const paraGenerar = { contratos, generados: e.generados, bandeja, f: e.f };
 
   // --- Escalones por iniciar (Gexion): contratos escalonados que cambian de importe pronto ---
   const hasta = sumarDiasIso(hoy, DIAS_TABLERO_PROXIMOS);
@@ -318,5 +328,12 @@ export function tareasDelTablero(e: ParaLasTareas): TableroAlquileresDto['tareas
     ),
     // Regla 166: las reservas que vencen y las aprobadas sin contrato.
     ...tareasDeReservas(e.reservas, hoy, tipo),
+    // Regla 181: el mes en curso, desde el día 1; el siguiente, desde el aviso
+    // de la línea del mes. Antes del aviso, la tarea no existe (`null`).
+    generarMes: faltaGenerar({ ...paraGenerar, periodo: e.mes }),
+    generarSiguiente:
+      hoy >= e.ciclo.generarSiguiente.fecha
+        ? faltaGenerar({ ...paraGenerar, periodo: e.ciclo.generarSiguiente.mes })
+        : null,
   };
 }

@@ -176,6 +176,15 @@ export function ConfiguracionForm({ inicial }: { inicial: ConfiguracionAlquilere
           Si el vencimiento cae sábado, domingo o feriado nacional, se corre al siguiente día hábil.
         </p>
       </Panel>
+      {/* Regla 181 (17/10/2026): desde cuándo el Dashboard pide generar el mes siguiente. */}
+      <Panel icono="🗓️" titulo="Generación del mes">
+        <Campo
+          label="Avisar que hay que generar el mes siguiente desde el día"
+          hint="Del 1 al 28. Desde ese día —o el hábil siguiente— el Dashboard muestra «Generar los alquileres» del mes que viene."
+        >
+          <InputDia valor={c.diaAvisoGenerar} onValor={(n) => cambiar({ diaAvisoGenerar: n })} />
+        </Campo>
+      </Panel>
       <Panel icono="🧾" titulo="Sellado">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Campo label="Particular (%)" hint="0 = exento.">

@@ -52,6 +52,8 @@ describe('AlquileresService.configuracion (reglas 99 y 103)', () => {
       // Regla 133: sin cargar, 5 días.
       diasDiferenciaFinal: 5,
       honorariosSenaRetenidaPct: 0,
+      // Regla 181: sin cargar, el aviso de generar el mes siguiente es desde el 25.
+      diaAvisoGenerar: 25,
     });
     expect(c).not.toHaveProperty('selladoPct');
     expect(t.tenant.update).not.toHaveBeenCalled();
@@ -74,6 +76,7 @@ describe('AlquileresService.configuracion (reglas 99 y 103)', () => {
       contratoPunitorioDiarioPct: 0.3,
       contratoDiaVencimiento: 5,
       contratoDiaPagoPropietario: 10,
+      diaAvisoGenerar: 20,
       diasDiferenciaFinal: 7,
       honorariosSenaRetenidaPct: 0,
     };
