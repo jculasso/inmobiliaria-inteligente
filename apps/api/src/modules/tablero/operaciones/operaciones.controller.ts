@@ -9,7 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConflictResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateOperacionSchema,
   OperacionFiltroSchema,
@@ -74,7 +74,18 @@ export class OperacionesController {
 
   @Patch(':id')
   @Roles(...PUEDEN_ESCRIBIR)
-  @ApiOperation({ summary: 'Edita una operación' })
+  @ApiOperation({
+    summary: 'Edita una operación',
+    description:
+      '`puntas` reemplaza el set completo y exige `puntasVistas`: los ids de las puntas que ' +
+      'el cliente tenía al abrir el formulario (las del detalle, `GET /tablero/operaciones/:id`; ' +
+      'nunca las de la lista, que pueden venir enmascaradas). Sin `puntas`, `puntasVistas` se ignora.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Vino `puntas` y `puntasVistas` falta o no coincide con las puntas de la base: la venta ' +
+      'cambió o se estaba viendo incompleta. No se modifica nada.',
+  })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(UpdateOperacionSchema)) dto: UpdateOperacion,
